@@ -1,3 +1,17 @@
+# Copyright 2025 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from llama_stack.apis.agents import (
     AgentTurnResponseStreamChunk,
     AgentTurnResponseEvent,
@@ -11,12 +25,10 @@ from llama_stack.apis.agents import (
     Turn,
     ToolExecutionStep,
     ToolCall,
-    ToolResponse
+    ToolResponse,
 )
 from typing import List
-from llama_stack.apis.inference import (
-    UserMessage,CompletionMessage
-)
+from llama_stack.apis.inference import UserMessage, CompletionMessage
 from llama_stack.apis.common.content_types import (
     TextDelta,
 )
@@ -37,7 +49,7 @@ import pprint
 log = logging.getLogger(__name__)
 
 
-def extract_messages(messages) ->(List[UserMessage] | CompletionMessage):
+def extract_messages(messages) -> List[UserMessage] | CompletionMessage:
     user_messages = []
     completion_message = None
 
@@ -45,7 +57,9 @@ def extract_messages(messages) ->(List[UserMessage] | CompletionMessage):
         if isinstance(message, HumanMessage):
             user_messages = user_messages + [UserMessage(content=message.content)]
         if isinstance(message, AIMessage):
-            completion_message = CompletionMessage(content=message.content, stop_reason=StopReason.end_of_turn)
+            completion_message = CompletionMessage(
+                content=message.content, stop_reason=StopReason.end_of_turn
+            )
 
     return user_messages, completion_message
 
@@ -150,13 +164,13 @@ class EventProcessor:
         step_id = event.get("run_id")
         self.tool_start_times[step_id] = datetime.now()
         return AgentTurnResponseStreamChunk(
-                    event=AgentTurnResponseEvent(
-                        payload=AgentTurnResponseStepStartPayload(
-                            step_type=StepType.tool_execution.value,
-                            step_id=step_id,
-                        )
-                    )
+            event=AgentTurnResponseEvent(
+                payload=AgentTurnResponseStepStartPayload(
+                    step_type=StepType.tool_execution.value,
+                    step_id=step_id,
                 )
+            )
+        )
 
     def on_tool_end(self, event):
         step_id = event.get("run_id")
@@ -164,31 +178,31 @@ class EventProcessor:
         tool_call = ToolCall(
             call_id=tool_output.tool_call_id,
             tool_name=tool_output.name,
-            arguments=event.get("data", {}).get("input", {})
+            arguments=event.get("data", {}).get("input", {}),
         )
         tool_execution_step = ToolExecutionStep(
-                step_id=event.get("run_id"),
-                turn_id=self.start_run_id,
-                tool_calls=[tool_call],
-                tool_responses=[
-                    ToolResponse(
-                        call_id=tool_output.tool_call_id,
-                        tool_name=tool_output.name,
-                        content=tool_output.content,
-                    )
-                ],
-                completed_at=datetime.now(),
-                started_at=self.tool_start_times[step_id],
-            )
+            step_id=event.get("run_id"),
+            turn_id=self.start_run_id,
+            tool_calls=[tool_call],
+            tool_responses=[
+                ToolResponse(
+                    call_id=tool_output.tool_call_id,
+                    tool_name=tool_output.name,
+                    content=tool_output.content,
+                )
+            ],
+            completed_at=datetime.now(),
+            started_at=self.tool_start_times[step_id],
+        )
         return AgentTurnResponseStreamChunk(
-                event=AgentTurnResponseEvent(
-                    payload=AgentTurnResponseStepCompletePayload(
-                        step_type=StepType.tool_execution.value,
-                        step_id=event.get("run_id"),
-                        step_details=tool_execution_step,
-                    )
+            event=AgentTurnResponseEvent(
+                payload=AgentTurnResponseStepCompletePayload(
+                    step_type=StepType.tool_execution.value,
+                    step_id=event.get("run_id"),
+                    step_details=tool_execution_step,
                 )
             )
+        )
 
     def handle_unknown_event(self, event):
         print(f"Unknown event type: {event.get('event')}")

@@ -12,24 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from llama_stack.apis.agents import AgentConfig
-from typing import AsyncGenerator, List
-from llama_stack.apis.inference import (
-    ToolResponseMessage,
-    UserMessage,
-)
+from typing import AsyncGenerator, List, Union
+from llama_stack.apis.inference import ToolResponseMessage, UserMessage
 
-class MultiFrameworkAgent:
-    """
-    Abstract base class for running agents.
-    """
+
+class MultiFrameworkAgent(ABC):
+    """Abstract base class for running agents."""
+
     def __init__(self, agent_config: AgentConfig) -> None:
-        """
-        Initializes the MultiFrameworkAgent with the given agent AgentConfig.
-        """
-
+        """Initializes the MultiFrameworkAgent with the given AgentConfig."""
         agent_metadata = self.extract_agent_metadata(agent_config)
+        if agent_metadata is None:
+            raise ValueError("Agent metadata could not be extracted.")
 
         self.name = agent_metadata["name"]
         self.description = agent_metadata["description"]
@@ -37,22 +33,23 @@ class MultiFrameworkAgent:
         self.impl_class = agent_metadata["impl_class"]
         self.instructions = agent_config.instructions
         self.model = agent_config.model
-        
+
     @staticmethod
-    def extract_agent_metadata(agent_config):
+    def extract_agent_metadata(agent_config: AgentConfig):
+        """Extracts agent metadata from the provided AgentConfig."""
         for tool in agent_config.client_tools:
             if tool.name == "AgentMetadata":
                 return tool.metadata
         return None
 
     @abstractmethod
-    def run(self, messages: List[UserMessage | ToolResponseMessage]) -> str:
-        """
-        Runs the agent with the input messages.
-        """
+    def run(self, messages: List[Union[UserMessage, ToolResponseMessage]]) -> str:
+        """Runs the agent with the input messages."""
+        pass
 
     @abstractmethod
-    async def run_streaming(self, messages: List[UserMessage | ToolResponseMessage]) -> AsyncGenerator:
-        """
-        Runs the agent in streaming mode with the given messages.
-        """
+    async def run_streaming(
+        self, messages: List[Union[UserMessage, ToolResponseMessage]]
+    ) -> AsyncGenerator:
+        """Runs the agent in streaming mode with the given messages."""
+        pass

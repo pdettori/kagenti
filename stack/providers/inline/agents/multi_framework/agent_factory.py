@@ -16,16 +16,34 @@ from enum import Enum
 from typing import Callable, Type, Union
 from .langgraph.agent import LangGraphAgent
 
+
 class AgentFramework(Enum):
     """Enumeration of supported frameworks"""
+
     CREWAI = "crewai"
     LANGGRAPH = "langgraph"
 
+    @classmethod
+    def from_str(cls, framework_str: str):
+        """Converts a string to an AgentFramework enum, if valid."""
+        try:
+            return cls[framework_str.upper()]
+        except KeyError:
+            raise ValueError(f"Unknown framework: {framework_str}")
+
+
 class AgentFactory:
-    """Factory class for handling agent frameworks"""
+    """Factory class for handling agent frameworks."""
+
+    _factories = {
+        # AgentFramework.CREWAI: CrewAIAgent,  # Placeholder, uncomment when available
+        AgentFramework.LANGGRAPH: LangGraphAgent,
+    }
 
     @staticmethod
-    def create_agent(framework: Union[str, AgentFramework]) -> Callable[..., LangGraphAgent]:
+    def create_agent(
+        framework: Union[str, AgentFramework]
+    ) -> Callable[..., LangGraphAgent]:
         """Create an instance of the specified agent framework.
 
         Args:
@@ -34,25 +52,15 @@ class AgentFactory:
         Returns:
             A new instance of the corresponding agent class.
         """
-        # If the input is a string, convert it to an AgentFramework
         if isinstance(framework, str):
-            try:
-                framework = AgentFramework(framework.lower())
-            except ValueError:
-                raise ValueError(f"Unknown framework: {framework}")
+            framework = AgentFramework.from_str(framework)
 
-        factories = {
-            # AgentFramework.CREWAI: CrewAIAgent,
-            AgentFramework.LANGGRAPH: LangGraphAgent,
-        }
+        if framework not in AgentFactory._factories:
+            raise ValueError(f"Unsupported framework: {framework}")
 
-        if framework not in factories:
-            raise ValueError(f"Unknown framework: {framework}")
-        
-        return factories[framework]
+        return AgentFactory._factories[framework]
 
     @classmethod
     def get_factory(cls, framework: str) -> Callable[..., LangGraphAgent]:
         """Get a factory function for the specified agent type."""
         return cls.create_agent(framework)
-
