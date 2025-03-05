@@ -51,7 +51,7 @@ from llama_stack.apis.tools import ToolGroups, ToolRuntime
 from llama_stack.apis.vector_io import VectorIO
 from llama_stack.apis.inference import Inference
 from .agent_factory import AgentFactory
-from .agent import MultiFrameworkAgent
+from .agent_base import MultiFrameworkAgent
 
 
 from .langgraph.converters import convert_messages, EventProcessor
@@ -127,8 +127,16 @@ class MultiFrameworkAgentImpl(MetaReferenceAgentsImpl, NeedsRequestProviderData)
         if not stream:
             raise NotImplementedError("Non-streaming agent turns not yet implemented")
 
+        print("HELLO >>>>>>>>")
+
         agent_config = await self.get_agent_config(request.agent_id)
         agent_metadata = MultiFrameworkAgent.extract_agent_metadata(agent_config)
+
+        if agent_metadata is None:
+            log.info("using the ")
+            return self._create_agent_turn_streaming(request)
+            
+
         framework = agent_metadata["framework"]
 
         try:

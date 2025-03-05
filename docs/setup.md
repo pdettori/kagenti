@@ -10,7 +10,8 @@ conda activate stack
 Install llama-stack tagged release with:
 
 ```shell
-uv pip install git+https://github.com/meta-llama/llama-stack.git@v0.1.5.1
+pip install uv
+uv pip install llama-stack==v0.1.4
 ```
 
 Update the agent registry with:
@@ -23,4 +24,27 @@ Build the ollama template with the command:
 
 ```shell
 PYTHONPATH=$(pwd) llama stack build --config stack/templates/ollama/build.yaml
+```
+
+Run the server with:
+
+```shell
+export INFERENCE_MODEL="meta-llama/Llama-3.2-3B-Instruct"
+llama stack run stack/templates/ollama/run.yaml 
+```
+
+## Testing
+
+On new terminal, activate env first with `conda activate stack`, them:
+
+### Llama Stack Agent
+
+```shell
+python -m examples.clients.llama_stack.simple_rag localhost 8321
+```
+
+### LangGraph Agent
+
+```shell
+python -m examples.clients.langgraph.call_math_agent localhost 8321
 ```

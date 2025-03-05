@@ -14,7 +14,7 @@
 
 import importlib
 from typing import AsyncGenerator, List, Union
-from ..agent import MultiFrameworkAgent
+from ..agent_base import MultiFrameworkAgent
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage  # type: ignore
 from llama_stack.apis.agents import AgentConfig, AgentTurnResponseTurnCompletePayload
 from llama_stack.apis.inference import ToolResponseMessage, UserMessage
@@ -28,7 +28,7 @@ class LangGraphAgent(MultiFrameworkAgent):
 
     def __init__(self, agent_config: AgentConfig) -> None:
         """
-        Initializes the workflow for the specified agent.
+        Initializes the specified agent.
         The executable code must be within $PYTHONPATH.
 
         Args:
