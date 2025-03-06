@@ -44,31 +44,14 @@ Deploying Llama Stack in production involves addressing typical challenges assoc
 
 ## Scalable Web-Queue-Worker Pattern
 
-The Web-Queue-Worker pattern, frequently utilized within microservices architectures, provides numerous benefits over direct HTTP calls from the API server to backend components:
+The Web-Queue-Worker pattern, frequently utilized within microservices architectures, provides several key advantages over direct HTTP calls from the API server to backend components:
 
-1. **Decoupling of Services**
-- **Web-Queue-Worke**r: Promotes service independence by queuing tasks, allowing components to evolve independently.
-- **Direct HTTP Calls**: Requires tight coupling between the API server and backend services, demanding coordinated changes.
+- **Scalability**: facilitates independent scaling of workers from the API server, enhancing flexibility.
 
-2. **Scalability**
-- **Web-Queue-Worker**: Facilitates independent scaling of workers from the API server, enhancing flexibility.
-- **Direct HTTP Calls**: Mandates simultaneous scaling of both the API server and backend services, which can be resource-intensive.
+- **Resilience and Fault Tolerance**: ensures tasks are retained in the queue during service downtime, providing inherent fault tolerance.
 
-3. **Resilience and Fault Tolerance**
-- **Web-Queue-Worker**: Ensures tasks are retained in the queue during service downtime, providing inherent fault tolerance.
-- **Direct HTTP Calls**: Failures lead to immediate user errors, necessitating additional client-side error handling.
+- **Load Management**: acts as a buffer managing demand spikes by queuing requests until resources become available and enhances resource utilization by distributing work over time based on worker availability.
 
-4. **Load Management**
-- **Web-Queue-Worker**: Acts as a buffer managing demand spikes by queuing requests until resources become available.
-- **Direct HTTP Calls**: Can cause system overload during peak times owing to immediate request processing.
-
-5. **Asynchronous Processing**
-- **Web-Queue-Worker**: Supports asynchronous task processing, improving responsiveness by acknowledging requests immediately.
-- **Direct HTTP Calls**: Typically synchronous, delaying responses until task completion, which negatively impacts long-running tasks.
-
-6. **Improved Resource Utilization**
-- **Web-Queue-Worker**: Enhances resource utilization by distributing work over time based on worker availability.
-- **Direct HTTP Calls**: Risk uneven resource usage, potentially causing bottlenecks under high demand.
 
 ## Zero-Trust Identity Pattern
 
