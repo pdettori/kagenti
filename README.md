@@ -19,7 +19,7 @@ The primary objective of k8gentai is to offer a *framework-neutral*, *scalable* 
 
 [Llama Stack](https://llama-stack.readthedocs.io) is a versatile software stack designed for building applications that leverage Large Language Models (LLMs). It focuses on creating agentic applications where agents can perform reasoning, planning, and interact with various tools. **k8gentai** enhances the capabilities of Llama Stack by adding the following key components:
 
-1.**Multi-Framework Agent (MFA) Provider**
+1. **Multi-Framework Agent (MFA) Provider**
 This component enables the creation of multi-framework agent-based workflows via the [Llama Agent API](https://llama-stack.readthedocs.io/en/latest/references/api_reference).
 
 2. **Kubernetes Operator**
