@@ -17,14 +17,14 @@
 
 [Llama Stack](https://llama-stack.readthedocs.io) is a versatile software stack designed for building applications that leverage Large Language Models (LLMs). It focuses on creating agentic applications where agents can perform reasoning, planning, and interact with various tools. **k8gentai** enhances the capabilities of Llama Stack by adding the following key components:
 
-1. **Multi-Framework Agent (MFA) Provider**
+1. **Agent Multi-Framework Provider (AMF)**
 This component enables the creation of multi-framework agent-based workflows via the [Llama Agent API](https://llama-stack.readthedocs.io/en/latest/references/api_reference).
 
 2. **Kubernetes Operator**
 Facilitates the deployment and configuration of Llama Stack along with its infrastructure dependencies on Kubernetes. It allows scaling and updating configurations seamlessly.
 
 3. **Scalable Web-Queue-Worker Pattern**
-This pattern, implemented as part of the MFA provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
+This pattern, implemented as part of the AMF provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
 
 4. **Zero-Trust Identity Pattern**
 Ensures secure identity management for agent calls to tools, adhering to zero-trust principles.
