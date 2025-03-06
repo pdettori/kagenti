@@ -1,9 +1,7 @@
 
 # k8gentai
-**k8gentai** is a Kubernetes Agent Platform designed specifically for AI, featuring secure identity management.
 
-## Goals
-The primary objective of k8gentai is to offer a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
+**k8gentai** is a Kubernetes-based middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
 
 - Trusted identity
 - Deployment
@@ -40,7 +38,7 @@ In the open-source community, several frameworks are emerging for developing age
 
 ## Kubernetes Operator
 
-Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new stack instances, supports the registration and scaling of multi-framework agents, and assists in seamlessly setting up and configuring identity management.
+Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new stack instances, supports the registration and scaling of multi-framework agents, and assists in setting up and configuring identity management and agents' authorizations.
 
 ## Scalable Web-Queue-Worker Pattern
 

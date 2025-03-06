@@ -127,16 +127,14 @@ class MultiFrameworkAgentImpl(MetaReferenceAgentsImpl, NeedsRequestProviderData)
         if not stream:
             raise NotImplementedError("Non-streaming agent turns not yet implemented")
 
-        print("HELLO >>>>>>>>")
-
         agent_config = await self.get_agent_config(request.agent_id)
         agent_metadata = MultiFrameworkAgent.extract_agent_metadata(agent_config)
 
         if agent_metadata is None:
-            log.info("using the ")
+            log.info("routing to MetaReferenceAgentsImpl")
             return self._create_agent_turn_streaming(request)
             
-
+        log.info("routing to multi-framework agent factory")    
         framework = agent_metadata["framework"]
 
         try:
