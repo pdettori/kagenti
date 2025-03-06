@@ -28,7 +28,7 @@ Facilitates the deployment and configuration of Llama Stack along with its infra
 3. **Scalable Web-Queue-Worker Pattern**
 This pattern, implemented as part of the MFA provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
 
-4.**Zero-Trust Identity Pattern**
+4. **Zero-Trust Identity Pattern**
 Ensures secure identity management for agent calls to tools, adhering to zero-trust principles.
 
 
