@@ -3,7 +3,7 @@
 **k8gentai** is a Kubernetes Agent Platform designed specifically for AI, featuring secure identity management.
 
 ## Goals
-The primary objective of k8gentai is to offer a *framework-neutral*, *scalable* and secure platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
+The primary objective of k8gentai is to offer a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
 
 - Trusted identity
 - Deployment
