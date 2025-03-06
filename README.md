@@ -40,11 +40,11 @@ In the open-source community, several frameworks are emerging for developing age
 
 ## Kubernetes Operator
 
-Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications. Essential infrastructure services such as key-value store databases, caches, queuing systems, API servers, and workers necessitate thorough configuration management and workload scaling. The Kubernetes operator facilitates the deployment of new stack instances, supports the registration and scaling of multi-framework agents, and assists in setting up and configuring identity management seamlessly.
+Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new stack instances, supports the registration and scaling of multi-framework agents, and assists in seamlessly setting up and configuring identity management.
 
 ## Scalable Web-Queue-Worker Pattern
 
-The Web-Queue-Worker pattern, frequently utilized within microservices architectures, provides several key advantages over direct HTTP calls from the API server to backend components:
+The Web-Queue-Worker pattern, a best practice for microservices architectures, provides several key advantages over direct HTTP calls from the API server to backend components:
 
 - **Scalability**: facilitates independent scaling of workers from the API server, enhancing flexibility.
 
