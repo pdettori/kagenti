@@ -15,6 +15,7 @@
 from enum import Enum
 from typing import Callable, Type, Union
 from .langgraph.agent import LangGraphAgent
+from .crewai.agent import CrewAIAgent
 
 
 class AgentFramework(Enum):
@@ -36,14 +37,14 @@ class AgentFactory:
     """Factory class for handling agent frameworks."""
 
     _factories = {
-        # AgentFramework.CREWAI: CrewAIAgent,  # Placeholder, uncomment when available
+        AgentFramework.CREWAI: CrewAIAgent,  
         AgentFramework.LANGGRAPH: LangGraphAgent,
     }
 
     @staticmethod
     def create_agent(
-        framework: Union[str, AgentFramework]
-    ) -> Callable[..., LangGraphAgent]:
+        framework: Union[str, AgentFramework, CrewAIAgent]
+    ) -> Callable[..., Union[LangGraphAgent, CrewAIAgent]]:
         """Create an instance of the specified agent framework.
 
         Args:
@@ -61,6 +62,6 @@ class AgentFactory:
         return AgentFactory._factories[framework]
 
     @classmethod
-    def get_factory(cls, framework: str) -> Callable[..., LangGraphAgent]:
+    def get_factory(cls, framework: str) -> Callable[..., Union[LangGraphAgent,CrewAIAgent]]:
         """Get a factory function for the specified agent type."""
         return cls.create_agent(framework)

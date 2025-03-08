@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from llama_stack.providers.inline.agents.meta_reference.agents import MetaReferenceAgentsImpl
+from llama_stack.providers.inline.agents.meta_reference.agents import (
+    MetaReferenceAgentsImpl,
+)
 from llama_stack.providers.inline.agents.meta_reference import (
     MetaReferenceAgentsImplConfig,
 )
@@ -20,29 +22,16 @@ from llama_stack.distribution.request_headers import NeedsRequestProviderData
 from llama_stack.apis.agents import (
     AgentToolGroup,
     AgentTurnCreateRequest,
-    AgentTurnResponseStreamChunk,
     Document,
     AgentTurnResponseEventType,
-    AgentTurnResponseEvent,
-    AgentTurnResponseTurnCompletePayload,
-    AgentTurnResponseStepProgressPayload,
-    Turn,
     AgentConfig,
     AgentCreateResponse,
-    StepType,
 )
 from typing import AsyncGenerator, List, Optional, Union
 from llama_stack.apis.inference import (
     ToolConfig,
     ToolResponseMessage,
     UserMessage,
-)
-from llama_stack.apis.common.content_types import (
-    TextContentItem,
-    ToolCallDelta,
-    ToolCallParseStatus,
-    TextDelta,
-    URL,
 )
 import logging
 import json
@@ -53,9 +42,6 @@ from llama_stack.apis.inference import Inference
 from .agent_factory import AgentFactory
 from .agent_base import MultiFrameworkAgent
 
-
-from .langgraph.converters import convert_messages, EventProcessor
-from langchain_core.messages import SystemMessage, HumanMessage
 
 EventType = AgentTurnResponseEventType
 
@@ -105,7 +91,7 @@ class MultiFrameworkAgentImpl(MetaReferenceAgentsImpl, NeedsRequestProviderData)
                 ToolResponseMessage,
             ]
         ],
-        toolgroups: Optional[List[AgentToolGroup]] = None, # type: ignore
+        toolgroups: Optional[List[AgentToolGroup]] = None,  # type: ignore
         documents: Optional[List[Document]] = None,
         stream: Optional[bool] = False,
         tool_config: Optional[ToolConfig] = None,
@@ -133,24 +119,19 @@ class MultiFrameworkAgentImpl(MetaReferenceAgentsImpl, NeedsRequestProviderData)
         if agent_metadata is None:
             log.info("routing to MetaReferenceAgentsImpl")
             return self._create_agent_turn_streaming(request)
-            
-        log.info("routing to multi-framework agent factory")    
+
+        log.info("routing to multi-framework agent factory")
         framework = agent_metadata["framework"]
 
         try:
             factory = AgentFactory.create_agent(framework)
             agent = factory(agent_config=agent_config)
-            log.info("{framework} agent instantiated successfully.")
+            log.info(f"{framework} agent instantiated successfully.")
         except Exception as e:
             print(f"Error instantiating Agent: {e}")
             raise e
-        
-        try:
-            return agent.run_streaming(request.session_id, request.messages)
-        except Exception as e:
-            print(f"Failed to run agent: {e}")
-            raise e
 
+        return agent.run_streaming(request.session_id, request.messages)
 
     async def get_agent_config(self, agent_id: str) -> AgentConfig:
         agent_config = await self.persistence_store.get(
@@ -162,10 +143,14 @@ class MultiFrameworkAgentImpl(MetaReferenceAgentsImpl, NeedsRequestProviderData)
         try:
             agent_config = json.loads(agent_config)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Could not JSON decode agent config for {agent_id}") from e
+            raise ValueError(
+                f"Could not JSON decode agent config for {agent_id}"
+            ) from e
 
         try:
             agent_config = AgentConfig(**agent_config)
         except Exception as e:
-            raise ValueError(f"Could not validate(?) agent config for {agent_id}") from e
+            raise ValueError(
+                f"Could not validate(?) agent config for {agent_id}"
+            ) from e
         return agent_config

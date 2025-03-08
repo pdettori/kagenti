@@ -64,7 +64,7 @@ def run_main(host: str, port: int, disable_safety: bool = False):
 
     user_prompts = [
         (
-            "What is Granite? Give a very short summary of 50 words max.",
+            "What is Granite? Give a very short summary.",
             attachments,
         ),
     ]

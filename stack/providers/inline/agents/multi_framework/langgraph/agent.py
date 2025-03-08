@@ -15,7 +15,7 @@
 import importlib
 from typing import AsyncGenerator, List, Union
 from ..agent_base import MultiFrameworkAgent
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage  # type: ignore
+from langchain_core.messages import SystemMessage  # type: ignore
 from llama_stack.apis.agents import AgentConfig, AgentTurnResponseTurnCompletePayload
 from llama_stack.apis.inference import ToolResponseMessage, UserMessage
 from .converters import convert_messages, EventProcessor
@@ -55,44 +55,6 @@ class LangGraphAgent(MultiFrameworkAgent):
             print(f"Failed to load agent {self.name}: {e}")
             raise
 
-    def run(
-        self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
-    ) -> str:
-        """
-        Executes the LangGraph agent with the given messages. Uses the 'invoke' method.
-
-        Args:
-            session_id (str): The ID of the current session.
-            messages (List[Union[UserMessage, ToolResponseMessage]]): Input messages.
-
-        Returns:
-            str: Content from the last AIMessage in the response.
-
-        Raises:
-            Exception: If there is an error retrieving or executing the agent's method.
-        """
-        print(f"Running LangGraph agent: {self.impl_class}")
-
-        try:
-            method = getattr(self.instance, self.method_name)
-            config = {"configurable": {"thread_id": session_id}, "model": self.model}
-            sys_msg = SystemMessage(content=self.instructions)
-            lg_messages = [sys_msg] + convert_messages(messages)
-            response = method().invoke({"messages": lg_messages}, config)
-
-            last_ai_message_content = next(
-                (
-                    message.content
-                    for message in response["messages"]
-                    if isinstance(message, AIMessage)
-                ),
-                None,
-            )
-            return last_ai_message_content
-
-        except Exception as e:
-            print(f"Failed to kickoff LangGraph agent {self.name}: {e}")
-            raise
 
     async def run_streaming(
         self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
@@ -127,3 +89,21 @@ class LangGraphAgent(MultiFrameworkAgent):
         except Exception as e:
             print(f"Error during streaming execution: {e}")
             raise
+
+    def run(
+            self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
+        ) -> str:
+            """
+            Executes the LangGraph agent with the given messages. Uses the 'invoke' method.
+
+            Args:
+                session_id (str): The ID of the current session.
+                messages (List[Union[UserMessage, ToolResponseMessage]]): Input messages.
+
+            Returns:
+                str: Content from the last AIMessage in the response.
+
+            Raises:
+                Exception: If there is an error retrieving or executing the agent's method.
+            """
+            raise NotImplementedError("Non-streaming agent run not yet implemented")

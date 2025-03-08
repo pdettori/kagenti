@@ -56,8 +56,10 @@ def available_providers() -> List[ProviderSpec]:
                 "pandas",
                 "scikit-learn",
                 "langchain_core",
+                "langchain_community",
                 "langgraph",
                 "langchain_ollama",
+                "crewai"
             ]
             + kvstore_dependencies(),
             module="stack.providers.inline.agents.multi_framework",

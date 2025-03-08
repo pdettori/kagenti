@@ -34,6 +34,7 @@ class MultiFrameworkAgent(ABC):
         self.instructions = agent_config.instructions
         self.model = agent_config.model
 
+
     @staticmethod
     def extract_agent_metadata(agent_config: AgentConfig):
         """Extracts agent metadata from the provided AgentConfig."""
@@ -43,13 +44,14 @@ class MultiFrameworkAgent(ABC):
         return None
 
     @abstractmethod
-    def run(self, messages: List[Union[UserMessage, ToolResponseMessage]]) -> str:
-        """Runs the agent with the input messages."""
-        pass
-
-    @abstractmethod
     async def run_streaming(
         self, messages: List[Union[UserMessage, ToolResponseMessage]]
     ) -> AsyncGenerator:
         """Runs the agent in streaming mode with the given messages."""
         pass
+
+    @abstractmethod
+    def run(self, messages: List[Union[UserMessage, ToolResponseMessage]]) -> str:
+        """Runs the agent with the input messages."""
+        pass
+
