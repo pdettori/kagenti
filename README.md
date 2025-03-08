@@ -108,14 +108,20 @@ llama stack run stack/templates/ollama/run.yaml
 
 On new terminal, activate env first with `conda activate stack`, them:
 
-### Llama Stack Agent
+### Run Llama Stack Agent
 
 ```shell
 python -m examples.clients.llama_stack.simple_rag localhost 8321
 ```
 
-### LangGraph Agent
+### Run LangGraph Agent
 
 ```shell
 python -m examples.clients.langgraph.call_math_agent localhost 8321
+```
+
+### Run CrewAI Agent
+
+```shell
+python -m examples.clients.crewai.call_math_agent localhost 8321
 ```
