@@ -71,7 +71,15 @@ git clone git@github.ibm.com:aiplatform/k8gentai.git
 cd k8gentai
 ```
 
-**Prereqs**: Python 3.11+ and conda must be installed:
+**Prereqs**: Python 3.11+, conda and ollama must be installed:
+
+On one terminal, run:
+
+```shell
+ollama run llama3.2:3b-instruct-fp16 --keepalive 60m
+```
+
+On another terminal, run:
 
 ```shell
 conda create -n stack python=3.10
