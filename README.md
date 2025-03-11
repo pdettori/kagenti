@@ -12,7 +12,6 @@
 - Discovery of agents and tools
 - Persistence
 
-
 ## Value Proposition
 
 [Llama Stack](https://llama-stack.readthedocs.io) is a versatile software stack designed for building applications that leverage Large Language Models (LLMs). It focuses on creating agentic applications where agents can perform reasoning, planning, and interact with various tools. **k8gentai** enhances the capabilities of Llama Stack by adding the following key components:
@@ -27,12 +26,11 @@ Facilitates the deployment and configuration of Llama Stack along with its infra
 This pattern, implemented as part of the AMF provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
 
 4. **Zero-Trust Identity Pattern**
-Ensures secure identity management for agent calls to tools, adhering to zero-trust principles.
-
+This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end Zero Trust enforcement across agentic workflows.
 
 ## Multi-Framework Agents
 
-In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **Bee AI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development. 
+In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **Bee AI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development.
 
 **k8gentai** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by offering a common front-end API.
 
@@ -50,10 +48,19 @@ The Web-Queue-Worker pattern, a best practice for microservices architectures, p
 
 - **Load Management**: acts as a buffer managing demand spikes by queuing requests until resources become available and enhances resource utilization by distributing work over time based on worker availability.
 
-
 ## Zero-Trust Identity Pattern
 
-TODO
+The Zero-Trust Identity Pattern for the Agentic Platform ensures that both human and machine identities are continuously authenticated and authorized, minimizing implicit trust at every stage of interaction. Traditional static credentials, such as API keys or client secrets, risk privilege escalation and credential leaks, and therefore are replaced with dynamic, short-lived identity-based tokens, managed through SPIRE and integrated with Keycloak for access control.
+
+This approach enforces least privilege access by ensuring that identities — whether users, tools, or external services — only receive the minimum permissions necessary. The authentication and authorization flow follows a structured token exchange mechanism, where a user's identity propagates securely through the system, from initial authentication to tool interactions and external service access. By leveraging SPIFFE/SPIRE for workload identity and OAuth2 transaction tokens for controlled delegation, the platform prevents credential misuse, reduces attack surfaces, and ensures real-time policy enforcement.
+
+In practice, the Zero-Trust Identity Pattern within the Agentic Platform enables:
+
+- Machine Identity Management – replacing static credentials with SPIRE-issued JWTs.
+- Secure Delegation – enforcing token exchange to propagate identity across services without excessive permissions.
+- Continuous Verification – ensuring authentication and authorization at each step, preventing privilege escalation.
+
+This end-to-end approach aligns agentic workflows with Zero Trust principles, making them secure, scalable, and eventually production-ready.
 
 ## PoCs
 
