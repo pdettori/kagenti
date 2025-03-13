@@ -1,7 +1,7 @@
 
-# k8gentai
+# kagenti
 
-**k8gentai** is a Kubernetes-based middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
+**kagenti** is a Kubernetes-based middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
 
 - Trusted identity
 - Deployment
@@ -14,7 +14,7 @@
 
 ## Value Proposition
 
-[Llama Stack](https://llama-stack.readthedocs.io) is a versatile software stack designed for building applications that leverage Large Language Models (LLMs). It focuses on creating agentic applications where agents can perform reasoning, planning, and interact with various tools. **k8gentai** enhances the capabilities of Llama Stack by adding the following key components:
+[Llama Stack](https://llama-stack.readthedocs.io) is a versatile software stack designed for building applications that leverage Large Language Models (LLMs). It focuses on creating agentic applications where agents can perform reasoning, planning, and interact with various tools. **kagenti** enhances the capabilities of Llama Stack by adding the following key components:
 
 1. **Agent Multi-Framework Provider (AMF)**
 This component enables the creation of multi-framework agent-based workflows via the [Llama Agent API](https://llama-stack.readthedocs.io/en/latest/references/api_reference).
@@ -32,7 +32,7 @@ This pattern replaces static credentials with dynamic SPIRE-managed identities, 
 
 In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **Bee AI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development.
 
-**k8gentai** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by offering a common front-end API.
+**kagenti** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by offering a common front-end API.
 
 ## Kubernetes Operator
 

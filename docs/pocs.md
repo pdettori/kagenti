@@ -14,8 +14,8 @@
 Clone this project:
 
 ```shell
-git clone git@github.ibm.com:aiplatform/k8gentai.git
-cd k8gentai
+git clone git@github.ibm.com:aiplatform/kagenti.git
+cd kagenti
 ```
 
 On one terminal, run:
