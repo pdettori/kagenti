@@ -2,7 +2,7 @@
 
 ## Installation
 
-### Prereqs**: 
+### Prereqs: 
 
 - Make sure you have Python 3.11+ installed
 - Install a [conda-forge](https://conda-forge.org/download/) distribution for your environment 
