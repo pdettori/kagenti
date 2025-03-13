@@ -6,7 +6,7 @@
 
 - Make sure you have Python 3.11+ installed
 - Install a [conda-forge](https://conda-forge.org/download/) distribution for your environment 
-- Install [ollama](https://ollama.com/download)and ollama must be installed:
+- Install [ollama](https://ollama.com/download)
 
 
 ###  Setup
@@ -125,4 +125,26 @@ verify that this is the `api_key` provided in the client looking at the client c
 cat examples/clients/mcp/tool-util.py 
 ```
 
+### Agent to Tool Key Propagation
 
+As an extension to this PoC, you can verify that the `api_key` is propagated 
+to the MCP tool when the tool is invoked by an agent instead than directly
+by the client. A sequence diagram for this scenario is illustrated 
+[here](./tech-details.md#api-key-propagation-to-mcp-tool).
+
+After running the LS client to MCP Tool Server PoC, have a look at the
+[agent-mcp client](../examples/clients/mcp/agent-mcp.py) code which uses
+the MCP fetch tool registred in the previous step, then run the agent as
+follows:
+
+```shell
+python -m examples.clients.mcp.agent-mcp localhost 8321
+```
+You should get an answer to the prompt that requires the agent to run
+the MCP tool to fetch some info from the web. Verify the log for the MCP server
+contains the `api_key` injected by the agent client.
+
+```console
+[03/13/25 16:02:04] INFO     Processing request of type CallToolRequest                                               server.py:534
+api_key=some-api-key
+```
