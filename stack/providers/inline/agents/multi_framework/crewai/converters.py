@@ -201,7 +201,7 @@ class EventProcessor:
                             session_id=self.session_id,
                             input_messages=self.input_messages,
                             output_message=CompletionMessage(
-                                content=step.output, stop_reason=StopReason.end_of_turn
+                                content=step.output, stop_reason='end_of_turn'
                             ),
                             started_at=self.turn_start_time,
                             completed_at=datetime.now(),

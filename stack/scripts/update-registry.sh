@@ -16,9 +16,8 @@
 
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-AGENTS_FILE_PATH=${SCRIPT_DIR}/../providers/registry/agents.py
 
-# Get the path to the Conda environment 
+# Get the path to the Conda environment
 CONDA_ENV_PATH=$(conda env list | grep ".*\*" | awk '{print $3}')
 
 if [ -z "$CONDA_ENV_PATH" ]; then
@@ -26,16 +25,44 @@ if [ -z "$CONDA_ENV_PATH" ]; then
     exit 1
 fi
 
-TARGET_PATH="$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/registry/agents.py"
 
-if [ ! -f "$TARGET_PATH" ]; then
-    echo "Target file does not exist at: $TARGET_PATH"
+# List of source paths relative to SCRIPT_DIR
+SOURCE_PATHS=(
+    "${SCRIPT_DIR}/../providers/registry/agents.py"
+    "${SCRIPT_DIR}/../providers/registry/tool_runtime.py"
+    "${SCRIPT_DIR}/../providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
+)
+
+# List of target paths
+TARGET_PATHS=(
+    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/registry/agents.py"
+    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/registry/tool_runtime.py"
+    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
+)
+
+
+# Ensure the lists are the same length
+if [ ${#SOURCE_PATHS[@]} -ne ${#TARGET_PATHS[@]} ]; then
+    echo "The number of source paths must match the number of target paths."
     exit 1
 fi
 
-mv ${TARGET_PATH} ${TARGET_PATH}.bk
-
-cp "$AGENTS_FILE_PATH" "$TARGET_PATH"
-
-# Confirm completion
-echo "Successfully replaced 'agents.py' in the current Conda environment at '$CONDA_ENV_PATH'"
+# Iterate over the paths and perform operations
+for i in "${!SOURCE_PATHS[@]}"; do
+    SOURCE_PATH="${SOURCE_PATHS[$i]}"
+    TARGET_PATH="${TARGET_PATHS[$i]}"
+  
+    if [ ! -f "$SOURCE_PATH" ]; then
+        echo "Source file does not exist at: $SOURCE_PATH"
+        continue
+    fi
+  
+    if [ ! -f "$TARGET_PATH" ]; then
+        echo "Target file does not exist at: $TARGET_PATH"
+        continue
+    fi
+    
+    mv "${TARGET_PATH}" "${TARGET_PATH}.bk"
+    cp "${SOURCE_PATH}" "${TARGET_PATH}"
+    echo "Successfully replaced '$(basename "$SOURCE_PATH")' in the current Conda environment at '$TARGET_PATH'"
+done
