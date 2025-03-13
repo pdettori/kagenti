@@ -309,14 +309,14 @@ python -m examples.agents.react_agent localhost 8321
 #### TODOs
 
 
-1. Investigate MCP and how it is used in Lllama Stack for tools calling
+1. Investigate MCP and how it is used in Lllama Stack for tools calling - DONE
 
 2. Design and build PoC for operator managing deployment of the stack (dispatcher and 
    worker components) and infra services
 
 2. Design solution for zero-trust identity for tool calling on behalf of the user.
 
-3. Design and implement Agent Worker for other frameworks (LangGraph etc.)
+3. Design and implement Agent Worker for other frameworks (LangGraph etc.) - DONE
     - how to "register" code for agents written in other frameworks
     - adapt event format to ship back to client
 
