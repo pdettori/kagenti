@@ -25,8 +25,8 @@ Facilitates the deployment and configuration of Llama Stack along with its infra
 3. **Scalable Web-Queue-Worker Pattern**
 This pattern, implemented as part of the AMF provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
 
-4. **Zero-Trust Identity Pattern**
-This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end Zero Trust enforcement across agentic workflows.
+4. **Agent and Tool Authorization Pattern**
+This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end security principles enforcement across agentic workflows.
 
 ## Multi-Framework Agents
 
@@ -48,19 +48,19 @@ The Web-Queue-Worker pattern, a best practice for microservices architectures, p
 
 - **Load Management**: acts as a buffer managing demand spikes by queuing requests until resources become available and enhances resource utilization by distributing work over time based on worker availability.
 
-## Zero-Trust Identity Pattern
+## Agent and Tool Authorization Pattern
 
-The Zero-Trust Identity Pattern for the Agentic Platform ensures that both human and machine identities are continuously authenticated and authorized, minimizing implicit trust at every stage of interaction. Traditional static credentials, such as API keys or client secrets, risk privilege escalation and credential leaks, and therefore are replaced with dynamic, short-lived identity-based tokens, managed through SPIRE and integrated with Keycloak for access control.
+The Agent and Tool Authorization Pattern for the Agentic Platform ensures that both human and machine identities are continuously authenticated and authorized, minimizing implicit trust at every stage of interaction. Traditional static credentials, such as API keys or client secrets, risk privilege escalation and credential leaks, and therefore are replaced with dynamic, short-lived identity-based tokens, managed through SPIRE and integrated with Keycloak for access control.
 
 This approach enforces least privilege access by ensuring that identities — whether users, tools, or external services — only receive the minimum permissions necessary. The authentication and authorization flow follows a structured token exchange mechanism, where a user's identity propagates securely through the system, from initial authentication to tool interactions and external service access. By leveraging SPIFFE/SPIRE for workload identity and OAuth2 transaction tokens for controlled delegation, the platform prevents credential misuse, reduces attack surfaces, and ensures real-time policy enforcement.
 
-In practice, the Zero-Trust Identity Pattern within the Agentic Platform enables:
+In practice, the Authorization Pattern within the Agentic Platform enables:
 
 - Machine Identity Management – replacing static credentials with SPIRE-issued JWTs.
 - Secure Delegation – enforcing token exchange to propagate identity across services without excessive permissions.
 - Continuous Verification – ensuring authentication and authorization at each step, preventing privilege escalation.
 
-This end-to-end approach aligns agentic workflows with Zero Trust principles, making them secure, scalable, and eventually production-ready.
+This end-to-end approach aligns agentic workflows with security best practice principles, making them secure, scalable, and eventually production-ready.
 
 ## PoCs
 
