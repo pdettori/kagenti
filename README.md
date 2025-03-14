@@ -16,17 +16,13 @@
 
 Despite the extensive variety of frameworks available for developing agent-based applications, there is a distinct lack of standardized methods for deploying and operating agent code in production environments, as well as for exposing it through a standardized API. Agents are adept at reasoning, planning, and interacting with various tools, but their full potential can be limited by these deployment challenges. **Kagenti** addresses this gap by enhancing existing agent frameworks with the following key components:
 
-1. **Agent Multi-Framework Provider (AMF)**
-This component enables the creation of multi-framework agent-based workflows via the [Llama Agent API](https://llama-stack.readthedocs.io/en/latest/references/api_reference).
+1. **Agent Multi-Framework Provider (AMF)**: This component enables the creation of multi-framework agent-based workflows via the [Llama Agent API](https://llama-stack.readthedocs.io/en/latest/references/api_reference).
 
-2. **Kubernetes Operator**
-Facilitates the deployment and configuration of Llama Stack along with its infrastructure dependencies on Kubernetes. It allows scaling and updating configurations seamlessly.
+2. **Kubernetes Platform Operator**: Facilitates the deployment and configuration of agents along with infrastructure dependencies on Kubernetes. It enables scaling and updating configurations seamlessly.
 
-3. **Scalable Web-Queue-Worker Pattern**
-This pattern, implemented as part of the AMF provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
+3. **Scalable Web-Queue-Worker Pattern**: This pattern, implemented as part of the AMF provider, facilitates independent scaling of agents and tools separate from the API server. It acts as a "shock absorber" to handle sudden bursts in inbound requests for initiating agent-based workflows.
 
-4. **Agent and Tool Authorization Pattern**
-This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end security principles enforcement across agentic workflows.
+4. **Agent and Tool Authorization Pattern**: This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end security principles enforcement across agentic workflows.
 
 ## Multi-Framework Agents
 
@@ -36,11 +32,11 @@ In the open-source community, several frameworks are emerging for developing age
 
 ## Kubernetes Operator
 
-Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new stack instances, supports the registration and scaling of multi-framework agents, and assists in setting up and configuring identity management and agents' authorizations.
+Deploying Llama Stack in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new framework instances, supports the registration and scaling of multi-framework agents, and assists in setting up and configuring identity management and agents' authorizations.
 
 ## Scalable Web-Queue-Worker Pattern
 
-The Web-Queue-Worker pattern, a best practice for microservices architectures, provides several key advantages over direct HTTP calls from the API server to backend components:
+The *Web-Queue-Worker* pattern, a best practice for microservices architectures, provides several key advantages over direct HTTP calls from the API server to backend components:
 
 - **Scalability**: facilitates independent scaling of workers from the API server, enhancing flexibility.
 
