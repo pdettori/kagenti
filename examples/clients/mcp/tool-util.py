@@ -21,6 +21,7 @@ def run_main(
     port: int,
     unregister_toolgroup: bool,
     register_toolgroup: bool,
+    toolgroup_id:str,
     mcp_endpoint: str,
 ):
 
@@ -30,9 +31,6 @@ def run_main(
             "api_key": "some-api-key",
         },
     )
-
-    # Tool Group ID
-    toolgroup_id = "remote::web-fetch"
 
     # Unregister the MCP Tool Group based on the flag
     if unregister_toolgroup:
@@ -60,14 +58,19 @@ def run_main(
     for toolgroup in client.toolgroups.list():
         pprint(toolgroup)
 
+    print(f"listing tools for {toolgroup_id}")
     tools = client.tools.list(toolgroup_id=toolgroup_id)  # List tools in the group
     for tool in tools:
         pprint(tool)
 
     result = client.tool_runtime.invoke_tool(
-        tool_name="fetch",
+        # tool_name="fetch",
+        # kwargs={
+        #     "url": "https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md"
+        # },
+        tool_name="researcher",
         kwargs={
-            "url": "https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md"
+            "topic": "electric bikes"
         },
     )
     print(result)
@@ -80,6 +83,7 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, required=True, help='Specify the port number.')
     parser.add_argument('--unregister_toolgroup', action='store_true', help='Flag to unregister toolgroup.')
     parser.add_argument('--register_toolgroup', action='store_true', help='Flag to register toolgroup.')
+    parser.add_argument('--toolgroup_id', type=str, required=False, default='remote::web-fetch', help='Specify the id of the toolgroup -e.g. remote::mygroup')
     parser.add_argument('--mcp_endpoint', type=str, required=False, default='http://localhost:8000/sse', help='Specify the MCP endpoint.')
 
     args = parser.parse_args()
@@ -89,6 +93,7 @@ if __name__ == "__main__":
         port=args.port,
         unregister_toolgroup=args.unregister_toolgroup,
         register_toolgroup=args.register_toolgroup,
+        toolgroup_id=args.toolgroup_id,
         mcp_endpoint=args.mcp_endpoint
     )
 

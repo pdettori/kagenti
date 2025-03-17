@@ -17,6 +17,8 @@
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
+ROOT_LIB=lib/python3.10/site-packages
+
 # Get the path to the Conda environment
 CONDA_ENV_PATH=$(conda env list | grep ".*\*" | awk '{print $3}')
 
@@ -31,13 +33,15 @@ SOURCE_PATHS=(
     "${SCRIPT_DIR}/../providers/registry/agents.py"
     "${SCRIPT_DIR}/../providers/registry/tool_runtime.py"
     "${SCRIPT_DIR}/../providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
+    "${SCRIPT_DIR}/../distribution/routers/routing_tables.py"
 )
 
 # List of target paths
 TARGET_PATHS=(
-    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/registry/agents.py"
-    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/registry/tool_runtime.py"
-    "$CONDA_ENV_PATH/lib/python3.10/site-packages/llama_stack/providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/providers/registry/agents.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/providers/registry/tool_runtime.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/distribution/routers/routing_tables.py"
 )
 
 

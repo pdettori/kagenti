@@ -5,26 +5,25 @@ from mcp.server.fastmcp import FastMCP, Context
 from mcp.server.sse import SseServerTransport
 import httpx
 import mcp.types as types
+from crew.researcher import Researcher
 
 
-server = FastMCP("My FastMCP Server")
+server = FastMCP("FastMCP Server")
 
 
 # tool definition
-@server.tool()
-async def fetch(
-    url: str, ctx: Context
+@server.tool(
+    description="given a topic, research that topic and provide"
+    + "a list with 5 bullet points of the most relevant information about it"
+)
+async def researcher(
+    topic: str, ctx: Context
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     headers = {
         "User-Agent": "MCP Test Server (github.com/modelcontextprotocol/python-sdk)"
     }
-    if ctx.request_context is not None and ctx.request_context.meta is not None:
-        api_key = ctx.request_context.meta.api_key
-        print(f"api_key={api_key}")
-    async with httpx.AsyncClient(follow_redirects=True, headers=headers) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        return [types.TextContent(type="text", text=response.text)]
+    researcher = Researcher()
+    return researcher.crew().kickoff(inputs={"topic": topic})
 
 
 # Create an SseServerTransport instance

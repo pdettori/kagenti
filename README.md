@@ -66,3 +66,4 @@ To achieve the objectives outlined above, we are developing this technology thro
 1. [Installation](./docs/pocs.md#installation)
 2. [Multi-Framework Agent Provider](./docs/pocs.md#multi-framework-agent-provider)
 3. [API Key Propagation](./docs/pocs.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
+4. [Agent as MCP Tool](./docs/pocs.md#agent-as-tool)
