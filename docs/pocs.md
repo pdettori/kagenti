@@ -148,3 +148,41 @@ contains the `api_key` injected by the agent client.
 [03/13/25 16:02:04] INFO     Processing request of type CallToolRequest                                               server.py:534
 api_key=some-api-key
 ```
+
+### Agent as Tool
+
+This Proof of Concept (PoC) involves registering a 
+CrewAI agent as a tool within the MCP framework. Once 
+registered, the Llama Stack agent, configured with this tool, 
+can utilize the CrewAI agent to conduct research on a given topic 
+and provide a final result. This PoC currently utilizes a 
+single tool. However, it is conceivable that this approach could be 
+extended to register multiple agents, even those developed with 
+different frameworks, as tools. These tools can then be orchestrated 
+by the Llama Stack agent. This method leverages Large Language Models 
+(LLMs) to drive orchestration, offering a more dynamic alternative 
+to user-defined static workflows.
+
+
+Run llama stack server as above. On a new terminal, 
+activate env first with `conda activate stack`, then:
+
+Start MCP server for CrewAI researcher agent:
+
+```shell
+cd examples/agents_as_tools 
+uv run mcp_server.py
+```
+
+on another reminal, activate env first with `conda activate stack`, 
+then run the following command to register the tool group:
+
+```shell
+python -m examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup --toolgroup_id remote::researcher
+```
+
+finally, run the Llama Stack agent which should use the crewai researcher agent as a tool:
+
+```shell
+python -m examples.agents_as_tools.agent_mcp_agent localhost 8321
+```
