@@ -64,13 +64,9 @@ def run_main(
         pprint(tool)
 
     result = client.tool_runtime.invoke_tool(
-        # tool_name="fetch",
-        # kwargs={
-        #     "url": "https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md"
-        # },
-        tool_name="researcher",
+        tool_name="fetch",
         kwargs={
-            "topic": "electric bikes"
+            "url": "https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md"
         },
     )
     print(result)
