@@ -59,7 +59,8 @@ def available_providers() -> List[ProviderSpec]:
                 "langchain_community",
                 "langgraph",
                 "langchain_ollama",
-                "crewai"
+                "crewai",
+                "llama_models"
             ]
             + kvstore_dependencies(),
             module="stack.providers.inline.agents.multi_framework",
