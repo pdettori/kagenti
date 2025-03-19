@@ -63,6 +63,9 @@ export INFERENCE_MODEL="meta-llama/Llama-3.2-3B-Instruct"
 llama stack run stack/templates/ollama/run.yaml 
 ```
 
+When running the server on Mac, you might get a pop-up asking to
+`accept incoming network connections`, so just click **Allow**.
+
 On new terminal, activate env first with `conda activate stack`, then:
 
 ### Run Llama Stack Agent
@@ -89,7 +92,7 @@ This PoC uses `provider_data` to send data to the MCP
 tool_runtime. Details on design and implementation
 are described in [this section.](./tech-details.md#api-key-propagation-to-mcp-tool)
 
-Run llama stack server as above. On a new terminal, 
+Run llama stack server as above. On a new terminal,
 activate env first with `conda activate stack`, then:
 
 Start example MCP server with `web-fetch` tool:
@@ -99,14 +102,27 @@ cd examples/mcp
 uv run sse_server.py
 ```
 
-On a new terminal, activate env first with `conda activate stack`, 
-then run the following command to register the tool group first:
+On a new terminal, first go back to `kagenti` directory `cd ../../`,
+activate env with `conda activate stack`,
+then run the following command to register the tool group:
 
 ```shell
 python -m examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup
 ```
 
-invoke the tool with:
+If you get an error:
+
+```shell
+ModuleNotFoundError: No module named 'llama_stack_client.types.shared_params.url'
+```
+
+Install an appropriate version of `llama_stack_client`:
+
+```shell
+pip install llama_stack_client==v0.1.6
+```
+
+Then invoke the tool with:
 
 ```shell
 python -m examples.clients.mcp.tool-util --host localhost --port 8321
