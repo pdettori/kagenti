@@ -91,3 +91,89 @@ The main changes are:
 4. In the MCP server `examples/mcp/sse_server.py`
     - use the [Context](https://github.com/modelcontextprotocol/python-sdk/blob/1691b905e22faa94f45e42ca5dfd87927362be5a/src/mcp/server/fastmcp/server.py#L553) passed to the tool to extract the metadata and the `api_key`.
 
+
+## Web-Queue-Worker Pattern Architecture
+
+The first goal of this PoC is to provide a scalable platform for agents running on Kubernetes for Llama Stack
+agents using a Web-Queue-Worker pattern. A second longer term goal is to provide hosting for agents 
+written using other frameworks (LangGraph, CrewAI, AG2 etc.)
+
+
+Current implementation (only modules relevant to agents API are shown)
+
+```mermaid
+graph LR
+    Client[Client] --> API[API Layer]
+    API --> Router
+    Router --> AgentsAPI[MetaReferenceAgentsImpl]
+    AgentsAPI --> DB
+    
+    AgentsAPI --> InferenceAPI
+    AgentsAPI --> ToolRuntimeAPI
+    InferenceAPI --> ModelProvider[Model Provider]
+    ToolRuntimeAPI --> ToolProvider[Tool Provider]
+   
+    ModelProvider --> Model[LLM Model]
+    ToolProvider --> ExternalTool[External Tool]
+     
+    style API fill:#f9f,stroke:#333,stroke-width:2px
+    style Router fill:#ccf,stroke:#333,stroke-width:2px
+    style AgentsAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style InferenceAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style ToolRuntimeAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style ModelProvider fill:#afa,stroke:#333,stroke-width:2px
+    style ToolProvider fill:#afa,stroke:#333,stroke-width:2px
+    style Model fill:#eee,stroke:#333,stroke-width:2px
+    style ExternalTool fill:#eee,stroke:#333,stroke-width:2px
+```
+
+The PoC uses a **Web-Queue-Worker pattern**, which offers several advantages, including: scalability by allowing independent scaling of the web front-end and worker processes, improved responsiveness by offloading long-running tasks to the background, clear separation of concerns, ease of deployment and management, and the ability to handle high traffic volumes without impacting user experience by decoupling the front-end from the task processing workload through a message queue. 
+ 
+```mermaid
+graph LR
+    Client[Client] --> API[API Layer]
+    API --> Router
+    Router --> AgentsAPI[MetaReferenceAgentsDispatcherImpl]
+    AgentsAPI --> DB
+    AgentsAPI --> Queue
+    Queue --> MetaReferenceAgentsWorkerImpl
+    MetaReferenceAgentsWorkerImpl --> PubSub[PubSub Topic]
+    PubSub --> AgentsAPI
+    
+    MetaReferenceAgentsWorkerImpl --> InferenceAPI
+    MetaReferenceAgentsWorkerImpl --> ToolRuntimeAPI
+    MetaReferenceAgentsWorkerImpl --> DB
+    InferenceAPI --> ModelProvider[Model Provider]
+    ToolRuntimeAPI --> ToolProvider[Tool Provider]
+   
+    ModelProvider --> Model[LLM Model]
+    ToolProvider --> ExternalTool[External Tool]
+     
+    style API fill:#f9f,stroke:#333,stroke-width:2px
+    style Router fill:#ccf,stroke:#333,stroke-width:2px
+    style AgentsAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style InferenceAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style ToolRuntimeAPI fill:#aaf,stroke:#333,stroke-width:2px
+    style ModelProvider fill:#afa,stroke:#333,stroke-width:2px
+    style ToolProvider fill:#afa,stroke:#333,stroke-width:2px
+    style Model fill:#eee,stroke:#333,stroke-width:2px
+    style ExternalTool fill:#eee,stroke:#333,stroke-width:2px
+```
+
+**API Layer**: 
+
+The API layer fronts the Llama Stack Server and is configured to utilize the `MetaReferenceAgentsDispatcherImpl` provider instead of the default `MetaReferenceAgentsImpl`:
+
+* `MetaReferenceAgentsDispatcherImpl` inherits from `MetaReferenceAgentsImpl`, and it overrides the `create_agent_turn` method.
+* Instead of initiating the agent `turn` directly, it queues the `turn`, ensuring that events for the `turn` are broadcasted via a Redis pub-sub topic allocated specifically for that `turn`.
+Worker Agent:
+
+**Worker Agent**
+
+* The Worker Agent (`MetaReferenceAgentsWorkerImpl`) sets up the `LlamaStackAsLibraryClient` to load the entire Llama stack as a library.
+* It retrieves jobs from the queue, executes the agent turn using the agent API, and then publishes the related events to the pub-sub topic associated with that turn.
+
+**Event Handling**
+
+`MetaReferenceAgentsDispatcherImpl` listens to the pub-sub topic for each turn and relays the events back to the client through *Server-Sent Events (SSE)*, ensuring real-time updates and seamless integration between the components.
+

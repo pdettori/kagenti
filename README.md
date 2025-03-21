@@ -60,10 +60,13 @@ This end-to-end approach aligns agentic workflows with security best practice pr
 
 ## PoCs
 
-To achieve the objectives outlined above, we are developing this technology through a series of Proofs of Concept (PoCs), each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture. For the foundation of our platform development, we have selected [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
+To achieve the objectives outlined above, we are developing this technology through a series of Proofs of Concept (PoCs), each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture. 
+
+For following set of PoCs, we have selected [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
 
 
 1. [Installation](./docs/pocs.md#installation)
 2. [Multi-Framework Agent Provider](./docs/pocs.md#multi-framework-agent-provider)
 3. [API Key Propagation](./docs/pocs.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
 4. [Agent as MCP Tool](./docs/pocs.md#agent-as-tool)
+5. [Distributed Agents with Web-Queue-Worker pattern](./docs/pocs.md#web-queue-worker-pattern)

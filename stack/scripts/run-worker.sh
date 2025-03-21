@@ -32,7 +32,6 @@ if [ -z "$CONDA_ENV_PATH" ]; then
     exit 1
 fi
 
-export INFERENCE_MODEL="meta-llama/Llama-3.2-3B-Instruct"
 export ROLE=consumer
 ${CONDA_ENV_PATH}/bin/python -m stack.worker.main --config ${config_file}
 
