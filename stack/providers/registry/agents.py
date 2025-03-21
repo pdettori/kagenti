@@ -52,6 +52,7 @@ def available_providers() -> List[ProviderSpec]:
             provider_type="inline::multi-framework",
             pip_packages=[
                 "matplotlib",
+                "faiss-cpu",
                 "pillow",
                 "pandas",
                 "scikit-learn",
@@ -60,7 +61,15 @@ def available_providers() -> List[ProviderSpec]:
                 "langgraph",
                 "langchain_ollama",
                 "crewai",
-                "llama_models"
+                "llama_models",
+                "bullmq",
+                "redis",
+                "opentelemetry-instrumentation-redis",
+                "opentelemetry.instrumentation.asyncpg",
+                "asyncpg",
+                "psycopg2",
+                "nest-asyncio",
+                "sentence_transformers"
             ]
             + kvstore_dependencies(),
             module="stack.providers.inline.agents.multi_framework",

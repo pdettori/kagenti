@@ -34,6 +34,8 @@ SOURCE_PATHS=(
     "${SCRIPT_DIR}/../providers/registry/tool_runtime.py"
     "${SCRIPT_DIR}/../providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
     "${SCRIPT_DIR}/../distribution/routers/routing_tables.py"
+    "${SCRIPT_DIR}/../distribution/library_client.py"
+    "${SCRIPT_DIR}/../distribution/server/server.py"
 )
 
 # List of target paths
@@ -42,6 +44,8 @@ TARGET_PATHS=(
     "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/providers/registry/tool_runtime.py"
     "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/providers/remote/tool_runtime/model_context_protocol/model_context_protocol.py"
     "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/distribution/routers/routing_tables.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/distribution/library_client.py"
+    "$CONDA_ENV_PATH/${ROOT_LIB}/llama_stack/distribution/server/server.py"
 )
 
 

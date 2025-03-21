@@ -16,11 +16,21 @@ providers:
     provider_type: remote::ollama
     config:
       url: ${env.OLLAMA_URL:http://localhost:11434}
+  - provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+    config: {}
   vector_io:
-  - provider_id: sqlite-vec
-    provider_type: inline::sqlite-vec
+  - provider_id: faiss
+    provider_type: inline::faiss
     config:
-      db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/ollama}/sqlite_vec.db
+      kvstore:
+        type: postgres
+        host: localhost
+        port: 5432
+        db: postgres
+        user: postgres
+        password: mysecretpassword
+        table_name: faiss_kvstore
   safety:
   - provider_id: llama-guard
     provider_type: inline::llama-guard
@@ -30,9 +40,13 @@ providers:
     provider_type: inline::multi-framework
     config:
       persistence_store:
-        type: sqlite
-        namespace: null
-        db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/ollama}/agents_store.db
+        type: postgres
+        host: localhost
+        port: 5432
+        db: postgres
+        user: postgres
+        password: mysecretpassword
+        table_name: llamastack_kvstore # Optional, defaults to llamastack_kvstore
   telemetry:
   - provider_id: meta-reference
     provider_type: inline::meta-reference
@@ -79,9 +93,6 @@ providers:
   - provider_id: rag-runtime
     provider_type: inline::rag-runtime
     config: {}
-  - provider_id: model-context-protocol
-    provider_type: remote::model-context-protocol
-    config: {}
 metadata_store:
   type: sqlite
   db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/ollama}/registry.db
@@ -93,14 +104,13 @@ models:
 - metadata:
     embedding_dimension: 384
   model_id: all-MiniLM-L6-v2
-  provider_id: ollama
-  provider_model_id: all-minilm:latest
+  provider_id: sentence-transformers
   model_type: embedding
 shields: []
 vector_dbs: []
 datasets: []
 scoring_fns: []
-benchmarks: []
+eval_tasks: []
 tool_groups:
 - toolgroup_id: builtin::websearch
   provider_id: tavily-search
@@ -108,5 +118,3 @@ tool_groups:
   provider_id: rag-runtime
 - toolgroup_id: builtin::code_interpreter
   provider_id: code-interpreter
-server:
-  port: 8321
