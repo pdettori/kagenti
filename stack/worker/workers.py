@@ -16,10 +16,7 @@ import logging
 import asyncio
 from typing import List
 from bullmq import Worker
-from redis.asyncio import Redis
-from redis.asyncio.retry import Retry
-from redis.exceptions import TimeoutError, ConnectionError
-from redis.backoff import ExponentialBackoff
+
 
 logger = logging.getLogger()
 

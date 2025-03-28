@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 from pydantic import BaseModel
-import os
 import redis.asyncio as redis
 from redis import Redis
 from llama_stack.distribution.configure import parse_and_maybe_upgrade_config
@@ -29,6 +27,7 @@ from redis.exceptions import TimeoutError, ConnectionError
 from redis.backoff import ExponentialBackoff
 
 DEFAULT_AGENT_WORKER_PROVIDER = "inline::multi-framework"
+
 
 async def initialize_kvstore_from_config(
     config_dict, provider_type=DEFAULT_AGENT_WORKER_PROVIDER

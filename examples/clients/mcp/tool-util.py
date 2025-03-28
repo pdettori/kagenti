@@ -29,7 +29,7 @@ def run_main(
     port: int,
     unregister_toolgroup: bool,
     register_toolgroup: bool,
-    toolgroup_id:str,
+    toolgroup_id: str,
     mcp_endpoint: str,
 ):
 
@@ -47,7 +47,7 @@ def run_main(
             print(f"Successfully unregistered MCP tool group: {toolgroup_id}")
         except Exception as e:
             print(f"Error unregistering tool group: {e}")
-        return    
+        return
 
     # Register the MCP Tool Group based on the flag
     if register_toolgroup:
@@ -61,7 +61,7 @@ def run_main(
             print(f"Successfully registered MCP tool group: {toolgroup_id}")
         except Exception as e:
             print(f"Error registering tool group: {e}")
-        return    
+        return
 
     for toolgroup in client.toolgroups.list():
         pprint(toolgroup)
@@ -81,14 +81,34 @@ def run_main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run your script with arguments.')
-    
-    parser.add_argument('--host', type=str, required=True, help='Specify the host.')
-    parser.add_argument('--port', type=int, required=True, help='Specify the port number.')
-    parser.add_argument('--unregister_toolgroup', action='store_true', help='Flag to unregister toolgroup.')
-    parser.add_argument('--register_toolgroup', action='store_true', help='Flag to register toolgroup.')
-    parser.add_argument('--toolgroup_id', type=str, required=False, default='remote::web-fetch', help='Specify the id of the toolgroup -e.g. remote::mygroup')
-    parser.add_argument('--mcp_endpoint', type=str, required=False, default='http://localhost:8000/sse', help='Specify the MCP endpoint.')
+    parser = argparse.ArgumentParser(description="Run your script with arguments.")
+
+    parser.add_argument("--host", type=str, required=True, help="Specify the host.")
+    parser.add_argument(
+        "--port", type=int, required=True, help="Specify the port number."
+    )
+    parser.add_argument(
+        "--unregister_toolgroup",
+        action="store_true",
+        help="Flag to unregister toolgroup.",
+    )
+    parser.add_argument(
+        "--register_toolgroup", action="store_true", help="Flag to register toolgroup."
+    )
+    parser.add_argument(
+        "--toolgroup_id",
+        type=str,
+        required=False,
+        default="remote::web-fetch",
+        help="Specify the id of the toolgroup -e.g. remote::mygroup",
+    )
+    parser.add_argument(
+        "--mcp_endpoint",
+        type=str,
+        required=False,
+        default="http://localhost:8000/sse",
+        help="Specify the MCP endpoint.",
+    )
 
     args = parser.parse_args()
 
@@ -98,6 +118,5 @@ if __name__ == "__main__":
         unregister_toolgroup=args.unregister_toolgroup,
         register_toolgroup=args.register_toolgroup,
         toolgroup_id=args.toolgroup_id,
-        mcp_endpoint=args.mcp_endpoint
+        mcp_endpoint=args.mcp_endpoint,
     )
-

@@ -17,8 +17,9 @@ from .telemetry import logging_handler
 
 LOG_LEVEL = "INFO"  # Use uppercase for recognized level
 
+
 def setup_logging():
     logging.basicConfig(
-        level=logging.DEBUG if LOG_LEVEL == 'TRACE' else getattr(logging, LOG_LEVEL), 
-        handlers=[logging_handler, logging.StreamHandler()]
+        level=logging.DEBUG if LOG_LEVEL == "TRACE" else getattr(logging, LOG_LEVEL),
+        handlers=[logging_handler, logging.StreamHandler()],
     )

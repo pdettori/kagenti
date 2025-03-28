@@ -28,7 +28,7 @@ from bullmq import Worker
 from .config import (
     initialize_redis_store_from_config,
     initialize_kvstore_from_config,
-    get_worker_config
+    get_worker_config,
 )
 from llama_stack import LlamaStackAsLibraryClient
 from .logger import setup_logging
@@ -54,7 +54,7 @@ async def create_shutdown_event():
 
 
 async def create_workers(queue_name):
-    runners = await run_workers([queue_name],queue_name)
+    runners = await run_workers([queue_name], queue_name)
     logger.info(f"Workers started for queue '{queue_name}'")
 
     async def stop_workers():
@@ -97,19 +97,23 @@ async def create_library_client(
         sys.exit(1)
     return client
 
+
 async def main():
     parser = argparse.ArgumentParser(description="worker startup script")
-    parser.add_argument('--config', required=True, type=str, default="", help="full file path for run config")
+    parser.add_argument(
+        "--config",
+        required=True,
+        type=str,
+        default="",
+        help="full file path for run config",
+    )
     args = parser.parse_args()
 
     print(f"starting worker with run config ${args.config}")
-    
 
     setup_logging()
     setup_telemetry()
-    ls_client = await create_library_client(
-        config_path_or_template_name=args.config
-    )
+    ls_client = await create_library_client(config_path_or_template_name=args.config)
 
     # Load the YAML configuration file
     config_file = Path(args.config)
@@ -134,12 +138,14 @@ async def main():
         print(worker_config)
     except ValueError as e:
         logger.error(f"Error getting  worker config: {e}")
-        sys.exit(-1)    
+        sys.exit(-1)
 
     # This is required because of event loop nesting
     nest_asyncio.apply()
     job_handler = JobHandler(ls_client, kvstore, redis_client)
-    run_worker = create_worker(worker_config.queue_name, job_handler.handleTurn, {}, redis_client)
+    run_worker = create_worker(
+        worker_config.queue_name, job_handler.handleTurn, {}, redis_client
+    )
 
     shutdown_event = await create_shutdown_event()
     workers, stop_workers = await create_workers(worker_config.queue_name)

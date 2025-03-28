@@ -19,6 +19,7 @@ from crewai.tools import tool
 from crewai.agents.parser import AgentAction, AgentFinish
 from crewai.agents.crew_agent_executor import ToolResult
 
+
 def step_callback(step):
     if isinstance(step, AgentAction):
         print(f">>> Action: {step.text} <<<")
@@ -38,6 +39,7 @@ def add(a: int, b: int) -> int:
     """
     return a + b
 
+
 @tool("Multiply")
 def multiply(a: int, b: int) -> int:
     """Multiplies a and b.
@@ -47,6 +49,7 @@ def multiply(a: int, b: int) -> int:
         b: second int
     """
     return a * b
+
 
 @tool("Divide")
 def divide(a: int, b: int) -> float:
@@ -58,6 +61,7 @@ def divide(a: int, b: int) -> float:
     """
     return a / b
 
+
 class MathAgent:
     def __init__(self, model, base_url, step_callback):
         self.model = model
@@ -66,7 +70,7 @@ class MathAgent:
 
         # Initializing LLM with provided model and base_url
         self.llm = LLM(model=self.model, base_url=self.base_url)
-        
+
         # Creating the Math Agent
         self.math_agent = Agent(
             role="Math Wizard",
@@ -74,18 +78,18 @@ class MathAgent:
             backstory="has done many calculations before",
             verbose=True,
             allow_delegation=True,
-            llm=self.llm
+            llm=self.llm,
         )
 
         # Defining the Math Task
         self.math_task = Task(
             description="{prompt}",
-            expected_output='Result of the mathematical expression',
+            expected_output="Result of the mathematical expression",
             agent=self.math_agent,
             tools=[add, multiply, divide],
             verbose=True,
             allow_delegation=True,
-            llm=self.llm
+            llm=self.llm,
         )
 
         # Setting up the Crew
@@ -94,8 +98,8 @@ class MathAgent:
             tasks=[self.math_task],
             process=Process.sequential,
             verbose=True,
-            step_callback=self.step_callback
+            step_callback=self.step_callback,
         )
 
     def getCrew(self) -> Crew:
-        return self.crew    
+        return self.crew

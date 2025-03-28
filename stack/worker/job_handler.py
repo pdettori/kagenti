@@ -45,7 +45,7 @@ class JobHandler:
 
     async def handleTurn(self, job: Job, *args, **kwargs):
         with tracer.start_as_current_span("job") as span:
-            print(f'processing job {job.id}')
+            print(f"processing job {job.id}")
             turn_job_id = job.data.get("turn_job_id")
             if turn_job_id is None:
                 raise RuntimeError("turn_job_id not found")
@@ -60,18 +60,18 @@ class JobHandler:
         self, request: AgentTurnCreateRequest, disable_safety: bool = False
     ):
         client = self.ls_client
-   
+
         response = client.agents.turn.create(
-            messages = request.messages,
-            documents = request.documents,
-            session_id = request.session_id,
-            agent_id = request.agent_id,
-            stream = request.stream,
+            messages=request.messages,
+            documents=request.documents,
+            session_id=request.session_id,
+            agent_id=request.agent_id,
+            stream=request.stream,
         )
 
         # need to iterate and give time for events to be emitted by the MetaReferenceAgentsWorkerImpl
         for log in EventLogger().log(response):
             await asyncio.sleep(0.005)
 
-        # this is required to allow time for deallocating mem.  
-        time.sleep(1)    
+        # this is required to allow time for deallocating mem.
+        time.sleep(1)

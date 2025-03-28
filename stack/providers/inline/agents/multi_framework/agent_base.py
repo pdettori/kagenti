@@ -34,7 +34,6 @@ class MultiFrameworkAgent(ABC):
         self.instructions = agent_config.instructions
         self.model = agent_config.model
 
-
     @staticmethod
     def extract_agent_metadata(agent_config: AgentConfig):
         """Extracts agent metadata from the provided AgentConfig."""
@@ -54,4 +53,3 @@ class MultiFrameworkAgent(ABC):
     def run(self, messages: List[Union[UserMessage, ToolResponseMessage]]) -> str:
         """Runs the agent with the input messages."""
         pass
-

@@ -20,6 +20,7 @@ from llama_stack_client.types.agent_create_params import AgentConfig
 from llama_stack_client.types.agents.turn_create_params import Document
 from termcolor import colored
 
+
 def run_main(host: str, port: int, disable_safety: bool = False):
     urls = [
         "README.md",

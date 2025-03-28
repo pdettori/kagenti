@@ -13,17 +13,14 @@
 # limitations under the License.
 
 from bullmq import Queue
-import asyncio
 from llama_stack.distribution.request_headers import NeedsRequestProviderData
 from llama_stack.apis.agents import (
     AgentTurnCreateRequest,
     AgentTurnResponseEventType,
 )
-from typing import AsyncGenerator, List, Optional, Union
-import asyncio
+from typing import AsyncGenerator, List, Optional
 import uuid
 import logging
-import redis.asyncio as redis
 from pydantic import BaseModel, ValidationError
 from datetime import datetime
 from typing import List
@@ -131,5 +128,3 @@ class TurnJobsList(BaseModel):
         if self.items:
             return self.items[-1]
         return None
-
-
