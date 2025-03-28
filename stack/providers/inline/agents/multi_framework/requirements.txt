@@ -1,5 +1,0 @@
-langchain_ollama
-langchain_core 
-langgraph
-langchain_openai
-faiss-cpu

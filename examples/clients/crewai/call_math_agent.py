@@ -18,7 +18,8 @@ from llama_stack_client.lib.agents.agent import Agent
 from llama_stack_client.lib.agents.event_logger import EventLogger
 from llama_stack_client.types.agent_create_params import AgentConfig
 from llama_stack_client.types.tool_def_param import ToolDefParam
-#from termcolor import colored
+
+# from termcolor import colored
 
 
 def run_main(host: str, port: int, disable_safety: bool = False):
@@ -49,8 +50,10 @@ def run_main(host: str, port: int, disable_safety: bool = False):
     print(f"Created session_id={session_id} for Agent({agent.agent_id})")
 
     user_prompts = [
-        ("What is the sum of 10 and 20? Take the sum and multiply it by 3, whst is the final result?"),
-        ("What is the product of 3 and 4?")
+        (
+            "What is the sum of 10 and 20? Take the sum and multiply it by 3, whst is the final result?"
+        ),
+        ("What is the product of 3 and 4?"),
     ]
 
     for prompt in user_prompts:

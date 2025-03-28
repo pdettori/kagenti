@@ -66,7 +66,7 @@ class EventProcessor:
         self.input_messages = []
 
     def set_session_id(self, session_id):
-        self.session_id = session_id    
+        self.session_id = session_id
 
     async def enqueue_event(self, step):
         """Asynchronously enqueue events for processing."""
@@ -201,7 +201,7 @@ class EventProcessor:
                             session_id=self.session_id,
                             input_messages=self.input_messages,
                             output_message=CompletionMessage(
-                                content=step.output, stop_reason='end_of_turn'
+                                content=step.output, stop_reason="end_of_turn"
                             ),
                             started_at=self.turn_start_time,
                             completed_at=datetime.now(),
@@ -275,4 +275,3 @@ def convert_messages(ls_messages: List[UserMessage]) -> List[str]:
         return []
 
     return [{"prompt": message.content} for message in ls_messages]
-

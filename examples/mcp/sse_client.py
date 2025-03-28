@@ -1,9 +1,22 @@
+# Copyright 2025 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import asyncio
 from typing import Optional
 from contextlib import AsyncExitStack
 from mcp import ClientSession
 from mcp.client.sse import sse_client
-
 
 
 class MCPClient:
@@ -20,9 +33,9 @@ class MCPClient:
         Args:
             url: MCP server URL
         """
-        
+
         transport = await self.exit_stack.enter_async_context(
-            sse_client(url, headers = {"Authorization": "Bearer my_token"})
+            sse_client(url, headers={"Authorization": "Bearer my_token"})
         )
         self.stdio, self.write = transport
         self.session = await self.exit_stack.enter_async_context(
@@ -43,8 +56,10 @@ class MCPClient:
             }
             for tool in response.tools
         ]
-        print("tool details:", [[tool.name, tool.description, tool.inputSchema] for tool in tools])
-
+        print(
+            "tool details:",
+            [[tool.name, tool.description, tool.inputSchema] for tool in tools],
+        )
 
     async def call_tool(self, tool_name, tool_args):
         return await self.session.call_tool(tool_name, tool_args)
@@ -63,7 +78,7 @@ async def main():
     try:
         await client.connect_to_server(sys.argv[1])
         params = {
-        'url': 'https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md'  
+            "url": "https://raw.githubusercontent.com/kubestellar/kubeflex/refs/heads/main/docs/contributors.md"
         }
         response = await client.call_tool("fetch", params)
         print(response)

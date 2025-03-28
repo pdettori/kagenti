@@ -12,22 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+import logging
+from .telemetry import logging_handler
 
-from pydantic import BaseModel
-
-from llama_stack.providers.utils.kvstore import KVStoreConfig
-from llama_stack.providers.utils.kvstore.config import SqliteKVStoreConfig
+LOG_LEVEL = "INFO"  # Use uppercase for recognized level
 
 
-class MultiFrameworkAgentImplConfig(BaseModel):
-    persistence_store: KVStoreConfig
-
-    @classmethod
-    def sample_run_config(cls, __distro_dir__: str) -> Dict[str, Any]:
-        return {
-            "persistence_store": SqliteKVStoreConfig.sample_run_config(
-                __distro_dir__=__distro_dir__,
-                db_name="agents_store.db",
-            )
-        }
+def setup_logging():
+    logging.basicConfig(
+        level=logging.DEBUG if LOG_LEVEL == "TRACE" else getattr(logging, LOG_LEVEL),
+        handlers=[logging_handler, logging.StreamHandler()],
+    )

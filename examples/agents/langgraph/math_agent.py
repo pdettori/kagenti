@@ -28,6 +28,7 @@ def add(a: int, b: int, config: RunnableConfig) -> int:
 
     return a + b
 
+
 def multiply(a: int, b: int, config: RunnableConfig) -> int:
     """Multiplies a and b.
 
@@ -38,6 +39,7 @@ def multiply(a: int, b: int, config: RunnableConfig) -> int:
 
     return a * b
 
+
 def divide(a: int, b: int, config: RunnableConfig) -> float:
     """Divide a and b.
 
@@ -45,7 +47,7 @@ def divide(a: int, b: int, config: RunnableConfig) -> float:
         a: first int
         b: second int
     """
-    
+
     return a / b
 
 
@@ -55,12 +57,14 @@ tools = [add, multiply, divide]
 llm = ChatOllama(model="llama3.2:3b-instruct-fp16")
 llm_with_tools = llm.bind_tools(tools)
 
+
 # Node
 def assistant(state: MessagesState, config: RunnableConfig):
-   model_name = config["configurable"].get("model", "llama3.1")
-   llm = ChatOllama(model=model_name)
-   llm_with_tools = llm.bind_tools(tools)
-   return {"messages": [llm_with_tools.invoke(state["messages"],config=config)]}
+    model_name = config["configurable"].get("model", "llama3.1")
+    llm = ChatOllama(model=model_name)
+    llm_with_tools = llm.bind_tools(tools)
+    return {"messages": [llm_with_tools.invoke(state["messages"], config=config)]}
+
 
 # Build graph
 builder = StateGraph(MessagesState)
@@ -76,11 +80,8 @@ builder.add_edge("tools", "assistant")
 # Compile graph
 graph = builder.compile()
 
+
 class MathAgent:
     @staticmethod
     def getGraph() -> StateGraph:
         return graph
-    
-
-
-

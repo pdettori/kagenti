@@ -55,7 +55,6 @@ class LangGraphAgent(MultiFrameworkAgent):
             print(f"Failed to load agent {self.name}: {e}")
             raise
 
-
     async def run_streaming(
         self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
     ) -> AsyncGenerator:
@@ -91,19 +90,19 @@ class LangGraphAgent(MultiFrameworkAgent):
             raise
 
     def run(
-            self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
-        ) -> str:
-            """
-            Executes the LangGraph agent with the given messages. Uses the 'invoke' method.
+        self, session_id: str, messages: List[Union[UserMessage, ToolResponseMessage]]
+    ) -> str:
+        """
+        Executes the LangGraph agent with the given messages. Uses the 'invoke' method.
 
-            Args:
-                session_id (str): The ID of the current session.
-                messages (List[Union[UserMessage, ToolResponseMessage]]): Input messages.
+        Args:
+            session_id (str): The ID of the current session.
+            messages (List[Union[UserMessage, ToolResponseMessage]]): Input messages.
 
-            Returns:
-                str: Content from the last AIMessage in the response.
+        Returns:
+            str: Content from the last AIMessage in the response.
 
-            Raises:
-                Exception: If there is an error retrieving or executing the agent's method.
-            """
-            raise NotImplementedError("Non-streaming agent run not yet implemented")
+        Raises:
+            Exception: If there is an error retrieving or executing the agent's method.
+        """
+        raise NotImplementedError("Non-streaming agent run not yet implemented")

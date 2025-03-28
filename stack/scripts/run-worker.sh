@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
 
-from pydantic import BaseModel
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
-from llama_stack.providers.utils.kvstore import KVStoreConfig
-from llama_stack.providers.utils.kvstore.config import SqliteKVStoreConfig
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <run config file path>"
+    exit 1
+fi
+
+config_file=$1
+
+# Get the path to the Conda environment
+CONDA_ENV_PATH=$(conda env list | grep ".*\*" | awk '{print $3}')
+
+if [ -z "$CONDA_ENV_PATH" ]; then
+    echo "Current conda env not found."
+    exit 1
+fi
+
+export ROLE=consumer
+${CONDA_ENV_PATH}/bin/python -m stack.worker.main --config ${config_file}
 
 
-class MultiFrameworkAgentImplConfig(BaseModel):
-    persistence_store: KVStoreConfig
 
-    @classmethod
-    def sample_run_config(cls, __distro_dir__: str) -> Dict[str, Any]:
-        return {
-            "persistence_store": SqliteKVStoreConfig.sample_run_config(
-                __distro_dir__=__distro_dir__,
-                db_name="agents_store.db",
-            )
-        }
