@@ -16,7 +16,7 @@ The following proof on concepts have been implemented on Llama Stack.
 Clone this project:
 
 ```shell
-git clone git@github.ibm.com:aiplatform/kagenti.git
+git clone git@github.com:kagenti/kagenti.git
 cd kagenti
 ```
 
