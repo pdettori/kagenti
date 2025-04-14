@@ -1,5 +1,5 @@
 
-# Kagenti
+![Kagenti](banner.png)
 
 **Kagenti** is a Kubernetes-based middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
 
