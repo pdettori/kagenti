@@ -26,7 +26,7 @@ Despite the extensive variety of frameworks available for developing agent-based
 
 ## Multi-Framework Agents
 
-In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **Bee AI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development.
+In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **BeeAI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development.
 
 **Kagenti** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by offering a common front-end API.
 
@@ -60,7 +60,7 @@ This end-to-end approach aligns agentic workflows with security best practice pr
 
 ## PoCs
 
-To achieve the objectives outlined above, we are developing this technology through a series of Proofs of Concept (PoCs), each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture. 
+To achieve the objectives outlined above, we are developing this technology through a series of Proofs of Concept (PoCs), each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture.
 
 For following set of PoCs, we have selected [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
 
