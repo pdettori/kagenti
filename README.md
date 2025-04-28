@@ -52,6 +52,7 @@ To achieve the objectives outlined above, we are developing this technology thro
 The following set of PoCs are based on [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
 
 - [Installation](./docs/pocs.md#installation)
+- [Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md)
 - [API Key Propagation](./docs/pocs.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
 - [Agent as MCP Tool](./docs/pocs.md#agent-as-tool)
 
