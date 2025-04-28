@@ -28,6 +28,7 @@ def run_main(
     port: int,
     unregister_toolgroup: bool,
     register_toolgroup: bool,
+    list_toolgroups: bool,
     toolgroup_id: str,
     mcp_endpoint: str,
 ):
@@ -38,6 +39,16 @@ def run_main(
             "api_key": "some-api-key",
         },
     )
+
+    # Unregister the MCP Tool Group based on the flag
+    if list_toolgroups:
+        try:
+            list = client.toolgroups.list()
+            for toolgroup in list:
+                pprint(toolgroup)
+        except Exception as e:
+            print(f"Error listing tool groups: {e}")
+        return
 
     # Unregister the MCP Tool Group based on the flag
     if unregister_toolgroup:
@@ -87,6 +98,11 @@ if __name__ == "__main__":
         "--port", type=int, required=True, help="Specify the port number."
     )
     parser.add_argument(
+        "--list_toolgroups",
+        action="store_true",
+        help="Flag to list toolgroups.",
+    )
+    parser.add_argument(
         "--unregister_toolgroup",
         action="store_true",
         help="Flag to unregister toolgroup.",
@@ -114,6 +130,7 @@ if __name__ == "__main__":
     run_main(
         host=args.host,
         port=args.port,
+        list_toolgroups=args.list_toolgroups,
         unregister_toolgroup=args.unregister_toolgroup,
         register_toolgroup=args.register_toolgroup,
         toolgroup_id=args.toolgroup_id,
