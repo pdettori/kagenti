@@ -1,27 +1,10 @@
-# MIT License
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the terms described in the LICENSE file in
+# the root directory of this source tree.
 
-# Copyright (c) Meta Platforms, Inc. and affiliates
-
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and associated documentation files (the
-# "Software"), to deal in the Software without restriction, including
-# without limitation the rights to use, copy, modify, merge, publish,
-# distribute, sublicense, and/or sell copies of the Software, and to
-# permit persons to whom the Software is furnished to do so, subject to
-# the following conditions:
-
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from mcp import ClientSession
@@ -29,20 +12,20 @@ from mcp.client.sse import sse_client
 
 from llama_stack.apis.common.content_types import URL
 from llama_stack.apis.tools import (
+    ListToolDefsResponse,
     ToolDef,
     ToolInvocationResult,
     ToolParameter,
     ToolRuntime,
 )
-from llama_stack.providers.datatypes import ToolsProtocolPrivate
-from llama_stack.distribution.request_headers import NeedsRequestProviderData
-
 from mcp.types import (
     ClientRequest,
     CallToolRequest,
     CallToolResult,
     CallToolRequestParams,
 )
+from llama_stack.providers.datatypes import ToolsProtocolPrivate
+from llama_stack.distribution.request_headers import NeedsRequestProviderData
 
 from .config import ModelContextProtocolConfig
 
@@ -56,12 +39,12 @@ class ModelContextProtocolToolRuntimeImpl(ToolsProtocolPrivate, ToolRuntime, Nee
 
     async def list_runtime_tools(
         self, tool_group_id: Optional[str] = None, mcp_endpoint: Optional[URL] = None
-    ) -> List[ToolDef]:
+    ) -> ListToolDefsResponse:
         if mcp_endpoint is None:
             raise ValueError("mcp_endpoint is required")
 
         tools = []
-        async with sse_client(mcp_endpoint.uri, headers = {"Authorization": "Bearer my_token"}) as streams:
+        async with sse_client(mcp_endpoint.uri) as streams:
             async with ClientSession(*streams) as session:
                 await session.initialize()
                 tools_result = await session.list_tools()
@@ -85,7 +68,7 @@ class ModelContextProtocolToolRuntimeImpl(ToolsProtocolPrivate, ToolRuntime, Nee
                             },
                         )
                     )
-        return tools
+        return ListToolDefsResponse(data=tools)
 
     async def invoke_tool(self, tool_name: str, kwargs: Dict[str, Any]) -> ToolInvocationResult:
         tool = await self.tool_store.get_tool(tool_name)
@@ -120,7 +103,6 @@ class ModelContextProtocolToolRuntimeImpl(ToolsProtocolPrivate, ToolRuntime, Nee
                 )
             
                 result = await session.send_request(request, CallToolResult)
-
 
         return ToolInvocationResult(
             content="\n".join([result.model_dump_json() for result in result.content]),
