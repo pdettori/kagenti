@@ -46,20 +46,18 @@ def run_main(host: str, port: int, disable_safety: bool = False):
     selected_model = available_models[0]
     print(f"Using model: {selected_model}")
 
-    agent_config = AgentConfig(
+    agent = Agent(
+        client,
         model=selected_model,
         instructions="You are a helpful assistant. Use the provided tool to extract information for your answers.",
-        sampling_params={
-            "strategy": {"type": "top_p", "temperature": 1.0, "top_p": 0.9},
-        },
-        toolgroups=["remote::web-fetch"],
-        tool_choice="auto",
-        input_shields=available_shields if available_shields else [],
-        output_shields=available_shields if available_shields else [],
-        enable_session_persistence=True,
-    )
-
-    agent = Agent(client, agent_config)
+        tools=[
+            {
+                "name": "remote::web-fetch/fetch",
+                "args": {},
+            }
+        ],
+        )
+    
     session_id = agent.create_session("test-session")
     print(f"Created session_id={session_id} for Agent({agent.agent_id})")
 

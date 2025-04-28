@@ -19,7 +19,6 @@ from llama_stack_client.lib.agents.event_logger import EventLogger
 from llama_stack_client.types.agent_create_params import AgentConfig
 from llama_stack_client.types.agents.turn_create_params import Document
 from termcolor import colored
-from llama_stack_client.types.shared_params.url import URL
 from rich.pretty import pprint
 import argparse
 
@@ -54,8 +53,8 @@ def run_main(
         try:
             client.toolgroups.register(
                 toolgroup_id=toolgroup_id,
-                provider_id="model-context-protocol",
-                mcp_endpoint=URL(uri=mcp_endpoint),
+                provider_id="mcp-identity",
+                mcp_endpoint=dict(uri=mcp_endpoint),
                 args={"metadata": {"key1": "value1", "key2": "value2"}},
             )
             print(f"Successfully registered MCP tool group: {toolgroup_id}")
