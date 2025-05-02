@@ -18,7 +18,8 @@ spec:
         secretKeyRef:
           name: "github-token-secret" 
           key: "token"
-  deployAfterBuild: true 
+  deployAfterBuild: true
+  cleanupAfterBuild: true
   agent: 
     name: "a2a-contact-extractor-agent" 
     description: "A2A contact extractor agent" 
