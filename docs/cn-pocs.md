@@ -75,10 +75,15 @@ REPO_USER=<your-github-user-name>
 sed  "s|\${REPO_USER}|${REPO_USER}|g" examples/templates/a2a/a2a-currency-agent.yaml | kubectl apply -f -
 ```
 
-build and deploy the a2a langgraph currency agent:
+build and deploy the a2a langgraph contact-extractor-agent:
 
 ```shell
 sed  "s|\${REPO_USER}|${REPO_USER}|g" examples/templates/a2a/a2a-contact-extractor-agent.yaml | kubectl apply -f -
 ```
 
+## Build and Deploy MCP tool
+(note - we are considering refactoring the current CRDs to cover both agents and tools)
 
+```shell
+sed  "s|\${REPO_USER}|${REPO_USER}|g" examples/templates/mcp/mcp-web-fetch.yaml | kubectl apply -f -
+```
