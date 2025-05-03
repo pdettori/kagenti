@@ -12,4 +12,5 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["uv", "run", "."]
+CMD ["uv", "run", "sse_server.py"]
+
