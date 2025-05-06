@@ -10,6 +10,3 @@ dependencies = [
     "asyncclick>=8.1.8",
 ]
 
-#[tool.uv.sources]
-#a2a-samples = { git = "https://github.com/google/A2A.git", subdirectory = "samples/python" }
-#acp-sdk = { workspace = true }
