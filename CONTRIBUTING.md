@@ -9,8 +9,7 @@ We can't wait to collaborate with you!
 
 ### Prerequisites
 
-Follow instructions [here](./docs/pocs.md#installation). 
-
+Follow instructions [here](./docs/demos.md#installation). 
 
 ### Issues
 Prioritization for pull requests is given to those that address and resolve existing GitHub issues. Utilize the available issue labels to identify meaningful and relevant issues to work on.
