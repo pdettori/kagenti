@@ -45,14 +45,14 @@ In practice, the Authorization Pattern within the Agentic Platform enables:
 
 This end-to-end approach aligns agentic workflows with security best practice principles, making them secure, scalable, and eventually production-ready.
 
-## PoCs
+## Components
 
-To achieve the objectives outlined above, we are developing this technology through a series of Proofs of Concept (PoCs), each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture.
+To achieve the objectives outlined above, we are developing this technology through a series of demoes, each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture.
 
-The following set of PoCs are based on [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
+The following set of demoes are based on [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
 
-- [Installation](./docs/pocs.md#installation)
+- [Installation](./docs/demos.md#installation)
 - [Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md)
-- [API Key Propagation](./docs/pocs.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
-- [Agent as MCP Tool](./docs/pocs.md#agent-as-tool)
+- [API Key Propagation](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
+- [Agent as MCP Tool](./docs/demos.md#agent-as-tool)
 
