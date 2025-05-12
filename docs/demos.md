@@ -1,6 +1,6 @@
-# Proof-Of-Concepts
+# Demoes
 
-The following proof on concepts have been implemented on Llama Stack.
+The following demos have been implemented on Llama Stack.
 
 ## Installation
 
@@ -59,12 +59,11 @@ export INFERENCE_MODEL=llama3.2:3b
 llama stack run templates/ollama/run.yaml 
 ```
 
-You are now ready to run the PoCs.
-
+You are now ready to run the demos.
 
 ## API Key Propagation from LS client to MCP Tool Server
 
-This PoC uses `provider_data` to send data to the MCP
+This demo uses `provider_data` to send data to the MCP
 tool_runtime. Details on design and implementation
 are described in [this section.](./tech-details.md#api-key-propagation-to-mcp-tool)
 
@@ -106,12 +105,12 @@ cat examples/clients/mcp/tool-util.py
 
 ### Agent to Tool Key Propagation
 
-As an extension to this PoC, you can verify that the `api_key` is propagated 
+As an extension to this demo, you can verify that the `api_key` is propagated 
 to the MCP tool when the tool is invoked by an agent instead than directly
 by the client. A sequence diagram for this scenario is illustrated 
 [here](./tech-details.md#api-key-propagation-to-mcp-tool).
 
-After running the LS client to MCP Tool Server PoC, have a look at the
+After running the LS client to MCP Tool Server demo, have a look at the
 [agent-mcp client](../examples/clients/mcp/agent-mcp.py) code which uses
 the MCP fetch tool registred in the previous step, then run the agent as
 follows:
@@ -130,11 +129,11 @@ api_key=some-api-key
 
 ## Agent as Tool
 
-This Proof of Concept (PoC) involves registering a 
+This demo involves registering a 
 CrewAI agent as a tool within the MCP framework. Once 
 registered, the Llama Stack agent, configured with this tool, 
 can utilize the CrewAI agent to conduct research on a given topic 
-and provide a final result. This PoC currently utilizes a 
+and provide a final result. This demo currently utilizes a 
 single tool. However, it is conceivable that this approach could be 
 extended to register multiple agents, even those developed with 
 different frameworks, as tools. These tools can then be orchestrated 

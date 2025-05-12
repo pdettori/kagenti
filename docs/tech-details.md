@@ -1,6 +1,6 @@
-# Design and Implementation for the PoCs
+# Design and Implementation for the Demos
 
-This section provides details on the implementation of the PoCs.
+This section provides details on the implementation of the demos.
 
 ## API Key Propagation to MCP Tool
 
