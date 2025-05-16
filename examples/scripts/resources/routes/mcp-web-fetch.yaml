@@ -1,0 +1,16 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-web-fetch
+  labels:
+    app: mcp-web-fetch
+spec:
+  parentRefs:
+    - name: http
+      namespace: kagenti-system
+  hostnames:
+    - "mcp-web-fetch.localtest.me"
+  rules:
+    - backendRefs:
+        - name: mcp-web-fetch 
+          port: 8000

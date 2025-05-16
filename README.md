@@ -47,12 +47,21 @@ This end-to-end approach aligns agentic workflows with security best practice pr
 
 ## Components
 
-To achieve the objectives outlined above, we are developing this technology through a series of demoes, each targeting specific aspects of our goals. Our aim is to refine these experiments into an initial Minimum Viable Product (MVP) architecture.
+To achieve the objectives outlined above, we are developing this technology through a series of demoes, each targeting specific aspects of our goals. Our aim is to refine these demos into an initial Minimum Viable Product (MVP) architecture.
 
-The following set of demoes are based on [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
+The demoes are based on the following set of technologies:
 
-- [Installation](./docs/demos.md#installation)
-- [Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md)
-- [API Key Propagation](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
-- [Agent as MCP Tool](./docs/demos.md#agent-as-tool)
+- [Llama Stack](https://llama-stack.readthedocs.io), a versatile software stack tailored for building applications that utilize Large Language Models (LLMs), 
+- Agent communication protocols such as [A2A](https://google.github.io/A2A) and [ACP](https://agentcommunicationprotocol.dev/introduction/welcome)
+- Tools protocols such as [MCP](https://modelcontextprotocol.io)
+- [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md) - an operator to build and deploy agents and tools from source and manage lifecycle of agents, tools and platform components.
+Cloud Native technologies such as [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io), [Istio Ambient Service Mesh](https://istio.io/latest/docs/ambient/).
+
+### Demos
+
+- [Llama Stack Demos Installation](./docs/demos.md#installation)
+- [Llama Stack API Key Propagation](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
+- [Llama Stack Agent as MCP Tool](./docs/demos.md#agent-as-tool)
+- [Cloud Native Agent Platform with A2A and ACP multi-framework agents](./docs/cn-demos.md)
+
 
