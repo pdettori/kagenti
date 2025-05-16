@@ -35,7 +35,7 @@ spec:
       - name: LLM_MODEL
         value: "llama3.2:3b-instruct-fp16"
       - name: MCP_URL
-        value: "http://mcp-get-weather:8000"  
+        value: "http://mcp-get-weather:8000/sse"  
     resources:
       limits:
         cpu: "500m"
