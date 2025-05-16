@@ -9,11 +9,13 @@ A diagram and description of the demo architecture is provided [here](./tech-det
 
 Before running the demo setup script, ensure you have the following prerequisites in place:
 
+* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. 
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
 * **kubectl:** The Kubernetes command-line tool.
 * **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. 
-* **[ollama]:**(https://ollama.com/download)
+* **[ollama](https://ollama.com/download)** to run LLMs locally.
 
+At this time the demo has only been tested on MacOS with M1 processor.
 
 ####  Setup
 
@@ -44,7 +46,7 @@ Run the following script:
 examples/scripts/install-cnai-demo.sh 
 ```
 
-It may take several minutes to complete, at the end you should have a several agents and tools deployed.
+It may take several minutes to complete, at the end you should have several agents and tools deployed.
 
 ## Run the demo
 
@@ -88,7 +90,7 @@ Open the Kiali dashboard:
 open http://kiali.localtest.me:8080
 ```
 
-Go to "Traffic Graph" select Namaespace "default and "App Graph" - you should be able to view 
+Go to "Traffic Graph", select Namespace "default" and "App Graph" - you should be able to view 
 a graph similar to the following:
 
 ![Example Image](images/kiali-graph.jpg)
