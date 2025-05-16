@@ -91,7 +91,7 @@ The main changes are:
 
 ## Cloud Native Agent Platform Demo
 
-The Cloud Native Agentic Platform demo architecture is organized into multiple components that  demonstrate the integration of services and systems within a Kubernetes-based cloud native environment.
+The Cloud Native Agent Platform demo architecture is organized into multiple components that  demonstrate the integration of services and systems within a Kubernetes-based cloud native environment.
 
 ```mermaid
 %%{ init: {"themeVariables": { 'fontFamily': "Arial", 'primaryColor': '#1f77b4', 'edgeLabelBackground':'#ffffff'}} }%%
@@ -152,18 +152,18 @@ graph TB
 - **Ingress Gateway**: serves as the entry point for routing external HTTP requests to internal services within the platform.
 It is deployed in the `kagenti-system` namespace.
 
-- **Istio Ambient Service Mesh**: Istio Ambient Service Mesh is the new data plane mode for Istio that implements a *service mesh* without sidecar proxies. Ambient Mesh achieves this by using a shared agent called a *Ztunnel* to connect and authenticate elements within the mesh. It also allows for L7 processing when needed by deployeng additional *Waypoint* proxies per namespace, accessing the full range of Istio features. 
+- **Istio Ambient Service Mesh**: Istio Ambient Service Mesh is the new data plane mode for Istio that implements a *service mesh* without sidecar proxies. Ambient Mesh achieves this by using a shared agent called a *Ztunnel* to connect and authenticate elements within the mesh. It also allows for L7 processing when needed by deploying additional *Waypoint* proxies per namespace, accessing the full range of Istio features. 
 
 - **Ztunnel**: Istio's ambient mode uses Ztunnel as a node-local proxy, instead of sidecar proxies for each pod, to facilitate communication within the mesh. Ztunnel leverages the Linux network namespace functionality to enter each pod's network space, allowing it to intercept and redirect traffic. Ztunnel establishes a secure overlay network using the HBONE protocol, providing mTLS encryption for traffic between pods within the mesh.
 
-- **Waypoint Egress Gateway**: manages external communication with outside services or networks, ensuring secure egress traffic from the mesh. A Waypoint is part of the Istio Ambient data plane and acts as a proxy enabling traffic management policies such as routing, load balancing, and retries.
+- **Waypoint Egress Gateway**: manages external communication with outside services or networks, ensuring secure egress traffic from the mesh. A Waypoint is part of the Istio Ambient data plane and acts as a proxy enabling traffic management policies such as routing, load balancing, and retries. Egress gateways enable the implementation of policies for external tool calls, serving as a key enforcement point.
 
  
 ### Agents
 
 - **a2a-contact-extractor-agent**: Marvin agent exposed via [A2A](https://google.github.io/A2A) protocol. 
 It extracts structured contact information from text using Marvin's extraction capabilities
-- **a2a-currency-agent**: LangGraph agent exposed via A2A protocol. It helps with exchange rates for currencies.
+- **a2a-currency-agent**: LangGraph agent exposed via A2A protocol. It provides exchange rates for currencies.
 - **acp-ollama-researcher**: LangGraph agent exposed via [ACP](https://agentcommunicationprotocol.dev/introduction/welcome) protocol.
 It implements a research assistant to perform various research tasks.
 - **acp-weather-service**: LangGraph agent exposed via ACP protocol, that provides a simple weather info assistant.
@@ -177,7 +177,7 @@ It implements a research assistant to perform various research tasks.
 ### Interactions and Data Flow
 
 The Ingress Gateway routes HTTP traffic to the agents for North-South traffic. 
-East-West traffic is routed through the Istio Ambient Mesh, leveraging the ZTunnel for secured 
+East-West traffic is routed through the Istio Ambient Mesh, leveraging the Ztunnel for secured 
 inter-service communication.
 
 A Waypoint proxy manages communication policies and ensures the reliability of service interactions,
