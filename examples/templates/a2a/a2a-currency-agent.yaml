@@ -24,6 +24,8 @@ spec:
     name: "a2a-currency-agent" 
     description: "A2A test agent" 
     env: 
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector.kagenti-system.svc.cluster.local:8335  
       - name: "OPENAI_API_KEY"
         valueFrom:
           secretKeyRef:
