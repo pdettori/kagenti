@@ -81,8 +81,7 @@ curl -sSL https://raw.githubusercontent.com/kagenti/kagenti-operator/main/beeai/
 : 
 preload_images_in_kind \
     "prom/prometheus:v3.1.0" \
-    "python:3.11-slim-bookworm" \
-    "alpine:latest"
+    "python:3.11-slim-bookworm"
 
 :
 : -------------------------------------------------------------------------
@@ -265,4 +264,33 @@ kubectl label ns default istio.io/use-waypoint=waypoint
 :
 kubectl label namespace default istio.io/dataplane-mode=ambient
 
+:
+: -------------------------------------------------------------------------
+: "Install arize phonenix observability dashboard and enable gateway access to UI"
+: 
+:
+kubectl apply -n kagenti-system -f ${SCRIPT_DIR}/resources/phoenix.yaml
+kubectl apply -n kagenti-system -f ${SCRIPT_DIR}/resources/phoenix-route.yaml
+kubectl label ns kagenti-system shared-gateway-access="true"
 
+:
+: -------------------------------------------------------------------------
+: "Ensure phoenix and db started"
+: 
+:
+kubectl rollout status -n kagenti-system statefulset/postgres
+kubectl rollout status -n kagenti-system statefulset/phoenix
+
+:
+: -------------------------------------------------------------------------
+: "Install otel collector configured to upload to phoenix"
+: 
+:
+kubectl apply -n kagenti-system -f ${SCRIPT_DIR}/resources/otel-collector.yaml
+
+:
+: -------------------------------------------------------------------------
+: "Ensure otel collector is started"
+: 
+:
+kubectl rollout status -n kagenti-system deployment/otel-collector
