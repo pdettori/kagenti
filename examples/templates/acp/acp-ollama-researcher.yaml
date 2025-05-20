@@ -34,6 +34,8 @@ spec:
         value: "dummy"  
       - name: LLM_MODEL
         value: "llama3.2:3b-instruct-fp16"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector.kagenti-system.svc.cluster.local:8335  
     resources:
       limits:
         cpu: "500m"

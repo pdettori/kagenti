@@ -64,17 +64,29 @@ uv run --directory examples/clients/acp client.py --url http://acp-weather-servi
 uv run --directory examples/clients/acp client.py --url http://acp-ollama-researcher.localtest.me:8080 --name ollama_deep_researcher
 ```
 
+### A2A Currency Agent
+
+```shell
+uv run --directory examples/clients/a2a . --agent http://a2a-currency-agent.localtest.me:8080
+```
+
 ### A2A Contact Extractor
 
 ```shell
 uv run --directory examples/clients/a2a . --agent http://a2a-contact-extractor-agent.localtest.me:8080 
 ```
 
-### A2A Currency Agent
+### Analyze Traces
+
+Open the Arize Phoenix dashboard:
 
 ```shell
-uv run --directory examples/clients/a2a . --agent http://a2a-currency-agent.localtest.me:8080
+open http://phoenix.localtest.me:8080
 ```
+
+Select the "Traces" tab and open one trace, you should be able to see a screen similar to the following:
+
+![Example Image](images/phoenix.jpg)
 
 ### Analyze Traffic with Kiali
 
