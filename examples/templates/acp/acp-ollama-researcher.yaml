@@ -3,6 +3,9 @@ kind: AgentBuild
 metadata:
   labels:
     app.kubernetes.io/name: kagenti-operator
+    kagenti.io/type: agent
+    kagenti.io/protocol: acp
+    kagenti.io/framework: LangGraph
   name: acp-ollama-researcher
 spec:
   repoUrl: "github.com/kagenti/agent-examples.git"

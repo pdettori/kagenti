@@ -49,7 +49,10 @@ def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, 
             "name": agent_name,
             "labels": {
                 "app.kubernetes.io/created-by": "streamlit-ui",
-                "app.kubernetes.io/name": "kagenti-operator"
+                "app.kubernetes.io/name": "kagenti-operator",
+                "kagenti.io/type": "agent",
+                "kagenti.io/protocol": "acp",
+                "kagenti.io/framework": "LangGraph",
             }
         },
         "spec": {
