@@ -294,3 +294,25 @@ kubectl apply -n kagenti-system -f ${SCRIPT_DIR}/resources/otel-collector.yaml
 : 
 :
 kubectl rollout status -n kagenti-system deployment/otel-collector
+
+
+:
+: -------------------------------------------------------------------------
+: "Label agents; this should be done by the operator from agentbuild"
+: 
+:
+kubectl label agent a2a-currency-agent  kagenti.io/type=agent
+kubectl label agent a2a-currency-agent  kagenti.io/protocol=a2a
+kubectl label agent a2a-currency-agent  kagenti.io/framework=LangGraph
+
+kubectl label agent a2a-contact-extractor-agent  kagenti.io/type=agent
+kubectl label agent a2a-contact-extractor-agent  kagenti.io/protocol=a2a
+kubectl label agent a2a-contact-extractor-agent  kagenti.io/framework=Marvin
+
+kubectl label agent acp-ollama-researcher  kagenti.io/type=agent
+kubectl label agent acp-ollama-researcher  kagenti.io/protocol=acp
+kubectl label agent acp-ollama-researcher  kagenti.io/framework=LangGraph
+
+kubectl label agent acp-weather-service   kagenti.io/type=agent
+kubectl label agent acp-weather-service   kagenti.io/protocol=acp
+kubectl label agent acp-weather-service   kagenti.io/framework=LangGraph

@@ -55,7 +55,7 @@ Exercise some of the agents:
 ### ACP Weather Service (with MCP/sse tool)
 
 ```shell
-uv run --directory examples/clients/acp client.py --url http://acp-weather-service.localtest.me:8080 --name ollama_weather_service
+uv run --directory examples/clients/acp client.py --url http://acp-weather-service.localtest.me:8080 --name acp_weather_service
 ```
 
 ### ACP Ollama Deep Researcher

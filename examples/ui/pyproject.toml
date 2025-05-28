@@ -1,0 +1,28 @@
+[project]
+name = "agents-dashboard"
+version = "0.1.0"
+description = "A demo Streamlit application for AI agents and tools."
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+dependencies = [
+    "streamlit>=1.45.1", # Specifies Streamlit as a dependency
+    "kubernetes>=32.0.1",
+    "acp-sdk>=0.8.4",
+]
+requires-python = ">=3.11" # Minimum Python version required
+
+
+[build-system]
+requires = ["setuptools>=80.8"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# UV specific configurations can go here if needed,
+
+# --- Setuptools configuration ---
+[tool.setuptools]
+# Explicitly list the packages to include.
+# 'lib' is a package because it contains Python modules you import (due to lib/__init__.py).
+# 'pages' is NOT listed here because Streamlit handles its discovery for multi-page apps.
+packages = ["lib"]
