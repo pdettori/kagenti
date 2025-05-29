@@ -1,46 +1,40 @@
 import streamlit as st
 import kubernetes.client
-import kubernetes.config
 import os
-
-
-# --- Kubernetes Configuration ---
-def load_kube_config():
-    """
-    Loads Kubernetes configuration.
-    It tries in-cluster config first, then kubeconfig file.
-    """
-    try:
-        kubernetes.config.load_incluster_config()
-        st.success("Loaded in-cluster Kubernetes config.")
-    except kubernetes.config.ConfigException:
-        try:
-            kubernetes.config.load_kube_config()
-            st.success("Loaded kubeconfig from default path.")
-        except kubernetes.config.ConfigException:
-            st.error("Could not load Kubernetes configuration. "
-                     "Ensure you are running inside a cluster or have a valid kubeconfig file.")
-            return None
-    return kubernetes.client.CustomObjectsApi()
+import time # Import time for sleep
+from keycloak import KeycloakAdmin, KeycloakPostError
+from lib.utils import load_kube_config
 
 def remove_prefix(url, prefix):
     if url.startswith(prefix):
         return url[len(prefix):]
     return url
 
-# --- Function to Create AgentBuild CRD ---
+# --- Function to Create and Monitor AgentBuild CRD ---
 def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, source_path):
     """
-    Creates an 'AgentBuild' custom resource in the specified namespace.
+    Creates an 'AgentBuild' custom resource in the specified namespace and monitors its status.
     """
     group = "beeai.beeai.dev"
     version = "v1"
-    plural = "agentbuilds" 
+    plural = "agentbuilds"
     kind = "AgentBuild"
     user = "pdettori" # currently hardcoded
 
-    # Use the extracted agent_name for the resource name
-    resource_name = agent_name
+    resource_name = agent_name # Use the extracted agent_name for the resource name
+
+    client_secret = ""
+    if os.getenv("KEYCLOAK_ENABLED"):
+        external_tool_client_name = "weather-agent"
+        keycloak_admin = KeycloakAdmin(
+            server_url="http://keycloak.localtest.me:8080",
+            username="admin",
+            password="admin",
+            realm_name="demo",
+            user_realm_name='master')
+        clientID = keycloak_admin.get_client_id(external_tool_client_name)
+        client_secret = keycloak_admin.get_client_secrets(clientID)["value"]
+
 
     agent_build_body = {
         "apiVersion": f"{group}/{version}",
@@ -60,7 +54,7 @@ def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, 
             "sourceSubfolder": source_path,
             "repoUser": user,
             "revision": "main",
-            "image": "acp-ollama-weather-service",
+            "image": agent_name,
             "imageTag": "v0.0.1",
             "imageRegistry": "ghcr.io/"+user,
             "env": [
@@ -77,8 +71,8 @@ def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, 
             "deployAfterBuild": True,
             "cleanupAfterBuild": True,
             "agent": {
-            "name": "acp-weather-service",
-            "description": "acp-weather-service from ACP community",
+            "name": agent_name,
+            "description": f"agent_name from community",
             "env": [
                 {
                 "name": "PORT",
@@ -107,6 +101,14 @@ def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, 
                 {
                 "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
                 "value": "http://otel-collector.kagenti-system.svc.cluster.local:8335"
+                },
+                {
+                "name": "KEYCLOAK_URL",
+                "value": "http://keycloak.keycloak.svc.cluster.local:8080"
+                },
+                {
+                "name": "CLIENT_SECRET",
+                "value": client_secret
                 }
             ],
             "resources": {
@@ -123,29 +125,77 @@ def create_agent_build(api_instance, namespace, agent_name, url, branch_or_tag, 
         }
     }
 
-    try:
-        with st.spinner(f"Creating AgentBuild '{resource_name}' in namespace '{namespace}'..."):
-            api_response = api_instance.create_namespaced_custom_object(
+    # Use a single spinner for the entire process
+    with st.spinner(f"Building and deploying agent '{resource_name}'..."):
+        try:
+            # 1. Create the AgentBuild resource
+            api_instance.create_namespaced_custom_object(
                 group=group,
                 version=version,
                 namespace=namespace,
                 plural=plural,
                 body=agent_build_body
             )
-            st.success(f"AgentBuild '{resource_name}' created successfully!")
-            st.json(api_response) # Display the created object for verification
-            return True
-    except kubernetes.client.ApiException as e:
-        st.error(f"Error creating AgentBuild: {e.reason} (Status: {e.status})")
-        st.code(e.body, language="json")
-        if e.status == 404:
-            st.warning(f"Ensure the Custom Resource Definition (CRD) for '{group}/{version} {kind}' exists in your cluster.")
-        elif e.status == 403:
-            st.warning("Permission denied. Ensure your Kubernetes user/service account has 'create' permissions on 'agentbuilds.beeai.beeai.dev'.")
-        return False
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        return False
+            st.success(f"AgentBuild '{resource_name}' creation request sent.")
+
+            # 2. Set up a placeholder for status updates
+            status_placeholder = st.empty()
+            current_status = "Pending"
+
+            # 3. Poll for status updates
+            while current_status not in ["Completed", "Failed", "Error"]:
+                try:
+                    # Fetch the latest AgentBuild object
+                    agent_build_obj = api_instance.get_namespaced_custom_object(
+                        group=group,
+                        version=version,
+                        namespace=namespace,
+                        plural=plural,
+                        name=resource_name
+                    )
+                    # Extract the buildStatus
+                    current_status = agent_build_obj.get("status", {}).get("buildStatus", "Unknown")
+                    status_message = agent_build_obj.get("status", {}).get("message", "")
+
+                    # Update the status placeholder
+                    status_placeholder.info(f"Build Status for '{resource_name}': **{current_status}** {status_message}")
+
+                    if current_status in ["Completed", "Failed", "Error"]:
+                        break # Exit loop if build is complete or failed
+
+                    time.sleep(2) # Wait for 2 seconds before polling again
+
+                except kubernetes.client.ApiException as e:
+                    if e.status == 404:
+                        status_placeholder.error(f"AgentBuild '{resource_name}' not found. It might have been deleted or failed to create.")
+                        current_status = "Error"
+                    else:
+                        status_placeholder.error(f"Error polling AgentBuild status: {e.reason} (Status: {e.status})")
+                        current_status = "Error"
+                    break # Exit loop on API error
+                except Exception as e:
+                    status_placeholder.error(f"An unexpected error occurred during status polling: {e}")
+                    current_status = "Error"
+                    break # Exit loop on unexpected error
+
+            if current_status == "Completed":
+                st.success(f"Agent '{resource_name}' built and deployed successfully!")
+                return True
+            else:
+                st.error(f"Agent build for '{resource_name}' finished with status: {current_status}. Check logs for details.")
+                return False
+
+        except kubernetes.client.ApiException as e:
+            st.error(f"Error creating AgentBuild: {e.reason} (Status: {e.status})")
+            st.code(e.body, language="json")
+            if e.status == 404:
+                st.warning(f"Ensure the Custom Resource Definition (CRD) for '{group}/{version} {kind}' exists in your cluster.")
+            elif e.status == 403:
+                st.warning("Permission denied. Ensure your Kubernetes user/service account has 'create' permissions on 'agentbuilds.beeai.beeai.dev'.")
+            return False
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {e}")
+            return False
 
 # --- Main Page Content for Import New Agent ---
 st.header("Import New Agent")
@@ -212,10 +262,11 @@ if st.button("Build New Agent", key="build_new_agent_btn"):
         if not agent_name:
             st.warning("Could not extract a valid agent name from the Source Subfolder Path. Please ensure it's not empty or just slashes.")
         else:
-            api = load_kube_config()
+            api = load_kube_config(st)
             if api:
                 namespace = os.getenv("KUBERNETES_NAMESPACE", "default")
                 st.info(f"Attempting to build agent '{agent_name}' from URL: `{source_url}`, branch/tag: `{branch_or_tag}`, and path: `{final_source_subfolder_path}` in namespace: `{namespace}`.")
+                # Call the modified function to create and monitor the build
                 create_agent_build(api, namespace, agent_name, source_url, branch_or_tag, final_source_subfolder_path)
             else:
                 st.error("Kubernetes API client not initialized. Cannot create AgentBuild.")
@@ -223,4 +274,3 @@ if st.button("Build New Agent", key="build_new_agent_btn"):
         st.warning("Please provide the Source Repository URL, Git Branch/Tag, and Source Subfolder Path.")
 
 st.markdown("---")
-

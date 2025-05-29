@@ -81,7 +81,12 @@ curl -sSL https://raw.githubusercontent.com/kagenti/kagenti-operator/main/beeai/
 : 
 preload_images_in_kind \
     "prom/prometheus:v3.1.0" \
-    "python:3.11-slim-bookworm"
+    "kubernetesui/dashboard-api:1.13.0" \
+    "kubernetesui/dashboard-auth:1.3.0" \
+    "kong:3.8" \
+    "kubernetesui/dashboard-metrics-scraper:1.2.2" \
+    "kubernetesui/dashboard-web:1.7.0"
+    
 
 :
 : -------------------------------------------------------------------------
@@ -145,6 +150,44 @@ kubectl rollout status -n default deployment/waypoint
 :
 kubectl apply -f ${SCRIPT_DIR}/resources/kiali-route.yaml
 kubectl label ns istio-system shared-gateway-access="true"
+
+
+:
+: -------------------------------------------------------------------------
+: "Install Keycloak"
+: 
+:
+kubectl apply -f ${SCRIPT_DIR}/../identity/keycloak_token_exchange/resources/keycloak/namespace.yaml
+kubectl apply -n keycloak -f https://raw.githubusercontent.com/keycloak/keycloak-quickstarts/refs/heads/main/kubernetes/keycloak.yaml
+kubectl scale -n keycloak statefulsets keycloak --replicas 1
+kubectl patch statefulset keycloak -n keycloak --patch '
+spec:
+  template:
+    spec:
+      containers:
+      - name: keycloak
+        env:
+        - name: KC_PROXY_HEADERS
+          value: forwarded
+'
+
+:
+: -------------------------------------------------------------------------
+: "Check it is started"
+: 
+:
+kubectl rollout status -n keycloak statefulset/keycloak
+
+:
+: -------------------------------------------------------------------------
+: "Add http routing for keycloak"
+: "Console access should be at http://keycloak.localtest.me:8080/admin/master/console/"
+: 
+:
+kubectl apply -f ${SCRIPT_DIR}/resources/keycloak-route.yaml
+kubectl label ns keycloak shared-gateway-access="true"
+kubectl label namespace keycloak istio.io/dataplane-mode=ambient
+
 
 :
 : -------------------------------------------------------------------------
@@ -298,21 +341,42 @@ kubectl rollout status -n kagenti-system deployment/otel-collector
 
 :
 : -------------------------------------------------------------------------
-: "Label agents; this should be done by the operator from agentbuild"
+: "Label Agents and Tools"
 : 
 :
-kubectl label agent a2a-currency-agent  kagenti.io/type=agent
-kubectl label agent a2a-currency-agent  kagenti.io/protocol=a2a
-kubectl label agent a2a-currency-agent  kagenti.io/framework=LangGraph
+kubectl label agent mcp-get-weather kagenti.io/type=tool
+kubectl label agent mcp-get-weather kagenti.io/protocol=MCP
+kubectl label agent mcp-get-weather kagenti.io/framework=python
 
-kubectl label agent a2a-contact-extractor-agent  kagenti.io/type=agent
-kubectl label agent a2a-contact-extractor-agent  kagenti.io/protocol=a2a
-kubectl label agent a2a-contact-extractor-agent  kagenti.io/framework=Marvin
+kubectl label agent mcp-web-fetch kagenti.io/type=tool
+kubectl label agent mcp-web-fetch kagenti.io/protocol=MCP
+kubectl label agent mcp-web-fetch kagenti.io/framework=python
 
-kubectl label agent acp-ollama-researcher  kagenti.io/type=agent
-kubectl label agent acp-ollama-researcher  kagenti.io/protocol=acp
-kubectl label agent acp-ollama-researcher  kagenti.io/framework=LangGraph
+kubectl label agent a2a-currency-agent kagenti.io/type=agent
+kubectl label agent a2a-currency-agent kagenti.io/protocol=A2A
+kubectl label agent a2a-currency-agent kagenti.io/framework=LangGraph
 
-kubectl label agent acp-weather-service   kagenti.io/type=agent
-kubectl label agent acp-weather-service   kagenti.io/protocol=acp
-kubectl label agent acp-weather-service   kagenti.io/framework=LangGraph
+kubectl label agent a2a-contact-extractor-agent kagenti.io/type=agent
+kubectl label agent a2a-contact-extractor-agent kagenti.io/protocol=A2A
+kubectl label agent a2a-contact-extractor-agent kagenti.io/framework=Marvin
+
+kubectl label agent acp-ollama-researcher kagenti.io/type=agent
+kubectl label agent acp-ollama-researcher kagenti.io/protocol=ACP
+kubectl label agent acp-ollama-researcher kagenti.io/framework=LangGraph
+
+kubectl label agent acp-weather-service kagenti.io/type=agent
+kubectl label agent acp-weather-service kagenti.io/protocol=ACP
+kubectl label agent acp-weather-service kagenti.io/framework=LangGraph
+
+
+:
+: -------------------------------------------------------------------------
+: "Install Kubernetes UI"
+: 
+:
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+kubectl apply -n kubernetes-dashboard -f ${SCRIPT_DIR}/resources/kube-ui.yaml
+echo "Bearer token for kubeUI user"
+kubectl -n kubernetes-dashboard create token admin-user
+echo "run the command 'kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443' and access ui at https://localhost:8443"

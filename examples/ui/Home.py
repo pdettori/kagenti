@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_mermaid import st_mermaid
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -41,7 +42,7 @@ st.markdown(
 col1, col2 = st.columns([4, 1])
 
 with col1:
-    st.title("Welcome to the Cloud Native Agent Platform")
+    st.title("Welcome to the Cloud Native Agent Platform Demo")
 
 with col2:
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
@@ -52,5 +53,64 @@ st.write("Use the sidebar on the left to navigate between the main sections:")
 st.write("- **Agent Catalog**: Browse and manage your AI agents.")
 st.write("- **Tool Catalog**: Explore and manage the tools available to your agents.")
 st.write("- **Observability**: Monitor the performance and activities of your agents and tools.")
+st.write("- **Import New Agent**: Build and deploy a new agent from source.")
+st.write("- **Import New Tool**: Build and deploy a new tool from source.")
+st.write("- **Admin**: Manage identity and authorization for agents.")
 
 
+st.write("**Demo Architecture**")
+
+mermaid_code = """
+%%{ init: {"themeVariables": { 'fontFamily': "Arial", 'primaryColor': '#1f77b4', 'edgeLabelBackground':'#ffffff'}} }%%
+graph TB
+
+  subgraph Kubernetes
+    direction TB
+    
+    subgraph kagenti-system ["kagenti-system Namespace"]
+      IngressGateway["Ingress Gateway"]
+    end
+
+    subgraph keycloak ["keycloak Namespace"]
+      Keycloak["Identity Management"]
+    end
+
+    subgraph default_namespace ["default Namespace"]
+      A2ACurrencyAgent(a2a-currency-agent)
+      ACPWeatherService(acp-weather-service)
+      
+      subgraph MCPGetWeather ["MCP Get Weather"]
+        direction LR
+        Service[mcp-get-weather Service]
+        Deployment[mcp-get-weather Deployment]
+      end
+
+      subgraph Istio_Ambient_Mesh ["Istio Ambient Service Mesh"]
+        direction BT
+        ZTunnel("ZTunnel")
+        Waypoint("Waypoint Egress")
+        ZTunnel --> Waypoint
+      end
+
+    end
+  end
+  
+  style Kubernetes fill:#f9f9f9,stroke:#333,stroke-width:2px;
+  style kagenti-system fill:#f1f3f4,stroke:#888;
+  style default_namespace fill:#f1f3f4,stroke:#888;
+  style MCPGetWeather fill:#ffffff,stroke:#aaaaaa,stroke-dasharray: 5 5;
+
+  IngressGateway -->|HTTP Routes| A2ACurrencyAgent
+  IngressGateway -->|HTTP Routes| ACPWeatherService
+  ACPWeatherService --> Service
+  Service --> Deployment
+
+  A2ACurrencyAgent -.->|Istio Mesh| ZTunnel
+  ACPWeatherService -.->|Istio Mesh| ZTunnel
+  Service -.->|Istio Mesh| ZTunnel
+  ACPWeatherService -.-> Keycloak
+
+  UI --> IngressGateway
+"""
+
+st_mermaid(mermaid_code)

@@ -106,3 +106,15 @@ Go to "Traffic Graph", select Namespace "default" and "App Graph" - you should b
 a graph similar to the following:
 
 ![Example Image](images/kiali-graph.jpg)
+
+
+## Troubleshoting
+
+### Agent stops responding through gateway 
+
+Restart the following daemonset
+
+```shell
+kubectl rollout restart daemonset -n istio-system  istio-cni-node 
+kubectl rollout restart daemonset -n istio-system  ztunnel
+```

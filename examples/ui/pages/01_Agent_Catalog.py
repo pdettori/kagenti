@@ -4,25 +4,7 @@ import kubernetes.config
 import os
 # Import the function from the 'lib' directory
 from lib._agent_details_page import render_agent_details_content
-
-# --- Kubernetes Configuration ---
-def load_kube_config():
-    """
-    Loads Kubernetes configuration.
-    It tries in-cluster config first, then kubeconfig file.
-    """
-    try:
-        kubernetes.config.load_incluster_config()
-        st.success("Loaded in-cluster Kubernetes config.")
-    except kubernetes.config.ConfigException:
-        try:
-            kubernetes.config.load_kube_config()
-            st.success("Loaded kubeconfig from default path.")
-        except kubernetes.config.ConfigException:
-            st.error("Could not load Kubernetes configuration. "
-                     "Ensure you are running inside a cluster or have a valid kubeconfig file.")
-            return None
-    return kubernetes.client.CustomObjectsApi()
+from lib.utils import is_deployment_ready, load_kube_config
 
 # --- Function to List Agents ---
 def list_agents(api_instance, namespace="default"):
@@ -83,7 +65,7 @@ else:
     st.subheader("Available Agents")
 
     # Load Kubernetes config and get API instance
-    api = load_kube_config()
+    api = load_kube_config(st)
 
     if api:
         namespace = os.getenv("KUBERNETES_NAMESPACE", "default")
@@ -99,6 +81,7 @@ else:
 
                 protocol_tag = agent_labels.get("kagenti.io/protocol", "N/A")
                 framework_tag = agent_labels.get("kagenti.io/framework", "N/A")
+                status = is_deployment_ready(agent)
 
                 # Display each agent in a clickable container (box)
                 with st.container(border=True):
@@ -106,6 +89,7 @@ else:
                     with col_name:
                         st.markdown(f"### {agent_name}")
                         st.write(f"**Description:** {agent_description}")
+                        st.write(f"**Status:** {status}")
                         st.markdown(f"**Tags:** <span style='background-color:#e0f7fa; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-size: 0.8em;'>Protocol: {protocol_tag}</span> <span style='background-color:#e0f7fa; padding: 4px 8px; border-radius: 5px; font-size: 0.8em;'>Framework: {framework_tag}</span>", unsafe_allow_html=True)
                     with col_button:
                         st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
@@ -115,37 +99,7 @@ else:
                             st.rerun() # Rerun the app to show details
         else:
             st.info(f"No 'Agent' custom resources with label `kagenti.io/type=agent` found in the '{namespace}' namespace.")
-            st.markdown(
-                """
-                To create a sample Agent custom resource, you can use `kubectl apply -f` and ensure it has the required labels:
-                ```yaml
-                apiVersion: beeai.beeai.dev/v1
-                kind: Agent
-                metadata:
-                  name: my-first-agent
-                  labels:
-                    kagenti.io/type: agent
-                    kagenti.io/protocol: http
-                    kagenti.io/framework: langchain
-                spec:
-                  description: "This is a sample agent for demonstration purposes."
-                  # Add other spec fields as per your CRD
-                ---
-                apiVersion: beeai.beeai.dev/v1
-                kind: Agent
-                metadata:
-                  name: another-agent
-                  labels:
-                    kagenti.io/type: agent
-                    kagenti.io/protocol: grpc
-                    kagenti.io/framework: autogen
-                spec:
-                  description: "A second example agent with a different purpose."
-                ```
-                """
-            )
     else:
         st.warning("Kubernetes API client not initialized. Cannot fetch agent list.")
 
-st.markdown("---")
-st.info("You can import new agents via the 'Import New Agent' option")
+

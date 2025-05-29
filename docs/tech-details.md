@@ -104,6 +104,10 @@ graph TB
       IngressGateway["Ingress Gateway"]
     end
 
+    subgraph keycloak ["keycloak Namespace"]
+      Keycloak["Keycloak"]
+    end
+
     subgraph default_namespace ["default Namespace"]
       A2AContactExtractorAgent(a2a-contact-extractor-agent)
       A2ACurrencyAgent(a2a-currency-agent)
@@ -143,6 +147,7 @@ graph TB
   ACPOllamaResearcher -.->|Istio Mesh| ZTunnel
   ACPWeatherService -.->|Istio Mesh| ZTunnel
   Service -.->|Istio Mesh| ZTunnel
+  ACPWeatherService -.-> Keycloak
 
   Client --> IngressGateway
 ```
