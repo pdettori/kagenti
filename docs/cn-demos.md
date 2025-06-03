@@ -115,6 +115,5 @@ a graph similar to the following:
 Restart the following daemonset
 
 ```shell
-kubectl rollout restart daemonset -n istio-system  istio-cni-node 
 kubectl rollout restart daemonset -n istio-system  ztunnel
 ```

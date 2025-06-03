@@ -1,47 +1,24 @@
+# Copyright 2025 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import streamlit as st
-import kubernetes.client
-import kubernetes.config
 import os
-# Import the function from the 'lib' directory
-from lib._agent_details_page import render_agent_details_content
-from lib.utils import is_deployment_ready, load_kube_config
+from lib.agent_details_page import render_agent_details_content
+from lib.utils import display_tags, extract_tags
+from lib.kube import is_deployment_ready, load_kube_config, list_agents
 
-# --- Function to List Agents ---
-def list_agents(api_instance, namespace="default"):
-    """
-    Lists custom resources of kind 'Agent' from the specified namespace.
-    Filters for agents with the label 'kagenti.io/type=agent'.
-    """
-    group = "beeai.beeai.dev"
-    version = "v1"
-    plural = "agents" # Plural form of your custom resource 'Agent'
 
-    try:
-        # List namespaced custom objects
-        # Note: Kubernetes API client's list_namespaced_custom_object does not directly support
-        # label selectors as a parameter for all versions/CRDs.
-        # We will fetch all and filter in Python for simplicity and broader compatibility.
-        api_response = api_instance.list_namespaced_custom_object(group, version, namespace, plural)
-        
-        # Filter agents by the required label 'kagenti.io/type=agent'
-        filtered_agents = []
-        for agent in api_response["items"]:
-            labels = agent.get("metadata", {}).get("labels", {})
-            if labels.get("kagenti.io/type") == "agent":
-                filtered_agents.append(agent)
-        return filtered_agents
-    except kubernetes.client.ApiException as e:
-        st.error(f"Error fetching agents from Kubernetes: {e}")
-        if e.status == 404:
-            st.warning(f"Ensure the Custom Resource Definition (CRD) for '{group}/{version} Agents' exists in your cluster.")
-        elif e.status == 403:
-            st.warning("Permission denied. Ensure your Kubernetes user/service account has 'get' and 'list' permissions on 'agents.beeai.beeai.dev'.")
-        return []
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        return []
-
-# --- Main Page Content ---
 st.header("Agent Catalog")
 st.write("Welcome to the Agent Catalog page. Here you can view and manage your agents.")
 st.markdown("---")
@@ -71,16 +48,14 @@ else:
         namespace = os.getenv("KUBERNETES_NAMESPACE", "default")
         st.info(f"Attempting to list Agents in namespace: `{namespace}` (filtered by label `kagenti.io/type=agent`)")
 
-        agents = list_agents(api, namespace)
+        agents = list_agents(st, api, namespace)
 
         if agents:
             for agent in agents:
                 agent_name = agent.get("metadata", {}).get("name", "N/A")
                 agent_description = agent.get("spec", {}).get("description", "No description provided.")
                 agent_labels = agent.get("metadata", {}).get("labels", {})
-
-                protocol_tag = agent_labels.get("kagenti.io/protocol", "N/A")
-                framework_tag = agent_labels.get("kagenti.io/framework", "N/A")
+                tags = extract_tags(agent_labels)
                 status = is_deployment_ready(agent)
 
                 # Display each agent in a clickable container (box)
@@ -90,7 +65,7 @@ else:
                         st.markdown(f"### {agent_name}")
                         st.write(f"**Description:** {agent_description}")
                         st.write(f"**Status:** {status}")
-                        st.markdown(f"**Tags:** <span style='background-color:#e0f7fa; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-size: 0.8em;'>Protocol: {protocol_tag}</span> <span style='background-color:#e0f7fa; padding: 4px 8px; border-radius: 5px; font-size: 0.8em;'>Framework: {framework_tag}</span>", unsafe_allow_html=True)
+                        display_tags(st, tags)
                     with col_button:
                         st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
                         # When "View Details" is clicked, set the session state
