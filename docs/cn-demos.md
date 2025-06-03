@@ -117,3 +117,9 @@ Restart the following daemonset
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
 ```
+
+How to run ui app with streamlit
+
+```shell
+ uv run streamlit run Home.py 
+``` 

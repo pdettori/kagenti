@@ -17,7 +17,8 @@ import os
 import asyncio
 from .utils import display_tags, extract_tags, sanitize_agent_name
 from .kube import load_kube_config, is_deployment_ready, get_agent_details
-from .acp import run_agent_chat_stream
+from .acp import run_agent_chat_stream, display_agent_details
+from .a2a_utils import get_and_print_agent_card
 
 def display_agent_metadata(agent_details):
     """Displays the agent's description, status, creation timestamp, and tags."""
@@ -32,6 +33,7 @@ def display_agent_metadata(agent_details):
     st.write(f"**Created On:** {creation_timestamp}")
     display_tags(st, tags)
     st.markdown("---")
+    return tags
 
 def initialize_session_state(sanitized_agent_name):
     """Initializes chat and log history in session state for a given agent."""
@@ -82,7 +84,13 @@ def render_agent_details_content(agent_name: str):
     sanitized_agent_name = sanitize_agent_name(agent_name)
     agent_url = f"http://{agent_name}.localtest.me:8080"
 
-    display_agent_metadata(agent_details)
+    tags = display_agent_metadata(agent_details)
+    if tags.get("protocol","") == "acp":
+        asyncio.run(display_agent_details(st, sanitized_agent_name, agent_url))
+    elif tags.get("protocol","") == "a2a":
+        asyncio.run(get_and_print_agent_card(st, agent_url))
+    else:
+        st.markdown("Unknown agent protocol")    
 
     st.subheader("Chat with Agent")
     initialize_session_state(sanitized_agent_name)

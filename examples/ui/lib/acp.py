@@ -61,3 +61,20 @@ async def run_agent_chat_stream(
 
     return full_response_content
 
+async def display_agent_details(
+    st,
+    sanitized_agent_name: str,
+    agent_url: str,
+) -> str:
+    """
+    Runs the ACP SDK client to get metadata from the agent
+    """
+    full_response_content = ""
+    try:
+        async with Client(base_url=agent_url) as client, client.session() as session:
+            async for agent in client.agents():
+                st.markdown(agent.metadata.documentation)
+                st.markdown(f":gray-background[License: {agent.metadata.license}]      :gray-background[Language: {agent.metadata.programming_language}]")
+    except Exception as e:
+        error_message = f"Error communicating with agent to get agent details: {e}"
+        st.error(error_message)       
