@@ -1,0 +1,161 @@
+# Copyright 2025 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import asyncio
+from typing import Optional, List, Dict, Any
+from contextlib import AsyncExitStack
+from mcp import ClientSession  # type: ignore
+from mcp.client.sse import sse_client  # type: ignore
+import httpx 
+import logging
+import anyio
+
+logger = logging.getLogger(__name__)
+
+
+class MCPClientWrapper:
+    def __init__(self, mcp_server_url: str, auth_token: str = "my_token"):
+        self.mcp_server_url = mcp_server_url
+        self.auth_token = auth_token
+        self.cached_tools: List[Dict[str, Any]] = []
+        self.last_list_tools_successful: bool = False
+
+    async def get_tools_from_server(self) -> List[Dict[str, Any]]:
+        """
+        Connects to the MCP server, lists available tools, caches them, and returns them.
+        Manages its own AsyncExitStack for the duration of this operation.
+        """
+        logger.info(
+            f"Attempting to connect to MCP server and list tools: {self.mcp_server_url}"
+        )
+        # Reset state for this attempt
+        self.cached_tools = []
+        self.last_list_tools_successful = False
+
+        exit_stack = AsyncExitStack()  # Local stack for this operation
+        try:
+            async with exit_stack:  # Ensures aclose is called on this stack
+                headers = {"Authorization": f"Bearer {self.auth_token}"}
+
+                transport = await exit_stack.enter_async_context(
+                    sse_client(self.mcp_server_url, headers=headers)
+                )
+                stdio, write = transport
+
+                session = await exit_stack.enter_async_context(
+                    ClientSession(stdio, write)
+                )
+
+                await session.initialize()
+                logger.info("MCP session initialized for listing tools.")
+
+                response = await session.list_tools()
+                if response and hasattr(response, "tools"):
+                    self.cached_tools = [
+                        {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "input_schema": (
+                                tool.inputSchema if hasattr(tool, "inputSchema") else {}
+                            ),
+                        }
+                        for tool in response.tools
+                    ]
+                    logger.info(
+                        f"Successfully listed tools. Found: {[tool['name'] for tool in self.cached_tools]}"
+                    )
+                    self.last_list_tools_successful = True
+                    return self.cached_tools
+                else:
+                    logger.warning("MCP list_tools response was empty or malformed.")
+                    return []
+        except httpx.ConnectError as e:
+            logger.error(
+                f"MCP Connection Error while listing tools from {self.mcp_server_url}: {e}",
+                exc_info=False,
+            )
+            raise ConnectionError(
+                f"Failed to connect to MCP server at {self.mcp_server_url} to list tools: {e}"
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"Failed to list tools from MCP server {self.mcp_server_url}: {e}",
+                exc_info=True,
+            )
+            raise ConnectionError(
+                f"An unexpected error occurred while listing tools from MCP server: {e}"
+            ) from e
+
+    async def execute_tool_on_server(
+        self, tool_name: str, tool_args: Dict[str, Any]
+    ) -> Any:
+        """
+        Connects to the MCP server, initializes a session, and calls the specified tool.
+        Manages its own AsyncExitStack for the duration of this operation.
+        """
+        logger.info(
+            f"Attempting to connect and call MCP tool '{tool_name}' with args: {tool_args} on {self.mcp_server_url}"
+        )
+        exit_stack = AsyncExitStack()  # Local stack for this operation
+        try:
+            async with exit_stack:  # Ensures aclose is called on this stack
+                headers = {"Authorization": f"Bearer {self.auth_token}"}
+
+                transport = await exit_stack.enter_async_context(
+                    sse_client(self.mcp_server_url, headers=headers)
+                )
+                stdio, write = transport
+
+                session = await exit_stack.enter_async_context(
+                    ClientSession(stdio, write)
+                )
+                await session.initialize()
+                logger.info(f"MCP session initialized for calling tool '{tool_name}'.")
+
+                response = await session.call_tool(tool_name, tool_args)
+                logger.info(f"MCP tool '{tool_name}' response: {response}")
+                return response
+        except httpx.ConnectError as e:
+            logger.error(
+                f"MCP Connection Error while calling tool '{tool_name}' on {self.mcp_server_url}: {e}",
+                exc_info=False,
+            )
+            raise ConnectionError(
+                f"Failed to connect to MCP server at {self.mcp_server_url} to call tool '{tool_name}': {e}"
+            ) from e
+        except (
+            anyio.ClosedResourceError
+        ) as cre:
+            logger.error(
+                f"MCP ClosedResourceError while calling tool '{tool_name}': {cre}",
+                exc_info=True,
+            )
+            raise ConnectionError(
+                f"MCP connection closed unexpectedly while calling tool '{tool_name}'."
+            ) from cre
+        except Exception as e:
+            logger.error(
+                f"Error calling MCP tool '{tool_name}' on {self.mcp_server_url}: {e}",
+                exc_info=True,
+            )
+            raise ConnectionError(
+                f"An unexpected error occurred while calling MCP tool '{tool_name}': {e}"
+            ) from e
+
+    # get_cached_tools can be used by the UI to display tools without a new server call
+    def get_cached_tools(self) -> List[Dict[str, Any]]:
+        return self.cached_tools
+
+    def is_last_list_tools_successful(self) -> bool:
+        return self.last_list_tools_successful

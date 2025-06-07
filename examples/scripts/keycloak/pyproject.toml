@@ -1,9 +1,0 @@
-[project]
-name = "keycloak-client"
-version = "0.1.0"
-description = "client scripts for keycloak"
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "python-keycloak>=5.5.1",
-]

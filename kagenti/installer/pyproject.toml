@@ -1,0 +1,34 @@
+[build-system]
+# This section tells packaging tools like uv and pip how to build your project.
+# It's the standard way to make a project installable.
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Defines the project metadata and dependencies.
+name = "kagenti-installer"
+version = "0.2.0"
+description = "A CLI tool to install the Agent Platform and its dependencies on a local Kind cluster."
+authors = [
+    { name = "Your Name", email = "you@example.com" },
+]
+requires-python = ">=3.8"
+
+# Lists the Python libraries required for the installer to run.
+dependencies = [
+    "rich>=13.0.0,<14.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "kubernetes>=29.0.0,<30.0.0",
+    "docker>=7.0.0,<8.0.0",
+    "typer[all]>=0.9.0,<0.12.0",
+    "packaging>=23.0,<25.0"
+]
+
+[project.scripts]
+# This makes the Typer `app` object in `installer.py` runnable as a
+# command-line script named `agent-installer`.
+kagenti-installer = "src.installer:app"
+
+[tool.setuptools]
+packages = ["src"]
+

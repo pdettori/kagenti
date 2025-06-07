@@ -1,0 +1,31 @@
+[project]
+name = "kagenti-dashboard"
+version = "0.1.0"
+description = "A Streamlit-based UI for kagenti"
+authors = [
+    { name = "kagenti", email = "maintainers@kagenti.dev" }
+]
+dependencies = [
+    "streamlit>=1.45.1",
+    "streamlit-mermaid>=0.3.0",
+    "kubernetes>=32.0.1",
+    "acp-sdk>=0.10.1",
+    "a2a-sdk>=0.2.5",
+    "python-keycloak>=5.5.1",
+    "mcp[cli]>=1.3.0",
+]
+requires-python = ">=3.11" # Minimum Python version required
+
+[build-system]
+requires = ["setuptools>=80.8"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# UV specific configurations can go here if needed,
+
+# --- Setuptools configuration ---
+[tool.setuptools]
+# Explicitly list the packages to include.
+# 'lib' is a package because it contains Python modules you import (due to lib/__init__.py).
+# 'pages' is NOT listed here because Streamlit handles its discovery for multi-page apps.
+packages = ["lib"]
