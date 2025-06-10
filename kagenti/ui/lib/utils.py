@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +22,7 @@ import os
 def display_tags(st_object, tags_dict: dict):
     """
     Displays a dictionary of tags in a single row with gray backgrounds.
+
     Args:
         st_object: Streamlit object for displaying markdown.
         tags_dict: A dictionary of tags.
@@ -34,16 +36,16 @@ def display_tags(st_object, tags_dict: dict):
         for category, value in tags_dict.items()
     ]
     full_string = "**Tags:** " + "&nbsp;".join(tag_strings)
-    st_object.markdown(
-        full_string, unsafe_allow_html=True
-    )
+    st_object.markdown(full_string, unsafe_allow_html=True)
 
 
 def extract_tags_from_labels(labels: dict) -> dict:
     """
     Extracts tags relevant to 'kagenti.io/' from Kubernetes labels.
+
     Args:
         labels: A dictionary of Kubernetes labels.
+
     Returns:
         A dictionary of extracted tags.
     """
@@ -60,6 +62,7 @@ def extract_tags_from_labels(labels: dict) -> dict:
 def sanitize_for_k8s_name(name: str) -> str:
     """
     Sanitizes a string to be a valid Kubernetes resource name.
+
     Converts to lowercase, replaces disallowed characters (like underscores) with hyphens,
     and ensures it starts and ends with an alphanumeric character.
     Limits length to Kubernetes standards (e.g., 63 for many resources).
@@ -100,6 +103,7 @@ def remove_url_prefix(url: str, prefix: str = "https://") -> str:
 def get_resource_name_from_path(path: str) -> str:
     """
     Extracts a resource name from the last part of a file path.
+
     Example: "a2a/a2a_currency_converter" -> "a2a-currency-converter"
     """
     if not path:

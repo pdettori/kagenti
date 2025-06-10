@@ -76,9 +76,18 @@ rules:
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
   - apiGroups: ["beeai.beeai.dev"]
     resources: ["agents"]
     verbs: ["get", "list"]
+  - apiGroups: ["beeai.beeai.dev"]
+    resources: ["agentbuilds"]
+    verbs: ["get", "list", "create", "update", "patch", "watch"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

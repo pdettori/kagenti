@@ -49,12 +49,11 @@ GIT_USER_SECRET_NAME = "github-token-secret"
 GIT_USER_SECRET_KEY = "user"
 
 # --- Agent/Tool Default Environment Variables ---
+ENV_CONFIG_MAP_NAME = "environments"
+
 DEFAULT_ENV_VARS = [
     {"name": "PORT", "value": "8000"},
     {"name": "HOST", "value": "0.0.0.0"},
-    {"name": "LLM_API_BASE", "value": "http://host.docker.internal:11434/v1"},
-    {"name": "LLM_API_KEY", "value": "dummy"},
-    {"name": "LLM_MODEL", "value": "llama3.2:3b-instruct-fp16"},
     {
         "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
         "value": "http://otel-collector.kagenti-system.svc.cluster.local:8335",
@@ -62,18 +61,12 @@ DEFAULT_ENV_VARS = [
     {
         "name": "KEYCLOAK_URL",
         "value": "http://keycloak.keycloak.svc.cluster.local:8080",
-    }, 
-]
-
-DEFAULT_AGENT_ENV_VARS_EXT = [
-    {"name": "MCP_URL", "value": "http://mcp-get-weather:8000/sse"},
+    },
     {
-        "name": "OPENAI_API_KEY",
-        "valueFrom": {"secretKeyRef": {"name": "openai-secret", "key": "apikey"}},
+        "name": "CLIENT_SECRET",
+        "valueFrom": {"secretKeyRef": {"name": "keycloak-client-secret", "key": "client-secret"}},
     },
 ]
-
-DEFAULT_TOOL_ENV_VARS_EXT = []
 
 # --- Resource Limits and Requests ---
 DEFAULT_RESOURCE_LIMITS = {"cpu": "500m", "memory": "1Gi"}

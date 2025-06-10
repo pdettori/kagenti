@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +46,18 @@ def _handle_chat_interaction(
     log_display_container,
     protocol: str,
 ):
-    """Manages the chat input, agent interaction, and updates chat history."""
+    """
+    Manages the chat input, agent interaction, and updates chat history.
+
+    Args:
+        st_object (streamlit.SessionState): The Streamlit session state object.
+        agent_k8s_name (str): The Kubernetes name of the agent.
+        agent_chat_name (str): The name of the agent chat.
+        agent_url (str): The URL of the agent.
+        session_key_prefix (str): The prefix for session state keys.
+        log_display_container (streamlit.container.Container): The container for displaying logs.
+        protocol (str): The protocol of the agent ('acp' or 'a2a').
+    """
     prompt_key = f"chat_input_{session_key_prefix}"
     if prompt := st_object.chat_input("Say something to the agent...", key=prompt_key):
         append_to_chat_history(session_key_prefix, "user", prompt)
@@ -113,8 +125,9 @@ def _handle_chat_interaction(
 def render_agent_details_content(agent_k8s_name: str):
     """
     Renders the detailed view for a specific agent, including chat interface.
+
     Args:
-        agent_k8s_name: The Kubernetes name of the agent.
+        agent_k8s_name (str): The Kubernetes name of the agent.
     """
     st.header(f"Agent: {agent_k8s_name}")
 

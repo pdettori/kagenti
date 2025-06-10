@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,17 +18,30 @@ from typing import Optional, List, Dict, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession  # type: ignore
 from mcp.client.sse import sse_client  # type: ignore
-import httpx 
+import httpx
 import logging
 import anyio
+
+DEFAULT_AUTH_TOKEN = "my_token"
 
 logger = logging.getLogger(__name__)
 
 
 class MCPClientWrapper:
-    def __init__(self, mcp_server_url: str, auth_token: str = "my_token"):
+    """
+    A wrapper class for interacting with the MCP server.
+    It provides methods to list available tools and execute them.
+    """
+
+    def __init__(self, mcp_server_url: str, auth_token: Optional[str] = None):
+        """
+        Initialize the MCPClientWrapper with the server URL and authentication token.
+
+        :param mcp_server_url: The URL of the MCP server.
+        :param auth_token: The authentication token for the MCP server. Defaults to DEFAULT_AUTH_TOKEN.
+        """
         self.mcp_server_url = mcp_server_url
-        self.auth_token = auth_token
+        self.auth_token = auth_token or DEFAULT_AUTH_TOKEN
         self.cached_tools: List[Dict[str, Any]] = []
         self.last_list_tools_successful: bool = False
 
@@ -36,9 +50,6 @@ class MCPClientWrapper:
         Connects to the MCP server, lists available tools, caches them, and returns them.
         Manages its own AsyncExitStack for the duration of this operation.
         """
-        logger.info(
-            f"Attempting to connect to MCP server and list tools: {self.mcp_server_url}"
-        )
         # Reset state for this attempt
         self.cached_tools = []
         self.last_list_tools_successful = False
@@ -103,6 +114,9 @@ class MCPClientWrapper:
         """
         Connects to the MCP server, initializes a session, and calls the specified tool.
         Manages its own AsyncExitStack for the duration of this operation.
+
+        :param tool_name: The name of the tool to execute.
+        :param tool_args: The args for the tool.
         """
         logger.info(
             f"Attempting to connect and call MCP tool '{tool_name}' with args: {tool_args} on {self.mcp_server_url}"
@@ -134,9 +148,7 @@ class MCPClientWrapper:
             raise ConnectionError(
                 f"Failed to connect to MCP server at {self.mcp_server_url} to call tool '{tool_name}': {e}"
             ) from e
-        except (
-            anyio.ClosedResourceError
-        ) as cre:
+        except anyio.ClosedResourceError as cre:
             logger.error(
                 f"MCP ClosedResourceError while calling tool '{tool_name}': {cre}",
                 exc_info=True,
@@ -155,7 +167,13 @@ class MCPClientWrapper:
 
     # get_cached_tools can be used by the UI to display tools without a new server call
     def get_cached_tools(self) -> List[Dict[str, Any]]:
+        """
+        Returns the cached list of tools.
+        """
         return self.cached_tools
 
     def is_last_list_tools_successful(self) -> bool:
+        """
+        Returns whether the last call to list tools was successful.
+        """
         return self.last_list_tools_successful

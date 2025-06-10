@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant 
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +46,19 @@ def render_resource_catalog(
     Renders a catalog page for a given type of Kubernetes resource.
     Manages selection and navigation between list and detail views.
     Includes a namespace selector.
+
+    Args:
+        st_object (streamlit.BaseStreamlitWidget): The Streamlit object for displaying content.
+        resource_type_name (str): The name of the Kubernetes resource type.
+        list_resources_func (Callable): A function to list resources of the given type.
+        get_details_func (Callable): A function to get details of a specific resource.
+        render_details_func (Callable): A function to render details of a specific resource.
+        custom_obj_api (Optional[kubernetes.client.CustomObjectsApi]): The Kubernetes API client for custom resources.
+        generic_api_client (Optional[kubernetes.client.ApiClient]): The Kubernetes API client for generic resources.
+        session_state_key_selected_resource (str): The Streamlit session state key for the selected resource.
+
+    Returns:
+        None
     """
     st_object.header(f"{resource_type_name} Catalog")
 
@@ -52,7 +66,6 @@ def render_resource_catalog(
     available_namespaces = get_all_namespaces(generic_api_client)
 
     # Get the initial/current namespace
-    # get_kubernetes_namespace() now considers session state for the selected namespace
     current_namespace_from_kube_lib = get_kubernetes_namespace()
 
     selected_namespace_for_ui = current_namespace_from_kube_lib
@@ -201,9 +214,11 @@ def render_resource_catalog(
 def display_resource_metadata(st_object, resource_details: dict):
     """
     Displays common metadata for a Kubernetes resource (Agent or Tool).
+
     Args:
-        st_object: Streamlit object for displaying content.
-        resource_details: The dictionary representation of the resource.
+        st_object (streamlit.BaseStreamlitWidget): The Streamlit object for displaying content.
+        resource_details (dict): The dictionary representation of the resource.
+
     Returns:
         A dictionary of extracted tags.
     """

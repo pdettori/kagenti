@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Assisted by watsonx Code Assistant
 import streamlit as st
 import httpx
 import logging
@@ -38,7 +39,8 @@ from .utils import append_to_log_history, sanitize_for_session_state_key
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.INFO) # Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
+# Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
+logging.basicConfig(level=logging.INFO)
 
 
 async def _fetch_agent_card_with_resolver(
@@ -50,20 +52,16 @@ async def _fetch_agent_card_with_resolver(
 ) -> AgentCard | None:
     """Helper to fetch an agent card using A2ACardResolver."""
     try:
-        # Always provide a valid default path to the A2ACardResolver constructor.
-        # The actual path to fetch is specified in resolver.get_agent_card().
         resolver = A2ACardResolver(
             httpx_client=httpx_client,
             base_url=base_url,
-            agent_card_path=constants.A2A_PUBLIC_AGENT_CARD_PATH,  # Ensures constructor gets a valid string
+            agent_card_path=constants.A2A_PUBLIC_AGENT_CARD_PATH,
         )
-        # Log the specific path we are about to fetch with get_agent_card
         logger.info(
             f"Attempting to fetch agent card from path: {relative_card_path} on base URL: {base_url}"
         )
 
         http_kwargs = {"headers": auth_headers} if auth_headers else {}
-        # Fetch the specific 'relative_card_path' provided to this function
         agent_card: AgentCard = await resolver.get_agent_card(
             relative_card_path=relative_card_path, http_kwargs=http_kwargs
         )
@@ -80,7 +78,7 @@ async def _fetch_agent_card_with_resolver(
         error_msg = f"Network Error: Could not connect to {base_url}. Error: {e}"
         logger.error(error_msg)
         st_object.error(error_msg)
-    except AttributeError as e:  # Catch potential AttributeError like the one reported
+    except AttributeError as e:
         error_msg = f"AttributeError fetching agent card (possibly an issue with A2A library or path handling): {e}"
         logger.error(error_msg, exc_info=True)
         st_object.error(error_msg)
@@ -113,9 +111,7 @@ async def get_effective_agent_card(st_object, base_url: str) -> AgentCard | None
             logger.info(
                 "Public card supports authenticated extended card. Attempting to fetch."
             )
-            auth_headers = {
-                "Authorization": constants.A2A_DUMMY_AUTH_TOKEN
-            }
+            auth_headers = {"Authorization": constants.A2A_DUMMY_AUTH_TOKEN}
             extended_card = await _fetch_agent_card_with_resolver(
                 st_object,
                 client,
@@ -323,6 +319,29 @@ async def run_agent_chat_stream_a2a(
     message_placeholder,
     log_container,
 ) -> str:
+    """
+    Asynchronously runs an agent-to-agent chat stream with error handling and logging.
+
+    Args:
+        st_object (StreamlitObject): The Streamlit object to interact with for displaying messages and errors.
+        session_key_prefix (str): The session key prefix for logging purposes.
+        user_message (str): The user's input message to send to the agent.
+        agent_url (str): The URL of the agent to communicate with.
+        message_placeholder (Placeholder): The placeholder object to display messages and errors.
+        log_container (LogContainer): The log container object to store logs.
+
+    Returns:
+        str: The full response content from the agent.
+
+    Raises:
+        HTTPStatusError: If an HTTP status error occurs during the chat.
+        RequestError: If a network error occurs during the chat.
+        Exception: If any other unexpected error occurs during the chat.
+
+    The function initializes an A2AClient, sends a streaming message to the agent, and processes the response chunks.
+    It handles various exceptions, logs errors, and updates the message placeholder with the response content.
+    Finally, it returns the full response content from the agent.
+    """
     full_response_content = ""
     effective_agent_card = await get_effective_agent_card(st_object, agent_url)
     if not effective_agent_card:
@@ -332,7 +351,6 @@ async def run_agent_chat_stream_a2a(
         log_container.error(err_msg)
         return err_msg
 
-    stream_response_iterator = None  # Define to ensure it's available in finally
     async with httpx.AsyncClient() as httpx_client:
         try:
             client = A2AClient(httpx_client=httpx_client, url=agent_url)

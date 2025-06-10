@@ -25,7 +25,4 @@ build-backend = "setuptools.build_meta"
 
 # --- Setuptools configuration ---
 [tool.setuptools]
-# Explicitly list the packages to include.
-# 'lib' is a package because it contains Python modules you import (due to lib/__init__.py).
-# 'pages' is NOT listed here because Streamlit handles its discovery for multi-page apps.
 packages = ["lib"]

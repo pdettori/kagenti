@@ -18,8 +18,9 @@ import kubernetes.config
 import os
 from . import constants
 import logging
-from typing import Tuple, Optional, Any, List
+from typing import Tuple, Optional, Any, List, Dict
 import base64  # For decoding secret data
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,63 @@ def get_secret_data(
             f"Unexpected error reading secret '{secret_name}' in ns '{namespace}': {e}",
             exc_info=True,
         )
+        return None
+
+
+def get_config_map_data(
+    core_v1_api: Optional[kubernetes.client.CoreV1Api],
+    namespace: str,
+    config_map_name: str,
+) -> Optional[Dict[str, Any]]:
+    """Fetches and parses all data from a Kubernetes ConfigMap."""
+    if not core_v1_api:
+        logger.error("CoreV1Api not available, cannot fetch ConfigMap data.")
+        return None
+    try:
+        logger.info(
+            f"Attempting to read ConfigMap '{config_map_name}' in namespace '{namespace}'."
+        )
+        config_map = core_v1_api.read_namespaced_config_map(
+            name=config_map_name, namespace=namespace
+        )
+        if not config_map.data:
+            logger.warning(
+                f"ConfigMap '{config_map_name}' in namespace '{namespace}' has no data."
+            )
+            return {}
+
+        parsed_data = {}
+        for key, value in config_map.data.items():
+            try:
+                parsed_data[key] = json.loads(value)
+            except json.JSONDecodeError:
+                logger.warning(
+                    f"Could not parse JSON for key '{key}' in ConfigMap '{config_map_name}'. Skipping."
+                )
+        logger.info(
+            f"Successfully fetched and parsed data from ConfigMap '{config_map_name}'."
+        )
+        return parsed_data
+    except kubernetes.client.ApiException as e:
+        if e.status == 404:
+            logger.warning(
+                f"ConfigMap '{config_map_name}' not found in namespace '{namespace}'."
+            )
+            st.toast(
+                f"Optional ConfigMap '{config_map_name}' not found in namespace '{namespace}'.",
+                icon="ℹ️",
+            )
+        else:
+            logger.error(
+                f"ApiException when reading ConfigMap '{config_map_name}' in ns '{namespace}': {e.status} - {e.reason}"
+            )
+        return None
+    except Exception as e:
+        logger.error(
+            f"Unexpected error reading ConfigMap '{config_map_name}' in ns '{namespace}': {e}",
+            exc_info=True,
+        )
+        st.error(f"An unexpected error occurred while fetching the environments ConfigMap.")
         return None
 
 

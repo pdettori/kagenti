@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +25,7 @@ from .kube import (
     get_core_v1_api,
     get_all_namespaces,
     get_secret_data,
+    get_config_map_data,
     _handle_kube_api_exception,
     _display_kube_config_status_once,
 )
@@ -34,6 +36,16 @@ logger = logging.getLogger(__name__)
 
 
 def _get_keycloak_client_secret(st_object, client_name: str) -> str:
+    """
+    Retrieves the client secret from Keycloak for the given client name.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        client_name (str): The name of the Keycloak client.
+
+    Returns:
+        str: The client secret if found, otherwise an empty string.
+    """
     if not os.getenv("KEYCLOAK_ENABLED", "false").lower() == "true":
         return ""
     try:
@@ -77,6 +89,27 @@ def _construct_build_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
 ) -> Optional[dict]:
+    """
+    Constructs the Kubernetes resource body for a new build.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        core_v1_api (kubernetes.client.CoreV1Api): The Kubernetes CoreV1 API client.
+        build_namespace (str): The namespace where the build will be created.
+        resource_name (str): The name of the resource to be built.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+        repo_url (str): The URL of the Git repository.
+        repo_branch (str): The Git branch or tag to use for the build.
+        source_subfolder (str): The subfolder in the repository to use for the build.
+        protocol (str): The protocol to use for the resource.
+        framework (str): The framework to use for the resource.
+        description (str): A description for the resource.
+        additional_env_vars (Optional[list]): Additional environment variables to include in the build.
+        image_tag (str): The image tag to use for the build.
+
+    Returns:
+        Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
+    """
     k8s_resource_name = sanitize_for_k8s_name(resource_name)
     image_name = k8s_resource_name
     repo_user = get_secret_data(
@@ -96,10 +129,6 @@ def _construct_build_resource_body(
         st_object, f"{k8s_resource_name}-client"
     )
     final_env_vars = list(constants.DEFAULT_ENV_VARS)
-    if resource_type == constants.RESOURCE_TYPE_AGENT:
-        final_env_vars.extend(constants.DEFAULT_AGENT_ENV_VARS_EXT)
-    elif resource_type == constants.RESOURCE_TYPE_TOOL:
-        final_env_vars.extend(constants.DEFAULT_TOOL_ENV_VARS_EXT)
     if additional_env_vars:
         final_env_vars.extend(additional_env_vars)
     if client_secret_for_env:
@@ -164,7 +193,29 @@ def trigger_and_monitor_build(
     protocol: str,
     framework: str,
     description: str = "",
+    additional_env_vars: Optional[List[Dict[str, Any]]] = None,
 ):
+    """
+    Triggers a build for a new resource and monitors its status.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        custom_obj_api (kubernetes.client.CustomObjectsApi): The Kubernetes CustomObjects API client.
+        core_v1_api (kubernetes.client.CoreV1Api): The Kubernetes CoreV1 API client.
+        build_namespace (str): The namespace where the build will be created.
+        resource_name_suggestion (str): The suggested name for the new resource.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+        repo_url (str): The URL of the Git repository.
+        repo_branch (str): The Git branch or tag to use for the build.
+        source_subfolder (str): The subfolder in the repository to use for the build.
+        protocol (str): The protocol to use for the resource.
+        framework (str): The framework to use for the resource.
+        description (str): A description for the resource.
+        additional_env_vars (Optional[List[Dict[str, Any]]]): Additional environment variables to include in the build.
+
+    Returns:
+        bool: True if the build was successful, False otherwise.
+    """
     if not custom_obj_api:
         st_object.error(
             "Kubernetes CustomObjectsApi client not initialized. Cannot trigger build."
@@ -191,6 +242,7 @@ def trigger_and_monitor_build(
         protocol=protocol,
         framework=framework,
         description=description,
+        additional_env_vars=additional_env_vars,
     )
     if not build_cr_body:
         st_object.error(
@@ -312,28 +364,40 @@ def render_import_form(
     example_subfolders: List[str] = [],
     protocol_options: Optional[List[str]] = None,
 ):
-    """Renders the common UI form for importing a new Agent or Tool."""
+    """
+    Renders the common UI form for importing a new Agent or Tool.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+        default_protocol (str): The default protocol for the resource.
+        default_framework (str): The default framework for the resource.
+        k8s_api_client (Optional[kubernetes.client.ApiClient]): The Kubernetes API client.
+        k8s_client_status_msg (Optional[str]): The message to display for the Kubernetes client status.
+        k8s_client_status_icon (Optional[str]): The icon to display for the Kubernetes client status.
+        example_subfolders (List[str]): The list of example subfolders.
+        protocol_options (Optional[List[str]]): The list of available protocols.
+    """
     st_object.header(f"Import New {resource_type}")
 
-    # Display K8s client connection status
     _display_kube_config_status_once(
         k8s_client_status_msg, k8s_client_status_icon, bool(k8s_api_client)
     )
 
+    core_v1_api = get_core_v1_api()
+
     # --- Namespace Selector for Build/Deployment ---
-    available_build_namespaces = ["default"]  # Fallback
+    available_build_namespaces = ["default"]
     if k8s_api_client:
         available_build_namespaces = get_all_namespaces(k8s_api_client)
-        if (
-            not available_build_namespaces
-        ):  # If get_all_namespaces returned empty (e.g. due to permissions)
+        if not available_build_namespaces:
             available_build_namespaces = ["default"]
             st_object.caption(
-                "Could not list all namespaces, defaulting to 'default'. Check K8s permissions if other namespaces are expected."
+                "Could not list all namespaces, defaulting to 'default'. Check K8s permissions."
             )
     else:
         st_object.caption(
-            "Kubernetes client not available. Build will target 'default' namespace. Please check K8s connection."
+            "Kubernetes client not available. Build will target 'default' namespace."
         )
 
     default_build_ns = "default"
@@ -341,28 +405,21 @@ def render_import_form(
         "selected_build_k8s_namespace", default_build_ns
     )
 
-    # Ensure initial_selected_build_ns is valid within the available options
     if initial_selected_build_ns not in available_build_namespaces:
-        if default_build_ns in available_build_namespaces:
-            initial_selected_build_ns = default_build_ns
-        elif (
-            available_build_namespaces
-        ):  # if list is not empty but doesn't contain current or default
-            initial_selected_build_ns = available_build_namespaces[0]
+        initial_selected_build_ns = (
+            default_build_ns
+            if default_build_ns in available_build_namespaces
+            else available_build_namespaces[0]
+        )
 
-    build_ns_index = 0
-    if available_build_namespaces:  # Should always have at least "default"
-        try:
-            build_ns_index = available_build_namespaces.index(initial_selected_build_ns)
-        except ValueError:
-            build_ns_index = 0
+    build_ns_index = available_build_namespaces.index(initial_selected_build_ns)
 
     newly_selected_build_namespace = st_object.selectbox(
         f"Select Namespace to Deploy {resource_type}:",
         options=available_build_namespaces,
         index=build_ns_index,
         key=f"{resource_type.lower()}_build_namespace_selector",
-        help=f"The AgentBuild resource and the resulting {resource_type} will be created in this namespace. The '{constants.GIT_USER_SECRET_NAME}' must also exist here.",
+        help=f"The AgentBuild resource, the {resource_type}, and the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap will be in this namespace.",
     )
 
     if (
@@ -378,6 +435,27 @@ def render_import_form(
     )
     st_object.caption(f"Build will target namespace: **{build_namespace_to_use}**")
     st_object.markdown("---")
+
+    # --- Environment Variable Selection ---
+    env_options = {}
+    if core_v1_api:
+        env_options = get_config_map_data(
+            core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME
+        )
+        if env_options is None:
+            env_options = {}
+
+    selected_env_sets = []
+    if env_options:
+        st_object.subheader("Select Environment Variable Sets")
+        sorted_env_keys = sorted(list(env_options.keys()))
+        selected_env_sets = st_object.multiselect(
+            "Select environments to append:",
+            options=sorted_env_keys,
+            key=f"{resource_type.lower()}_env_sets_selector",
+            help=f"Select sets of environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}'.",
+        )
+        st_object.markdown("---")
 
     st_object.write(
         f"Provide source details to build and deploy a new {resource_type.lower()}."
@@ -416,7 +494,7 @@ def render_import_form(
             key=f"{resource_type.lower()}_subfolder_method",
         )
         if subfolder_selection_method == "Select from examples":
-            if example_subfolders:  # Check if example_subfolders is not empty
+            if example_subfolders:
                 selected_example = st_object.selectbox(
                     "Select an example:",
                     options=[""] + example_subfolders,
@@ -455,19 +533,22 @@ def render_import_form(
                 "Please provide all source details, subfolder path, and select a build namespace."
             )
             return
-        if (
-            not k8s_api_client
-        ):
+        if not k8s_api_client:
             st_object.error(
-                "Kubernetes client is not available. Cannot proceed with build. Please check K8s connection status at the top."
+                "Kubernetes client not available. Cannot proceed with build."
             )
             return
 
+        final_additional_envs = []
+        if selected_env_sets and env_options:
+            for key in selected_env_sets:
+                if key in env_options and isinstance(env_options[key], list):
+                    final_additional_envs.extend(env_options[key])
+
         custom_obj_api = get_custom_objects_api()
-        core_v1_api = get_core_v1_api()
         if not custom_obj_api or not core_v1_api:
             st_object.error(
-                "Kubernetes API clients (CustomObjects or CoreV1) not initialized correctly. Cannot trigger build."
+                "K8s API clients not initialized correctly. Cannot trigger build."
             )
             return
 
@@ -483,6 +564,7 @@ def render_import_form(
             source_subfolder=final_source_subfolder_path,
             protocol=selected_protocol,
             framework=selected_framework,
-            description=f"{resource_type} '{resource_name_suggestion}' built from UI in namespace {build_namespace_to_use}.",
+            description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
+            additional_env_vars=final_additional_envs,
         )
     st_object.markdown("---")

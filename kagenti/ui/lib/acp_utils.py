@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +51,6 @@ async def run_agent_chat_stream_acp(
         The complete response content from the agent as a string.
     """
     full_response_content = ""
-    # Normalize the agent name for SDK interaction (typically expects underscores)
     sdk_agent_name = agent_name_param.replace("-", "_")
     logger.info(
         f"Running ACP chat for agent: {agent_name_param} (normalized to SDK name: {sdk_agent_name}) at URL: {agent_url}"
@@ -61,21 +61,22 @@ async def run_agent_chat_stream_acp(
             user_message_input = Message(
                 parts=[MessagePart(content=user_message, role="user")]
             )
-            log_msg = f"▶️ Starting ACP stream with agent: {sdk_agent_name} at {agent_url}"  # Use normalized name for log
+            log_msg = (
+                f"▶️ Starting ACP stream with agent: {sdk_agent_name} at {agent_url}"
+            )
             append_to_log_history(session_key_prefix, log_msg)
             log_container.markdown(log_msg)
 
             async for event in client.run_stream(
                 agent=sdk_agent_name, input=[user_message_input]
-            ):  # Use normalized name for SDK call
+            ):
                 log_message = None
                 match event:
                     case MessagePartEvent(part=MessagePart(content=content)):
-                        if content:  # Ensure content is not None
+                        if content:
                             full_response_content += content
                             message_placeholder.markdown(full_response_content + "▌")
                     case GenericEvent():
-                        # Safely access generic event data
                         generic_data = (
                             event.generic.model_dump() if event.generic else {}
                         )
@@ -86,24 +87,16 @@ async def run_agent_chat_stream_acp(
                         )
                         log_message = f"ℹ️ **{log_type}**: {log_content}"
                     case MessageCompletedEvent():
-                        message_placeholder.markdown(
-                            full_response_content
-                        )  # Final update
+                        message_placeholder.markdown(full_response_content)
                         log_message = "✅ ACP Message Completed."
                     case _:
-                        # Try to get a descriptive log message for any other event types
                         event_type_name = (
                             event.type
                             if hasattr(event, "type")
                             else type(event).__name__
                         )
                         log_message = f"🔄 ACP Event: {event_type_name}"
-                        # If it's an object with a 'metadata' attribute, it might be the metadata event.
-                        if (
-                            hasattr(event, "metadata")
-                            and event.metadata
-                            and hasattr(event.metadata, "documentation")
-                        ):
+                        if hasattr(event, "metadata") and event.metadata:
                             doc_url = event.metadata.documentation or "N/A"
                             log_message += f" (Potentially metadata - Docs: {doc_url})"
 
@@ -112,15 +105,14 @@ async def run_agent_chat_stream_acp(
                     log_container.markdown(log_message)
 
     except Exception as e:
-        error_message = f"Error during ACP agent chat with '{sdk_agent_name}': {e}"  # Use normalized name in error
+        error_message = f"Error during ACP agent chat with '{sdk_agent_name}': {e}"
         logger.error(error_message, exc_info=True)
         st_object.error(error_message)
-        message_placeholder.error(error_message)  # Show error in chat
+        message_placeholder.error(error_message)
         append_to_log_history(session_key_prefix, f"❌ {error_message}")
-        log_container.error(error_message)  # Also log it
-        full_response_content = error_message  # Return error as content
+        log_container.error(error_message)
+        full_response_content = error_message
 
-    # Fallback if MessageCompletedEvent wasn't received but loop ended
     if (
         not isinstance(full_response_content, str)
         or "Error during ACP agent chat" not in full_response_content
@@ -142,7 +134,7 @@ async def display_acp_agent_metadata(
         st_object: Streamlit object for displaying messages.
         agent_logical_name: The logical name of the ACP agent.
         agent_url: The base URL of the ACP agent service.
-    """
+    """    
     displayed_once = False
     # Normalize the logical name from UI/K8s to match SDK's typical underscore usage for comparison
     normalized_logical_name_for_comparison = agent_logical_name.replace("-", "_")

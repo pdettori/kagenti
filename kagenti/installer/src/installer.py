@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant
 #!/usr/bin/env python3
 
 import os
@@ -18,6 +19,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
+from .keycloak import setup_keycloak
 
 # --- Configuration ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -29,7 +31,7 @@ OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
 LATEST_TAG = "0.2.0-alpha.2"
 
-# --- Dependency Version Requirements (Updated) ---
+# --- Dependency Version Requirements ---
 REQ_VERSIONS = {
     "docker": {"min": "25.0.0", "max": "28.0.0"},
     "kind": {"min": "0.20.0", "max": "0.28.0"},
@@ -48,6 +50,7 @@ class InstallableComponent(str, Enum):
     UI = "ui"
     GATEWAY = "gateway"
     KEYCLOAK = "keycloak"
+    AGENTS = "agents"
 
 
 # --- Rich Console & Typer App Initialization ---
@@ -182,7 +185,12 @@ def check_env_vars():
     with console.status("[cyan]Checking for .env file and variables..."):
         time.sleep(0.5)
         load_dotenv(dotenv_path=ENV_FILE)
-        required_vars = ["TOKEN", "REPO_USER", "OPENAI_API_KEY"]
+        required_vars = [
+            "GITHUB_USER",
+            "GITHUB_TOKEN",
+            "OPENAI_API_KEY",
+            "AGENT_NAMESPACES",
+        ]
         missing = [v for v in required_vars if not os.getenv(v)]
         if missing:
             console.log(
@@ -191,7 +199,7 @@ def check_env_vars():
             console.log(
                 "  Please ensure they are set in your .env file or environment."
             )
-            raise typer.Exit(1)
+            raise typer.Exit()
         console.log(
             "[bold green]✓[/bold green] All required environment variables are set."
         )
@@ -267,7 +275,6 @@ containerdConfigPatches:
                 input=final_config,
                 text=True,
                 check=True,
-                capture_output=True,
             )
             console.log(
                 f"[bold green]✓[/bold green] Kind cluster '{CLUSTER_NAME}' created."
@@ -276,6 +283,52 @@ containerdConfigPatches:
             console.log(f"[bold red]✗ Failed to create Kind cluster.[/bold red]")
             console.log(f"[red]{e.stderr.strip()}[/red]")
             raise typer.Exit(1)
+    console.print()
+
+
+def check_and_create_agent_namespaces():
+    """Checks for agent namespaces and prompts to create them if missing."""
+    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+    if not namespaces_str:
+        console.log(
+            "[yellow]AGENT_NAMESPACES not set. Skipping agent namespace check.[/yellow]"
+        )
+        return
+
+    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+
+    try:
+        config.load_kube_config()
+        v1_api = client.CoreV1Api()
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to check namespaces: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+
+    existing_namespaces = {ns.metadata.name for ns in v1_api.list_namespace().items}
+    missing_namespaces = [
+        ns for ns in agent_namespaces if ns not in existing_namespaces
+    ]
+
+    if missing_namespaces:
+        console.print(
+            f"The following required agent namespaces do not exist: [bold yellow]{', '.join(missing_namespaces)}[/bold yellow]"
+        )
+        if Confirm.ask("Do you want to create them now?", default=True):
+            for ns in missing_namespaces:
+                run_command(
+                    ["kubectl", "create", "namespace", ns], f"Creating namespace '{ns}'"
+                )
+        else:
+            console.print(
+                "[bold red]Cannot proceed without agent namespaces. Exiting.[/bold red]"
+            )
+            raise typer.Exit()
+    else:
+        console.log(
+            "[bold green]✓ All required agent namespaces already exist.[/bold green]"
+        )
     console.print()
 
 
@@ -551,6 +604,17 @@ def install_addons():
         "Adding Kiali Route",
     )
     run_command(
+        [
+            "kubectl",
+            "label",
+            "ns",
+            "istio-system",
+            "shared-gateway-access=true",
+            "--overwrite",
+        ],
+        "Enabling istio-system for kiali routing",
+    )
+    run_command(
         ["kubectl", "rollout", "status", "-n", "istio-system", "deployment/kiali"],
         "Waiting for Kiali rollout",
     )
@@ -703,6 +767,155 @@ def install_keycloak():
         ],
         "Adding Keycloak to Istio ambient mesh",
     )
+    # setup demo realm, user and agent
+    client_secret = setup_keycloak()
+    # setup namespaces
+    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+    if not namespaces_str:
+        return
+    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+    try:
+        config.load_kube_config()
+        v1_api = client.CoreV1Api()
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to configure agent namespaces for keycloak: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+    for ns in agent_namespaces:
+        console.print(
+            f"\n[cyan]Setting up keycloak client secret in namespace: {ns}[/cyan]"
+        )
+        if not secret_exists(v1_api, "keycloak-client-secret", ns):
+            run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "generic",
+                    "keycloak-client-secret",
+                    f"--from-literal=client-secret={client_secret}",
+                    "-n",
+                    ns,
+                ],
+                f"Creating 'keycloak-client-secret' in '{ns}'",
+            )
+
+
+def secret_exists(v1_api: client.CoreV1Api, name: str, namespace: str) -> bool:
+    """Checks if a secret exists in a given namespace."""
+    try:
+        v1_api.read_namespaced_secret(name=name, namespace=namespace)
+        console.log(
+            f"[grey70]Secret '{name}' already exists in namespace '{namespace}'. Skipping creation.[/grey70]"
+        )
+        return True
+    except client.ApiException as e:
+        if e.status == 404:
+            return False
+        console.log(
+            f"[bold red]Error checking for secret '{name}' in '{namespace}': {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+
+
+def install_agent_namespaces():
+    """Applies required secrets and labels to agent namespaces."""
+    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+    if not namespaces_str:
+        return  # Should not happen if AGENTS component is not skipped
+
+    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+
+    try:
+        config.load_kube_config()
+        v1_api = client.CoreV1Api()
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to configure agent namespaces: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+
+    github_user = os.getenv("GITHUB_USER")
+    github_token = os.getenv("GITHUB_TOKEN")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+
+    for ns in agent_namespaces:
+        console.print(f"\n[cyan]Configuring namespace: {ns}[/cyan]")
+
+        # Create GitHub secret if it doesn't exist
+        if not secret_exists(v1_api, "github-token-secret", ns):
+            run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "generic",
+                    "github-token-secret",
+                    f"--from-literal=user={github_user}",
+                    f"--from-literal=token={github_token}",
+                    "-n",
+                    ns,
+                ],
+                f"Creating github-token-secret in '{ns}'",
+            )
+
+        # Create OpenAI secret if it doesn't exist
+        if not secret_exists(v1_api, "openai-secret", ns):
+            run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "generic",
+                    "openai-secret",
+                    f"--from-literal=apikey={openai_api_key}",
+                    "-n",
+                    ns,
+                ],
+                f"Creating openai-secret in '{ns}'",
+            )
+
+        # apply configmap with environments
+        run_command(
+            [
+                "kubectl",
+                "apply",
+                "-n",
+                ns,
+                "-f",
+                str(RESOURCES_DIR / "environments.yaml"),
+            ],
+            f"Applying environments configmap in '{ns}'",
+        )
+
+        # Apply labels
+        run_command(
+            ["kubectl", "label", "ns", ns, "shared-gateway-access=true", "--overwrite"],
+            f"Applying shared-gateway-access label to '{ns}'",
+        )
+        run_command(
+            [
+                "kubectl",
+                "label",
+                "ns",
+                ns,
+                "istio.io/use-waypoint=waypoint",
+                "--overwrite",
+            ],
+            f"Applying use-waypoint label to '{ns}'",
+        )
+        run_command(
+            [
+                "kubectl",
+                "label",
+                "ns",
+                ns,
+                "istio.io/dataplane-mode=ambient",
+                "--overwrite",
+            ],
+            f"Applying dataplane-mode label to '{ns}'",
+        )
 
 
 @app.command()
@@ -731,10 +944,27 @@ def main(
         should_install_registry = InstallableComponent.REGISTRY not in skip_install
         create_kind_cluster(install_registry=should_install_registry)
 
+        console.print(
+            Panel(
+                Text(
+                    "4. Checking Agent Namespaces",
+                    justify="center",
+                    style="bold yellow",
+                )
+            )
+        )
+        if InstallableComponent.AGENTS not in skip_install:
+            check_and_create_agent_namespaces()
+        else:
+            console.print(
+                "[yellow]Skipping Agent Namespace check/creation as requested.[/yellow]"
+            )
+        console.print()
+
         # --- Component Installation ---
         console.print(
             Panel(
-                Text("4. Installing Components", justify="center", style="bold yellow")
+                Text("5. Installing Components", justify="center", style="bold yellow")
             )
         )
 
@@ -755,12 +985,12 @@ def main(
             deploy_component("Addons", install_addons, skip_install)
             deploy_component("Gateway", install_gateway, skip_install)
             deploy_component("Keycloak", install_keycloak, skip_install)
+            deploy_component("Agents", install_agent_namespaces, skip_install)
+
         else:
             console.print(
-                "[yellow]Skipping Addons, Gateway, and Keycloak because Istio is skipped.[/yellow]"
+                "[yellow]Skipping Addons, Gateway, Keycloak, and Agent Namespace configuration because Istio is skipped.[/yellow]"
             )
-
-        # Add other component deployment calls here...
 
         console.print(
             "\n",

@@ -1,3 +1,4 @@
+# Assisted by watsonx Code Assistant 
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +33,16 @@ logger = logging.getLogger(__name__)
 
 
 def get_mcp_client_from_session(session_key: str, mcp_url: str) -> MCPClientWrapper:
-    """Gets or creates an MCPClientWrapper instance in session state."""
+    """
+    Gets or creates an MCPClientWrapper instance in session state.
+
+    Args:
+        session_key (str): The session key to store the MCPClientWrapper instance.
+        mcp_url (str): The URL of the MCP server.
+
+    Returns:
+        MCPClientWrapper: The MCPClientWrapper instance.
+    """
     if session_key not in st.session_state:
         logger.info(
             f"Creating new MCPClientWrapper for session key '{session_key}' with URL: {mcp_url}"
@@ -53,7 +63,12 @@ def get_mcp_client_from_session(session_key: str, mcp_url: str) -> MCPClientWrap
 
 
 def render_mcp_tool_details_content(tool_k8s_name: str):
-    """Renders the detailed view for a specific MCP-enabled Tool."""
+    """
+    Renders the detailed view for a specific MCP-enabled Tool.
+
+    Args:
+        tool_k8s_name (str): The name of the MCP-enabled Tool in Kubernetes.
+    """
     st.header(f"MCP Tool: {tool_k8s_name}")
 
     custom_obj_api = get_custom_objects_api()
@@ -78,8 +93,8 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     tags = display_resource_metadata(st, tool_details_data)
     st.markdown("---")
 
-    # TODO - should use service info  
-    tool_service_name =  tool_k8s_name
+    # TODO - should use service info
+    tool_service_name = tool_k8s_name
 
     # Determine port based on environment, allowing override from spec
     running_in_cluster = is_running_in_cluster()
@@ -89,7 +104,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         else constants.DEFAULT_OFF_CLUSTER_PORT
     )
 
-    # TODO - should use service info  
+    # TODO - should use service info
     mcp_tool_service_port = default_port
     mcp_sse_path = constants.DEFAULT_MCP_SSE_PATH
 

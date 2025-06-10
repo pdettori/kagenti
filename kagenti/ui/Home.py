@@ -15,7 +15,6 @@
 import streamlit as st
 
 # --- Page Configuration ---
-# Streamlit Best practice: call set_page_config only once, and as the first Streamlit command.
 st.set_page_config(
     page_title="Cloud Native Agent Platform",
     layout="wide",
@@ -28,7 +27,6 @@ st.set_page_config(
 )
 
 # --- Custom CSS for Styling ---
-# Consolidate CSS into a single markdown call if possible.
 st.markdown(
     """
     <style>
