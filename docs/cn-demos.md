@@ -9,6 +9,8 @@ A diagram and description of the demo architecture is provided [here](./tech-det
 
 Before running the demo setup script, ensure you have the following prerequisites in place:
 
+* **Python:** Python versionn >=3.9
+* **uv** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
 * **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. 
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
 * **kubectl:** The Kubernetes command-line tool.
@@ -29,83 +31,37 @@ cd kagenti
 Setup your env variables as follows:
 
 ```shell
-cp examples/scripts/.env_template examples/scripts/.env
+cp kagenti/installer/src/.env_template kagenti/installer/src/.env
 ```
 
-Edit the file `examples/scripts/.env` to fill in the following:
+Edit the file `kagenti/installer/src/.env` to fill in the following:
 
 ```shell
 REPO_USER=<Your public Github User ID>
 OPENAI_API_KEY=<This is required only for A2A agents, if only using the ACP agents can just put a placeholder>
 TOKEN=<Your GitHub Token, as explained above>
+AGENT_NAMESPACES=<comma separated list of namespaces to setup for agents deployment e.g., `team1,team2`>
 ```
 
-Run the following script:
+Run the installer.
 
 ```shell
-examples/scripts/install-cnai-demo.sh 
+cd kagenti/installer
+uv run kagenti-installer
 ```
 
-It may take several minutes to complete, at the end you should have several agents and tools deployed.
+The installer creates a kind cluster for the agent platform and then deploys all platform components.
 
 ## Run the demo
 
-Exercise some of the agents:
-
-### ACP Weather Service (with MCP/sse tool)
+Open the Agent Platform Demo Dashboard:
 
 ```shell
-uv run --directory examples/clients/acp client.py --url http://acp-weather-service.localtest.me:8080 --name acp_weather_service
+open http://kagenti-ui.localtest.me:8080
 ```
 
-### ACP Ollama Deep Researcher
-
-```shell
-uv run --directory examples/clients/acp client.py --url http://acp-ollama-researcher.localtest.me:8080 --name ollama_deep_researcher
-```
-
-### A2A Currency Agent
-
-```shell
-uv run --directory examples/clients/a2a . --agent http://a2a-currency-agent.localtest.me:8080
-```
-
-### A2A Contact Extractor
-
-```shell
-uv run --directory examples/clients/a2a . --agent http://a2a-contact-extractor-agent.localtest.me:8080 
-```
-
-### Analyze Traces
-
-Open the Arize Phoenix dashboard:
-
-```shell
-open http://phoenix.localtest.me:8080
-```
-
-Select the "Traces" tab and open one trace, you should be able to see a screen similar to the following:
-
-![Example Image](images/phoenix.jpg)
-
-### Analyze Traffic with Kiali
-
-Run the followimg client to generate traffic and keep it going:
-
-```shell
-uv run --directory examples/clients/acp batch_client.py --url http://acp-weather-service.localtest.me:8080 --name ollama_weather_service --iterations 100 --user-message "how is the weather in NY?"
-```
-
-Open the Kiali dashboard:
-
-```shell
-open http://kiali.localtest.me:8080
-```
-
-Go to "Traffic Graph", select Namespace "default" and "App Graph" - you should be able to view 
-a graph similar to the following:
-
-![Example Image](images/kiali-graph.jpg)
+You can import agents written in any framework and wrapped with a2a or acp from github repos, test the agents
+and monitor traces and network traffic. You may also import mcp server from source and deploys them on the platform.
 
 
 ## Troubleshoting
@@ -117,9 +73,3 @@ Restart the following daemonset
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
 ```
-
-How to run ui app with streamlit
-
-```shell
- uv run streamlit run Home.py 
-``` 
