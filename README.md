@@ -51,17 +51,20 @@ To achieve the objectives outlined above, we are developing this technology thro
 
 The demoes are based on the following set of technologies:
 
-- [Llama Stack](https://llama-stack.readthedocs.io): a versatile software stack tailored for building applications that utilize Large Language Models (LLMs), 
-- Agent communication protocols such as [A2A](https://google.github.io/A2A) and [ACP](https://agentcommunicationprotocol.dev/introduction/welcome)
-- Tools protocols such as [MCP](https://modelcontextprotocol.io)
-- [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator to build and deploy agents and tools from source and manage lifecycle of agents, tools and platform components.
 - Cloud Native technologies such as [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io), [Istio Ambient Service Mesh](https://istio.io/latest/docs/ambient/) and [Kiali](https://kiali.io).
+- [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator to build and deploy agents and tools from source and manage lifecycle of agents, tools and platform components.
+- Tools protocols such as [MCP](https://modelcontextprotocol.io)
+- Agent communication protocols such as [A2A](https://google.github.io/A2A) and [ACP](https://agentcommunicationprotocol.dev/introduction/welcome)
+- [Llama Stack](https://llama-stack.readthedocs.io): a versatile software stack tailored for building applications that utilize Large Language Models (LLMs), 
+
+
+
 
 ### Demos
-
+- [Cloud Native Agent Platform with A2A and ACP multi-framework agents](./docs/cn-demos.md)
 - [Llama Stack Demos Installation](./docs/demos.md#installation)
 - [Llama Stack API Key Propagation](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
 - [Llama Stack Agent as MCP Tool](./docs/demos.md#agent-as-tool)
-- [Cloud Native Agent Platform with A2A and ACP multi-framework agents](./docs/cn-demos.md)
+
 
 

@@ -42,7 +42,7 @@ pip install uv
 Install providers
 
 ```shell
-cd providers
+cd llama-stack/providers/
 uv pip install -e .
 ```
 
@@ -76,18 +76,18 @@ cd examples/mcp
 uv run sse_server.py
 ```
 
-On a new terminal, first go back to `kagenti` directory `cd ../../`,
+On a new terminal, first go back to `kagenti` directory `cd ../../../`,
 then run the following command to activate the env and register the tool group:
 
 ```shell
 conda activate stack
-python -m examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup
+python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup
 ```
 
 Then invoke the tool with:
 
 ```shell
-python -m examples.clients.mcp.tool-util --host localhost --port 8321
+python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321
 ```
 
 verify the log for the MCP server, it should contain a printout like the following:
@@ -100,7 +100,7 @@ api_key=some-api-key
 verify that this is the `api_key` provided in the client looking at the client code:
 
 ```shell
-cat examples/clients/mcp/tool-util.py 
+cat kagenti/examples/clients/mcp/tool-util.py 
 ```
 
 ### Agent to Tool Key Propagation
@@ -116,7 +116,7 @@ the MCP fetch tool registred in the previous step, then run the agent as
 follows:
 
 ```shell
-python -m examples.clients.mcp.agent-mcp localhost 8321
+python -m kagenti.examples.clients.mcp.agent-mcp localhost 8321
 ```
 You should get an answer to the prompt that requires the agent to run
 the MCP tool to fetch some info from the web. Verify the log for the MCP server
@@ -147,7 +147,7 @@ the MCP server for CrewAI researcher agent:
 
 ```shell
 conda activate stack
-cd examples/agents_as_tools 
+cd kagenti/examples/agents_as_tools 
 uv run mcp_server.py
 ```
 
@@ -155,13 +155,13 @@ on another terminal, run the following command to register the tool group:
 
 ```shell
 conda activate stack
-python -m examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup --toolgroup_id remote::researcher --mcp_endpoint http://localhost:8001/sse
+python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup --toolgroup_id remote::researcher --mcp_endpoint http://localhost:8001/sse
 ```
 
 finally, run the Llama Stack agent which should use the crewai researcher agent as a tool:
 
 ```shell
-python -m examples.agents_as_tools.agent_mcp_agent localhost 8321
+python -m kagenti.examples.agents_as_tools.agent_mcp_agent localhost 8321
 ```
 
 
