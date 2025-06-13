@@ -11,10 +11,11 @@ Before running the demo setup script, ensure you have the following prerequisite
 
 * **Python:** Python versionn >=3.9
 * **uv** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
-* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. 
+* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine.
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
 * **kubectl:** The Kubernetes command-line tool.
-* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. 
+* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`.
+* **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
 * **[ollama](https://ollama.com/download)** to run LLMs locally.
 
 At this time the demo has only been tested on MacOS with M1 processor.
@@ -28,7 +29,7 @@ git clone https://github.com/kagenti/kagenti.git
 cd kagenti
 ```
 
-Setup your env variables as follows:
+Setup your env variables as follow:
 
 ```shell
 cp kagenti/installer/src/.env_template kagenti/installer/src/.env
@@ -37,9 +38,9 @@ cp kagenti/installer/src/.env_template kagenti/installer/src/.env
 Edit the file `kagenti/installer/src/.env` to fill in the following:
 
 ```shell
-REPO_USER=<Your public Github User ID>
+GITHUB_USER=<Your public Github User ID>
+GITHUB_TOKEN=<Your GitHub Token, as explained above>
 OPENAI_API_KEY=<This is required only for A2A agents, if only using the ACP agents can just put a placeholder>
-TOKEN=<Your GitHub Token, as explained above>
 AGENT_NAMESPACES=<comma separated list of namespaces to setup for agents deployment e.g., `team1,team2`>
 ```
 
