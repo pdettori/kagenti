@@ -31,7 +31,7 @@ git clone https://github.com/kagenti/kagenti.git
 cd kagenti
 ```
 
-Setup your env variables as follow:
+Setup your env variables:
 
 ```shell
 cp kagenti/installer/src/.env_template kagenti/installer/src/.env
