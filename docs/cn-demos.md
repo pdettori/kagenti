@@ -40,7 +40,7 @@ Edit the file `kagenti/installer/src/.env` to fill in the following:
 REPO_USER=<Your public Github User ID>
 OPENAI_API_KEY=<This is required only for A2A agents, if only using the ACP agents can just put a placeholder>
 TOKEN=<Your GitHub Token, as explained above>
-AGENT_NAMESPACES=<comma separated list of namespaces to setup for agents deployment e.g., `team1,team2`>
+AGENT_NAMESPACES=<comma separated list of Kubernetes namespaces to set up in Kind for agents deployment e.g., `team1,team2`>
 ```
 
 Run the installer.
@@ -64,7 +64,11 @@ You can import agents written in any framework and wrapped with a2a or acp from 
 and monitor traces and network traffic. You may also import mcp server from source and deploys them on the platform.
 
 
-## Troubleshoting
+## Troubleshooting
+
+### kagenti-installer reports "exceeded its progress deadline"
+
+Sometimes it can take a long time to pull container images.  Try re-running the installer.
 
 ### Agent stops responding through gateway 
 
@@ -72,4 +76,10 @@ Restart the following daemonset
 
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
+```
+
+### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
+
+```shell
+export DOCKER_HOST="unix://$HOME/.colima/docker.sock"
 ```
