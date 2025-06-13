@@ -20,7 +20,9 @@ Before running the demo setup script, ensure you have the following prerequisite
 
 At this time the demo has only been tested on MacOS with M1 processor.
 
-####  Setup
+When you encounter any problems, review our [Troubleshooting](#troubleshooting) section.
+
+#### Setup
 
 Clone this project:
 
@@ -64,13 +66,30 @@ open http://kagenti-ui.localtest.me:8080
 You can import agents written in any framework and wrapped with a2a or acp from github repos, test the agents
 and monitor traces and network traffic. You may also import mcp server from source and deploys them on the platform.
 
+## Troubleshooting
 
-## Troubleshoting
-
-### Agent stops responding through gateway 
+### Agent stops responding through gateway
 
 Restart the following daemonset
 
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
 ```
+
+### Using Podman instead of Docker
+
+The install script expects `docker` to be in your runtime path.
+
+A few problem fixes might include:
+
+* create `/usr/local/bin/docker` link to podman:
+
+  ```console
+   sudo ln -s /opt/podman/bin/podman /usr/local/bin/docker
+   ```
+
+* install `docker-credential-helper`:
+
+   ```console
+   brew install docker-credential-helper
+   ```
