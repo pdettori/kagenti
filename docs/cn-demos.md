@@ -111,3 +111,12 @@ A few problem fixes might include:
    podman machine set --memory=8192
    podman machine start
    ```
+
+* clean, fresh Podman start:
+
+   ```console
+   podman machine rm -f 
+   podman machine init
+   podman machine set --memory=8192
+   podman machine start
+   ```
