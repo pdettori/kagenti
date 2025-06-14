@@ -33,9 +33,9 @@ LATEST_TAG = "0.2.0-alpha.2"
 
 # --- Dependency Version Requirements ---
 REQ_VERSIONS = {
-    "docker": {"min": "25.0.0", "max": "28.0.0"},
     "kind": {"min": "0.20.0", "max": "0.99.0"},
-    "kubectl": {"min": "1.29.0", "max": "1.33.0"},
+    "docker": {"min": "5.0.0", "max": "28.0.0"},
+    "kubectl": {"min": "1.29.0", "max": "1.34.0"},
     "helm": {"min": "3.14.0", "max": "3.19.0"},
 }
 
