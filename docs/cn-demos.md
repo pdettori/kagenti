@@ -103,3 +103,20 @@ A few problem fixes might include:
    ```console
    brew install docker-credential-helper
    ```
+
+* fix an issue with `insufficient memory to start keycloak`:
+
+   ```console
+   podman machine stop
+   podman machine set --memory=8192
+   podman machine start
+   ```
+
+* clean, fresh Podman start:
+
+   ```console
+   podman machine rm -f 
+   podman machine init
+   podman machine set --memory=8192
+   podman machine start
+   ```
