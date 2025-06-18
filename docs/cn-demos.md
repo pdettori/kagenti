@@ -15,7 +15,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
 * **kubectl:** The Kubernetes command-line tool.
 * **Helm:** A package manager for Kubernetes.
-* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`.
+* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
 * **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
 * **[ollama](https://ollama.com/download)** to run LLMs locally.
 
