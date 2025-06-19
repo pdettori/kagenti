@@ -9,6 +9,7 @@ import time
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional
+import requests
 
 import docker
 import typer
@@ -30,6 +31,7 @@ CLUSTER_NAME = "agent-platform"
 OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
 LATEST_TAG = "0.2.0-alpha.2"
+KEYCLOAK_URL="http://keycloak.localtest.me:8080/realms/master"
 
 # --- Dependency Version Requirements ---
 REQ_VERSIONS = {
@@ -39,6 +41,18 @@ REQ_VERSIONS = {
     "helm": {"min": "3.14.0", "max": "3.19.0"},
 }
 
+# --- Images to preload in kind ---
+PRELOADABLE_IMAGES = [
+    "docker.io/istio/proxyv2:1.26.1-distroless",
+    "docker.io/istio/install-cni:1.26.1-distroless",
+    "docker.io/istio/pilot:1.26.1-distroless",
+    "docker.io/istio/ztunnel:1.26.1",
+    "docker.io/istio/proxyv2:1.26.1-distroless",
+    "otel/opentelemetry-collector-contrib:0.122.1",
+    "arizephoenix/phoenix:version-8.32.1",
+    "postgres:12",
+    "prom/prometheus:v3.1.0",
+]
 
 # --- Enum for Skippable Components ---
 class InstallableComponent(str, Enum):
@@ -285,6 +299,10 @@ containerdConfigPatches:
             raise typer.Exit(1)
     console.print()
 
+def preload_images_in_kind(images):
+    for image in images:
+        run_command(["docker", "pull", image],f"Pulling image {image}")
+        run_command(["kind", "load", "docker-image", image, "--name", CLUSTER_NAME],f"Loading image {image} in kind")
 
 def check_and_create_agent_namespaces():
     """Checks for agent namespaces and prompts to create them if missing."""
@@ -703,26 +721,31 @@ def install_keycloak():
     )
 
     patch_str = """
-{
-    "spec": {
-        "template": {
-            "spec": {
-                "containers": [
-                    {
-                        "name": "keycloak",
-                        "env": [
-                            {
-                                "name": "KC_PROXY_HEADERS",
-                                "value": "forwarded"
+    {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "keycloak",
+                            "env": [
+                                {
+                                    "name": "KC_PROXY_HEADERS",
+                                    "value": "forwarded"
+                                }
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "memory": "3000Mi"
+                                }
                             }
-                        ]
-                    }
-                ]
+                        }
+                    ]
+                }
             }
         }
     }
-}
-"""
+    """
     run_command(
         [
             "kubectl",
@@ -767,6 +790,7 @@ def install_keycloak():
         ],
         "Adding Keycloak to Istio ambient mesh",
     )
+
     # setup demo realm, user and agent
     client_secret = setup_keycloak()
     # setup namespaces
@@ -926,6 +950,11 @@ def main(
         help="Name of a component to skip. Use the flag multiple times for multiple components.",
         case_sensitive=False,
     ),
+    preload_images: bool = typer.Option(
+        False,
+        "--preload-images",
+        help="Flag to enable preloading of images in kind.",
+    ),
 ):
     """
     Installer for the Agent Platform. Checks dependencies and sets up a Kind cluster with optional components.
@@ -943,6 +972,9 @@ def main(
 
         should_install_registry = InstallableComponent.REGISTRY not in skip_install
         create_kind_cluster(install_registry=should_install_registry)
+
+        if preload_images:
+            preload_images_in_kind(PRELOADABLE_IMAGES)
 
         console.print(
             Panel(
