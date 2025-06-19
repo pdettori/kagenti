@@ -738,6 +738,10 @@ def install_keycloak():
                                 "limits": {
                                     "memory": "3000Mi"
                                 }
+                            },
+                            "startupProbe": {
+                                "periodSeconds": 30,
+                                "timeoutSeconds": 10
                             }
                         }
                     ]
@@ -791,8 +795,9 @@ def install_keycloak():
         "Adding Keycloak to Istio ambient mesh",
     )
 
-    # setup demo realm, user and agent
+    # setup Keycloak demo realm, user and agent
     client_secret = setup_keycloak()
+
     # setup namespaces
     namespaces_str = os.getenv("AGENT_NAMESPACES", "")
     if not namespaces_str:
@@ -824,7 +829,6 @@ def install_keycloak():
                 ],
                 f"Creating 'keycloak-client-secret' in '{ns}'",
             )
-
 
 def secret_exists(v1_api: client.CoreV1Api, name: str, namespace: str) -> bool:
     """Checks if a secret exists in a given namespace."""
@@ -1016,9 +1020,8 @@ def main(
         if InstallableComponent.ISTIO not in skip_install:
             deploy_component("Addons", install_addons, skip_install)
             deploy_component("Gateway", install_gateway, skip_install)
-            deploy_component("Keycloak", install_keycloak, skip_install)
             deploy_component("Agents", install_agent_namespaces, skip_install)
-
+            deploy_component("Keycloak", install_keycloak, skip_install)
         else:
             console.print(
                 "[yellow]Skipping Addons, Gateway, Keycloak, and Agent Namespace configuration because Istio is skipped.[/yellow]"

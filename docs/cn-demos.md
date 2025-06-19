@@ -121,3 +121,9 @@ A few problem fixes might include:
    podman machine set --memory=8192
    podman machine start
    ```
+
+* clean the cluster, keep the Podman VM as is:
+
+  ```console
+  kind delete cluster --name agent-platform
+  ```
