@@ -14,7 +14,13 @@ data:
       {
         "name": "OPENAI_API_KEY",
         "valueFrom": {"secretKeyRef": {"name": "openai-secret", "key": "apikey"}}
-      }
+      },
+      {
+        "name": "LLM_API_KEY",
+        "valueFrom": {"secretKeyRef": {"name": "openai-secret", "key": "apikey"}}
+      },
+      {"name": "LLM_API_BASE", "value": "https://api.openai.com/v1"},
+      {"name": "LLM_MODEL", "value": "gpt-4o-mini-2024-07-18"}
     ]
   mcp-weather: |
     [
