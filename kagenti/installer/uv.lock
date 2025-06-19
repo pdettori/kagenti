@@ -407,7 +407,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-keycloak" },
     { name = "rich" },
-    { name = "typer", extra = ["all"] },
+    { name = "typer" },
 ]
 
 [package.metadata]
@@ -417,8 +417,8 @@ requires-dist = [
     { name = "packaging", specifier = ">=23.0,<25.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
     { name = "python-keycloak", specifier = ">=5.5.1" },
-    { name = "rich", specifier = ">=13.0.0,<14.0.0" },
-    { name = "typer", extras = ["all"], specifier = ">=0.9.0,<0.12.0" },
+    { name = "rich", specifier = ">=13.0.0,<=14.0.0" },
+    { name = "typer", extras = ["all"], specifier = ">=0.16.0" },
 ]
 
 [[package]]
@@ -728,23 +728,18 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.11.1"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "click", version = "8.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/54/99/610ff2ca9c62cfb1ebfd40b2f509295d5992b51fba3684c9eaf465df54d5/typer-0.11.1.tar.gz", hash = "sha256:f5ae987b97ebbbd59182f8e84407bbc925bc636867fa007bce87a7a71ac81d5c", size = 87143 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/14/6c702faa2b1105a8d74ae3f5c6045d4fb88e85bb9dd219f4d8ec10a479d4/typer-0.11.1-py3-none-any.whl", hash = "sha256:4ce7b2a60b8543816ca97d5ec016026cbe95d1a7a931083b988c1d3682548fe7", size = 43579 },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "colorama" },
     { name = "rich" },
     { name = "shellingham" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/8c/7d682431efca5fd290017663ea4588bf6f2c6aad085c7f108c5dbc316e70/typer-0.16.0.tar.gz", hash = "sha256:af377ffaee1dbe37ae9440cb4e8f11686ea5ce4e9bae01b84ae7c63b87f1dd3b", size = 102625 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/42/3efaf858001d2c2913de7f354563e3a3a2f0decae3efe98427125a8f441e/typer-0.16.0-py3-none-any.whl", hash = "sha256:1f79bed11d4d02d4310e3c1b7ba594183bcedb0ac73b27a9e5f28f6fb5b98855", size = 46317 },
 ]
 
 [[package]]
