@@ -56,7 +56,7 @@ uv run kagenti-installer
 
 The installer creates a kind cluster named `agent-platform` and then deploys all platform components.
 
-To skip installation of the specific component issue, e.g. keycloak:
+To skip installation of the specific component e.g. keycloak, issue:
 
 ```shell
 uv run kagenti-installer --skip-install keycloak
