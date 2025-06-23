@@ -11,7 +11,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 
 * **Python:** Python versionn >=3.9
 * **uv** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
-* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine.
+* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. On MacOS, you will need also to do `brew install docker-credential-helper`
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
 * **kubectl:** The Kubernetes command-line tool.
 * **Helm:** A package manager for Kubernetes.
