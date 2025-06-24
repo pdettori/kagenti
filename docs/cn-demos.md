@@ -35,10 +35,10 @@ cd kagenti
 Setup your env variables:
 
 ```shell
-cp kagenti/installer/src/.env_template kagenti/installer/src/.env
+cp kagenti/installer/src/.env_template kagenti/installer/app/.env
 ```
 
-Edit the file `kagenti/installer/src/.env` to fill in the following:
+Edit the file `kagenti/installer/app/.env` to fill in the following:
 
 ```shell
 GITHUB_USER=<Your public Github User ID>
