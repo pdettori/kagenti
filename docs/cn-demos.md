@@ -35,7 +35,7 @@ cd kagenti
 Setup your env variables:
 
 ```shell
-cp kagenti/installer/src/.env_template kagenti/installer/app/.env
+cp kagenti/installer/app/.env_template kagenti/installer/app/.env
 ```
 
 Edit the file `kagenti/installer/app/.env` to fill in the following:
