@@ -25,6 +25,7 @@ from .components import (
     agents,
     gateway,
     istio,
+    spire,
     keycloak,
     operator,
     registry,
@@ -48,6 +49,7 @@ INSTALLERS = {
     InstallableComponent.CERT_MANAGER: cert_manager.install, 
     InstallableComponent.OPERATOR: operator.install,
     InstallableComponent.ISTIO: istio.install,
+    InstallableComponent.SPIRE: spire.install,
     InstallableComponent.ADDONS: addons.install,
     InstallableComponent.UI: ui.install,
     InstallableComponent.GATEWAY: gateway.install,
@@ -148,6 +150,7 @@ def main(
             deploy_component(InstallableComponent.GATEWAY, skip_install)
             deploy_component(InstallableComponent.ADDONS, skip_install)
             deploy_component(InstallableComponent.KEYCLOAK, skip_install)
+            deploy_component(InstallableComponent.SPIRE, skip_install)
             deploy_component(InstallableComponent.AGENTS, skip_install)
             deploy_component(InstallableComponent.UI, skip_install)
             deploy_component(InstallableComponent.INSPECTOR, skip_install)

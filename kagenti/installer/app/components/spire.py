@@ -13,17 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import (
-    addons,
-    agents,
-    gateway,
-    istio,
-    keycloak,
-    cert_manager,
-    spire,
-    operator,
-    registry,
-    tekton,
-    ui,
-    metrics_server
-)
+from ..utils import run_command
+
+
+def install():
+    """Installs all SPIRE components using the official Helm charts."""
+    run_command(
+        [
+            "helm",
+            "upgrade",
+            "--install",
+            "spire-crds",
+            "spire-crds",
+            "-n",
+            "spire-mgmt",
+            "--repo",
+            "https://spiffe.github.io/helm-charts-hardened/",
+            "--create-namespace",
+            "--wait",
+        ],
+        "Installing SPIRE CRDs",
+    )
