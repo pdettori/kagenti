@@ -30,6 +30,7 @@ from .components import (
     registry,
     tekton,
     ui,
+    metrics_server,
 )
 from .config import InstallableComponent
 from .utils import console
@@ -49,6 +50,7 @@ INSTALLERS = {
     InstallableComponent.GATEWAY: gateway.install,
     InstallableComponent.KEYCLOAK: keycloak.install,
     InstallableComponent.AGENTS: agents.install,
+    InstallableComponent.METRICS_SERVER: metrics_server.install,    
 }
 
 
@@ -133,6 +135,7 @@ def main(
         deploy_component(InstallableComponent.TEKTON, skip_install)
         deploy_component(InstallableComponent.OPERATOR, skip_install)
         deploy_component(InstallableComponent.ISTIO, skip_install)
+        deploy_component(InstallableComponent.METRICS_SERVER, skip_install)        
 
         # Components that depend on Istio
         if InstallableComponent.ISTIO not in skip_install:

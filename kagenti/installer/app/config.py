@@ -33,7 +33,7 @@ KEYCLOAK_URL = "http://keycloak.localtest.me:8080/realms/master"
 # Defines the minimum (inclusive) and maximum (exclusive) required versions for tools.
 REQ_VERSIONS = {
     "kind": {"min": "0.20.0", "max": "0.99.0"},
-    "docker": {"min": "5.0.0", "max": "28.0.0"},
+    "docker": {"min": "5.0.0", "max": "29.0.0"},
     "kubectl": {"min": "1.29.0", "max": "1.34.0"},
     "helm": {"min": "3.14.0", "max": "3.19.0"},
 }
@@ -48,6 +48,7 @@ PRELOADABLE_IMAGES = [
     "arizephoenix/phoenix:version-8.32.1",
     "postgres:12",
     "prom/prometheus:v3.1.0",
+    "registry.k8s.io/metrics-server/metrics-server:v0.7.2",    
 ]
 
 
@@ -64,3 +65,4 @@ class InstallableComponent(str, Enum):
     GATEWAY = "gateway"
     KEYCLOAK = "keycloak"
     AGENTS = "agents"
+    METRICS_SERVER= "metrics_server"    
