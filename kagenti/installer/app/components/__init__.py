@@ -22,5 +22,6 @@ from . import (
     operator,
     registry,
     tekton,
-    ui
+    ui,
+    metrics_server
 )
