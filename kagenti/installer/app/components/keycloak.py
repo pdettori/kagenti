@@ -185,7 +185,34 @@ def install():
     )
 
     patch_str = """
-    {"spec": {"template": {"spec": {"containers": [{"name": "keycloak","env": [{"name": "KC_PROXY_HEADERS","value": "forwarded"}],"resources": {"limits": {"memory": "3000Mi"}},"startupProbe": {"periodSeconds": 30,"timeoutSeconds": 10}}]}}}}
+    {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "keycloak",
+                            "env": [
+                                {
+                                    "name": "KC_PROXY_HEADERS",
+                                    "value": "forwarded"
+                                }
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "memory": "3000Mi"
+                                }
+                            },
+                            "startupProbe": {
+                                "periodSeconds": 30,
+                                "timeoutSeconds": 60
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
     """
     run_command(
         [
