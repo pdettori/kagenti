@@ -53,8 +53,34 @@ def install():
             "--repo",
             "https://spiffe.github.io/helm-charts-hardened/",
             "-f",
-            str(config.RESOURCES_DIR / "helm-values.yaml"),
+            str(config.RESOURCES_DIR / "spire-helm-values.yaml"),
             "--wait",
         ],
         "Installing SPIRE Server",
+    )
+    run_command(
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-route.yaml")],
+        "Applying Spire route",
+    )
+    run_command(
+        [
+            "kubectl",
+            "label",
+            "ns",
+            "spire-server",
+            "shared-gateway-access=true",
+            "--overwrite",
+        ],
+        "Sharing gateway access for Spire",
+    )
+    run_command(
+        [
+            "kubectl",
+            "label",
+            "namespace",
+            "spire-server",
+            "istio.io/dataplane-mode=ambient",
+            "--overwrite",
+        ],
+        "Adding Spire to Istio ambient mesh",
     )
