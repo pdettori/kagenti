@@ -13,5 +13,5 @@ spec:
     - "spire.localtest.me"
   rules:
     - backendRefs:
-        - name: spire
-          port: 443
+        - name: spire-spiffe-oidc-discovery-provider
+          port: 80
