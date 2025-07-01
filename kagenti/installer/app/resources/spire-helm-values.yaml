@@ -55,9 +55,9 @@ spiffe-oidc-discovery-provider:
   #    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
   #    nginx.ingress.kubernetes.io/ssl-redirect: "false"
   #    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
-  #tls:
-  #  spire:
-  #    enabled: false
+  tls:
+    spire:
+      enabled: false
 
 # tornjak-frontend:
 #   enabled: true
