@@ -18,19 +18,19 @@ from ..utils import run_command
 
 
 def install():
-    """Installs the BeeAI Operator using its Helm chart."""
+    """Installs the Platform Operator using its Helm chart."""
     run_command(
         [
             "helm",
             "upgrade",
             "--install",
-            "kagenti-beeai-operator",
-            "oci://ghcr.io/kagenti/kagenti-operator/kagenti-beeai-operator-chart",
+            "kagenti-platform-operator",
+            "oci://ghcr.io/kagenti/kagenti-operator/kagenti-platform-operator-chart",
             "--create-namespace",
             "--namespace",
             config.OPERATOR_NAMESPACE,
             "--version",
             config.LATEST_TAG,
         ],
-        "Installing the BeeAI Operator",
+        "Installing the Platform Operator",
     )

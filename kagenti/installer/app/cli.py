@@ -32,6 +32,7 @@ from .components import (
     ui,
     metrics_server,
     inspector,
+    cert_manager
 )
 from .config import InstallableComponent
 from .utils import console
@@ -44,6 +45,7 @@ app = typer.Typer(
 INSTALLERS = {
     InstallableComponent.REGISTRY: registry.install,
     InstallableComponent.TEKTON: tekton.install,
+    InstallableComponent.CERT_MANAGER: cert_manager.install, 
     InstallableComponent.OPERATOR: operator.install,
     InstallableComponent.ISTIO: istio.install,
     InstallableComponent.ADDONS: addons.install,
@@ -53,6 +55,7 @@ INSTALLERS = {
     InstallableComponent.AGENTS: agents.install,
     InstallableComponent.METRICS_SERVER: metrics_server.install,
     InstallableComponent.INSPECTOR: inspector.install,  
+    InstallableComponent.METRICS_SERVER: metrics_server.install 
 }
 
 
@@ -135,9 +138,11 @@ def main(
 
         deploy_component(InstallableComponent.REGISTRY, skip_install)
         deploy_component(InstallableComponent.TEKTON, skip_install)
+        deploy_component(InstallableComponent.CERT_MANAGER, skip_install)          
         deploy_component(InstallableComponent.OPERATOR, skip_install)
         deploy_component(InstallableComponent.ISTIO, skip_install)
         deploy_component(InstallableComponent.METRICS_SERVER, skip_install)        
+            
 
         # Components that depend on Istio
         if InstallableComponent.ISTIO not in skip_install:
