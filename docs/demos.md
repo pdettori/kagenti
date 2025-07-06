@@ -29,7 +29,7 @@ ollama run llama3.2:3b --keepalive 60m
 On another terminal, run:
 
 ```shell
-conda create -n stack python=3.10
+conda create -n stack python=3.12
 conda activate stack
 ```
 
@@ -43,20 +43,21 @@ Install providers
 
 ```shell
 cd llama-stack/providers/
+uv sync
 uv pip install -e .
 ```
 
 Build Llama Stack
 
 ```shell
-llama stack build --template ollama
+llama stack build --template ollama --image-type conda
 ```
 
 Start Llama Stack:
 
 ```shell
 export INFERENCE_MODEL=llama3.2:3b
-llama stack run templates/ollama/run.yaml 
+llama stack run templates/ollama/run.yaml
 ```
 
 You are now ready to run the demos.
@@ -72,7 +73,7 @@ MCP server with `web-fetch` tool:
 
 ```shell
 conda activate stack
-cd examples/mcp 
+cd kagenti/examples/mcp 
 uv run sse_server.py
 ```
 

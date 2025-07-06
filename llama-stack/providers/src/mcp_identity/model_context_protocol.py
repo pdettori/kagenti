@@ -24,13 +24,13 @@ from mcp.types import (
     CallToolResult,
     CallToolRequestParams,
 )
-from llama_stack.providers.datatypes import ToolsProtocolPrivate
+from llama_stack.providers.datatypes import ToolGroupsProtocolPrivate
 from llama_stack.distribution.request_headers import NeedsRequestProviderData
 
 from .config import ModelContextProtocolConfig
 
 
-class ModelContextProtocolToolRuntimeImpl(ToolsProtocolPrivate, ToolRuntime, NeedsRequestProviderData):
+class ModelContextProtocolToolRuntimeImpl(ToolGroupsProtocolPrivate, ToolRuntime, NeedsRequestProviderData):
     def __init__(self, config: ModelContextProtocolConfig):
         self.config = config
 
