@@ -3,9 +3,9 @@ name = "kagenti_providers"
 version = "0.1.0"
 description = "Kagenti providers for LLama Stack"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "llama-stack>=0.2.3", 
+    "llama-stack>=0.2.14", 
 ]
 
 [tool.setuptools]
