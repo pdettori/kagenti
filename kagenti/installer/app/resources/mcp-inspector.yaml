@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-inspector
+  namespace: kagenti-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-inspector
+  template:
+    metadata:
+      labels:
+        app: mcp-inspector
+    spec:
+      containers:
+        - name: mcp-inspector
+          image: ghcr.io/modelcontextprotocol/inspector:0.15.0
+          ports:
+            - containerPort: 6274
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          env:
+          - name: DANGEROUSLY_OMIT_AUTH
+            value: "true"    
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-inspector
+  namespace: kagenti-system
+spec:
+  selector:
+    app: mcp-inspector
+  ports:
+    - protocol: TCP
+      port: 6274
+      targetPort: 6274
+  type: ClusterIP
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-inspector
+  namespace: kagenti-system
+  labels:
+    app: mcp-inspector
+spec:
+  parentRefs:
+    - name: http
+      namespace: kagenti-system
+  hostnames:
+    - "mcp-inspector.localtest.me"
+  rules:
+    - backendRefs:
+        - name: mcp-inspector
+          port: 6274 
