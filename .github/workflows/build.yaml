@@ -46,7 +46,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/kagenti/${{ github.repository }}-ui
+          images: ghcr.io/${{ github.repository }}/ui
           tags: |
             # extract tag from git ref, e.g., v1.0.0 -> 1.0.0
             type=ref,event=tag
