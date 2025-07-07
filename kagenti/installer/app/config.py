@@ -66,3 +66,4 @@ class InstallableComponent(str, Enum):
     KEYCLOAK = "keycloak"
     AGENTS = "agents"
     METRICS_SERVER= "metrics_server"    
+    INSPECTOR = "inspector"

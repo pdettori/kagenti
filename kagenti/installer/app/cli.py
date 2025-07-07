@@ -31,6 +31,7 @@ from .components import (
     tekton,
     ui,
     metrics_server,
+    inspector,
 )
 from .config import InstallableComponent
 from .utils import console
@@ -50,7 +51,8 @@ INSTALLERS = {
     InstallableComponent.GATEWAY: gateway.install,
     InstallableComponent.KEYCLOAK: keycloak.install,
     InstallableComponent.AGENTS: agents.install,
-    InstallableComponent.METRICS_SERVER: metrics_server.install,    
+    InstallableComponent.METRICS_SERVER: metrics_server.install,
+    InstallableComponent.INSPECTOR: inspector.install,  
 }
 
 
@@ -144,9 +146,10 @@ def main(
             deploy_component(InstallableComponent.KEYCLOAK, skip_install)
             deploy_component(InstallableComponent.AGENTS, skip_install)
             deploy_component(InstallableComponent.UI, skip_install)
+            deploy_component(InstallableComponent.INSPECTOR, skip_install)
         else:
             console.print(
-                "[yellow]Skipping Addons, Gateway, Keycloak, and Agents because Istio installation was skipped.[/yellow]"
+                "[yellow]Skipping components because Istio installation was skipped.[/yellow]"
             )
 
         console.print(
