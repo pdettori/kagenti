@@ -23,7 +23,7 @@ spec:
       serviceAccountName: kagenti-ui-service-account
       containers:
         - name: kagenti-ui-container
-          image: quay.io/pdettori/kagenti-ui:latest
+          image: ghcr.io/kagenti/kagenti/ui:latest
           ports:
             - containerPort: 8501
           resources:
