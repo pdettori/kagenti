@@ -19,6 +19,7 @@ from ..utils import run_command
 
 def install():
     """Installs all SPIRE components using the official Helm charts."""
+    # This command sets up SPIRE CRDs
     run_command(
         [
             "helm",
@@ -35,12 +36,13 @@ def install():
         ],
         "Installing SPIRE CRDs",
     )
-    run_command(
-        [
-            "pwd",
-        ],
-        "Print working directory",
-    )
+    # run_command(
+    #     [
+    #         "pwd",
+    #     ],
+    #     "Print working directory",
+    # )
+    # Install SPIRE using provided helm configuration
     run_command(
         [
             "helm",
@@ -58,10 +60,22 @@ def install():
         ],
         "Installing SPIRE Server",
     )
+    # Setup OIDC route
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-route.yaml")],
-        "Applying Spire route",
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-oidc-route.yaml")],
+        "Applying Spire OIDC route",
     )
+    # Setup Tornjak backend route
+    run_command(
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-tornjak-api-route.yaml")],
+        "Applying Spire Tornjak api route",
+    )
+    # Setup Tornjak frontend route
+    run_command(
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-tornjak-ui-route.yaml")],
+        "Applying Spire Tornjak UI route",
+    )
+    # Add SPIRE namespace to shared gateway access
     run_command(
         [
             "kubectl",
@@ -73,6 +87,7 @@ def install():
         ],
         "Sharing gateway access for Spire",
     )
+    # Add SPIRE namespace to Istio ambient mesh
     run_command(
         [
             "kubectl",

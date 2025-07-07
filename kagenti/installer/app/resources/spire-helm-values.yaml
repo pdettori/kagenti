@@ -25,8 +25,8 @@ spire-server:
   #    enabled: true
       #annotations:
       #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-  #tornjak:
-  #  enabled: true
+  tornjak:
+    enabled: true
   #  ingress:
   #    enabled: true
       #annotations:
@@ -59,22 +59,22 @@ spiffe-oidc-discovery-provider:
     spire:
       enabled: false
 
-# tornjak-frontend:
-#   enabled: true
-#   image:
-#     tag: v2.0.0
-#   ingress:
-#     enabled: true
-#     #annotations:
-#     #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-#   apiServerURL: https://tornjak-backend.localtest.me
-#   service:
-#     type: ClusterIP
-#     port: 3000
-#   resources:
-#     requests:
-#       cpu: 50m
-#       memory: 128Mi
-#     limits:
-#       cpu: 100m
-#       memory: 512Mi
+tornjak-frontend:
+  enabled: true
+  image:
+    tag: v2.0.0
+  ingress:
+    enabled: true
+    #annotations:
+    #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  apiServerURL: http://spire-tornjak-api.localtest.me:8080
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 512Mi
