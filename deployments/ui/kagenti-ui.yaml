@@ -24,6 +24,7 @@ spec:
       containers:
         - name: kagenti-ui-container
           image: ghcr.io/kagenti/kagenti/ui:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8501
           resources:
@@ -82,10 +83,10 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list"]
-  - apiGroups: ["beeai.beeai.dev"]
+  - apiGroups: ["kagenti.operator.dev"]
     resources: ["agents"]
     verbs: ["get", "list"]
-  - apiGroups: ["beeai.beeai.dev"]
+  - apiGroups: ["kagenti.operator.dev"]
     resources: ["agentbuilds"]
     verbs: ["get", "list", "create", "update", "patch", "watch"]
 

@@ -135,7 +135,7 @@ def _construct_build_resource_body(
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
-        "kind": "AgentBuild",
+        "kind": "Component",
         "metadata": {
             "name": k8s_resource_name,
             "namespace": build_namespace,
@@ -148,33 +148,97 @@ def _construct_build_resource_body(
             },
         },
         "spec": {
-            "repoUrl": remove_url_prefix(repo_url),
-            "sourceSubfolder": source_subfolder,
-            "repoUser": repo_user,
-            "revision": repo_branch,
-            "image": image_name,
-            "imageTag": image_tag,
-            "imageRegistry": image_registry_prefix,
-            "env": [
-                {
-                    "name": "SOURCE_REPO_SECRET",
-                    "valueFrom": {
-                        "secretKeyRef": {"name": "github-token-secret", "key": "token"}
-                    },
-                }
-            ],
-            "deployAfterBuild": True,
-            "cleanupAfterBuild": True,
             "agent": {
-                "name": k8s_resource_name,
-                "description": description
-                or f"{resource_type.capitalize()} '{resource_name}' from community source",
-                "env": final_env_vars,
-                "resources": {
-                    "limits": constants.DEFAULT_RESOURCE_LIMITS,
-                    "requests": constants.DEFAULT_RESOURCE_REQUESTS,
+                "build": {
+                    "mode": "dev",
+                    "pipeline": {
+                        "parameters": [
+                            {
+                                "name": "SOURCE_REPO_SECRET",
+                                "value": "github-token-secret",
+                            },
+                            {
+                                "name": "repo-url",
+                                "value": remove_url_prefix(repo_url),
+                            },
+                            {
+                                "name": "revision",
+                                "value":  repo_branch,
+                            },
+                            {
+                                "name": "subfolder-path",
+                                "value": source_subfolder,
+                            },
+                            {
+                                "name": "image",
+                                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                            },
+                        ], 
+                    "cleanupAfterBuild": True,    
+                    },
                 },
             },
+            "deployer": {
+                "name": k8s_resource_name,
+                "namespace": build_namespace,
+                "deployAfterBuild": True,
+                "kubernetes": {
+                    "imageSpec": {
+                        "image": image_name,
+                        "imageTag": image_tag,
+                        "imageRegistry": image_registry_prefix,
+                        "imagePullPolicy": "IfNotPresent",
+                    },
+                    "containerPorts": [
+                        {
+                            "name": "http",
+                            "containerPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                            "protocol": "TCP",
+                        },
+                    ],
+                    "servicePorts": [
+                        {
+                            "name": "http",
+                            "port": constants.DEFAULT_IN_CLUSTER_PORT,
+                            "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                            "protocol": "TCP",
+                        },
+                    ],
+                    "resources": {
+                        "limits": constants.DEFAULT_RESOURCE_LIMITS,
+                        "requests": constants.DEFAULT_RESOURCE_REQUESTS,
+                    },    
+                    
+                },
+                "env": final_env_vars,
+            },
+            # "repoUrl": remove_url_prefix(repo_url),
+            # "sourceSubfolder": source_subfolder,
+            # "repoUser": repo_user,
+            # "revision": repo_branch,
+            # "image": image_name,
+            # "imageTag": image_tag,
+            # "imageRegistry": image_registry_prefix,
+            # "env": [
+            #     {
+            #         "name": "SOURCE_REPO_SECRET",
+            #         "valueFrom": {
+            #             "secretKeyRef": {"name": "github-token-secret", "key": "token"}
+            #         },
+            #     }
+            # ],
+            # "deployAfterBuild": True,
+            # "cleanupAfterBuild": True,
+            # "agent": {
+            #     "name": k8s_resource_name,
+            #     "description": description
+            #     or f"{resource_type.capitalize()} '{resource_name}' from community source",
+            #     "env": final_env_vars,
+            #     "resources": {
+            #         "limits": constants.DEFAULT_RESOURCE_LIMITS,
+            #         "requests": constants.DEFAULT_RESOURCE_REQUESTS,
+            #     },
+            # },
         },
     }
     return body

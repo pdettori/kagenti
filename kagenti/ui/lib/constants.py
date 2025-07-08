@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # --- Kubernetes CRD Definitions ---
-CRD_GROUP = "beeai.beeai.dev"
+CRD_GROUP = "kagenti.operator.dev"
 CRD_VERSION = "v1"
 AGENTS_PLURAL = "agents"
 AGENTBUILDS_PLURAL = "agentbuilds"
