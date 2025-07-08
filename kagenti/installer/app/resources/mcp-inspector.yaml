@@ -18,6 +18,7 @@ spec:
           image: ghcr.io/modelcontextprotocol/inspector:0.15.0
           ports:
             - containerPort: 6274
+            - containerPort: 6277
           resources:
             limits:
               cpu: 500m
@@ -27,8 +28,11 @@ spec:
               memory: 128Mi
           env:
           - name: DANGEROUSLY_OMIT_AUTH
-            value: "true"    
-
+            value: "true"
+          - name: ALLOWED_ORIGINS
+            value: http://mcp-inspector.localtest.me:8080
+          - name: HOST
+            value: 0.0.0.0
 ---
 apiVersion: v1
 kind: Service
@@ -39,9 +43,14 @@ spec:
   selector:
     app: mcp-inspector
   ports:
-    - protocol: TCP
-      port: 6274
-      targetPort: 6274
+  - name: ui
+    port: 6274
+    protocol: TCP
+    targetPort: 6274
+  - name: proxy
+    port: 6277
+    protocol: TCP
+    targetPort: 6277
   type: ClusterIP
 
 ---
@@ -62,3 +71,22 @@ spec:
     - backendRefs:
         - name: mcp-inspector
           port: 6274 
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-proxy
+  namespace: kagenti-system
+  labels:
+    app: mcp-inspector
+spec:
+  parentRefs:
+    - name: http
+      namespace: kagenti-system
+  hostnames:
+    - "mcp-proxy.localtest.me"
+  rules:
+    - backendRefs:
+        - name: mcp-inspector
+          port: 6277
