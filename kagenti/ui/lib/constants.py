@@ -14,9 +14,10 @@
 
 # --- Kubernetes CRD Definitions ---
 CRD_GROUP = "kagenti.operator.dev"
-CRD_VERSION = "v1"
+CRD_VERSION = "v1alpha1"
 AGENTS_PLURAL = "agents"
-AGENTBUILDS_PLURAL = "agentbuilds"
+COMPONENTS_PLURAL = "components"
+OPERATOR_NS = "kagenti-system"
 
 # --- Kubernetes Labels and Selectors ---
 KAGENTI_LABEL_PREFIX = "kagenti.io/"

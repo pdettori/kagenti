@@ -15,6 +15,8 @@
 
 import streamlit as st
 import kubernetes.client
+import logging
+import json
 import os
 import time
 from typing import Optional, List, Dict, Any, Callable
@@ -74,7 +76,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         return ""
 
 
-def _construct_build_resource_body(
+def _construct_tool_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
     build_namespace: str,
@@ -124,7 +126,157 @@ def _construct_build_resource_body(
         )
         return None
     st_object.info(f"Using GitHub username '{repo_user}' from secret for build.")
-    image_registry_prefix = f"ghcr.io/{repo_user}"
+    #image_registry_prefix = f"ghcr.io/{repo_user}"
+    image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+    client_secret_for_env = _get_keycloak_client_secret(
+        st_object, f"{k8s_resource_name}-client"
+    )
+    final_env_vars = list(constants.DEFAULT_ENV_VARS)
+    if additional_env_vars:
+        final_env_vars.extend(additional_env_vars)
+    if client_secret_for_env:
+        final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
+    
+    # Build the spec dictionary
+    spec = {
+        "suspend": False,
+        "tool": {
+            "toolType": "MCP",
+            "build": {
+                "mode": "dev",
+                "pipeline": {
+                    "parameters": [
+                        {
+                            "name": "SOURCE_REPO_SECRET",
+                            "value": "github-token-secret",
+                        },
+                        {
+                            "name": "repo-url",
+                            "value": remove_url_prefix(repo_url),
+                        },
+                        {
+                            "name": "revision",
+                            "value":  repo_branch,
+                        },
+                        {
+                            "name": "subfolder-path",
+                            "value": source_subfolder,
+                        },
+                        {
+                            "name": "image",
+                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                        },
+                    ], 
+                "cleanupAfterBuild": True,    
+                },
+            },
+        },
+        "deployer": {
+            "name": k8s_resource_name,
+            "namespace": build_namespace,
+            "deployAfterBuild": True,
+            "kubernetes": {
+                "imageSpec": {
+                    "image": image_name,
+                    "imageTag": image_tag,
+                    "imageRegistry": image_registry_prefix,
+                    "imagePullPolicy": "IfNotPresent",
+                },
+                "containerPorts": [
+                    {
+                        "name": "http",
+                        "containerPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                        "protocol": "TCP",
+                    },
+                ],
+                "servicePorts": [
+                    {
+                        "name": "http",
+                        "port": constants.DEFAULT_IN_CLUSTER_PORT,
+                        "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                        "protocol": "TCP",
+                    },
+                ],
+                "resources": {
+                    "limits": constants.DEFAULT_RESOURCE_LIMITS,
+                    "requests": constants.DEFAULT_RESOURCE_REQUESTS,
+                },    
+                
+            },
+            "env": final_env_vars,
+        },
+    }
+        
+    body = {
+        "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
+        "kind": "Component",
+        "metadata": {
+            "name": k8s_resource_name,
+            "namespace": constants.OPERATOR_NS,
+            "labels": {
+                constants.APP_KUBERNETES_IO_CREATED_BY: constants.STREAMLIT_UI_CREATOR_LABEL,
+                constants.APP_KUBERNETES_IO_NAME: constants.KAGENTI_OPERATOR_LABEL_NAME,
+                constants.KAGENTI_TYPE_LABEL: resource_type,
+                constants.KAGENTI_PROTOCOL_LABEL: protocol,
+                constants.KAGENTI_FRAMEWORK_LABEL: framework,
+            },
+        },
+        "spec": spec,
+    }
+    return body
+
+
+def _construct_agent_resource_body(
+    st_object,
+    core_v1_api: Optional[kubernetes.client.CoreV1Api],
+    build_namespace: str,
+    resource_name: str,
+    resource_type: str,
+    repo_url: str,
+    repo_branch: str,
+    source_subfolder: str,
+    protocol: str,
+    framework: str,
+    description: str,
+    additional_env_vars: Optional[list] = None,
+    image_tag: str = constants.DEFAULT_IMAGE_TAG,
+) -> Optional[dict]:
+    """
+    Constructs the Kubernetes resource body for a new build.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        core_v1_api (kubernetes.client.CoreV1Api): The Kubernetes CoreV1 API client.
+        build_namespace (str): The namespace where the build will be created.
+        resource_name (str): The name of the resource to be built.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+        repo_url (str): The URL of the Git repository.
+        repo_branch (str): The Git branch or tag to use for the build.
+        source_subfolder (str): The subfolder in the repository to use for the build.
+        protocol (str): The protocol to use for the resource.
+        framework (str): The framework to use for the resource.
+        description (str): A description for the resource.
+        additional_env_vars (Optional[list]): Additional environment variables to include in the build.
+        image_tag (str): The image tag to use for the build.
+
+    Returns:
+        Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
+    """
+    k8s_resource_name = sanitize_for_k8s_name(resource_name)
+    image_name = k8s_resource_name
+    repo_user = get_secret_data(
+        core_v1_api,
+        build_namespace,
+        constants.GIT_USER_SECRET_NAME,
+        constants.GIT_USER_SECRET_KEY,
+    )
+    if not repo_user:
+        st_object.error(
+            f"Failed to fetch GitHub username from secret '{constants.GIT_USER_SECRET_NAME}' (key: '{constants.GIT_USER_SECRET_KEY}') in namespace '{build_namespace}'. Ensure secret exists and K8s client is functional."
+        )
+        return None
+    st_object.info(f"Using GitHub username '{repo_user}' from secret for build.")
+    image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
     )
@@ -138,7 +290,7 @@ def _construct_build_resource_body(
         "kind": "Component",
         "metadata": {
             "name": k8s_resource_name,
-            "namespace": build_namespace,
+            "namespace": constants.OPERATOR_NS,
             "labels": {
                 constants.APP_KUBERNETES_IO_CREATED_BY: constants.STREAMLIT_UI_CREATOR_LABEL,
                 constants.APP_KUBERNETES_IO_NAME: constants.KAGENTI_OPERATOR_LABEL_NAME,
@@ -148,6 +300,7 @@ def _construct_build_resource_body(
             },
         },
         "spec": {
+            "suspend": False,
             "agent": {
                 "build": {
                     "mode": "dev",
@@ -212,33 +365,6 @@ def _construct_build_resource_body(
                 },
                 "env": final_env_vars,
             },
-            # "repoUrl": remove_url_prefix(repo_url),
-            # "sourceSubfolder": source_subfolder,
-            # "repoUser": repo_user,
-            # "revision": repo_branch,
-            # "image": image_name,
-            # "imageTag": image_tag,
-            # "imageRegistry": image_registry_prefix,
-            # "env": [
-            #     {
-            #         "name": "SOURCE_REPO_SECRET",
-            #         "valueFrom": {
-            #             "secretKeyRef": {"name": "github-token-secret", "key": "token"}
-            #         },
-            #     }
-            # ],
-            # "deployAfterBuild": True,
-            # "cleanupAfterBuild": True,
-            # "agent": {
-            #     "name": k8s_resource_name,
-            #     "description": description
-            #     or f"{resource_type.capitalize()} '{resource_name}' from community source",
-            #     "env": final_env_vars,
-            #     "resources": {
-            #         "limits": constants.DEFAULT_RESOURCE_LIMITS,
-            #         "requests": constants.DEFAULT_RESOURCE_REQUESTS,
-            #     },
-            # },
         },
     }
     return body
@@ -290,24 +416,41 @@ def trigger_and_monitor_build(
             "Kubernetes CoreV1Api client not initialized. Cannot fetch secrets for build."
         )
         return False
+    logger.info(f"Generating Component manifest\n")
     k8s_resource_name = sanitize_for_k8s_name(resource_name_suggestion)
     if not k8s_resource_name:
         st_object.error("Invalid resource name after sanitization. Cannot proceed.")
         return False
-    build_cr_body = _construct_build_resource_body(
-        st_object=st_object,
-        core_v1_api=core_v1_api,
-        build_namespace=build_namespace,
-        resource_name=k8s_resource_name,
-        resource_type=resource_type,
-        repo_url=repo_url,
-        repo_branch=repo_branch,
-        source_subfolder=source_subfolder,
-        protocol=protocol,
-        framework=framework,
-        description=description,
-        additional_env_vars=additional_env_vars,
-    )
+    if resource_type.lower() == "agent":
+        build_cr_body = _construct_agent_resource_body(
+           st_object=st_object,
+           core_v1_api=core_v1_api,
+           build_namespace=build_namespace,
+           resource_name=k8s_resource_name,
+           resource_type=resource_type,
+           repo_url=repo_url,
+           repo_branch=repo_branch,
+           source_subfolder=source_subfolder,
+           protocol=protocol,
+           framework=framework,
+           description=description,
+           additional_env_vars=additional_env_vars,
+        )
+    elif resource_type.lower() == "tool":
+        build_cr_body = _construct_tool_resource_body(
+           st_object=st_object,
+           core_v1_api=core_v1_api,
+           build_namespace=build_namespace,
+           resource_name=k8s_resource_name,
+           resource_type=resource_type,
+           repo_url=repo_url,
+           repo_branch=repo_branch,
+           source_subfolder=source_subfolder,
+           protocol=protocol,
+           framework=framework,
+           description=description,
+           additional_env_vars=additional_env_vars,
+        )            
     if not build_cr_body:
         st_object.error(
             f"Failed to construct build resource body for '{k8s_resource_name}'. Check previous errors."
@@ -317,21 +460,23 @@ def trigger_and_monitor_build(
         f"Submitting build for {resource_type} '{k8s_resource_name}' in namespace '{build_namespace}'..."
     ):
         try:
+
+            logger.info(f"Generated Component manifest:\n%s", json.dumps(build_cr_body, indent=2))
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
-                namespace=build_namespace,
-                plural=constants.AGENTBUILDS_PLURAL,
+                namespace=constants.OPERATOR_NS,
+                plural=constants.COMPONENTS_PLURAL,
                 body=build_cr_body,
             )
             st_object.success(
-                f"{resource_type.capitalize()}Build '{k8s_resource_name}' creation request sent to namespace '{build_namespace}'."
+                f"{resource_type.capitalize()} '{k8s_resource_name}' creation request sent to namespace '{build_namespace}'."
             )
         except kubernetes.client.ApiException as e:
             _handle_kube_api_exception(
                 st_object,
                 e,
-                f"{resource_type.capitalize()}Build '{k8s_resource_name}'",
+                f"{resource_type.capitalize()} '{k8s_resource_name}'",
                 action="creating",
             )
             return False
@@ -348,7 +493,7 @@ def trigger_and_monitor_build(
         f"Waiting for {resource_type} '{k8s_resource_name}' in '{build_namespace}' to build and deploy..."
     ):
         while (
-            current_build_status not in ["Completed", "Failed", "Error"]
+            current_build_status not in ["Succeeded", "Failed", "Error"]
             and retries < max_retries
         ):
             retries += 1
@@ -356,18 +501,24 @@ def trigger_and_monitor_build(
                 build_obj = custom_obj_api.get_namespaced_custom_object(
                     group=constants.CRD_GROUP,
                     version=constants.CRD_VERSION,
-                    namespace=build_namespace,
-                    plural=constants.AGENTBUILDS_PLURAL,
+                    namespace=constants.OPERATOR_NS,
+                    plural=constants.COMPONENTS_PLURAL,
                     name=k8s_resource_name,
                 )
                 status_data = build_obj.get("status", {})
-                current_build_status = status_data.get("buildStatus", "Unknown")
-                status_message = status_data.get("message", "")
-                deployment_status = status_data.get("deploymentStatus", "")
+                #current_build_status = status_data.get("buildStatus", "Unknown")
+                build_status_data = status_data.get("buildStatus", {})
+                current_build_status = build_status_data.get("phase", "Unknown")
+
+                status_message = build_status_data.get("message", "")
+                #deployment_status = status_data.get("deploymentStatus", "")
+                deployment_status_data = status_data.get("deploymentStatus", {})
+                deployment_phase = deployment_status_data.get("phase", "Unknown")
+
                 status_placeholder.info(
-                    f"Build Status for '{k8s_resource_name}': **{current_build_status}**\nMessage: {status_message}\nDeployment Status: **{deployment_status}**"
+                    f"Build Status for '{k8s_resource_name}': **{current_build_status}**\nMessage: {status_message}\nDeployment Status: **{deployment_phase}**"
                 )
-                if current_build_status in ["Completed", "Failed", "Error"]:
+                if current_build_status in ["Succeeded", "Failed", "Error"]:
                     break
                 time.sleep(constants.POLL_INTERVAL_SECONDS)
             except kubernetes.client.ApiException as e:
@@ -388,7 +539,7 @@ def trigger_and_monitor_build(
                 current_build_status = "Error"
                 break
         if retries >= max_retries and current_build_status not in [
-            "Completed",
+            "Succeeded",
             "Failed",
             "Error",
         ]:
@@ -396,26 +547,76 @@ def trigger_and_monitor_build(
                 f"Timeout waiting for build of '{k8s_resource_name}' to complete."
             )
             return False
-    if current_build_status == "Completed":
-        final_deployment_status = build_obj.get("status", {}).get(
-            "deploymentStatus", ""
-        )
-        if "Ready" in final_deployment_status or not final_deployment_status:
+        
+    if current_build_status == "Succeeded":
+        # Now wait for deployment to complete
+        deployment_retries = 0
+        max_deployment_retries = 120
+        final_deployment_phase = "Unknown"
+    
+        with st_object.spinner(
+           f"Build succeeded. Waiting for {resource_type} '{k8s_resource_name}' to deploy..."
+        ):
+           while (
+              final_deployment_phase not in ["Ready", "Failed", "Error"]
+              and deployment_retries < max_deployment_retries
+            ):
+                deployment_retries += 1
+                try:
+                   # Re-fetch the object to get latest deployment status
+                    build_obj = custom_obj_api.get_namespaced_custom_object(
+                      group=constants.CRD_GROUP,
+                      version=constants.CRD_VERSION,
+                      namespace=constants.OPERATOR_NS,
+                      plural=constants.COMPONENTS_PLURAL,
+                      name=k8s_resource_name,
+                    )
+                
+                    final_deployment_status = build_obj.get("status", {}).get(
+                       "deploymentStatus", {}
+                    )
+                    final_deployment_phase = final_deployment_status.get("phase", "Unknown")
+                    deployment_message = final_deployment_status.get("deploymentMessage", "")
+                
+                    # Update status display
+                    status_placeholder.info(
+                       f"Deployment Status for '{k8s_resource_name}': **{final_deployment_phase}**\n"
+                       f"Message: {deployment_message}"
+                    )
+                
+                    if final_deployment_phase in ["Ready", "Failed", "Error"]:
+                       break
+                    
+                    time.sleep(constants.POLL_INTERVAL_SECONDS)
+                
+                except Exception as e:
+                   st_object.warning(f"Error checking deployment status: {str(e)}")
+                   time.sleep(constants.POLL_INTERVAL_SECONDS)
+    
+        # Handle final deployment status
+        if final_deployment_phase == "Ready":
             st_object.success(
-                f"{resource_type.capitalize()} '{k8s_resource_name}' built and deployed successfully in namespace '{build_namespace}'!"
+               f"{resource_type.capitalize()} '{k8s_resource_name}' built and deployed successfully in namespace '{build_namespace}'!"
             )
             return True
+        elif final_deployment_phase in ["Failed", "Error"]:
+            st_object.error(
+              f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
+            )
+            return False
         else:
+           # Timeout case
             st_object.warning(
-                f"{resource_type.capitalize()} '{k8s_resource_name}' built in '{build_namespace}', but deployment status is '{final_deployment_status}'. Manual check might be needed."
+               f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
+               f"Last status: {final_deployment_phase}. Manual check might be needed."
             )
-            return True
+            return False
+        
     else:
         st_object.error(
-            f"{resource_type.capitalize()} build for '{k8s_resource_name}' in '{build_namespace}' finished with status: {current_build_status}. Check operator logs."
+          f"{resource_type.capitalize()} build for '{k8s_resource_name}' in '{build_namespace}' finished with status: {current_build_status}. Check operator logs."
         )
-        return False
-
+    return False
 
 def render_import_form(
     st_object,
@@ -483,7 +684,7 @@ def render_import_form(
         options=available_build_namespaces,
         index=build_ns_index,
         key=f"{resource_type.lower()}_build_namespace_selector",
-        help=f"The AgentBuild resource, the {resource_type}, and the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap will be in this namespace.",
+        help=f"The Component resource, the {resource_type}, and the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap will be in this namespace.",
     )
 
     if (
