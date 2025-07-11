@@ -19,6 +19,7 @@ from . import (
     gateway,
     istio,
     keycloak,
+    cert_manager,
     operator,
     registry,
     tekton,

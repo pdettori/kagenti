@@ -26,7 +26,7 @@ RESOURCES_DIR = SCRIPT_DIR / "resources"
 CLUSTER_NAME = "agent-platform"
 OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
-LATEST_TAG = "0.2.0-alpha.2"
+LATEST_TAG = "0.2.0-alpha.3"
 KEYCLOAK_URL = "http://keycloak.localtest.me:8080/realms/master"
 
 # --- Dependency Version Requirements ---
@@ -67,3 +67,4 @@ class InstallableComponent(str, Enum):
     AGENTS = "agents"
     METRICS_SERVER= "metrics_server"    
     INSPECTOR = "inspector"
+    CERT_MANAGER = "cert_manager"
