@@ -431,7 +431,7 @@ def get_tool_details(
         group=constants.CRD_GROUP,
         version=constants.CRD_VERSION,
         namespace=namespace,
-        plural=constants.COMPONENTS_PLURALL,
+        plural=constants.COMPONENTS_PLURAL,
         name=tool_name,
     )
 

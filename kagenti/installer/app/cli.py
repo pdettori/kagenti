@@ -55,7 +55,6 @@ INSTALLERS = {
     InstallableComponent.AGENTS: agents.install,
     InstallableComponent.METRICS_SERVER: metrics_server.install,
     InstallableComponent.INSPECTOR: inspector.install,  
-    InstallableComponent.METRICS_SERVER: metrics_server.install 
 }
 
 
