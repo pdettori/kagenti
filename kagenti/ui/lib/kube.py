@@ -294,7 +294,7 @@ def is_deployment_ready(resource_data: dict) -> str:
         if not isinstance(condition, dict):
             continue
         if (
-            condition.get("reason") == "DeploymentReady"
+            condition.get("reason") == "Ready"
             and condition.get("type") == "Ready"
             and condition.get("status") == "True"
         ):
@@ -381,7 +381,7 @@ def list_agents(
         group=constants.CRD_GROUP,
         version=constants.CRD_VERSION,
         namespace=namespace,
-        plural=constants.AGENTS_PLURAL,
+        plural=constants.COMPONENTS_PLURAL,
         label_selector=f"{constants.KAGENTI_TYPE_LABEL}={constants.RESOURCE_TYPE_AGENT}",
     )
 
@@ -398,7 +398,7 @@ def get_agent_details(
         group=constants.CRD_GROUP,
         version=constants.CRD_VERSION,
         namespace=namespace,
-        plural=constants.AGENTS_PLURAL,
+        plural=constants.COMPONENTS_PLURAL,
         name=agent_name,
     )
 
@@ -414,7 +414,7 @@ def list_tools(
         group=constants.CRD_GROUP,
         version=constants.CRD_VERSION,
         namespace=namespace,
-        plural=constants.AGENTS_PLURAL,
+        plural=constants.COMPONENTS_PLURAL,
         label_selector=f"{constants.KAGENTI_TYPE_LABEL}={constants.RESOURCE_TYPE_TOOL}",
     )
 
@@ -431,7 +431,7 @@ def get_tool_details(
         group=constants.CRD_GROUP,
         version=constants.CRD_VERSION,
         namespace=namespace,
-        plural=constants.AGENTS_PLURAL,
+        plural=constants.COMPONENTS_PLURALL,
         name=tool_name,
     )
 

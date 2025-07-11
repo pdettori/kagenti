@@ -139,6 +139,7 @@ def _construct_tool_resource_body(
     
     # Build the spec dictionary
     spec = {
+        "description": description,
         "suspend": False,
         "tool": {
             "toolType": "MCP",
@@ -212,7 +213,7 @@ def _construct_tool_resource_body(
         "kind": "Component",
         "metadata": {
             "name": k8s_resource_name,
-            "namespace": constants.OPERATOR_NS,
+            "namespace": build_namespace,
             "labels": {
                 constants.APP_KUBERNETES_IO_CREATED_BY: constants.STREAMLIT_UI_CREATOR_LABEL,
                 constants.APP_KUBERNETES_IO_NAME: constants.KAGENTI_OPERATOR_LABEL_NAME,
@@ -290,7 +291,7 @@ def _construct_agent_resource_body(
         "kind": "Component",
         "metadata": {
             "name": k8s_resource_name,
-            "namespace": constants.OPERATOR_NS,
+            "namespace": build_namespace,
             "labels": {
                 constants.APP_KUBERNETES_IO_CREATED_BY: constants.STREAMLIT_UI_CREATOR_LABEL,
                 constants.APP_KUBERNETES_IO_NAME: constants.KAGENTI_OPERATOR_LABEL_NAME,
@@ -300,6 +301,7 @@ def _construct_agent_resource_body(
             },
         },
         "spec": {
+            "description": description,            
             "suspend": False,
             "agent": {
                 "build": {
@@ -465,7 +467,7 @@ def trigger_and_monitor_build(
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
-                namespace=constants.OPERATOR_NS,
+                namespace=build_namespace,
                 plural=constants.COMPONENTS_PLURAL,
                 body=build_cr_body,
             )
@@ -501,7 +503,7 @@ def trigger_and_monitor_build(
                 build_obj = custom_obj_api.get_namespaced_custom_object(
                     group=constants.CRD_GROUP,
                     version=constants.CRD_VERSION,
-                    namespace=constants.OPERATOR_NS,
+                    namespace=build_namespace,
                     plural=constants.COMPONENTS_PLURAL,
                     name=k8s_resource_name,
                 )
@@ -567,7 +569,7 @@ def trigger_and_monitor_build(
                     build_obj = custom_obj_api.get_namespaced_custom_object(
                       group=constants.CRD_GROUP,
                       version=constants.CRD_VERSION,
-                      namespace=constants.OPERATOR_NS,
+                      namespace=build_namespace,
                       plural=constants.COMPONENTS_PLURAL,
                       name=k8s_resource_name,
                     )
