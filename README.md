@@ -47,7 +47,7 @@ This end-to-end approach aligns agentic workflows with security best practice pr
 
 ## Components
 
-To achieve the objectives outlined above, we are developing this technology through a series of demos—each targeting specific aspects of our goals. Our aim is to refine these demos into an initial **Minimum Viable Product (MVP)** architecture.
+To achieve the objectives outlined above, we are developing this technology through a series of demos, each targeting specific aspects of our goals. Our aim is to refine these demos into an initial **Minimum Viable Product (MVP)** architecture.
 
 These demos are built on the following core technologies:
 
