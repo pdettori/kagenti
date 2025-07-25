@@ -57,16 +57,6 @@ These demos are built on the following core technologies:
 - Agent-side communication via [A2A](https://google.github.io/A2A) and [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/introduction/welcome)
 - [Llama Stack](https://llama-stack.readthedocs.io): a flexible application stack designed for LLM-driven agents and applications.
 
-To achieve the objectives outlined above, we are developing this technology through a series of demoes, each targeting specific aspects of our goals. Our aim is to refine these demos into an initial Minimum Viable Product (MVP) architecture.
-
-The demoes are based on the following set of technologies:
-
-- Cloud Native technologies such as [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io), [Istio Ambient Service Mesh](https://istio.io/latest/docs/ambient/) and [Kiali](https://kiali.io).
-- [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator to build and deploy agents and tools from source and manage lifecycle of agents, tools and platform components.
-- Tools protocols such as [MCP](https://modelcontextprotocol.io)
-- Agent communication protocols such as [A2A](https://google.github.io/A2A) and [ACP](https://agentcommunicationprotocol.dev/introduction/welcome)
-- [Llama Stack](https://llama-stack.readthedocs.io): a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
-
 ---
 
 ### Supported Demos
