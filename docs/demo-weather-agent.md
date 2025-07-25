@@ -62,7 +62,7 @@ To verify that both the agent and tool are running:
 1. Open a terminal and connect to your Kubernetes cluster.
 2. Use the namespace you selected during deployment to check the status of the pods:
 
-   ```bash
+   ```console
    installer$ kubectl -n team1 get po
    NAME                                  READY   STATUS    RESTARTS   AGE
    acp-weather-service-8bb4644fc-4d65d   1/1     Running   0          1m
@@ -73,7 +73,7 @@ To verify that both the agent and tool are running:
    For the agent:
 
    ```console
-    installer$kubectl -n team1 logs -f acp-weather-service-8bb4644fc-4d65d
+    installer$ kubectl -n team1 logs -f acp-weather-service-8bb4644fc-4d65d
     Defaulted container "acp-weather-service" out of: acp-weather-service, kagenti-client-registration (init)
     INFO:     Started server process [18]
     INFO:     Waiting for application startup.
@@ -83,7 +83,7 @@ To verify that both the agent and tool are running:
 
     For the tool:
     ```console
-    installer$kubectl -n team1 logs -f weather-tool-5bb675dd7c-ccmlp
+    installer$ kubectl -n team1 logs -f weather-tool-5bb675dd7c-ccmlp
     Defaulted container "weather-tool" out of: weather-tool, kagenti-client-registration (init)
     INFO:     Started server process [19]
     INFO:     Waiting for application startup.
@@ -142,16 +142,16 @@ However, you can manually remove them by deleting their Custom Resources (CRs) f
 
 ### Step 1: List Custom Resource Definitions (CRDs)
 
-```bash
-    installer$kubectl get crds | grep kagenti
+```console
+    installer$ kubectl get crds | grep kagenti
     components.kagenti.operator.dev             2025-07-23T23:11:59Z
     platforms.kagenti.operator.dev              2025-07-23T23:11:59Z
 ```
 
 ### Step 2: List deployed components in your namespace
 
-```bash
-    installer$kubectl get components.kagenti.operator.dev -n team1
+```console
+    installer$ kubectl get components.kagenti.operator.dev -n team1
     NAME                  SUSPEND
     acp-weather-service   false
     weather-tool          false
@@ -159,8 +159,8 @@ However, you can manually remove them by deleting their Custom Resources (CRs) f
 
 ### Step3: Delete the Agent and the Tool
 
-```bash
-   installer$kubectl delete components.kagenti.operator.dev acp-weather-service weather-tool -n team1
+```console
+   installer$ kubectl delete components.kagenti.operator.dev acp-weather-service weather-tool -n team1
 ```
 
 The Kagenti Operator will automatically clean up all related Kubernetes resources.

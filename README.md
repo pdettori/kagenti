@@ -78,6 +78,7 @@ The following demos were developed during earlier phases of the Kagenti project.
 - [API Key Propagation from LS Client to MCP Tool Server](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
 - [Agent-as-Tool Demo (LLM Agent as MCP Tool)](./docs/demos.md#agent-as-tool)
 - [Identity and Token Exchange Workflows](./kagenti/examples/identity/)
+- [Keycloak Client Registration](./kagenti/examples/identity/kagenti_client_registration)
 
 ## Blogs
 
