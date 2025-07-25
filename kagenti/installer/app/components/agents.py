@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import os
+import platform
 import typer
 from kubernetes import client, config as kube_config
 
@@ -75,6 +76,15 @@ def install():
                     ns,
                 ],
                 f"Creating 'openai-secret' in '{ns}'",
+            )
+        # if user operating system is linux, do some special config to enable ollama
+        if platform.system() == "Linux":
+            run_command(
+                [
+                    "sh",
+                    "linux/ollama-config.sh"
+                ],
+                "Customizing ollama environment for Linux",
             )
 
         run_command(
