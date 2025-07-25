@@ -55,22 +55,38 @@ The demoes are based on the following set of technologies:
 - [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator to build and deploy agents and tools from source and manage lifecycle of agents, tools and platform components.
 - Tools protocols such as [MCP](https://modelcontextprotocol.io)
 - Agent communication protocols such as [A2A](https://google.github.io/A2A) and [ACP](https://agentcommunicationprotocol.dev/introduction/welcome)
-- [Llama Stack](https://llama-stack.readthedocs.io): a versatile software stack tailored for building applications that utilize Large Language Models (LLMs), 
+- [Llama Stack](https://llama-stack.readthedocs.io): a versatile software stack tailored for building applications that utilize Large Language Models (LLMs).
 
-### Demos
-- [Cloud Native Agent Platform with A2A and ACP multi-framework agents](./docs/cn-demos.md)
-- [Llama Stack Demos Installation](./docs/demos.md#installation)
-- [Llama Stack API Key Propagation](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
-- [Llama Stack Agent as MCP Tool](./docs/demos.md#agent-as-tool)
+---
+
+### Supported Demos
+
+We provide several demonstrations of the Agentic Platform operating in a cloud-native environment.  
+These showcase how agents, tools, and protocols interoperate to fulfill end-to-end application flows.
+
+Currently supported demos:
+
+- [Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents](./docs/cn-demos.md)
+
+---
+
+### Legacy and Reference Demos
+
+The following demos were developed during earlier phases of the Kagenti project. While no longer actively supported, they remain available for reference or to demonstrate specific functionalities:
+
+- [Llama Stack Demos – Installation Guide](./docs/demos.md#installation)
+- [API Key Propagation from LS Client to MCP Tool Server](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
+- [Agent-as-Tool Demo (LLM Agent as MCP Tool)](./docs/demos.md#agent-as-tool)
+- [Identity and Token Exchange Workflows](./kagenti/examples/identity/)
 
 ## Blogs
 
-We write about cutting edge of cloud native, AI, and security.
+We regularly publish articles at the intersection of cloud-native, AI, and platform security.
 
-Some recent articles:
+Some recent blog posts:
 
-- Toward a Cloud-Native Platform for AI Agents
-- Security in and around MCP
-- Identity in Agentic Platforms: Enabling Secure, Least-Privilege Access
+- **Toward a Cloud-Native Platform for AI Agents**
+- **Security in and around MCP**
+- **Identity in Agentic Platforms: Enabling Secure, Least-Privilege Access**
 
-[Learn more](https://medium.com/kagenti-the-agentic-platform)
+Read more on our [Kagenti Medium publication](https://medium.com/kagenti-the-agentic-platform).
