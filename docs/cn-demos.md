@@ -69,16 +69,26 @@ To get a full list of components and available install parameters issue:
 uv run kagenti-installer --help
 ```
 
-## Run the demo
+## Connect to the Kagenti UI
 
-Open the Agent Platform Demo Dashboard:
+Open the Kagenti UI in your browser:
 
 ```shell
 open http://kagenti-ui.localtest.me:8080
 ```
 
-You can import agents written in any framework and wrapped with a2a or acp from github repos, test the agents
-and monitor traces and network traffic. You may also import mcp server from source and deploys them on the platform.
+From the UI, you can:
+
+* Import agents written in any framework, wrapped with either the A2A or ACP protocol.
+* Import and deploy MCP Server tools directly from source.
+* Test agents interactively and inspect their behavior.
+* Monitor traces, logs, and network traffic between agents and tools.
+
+## Detailed Instructions for Running the Weather Demo
+
+For step-by-step instructions for importing and running agents and tools, see
+
+* [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
 
 ## Troubleshooting
 
