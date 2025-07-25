@@ -47,6 +47,16 @@ This end-to-end approach aligns agentic workflows with security best practice pr
 
 ## Components
 
+To achieve the objectives outlined above, we are developing this technology through a series of demos—each targeting specific aspects of our goals. Our aim is to refine these demos into an initial **Minimum Viable Product (MVP)** architecture.
+
+These demos are built on the following core technologies:
+
+- Cloud-native infrastructure including [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io), [Istio Ambient Mesh](https://istio.io/latest/docs/ambient/), and [Kiali](https://kiali.io).
+- [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator for building agents and tools from source, managing their lifecycle, and coordinating platform components.
+- Tool-side communication via [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
+- Agent-side communication via [A2A](https://google.github.io/A2A) and [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/introduction/welcome)
+- [Llama Stack](https://llama-stack.readthedocs.io): a flexible application stack designed for LLM-driven agents and applications.
+
 To achieve the objectives outlined above, we are developing this technology through a series of demoes, each targeting specific aspects of our goals. Our aim is to refine these demos into an initial Minimum Viable Product (MVP) architecture.
 
 The demoes are based on the following set of technologies:
@@ -81,12 +91,12 @@ The following demos were developed during earlier phases of the Kagenti project.
 
 ## Blogs
 
-We regularly publish articles at the intersection of cloud-native, AI, and platform security.
+We regularly publish articles at the intersection of cloud-native architecture, AI agents, and platform security.
 
-Some recent blog posts:
+Some recent posts include:
 
-- **Toward a Cloud-Native Platform for AI Agents**
-- **Security in and around MCP**
-- **Identity in Agentic Platforms: Enabling Secure, Least-Privilege Access**
+- [Toward a Cloud-Native Platform for AI Agents](https://medium.com/kagenti-the-agentic-platform/toward-a-cloud-native-platform-for-ai-agents-70081f15316d)
+- [Security in and around MCP](https://medium.com/kagenti-the-agentic-platform/security-in-and-around-mcp-part-1-oauth-in-mcp-3f15fed0dd6e)
+- [Identity in Agentic Platforms: Enabling Secure, Least-Privilege Access](https://medium.com/kagenti-the-agentic-platform/identity-in-agentic-platforms-enabling-secure-least-privilege-access-996527f1c983)
 
-Read more on our [Kagenti Medium publication](https://medium.com/kagenti-the-agentic-platform).
+Explore more on our [Kagenti Medium publication](https://medium.com/kagenti-the-agentic-platform).
