@@ -124,7 +124,7 @@ This authorizes the Weather Agent to access the Weather Tool.
 
 ---
 
-## Run the Weather Agent Demo
+## Chat with the Enabled Weather Agent
 
 Once the deployment is complete and the Agent is authorized to access the Tool, you can run the demo:
 
