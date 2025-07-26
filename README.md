@@ -59,14 +59,10 @@ These demos are built on the following core technologies:
 
 ---
 
-### Supported Demos
+### Try our demo
+We provide a quick way to deploy various relevant open source technologies to set up an agentic platform on your local cluster. This demonstrates how agents, tools, and protocols interoperate to fulfill end-to-end application flows in cloud-native environments. 
 
-We provide several demonstrations of the Agentic Platform operating in a cloud-native environment.  
-These showcase how agents, tools, and protocols interoperate to fulfill end-to-end application flows.
-
-Currently supported demos:
-
-- [Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents](./docs/cn-demos.md)
+See the [documentation](./docs/cn-demos.md) here for deploying a Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents. 
 
 ---
 
