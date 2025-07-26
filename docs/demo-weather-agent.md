@@ -65,7 +65,7 @@ To deploy the Weather Tool:
 
 ## Validate The Deployment
 
-Depending on your hosting environment, it may take some time for the deployment to complete.
+Depending on your hosting environment, it may take some time for the agent and tool deployments to complete.
 
 To verify that both the agent and tool are running:
 
