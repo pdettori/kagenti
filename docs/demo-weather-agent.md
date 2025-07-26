@@ -111,8 +111,8 @@ Once the agent and the tool are deployed, you need to authorize the agent to int
 2. Under [**Identity Management (Keycloak)**](http://kagenti-ui.localtest.me:8080/Admin#identity-management-keycloak), click the **Go to Identity Management Console** link.  
    This will open the Keycloak service in a new window or tab.
 3. Log in with the default admin demo credentials:
-   Username: admin
-   Password: admin
+   Username: `admin`
+   Password: `admin`
 4. In the top-left hamburger menu, ensure the **Keycloak** realm is selected as the *Current realm*.  
    If not, click **Manage realms** and select **Keycloak Master**.
 5. Under the **Manage** section in the left menu, click **Clients**.
