@@ -167,7 +167,7 @@ However, you can manually remove them by deleting their Custom Resources (CRs) f
     weather-tool          false
 ```
 
-### Step3: Delete the Agent and the Tool
+### Step 3: Delete the Agent and the Tool
 
 ```console
    installer$ kubectl delete components.kagenti.operator.dev acp-weather-service weather-tool -n team1
