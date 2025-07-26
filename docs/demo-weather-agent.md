@@ -113,7 +113,7 @@ Once the agent and the tool are deployed, you need to authorize the agent to int
 3. Log in with the default admin demo credentials:
    Username: admin
    Password: admin
-4. In the top-left hamburger menu,ensure the **Keycloak** realm is selected as the *Current realm*.  
+4. In the top-left hamburger menu, ensure the **Keycloak** realm is selected as the *Current realm*.  
    If not, click **Manage realms** and select **Keycloak Master**.
 5. Under the **Manage** section in the left menu, click **Clients**.
 6. Locate the `weather-agent` client in the list and click on it.
