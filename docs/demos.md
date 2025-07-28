@@ -1,168 +1,163 @@
-# Demoes
+# Cloud Native Proofs-Of-Concept
 
-The following demos have been implemented on Llama Stack.
+The following proof on concepts apply Cloud Native technologies to manage agentic workloads.
+A diagram and description of the demo architecture is provided [here](./tech-details.md#cloud-native-agent-platform-demo)
 
 ## Installation
 
-### Prereqs: 
+### Prerequisites
 
-- Make sure you have Python 3.11+ installed
-- Install a [conda-forge](https://conda-forge.org/download/) distribution for your environment 
-- Install [ollama](https://ollama.com/download)
+Before running the demo setup script, ensure you have the following prerequisites in place:
 
+* **Python:** Python versionn >=3.9
+* **uv** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
+* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. On MacOS, you will need also to do `brew install docker-credential-helper`
+  * In Rancher Decktop, configure VM size to at least 8GB of memory and 4 cores
+* **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker.
+* **kubectl:** The Kubernetes command-line tool.
+* **Helm:** A package manager for Kubernetes.
+* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
+* **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
+* **[ollama](https://ollama.com/download)** to run LLMs locally.
 
-###  Setup
+At this time the demo has only been tested on MacOS with M1 processor.
+
+When you encounter any problems, review our [Troubleshooting](#troubleshooting) section.
+
+#### Setup
 
 Clone this project:
 
 ```shell
-git clone git@github.com:kagenti/kagenti.git
+git clone https://github.com/kagenti/kagenti.git
 cd kagenti
 ```
 
-On one terminal, run:
+Setup your env variables:
 
 ```shell
-ollama run llama3.2:3b --keepalive 60m
+cp kagenti/installer/app/.env_template kagenti/installer/app/.env
 ```
 
-On another terminal, run:
+Edit the file `kagenti/installer/app/.env` to fill in the following:
 
 ```shell
-conda create -n stack python=3.12
-conda activate stack
+GITHUB_USER=<Your public Github User ID>
+GITHUB_TOKEN=<Your GitHub Token, as explained above>
+OPENAI_API_KEY=<This is required only for A2A agents, if only using the ACP agents can just put a placeholder>
+AGENT_NAMESPACES=<comma separated list of Kubernetes namespaces to set up in Kind for agents deployment e.g., `team1,team2`>
 ```
 
-Install uv:
+Run the installer.
 
 ```shell
-pip install uv
+cd kagenti/installer
+uv run kagenti-installer
 ```
 
-Install providers
+The installer creates a kind cluster named `agent-platform` and then deploys all platform components.
+
+To skip installation of the specific component e.g. keycloak, issue:
 
 ```shell
-cd llama-stack/providers/
-uv sync
-uv pip install -e .
+uv run kagenti-installer --skip-install keycloak
 ```
 
-Build Llama Stack
+To get a full list of components and available install parameters issue:
 
 ```shell
-llama stack build --template ollama --image-type conda
+uv run kagenti-installer --help
 ```
 
-Start Llama Stack:
+## Connect to the Kagenti UI
+
+Open the Kagenti UI in your browser:
 
 ```shell
-export INFERENCE_MODEL=llama3.2:3b
-llama stack run templates/ollama/run.yaml
+open http://kagenti-ui.localtest.me:8080
 ```
 
-You are now ready to run the demos.
+From the UI, you can:
 
-## API Key Propagation from LS client to MCP Tool Server
+* Import agents written in any framework, wrapped with either the A2A or ACP protocol.
+* Import and deploy MCP Server tools directly from source.
+* Test agents interactively and inspect their behavior.
+* Monitor traces, logs, and network traffic between agents and tools.
 
-This demo uses `provider_data` to send data to the MCP
-tool_runtime. Details on design and implementation
-are described in [this section.](./tech-details.md#api-key-propagation-to-mcp-tool)
+## Detailed Instructions for Running the Weather Demo
 
-Run llama stack server as above; open a new terminal and start sample 
-MCP server with `web-fetch` tool:
+For step-by-step instructions for importing and running agents and tools, see
+
+* [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
+
+## Troubleshooting
+
+### kagenti-installer reports "exceeded its progress deadline"
+
+Sometimes it can take a long time to pull container images.  Try re-running the installer.
+
+### Agent stops responding through gateway
+
+Restart the following daemonset
 
 ```shell
-conda activate stack
-cd kagenti/examples/mcp 
-uv run sse_server.py
+kubectl rollout restart daemonset -n istio-system  ztunnel
 ```
 
-On a new terminal, first go back to `kagenti` directory `cd ../../../`,
-then run the following command to activate the env and register the tool group:
+### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
 
 ```shell
-conda activate stack
-python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup
+export DOCKER_HOST="unix://$HOME/.colima/docker.sock"
 ```
 
-Then invoke the tool with:
+### Need to change ENV values
+
+If you need to update the values in `.env` file, e.g., `GITHUB_TOKEN`
+delete the secret in all your auto-created namespaces, then re-run the install
 
 ```shell
-python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321
+kubectl get secret --all-namespaces
+kubectl -n my-namespace delete github-token-secret 
+uv run kagenti-installer
 ```
 
-verify the log for the MCP server, it should contain a printout like the following:
+### Using Podman instead of Docker
 
-```console
-[03/12/25 21:09:19] INFO     Processing request of type CallToolRequest                                    server.py:534
-api_key=some-api-key
-```
+The install script expects `docker` to be in your runtime path.
 
-verify that this is the `api_key` provided in the client looking at the client code:
+A few problem fixes might include:
 
-```shell
-cat kagenti/examples/clients/mcp/tool-util.py 
-```
+* create `/usr/local/bin/docker` link to podman:
 
-### Agent to Tool Key Propagation
+  ```console
+   sudo ln -s /opt/podman/bin/podman /usr/local/bin/docker
+   ```
 
-As an extension to this demo, you can verify that the `api_key` is propagated 
-to the MCP tool when the tool is invoked by an agent instead than directly
-by the client. A sequence diagram for this scenario is illustrated 
-[here](./tech-details.md#api-key-propagation-to-mcp-tool).
+* install `docker-credential-helper`:
 
-After running the LS client to MCP Tool Server demo, have a look at the
-[agent-mcp client](../examples/clients/mcp/agent-mcp.py) code which uses
-the MCP fetch tool registred in the previous step, then run the agent as
-follows:
+   ```console
+   brew install docker-credential-helper
+   ```
 
-```shell
-python -m kagenti.examples.clients.mcp.agent-mcp localhost 8321
-```
-You should get an answer to the prompt that requires the agent to run
-the MCP tool to fetch some info from the web. Verify the log for the MCP server
-contains the `api_key` injected by the agent client.
+* fix an issue with `insufficient memory to start keycloak`:
 
-```console
-[03/13/25 16:02:04] INFO     Processing request of type CallToolRequest                                               server.py:534
-api_key=some-api-key
-```
+   ```console
+   podman machine stop
+   podman machine set --memory=8192
+   podman machine start
+   ```
 
-## Agent as Tool
+* clean, fresh Podman start:
 
-This demo involves registering a 
-CrewAI agent as a tool within the MCP framework. Once 
-registered, the Llama Stack agent, configured with this tool, 
-can utilize the CrewAI agent to conduct research on a given topic 
-and provide a final result. This demo currently utilizes a 
-single tool. However, it is conceivable that this approach could be 
-extended to register multiple agents, even those developed with 
-different frameworks, as tools. These tools can then be orchestrated 
-by the Llama Stack agent. This method leverages Large Language Models 
-(LLMs) to drive orchestration, offering a more dynamic alternative 
-to user-defined static workflows.
+   ```console
+   podman machine rm -f 
+   podman machine init
+   podman machine set --memory=8192
+   podman machine start
+   ```
 
+* clean the cluster, keep the Podman VM as is:
 
-Run llama stack server as above. On a new terminal, start 
-the MCP server for CrewAI researcher agent:
-
-```shell
-conda activate stack
-cd kagenti/examples/agents_as_tools 
-uv run mcp_server.py
-```
-
-on another terminal, run the following command to register the tool group:
-
-```shell
-conda activate stack
-python -m kagenti.examples.clients.mcp.tool-util --host localhost --port 8321 --register_toolgroup --toolgroup_id remote::researcher --mcp_endpoint http://localhost:8001/sse
-```
-
-finally, run the Llama Stack agent which should use the crewai researcher agent as a tool:
-
-```shell
-python -m kagenti.examples.agents_as_tools.agent_mcp_agent localhost 8321
-```
-
-
+  ```console
+  kind delete cluster --name agent-platform
+  ```
