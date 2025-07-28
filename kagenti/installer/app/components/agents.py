@@ -15,6 +15,7 @@
 
 import os
 import platform
+import subprocess
 import typer
 from kubernetes import client, config as kube_config
 
@@ -82,7 +83,7 @@ def install():
             run_command(
                 [
                     "sh",
-                    "linux/ollama-config.sh"
+                    "app/linux/ollama-config.sh"
                 ],
                 "Customizing ollama environment for Linux",
             )
