@@ -17,9 +17,9 @@ Here's a breakdown of the sections:
 - In [**Run the Weather Agent Demo**](#run-the-weather-agent-demo), you'll interact with the agent and confirm it responds correctly using real-time weather data.
 
 > **Prerequisites:**  
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](../cn-demos.md#installation) section. This demo uses `ACP` protocol, so you will not need `OPENAI_API_KEY` in your environment setup.
+> Ensure you've completed the Kagenti platform setup as described in the [Installation](../demos.md#installation) section. This demo uses `ACP` protocol, so you will not need `OPENAI_API_KEY` in your environment setup.
 
-You should also open the Agent Platform Demo Dashboard as instructed in the [Run the Demo](../cn-demos.md#run-the-demo) section.
+You should also open the Agent Platform Demo Dashboard as instructed in the [Run the Demo](../demos.md#run-the-demo) section.
 
 ---
 

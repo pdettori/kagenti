@@ -60,9 +60,9 @@ These demos are built on the following core technologies:
 ---
 
 ### Try our demo
-We provide a quick way to deploy various relevant open source technologies to set up an agentic platform on your local cluster. This demonstrates how agents, tools, and protocols interoperate to fulfill end-to-end application flows in cloud-native environments. 
+We provide a quick way to deploy various relevant open source technologies to set up an agentic platform on your local cluster. This demonstrates how agents, tools, and protocols interoperate to fulfill end-to-end application flows in cloud-native environments.
 
-See the [documentation](./docs/cn-demos.md) here for deploying a Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents. 
+See the [documentation](./docs/demos.md) here for deploying a Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents.
 
 ---
 
@@ -70,9 +70,9 @@ See the [documentation](./docs/cn-demos.md) here for deploying a Cloud-Native Ag
 
 The following demos were developed during earlier phases of the Kagenti project. While no longer actively supported, they remain available for reference or to demonstrate specific functionalities:
 
-- [Llama Stack Demos – Installation Guide](./docs/demos.md#installation)
-- [API Key Propagation from LS Client to MCP Tool Server](./docs/demos.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
-- [Agent-as-Tool Demo (LLM Agent as MCP Tool)](./docs/demos.md#agent-as-tool)
+- [Llama Stack Demos – Installation Guide](./docs/demos-llama-stack.md#installation)
+- [API Key Propagation from LS Client to MCP Tool Server](./docs/demos-llama-stack.md#api-key-propagation-from-ls-client-to-mcp-tool-server)
+- [Agent-as-Tool Demo (LLM Agent as MCP Tool)](./docs/demos-llama-stack.md#agent-as-tool)
 - [Identity and Token Exchange Workflows](./kagenti/examples/identity/)
 - [Keycloak Client Registration](./kagenti/examples/identity/kagenti_client_registration)
 
