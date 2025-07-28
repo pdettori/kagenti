@@ -458,3 +458,112 @@ def get_kubernetes_namespace():
                 f"Could not read namespace from service account path {ns_path}: {e}"
             )
     return os.getenv("KUBERNETES_NAMESPACE", "default")
+
+
+def delete_custom_resource(
+    st_object,
+    custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
+    group: str,
+    version: str,
+    namespace: str,
+    plural: str,
+    name: str,
+):
+    """
+    Delete a custom resource from Kubernetes.
+    
+    Args:
+        st_object: Streamlit object for displaying messages
+        custom_obj_api: Kubernetes CustomObjectsApi client
+        group: API group of the custom resource
+        version: API version of the custom resource
+        namespace: Kubernetes namespace
+        plural: Plural name of the custom resource
+        name: Name of the resource to delete
+        
+    Returns:
+        bool: True if deletion was successful, False otherwise
+    """
+    if not custom_obj_api:
+        st_object.error("Kubernetes CustomObjectsApi client not initialized.")
+        return False
+    
+    try:
+        logger.info(f"Deleting {plural}/{name} in ns '{namespace}'")
+        logger.info(f"Delete parameters - group: {group}, version: {version}, namespace: {namespace}, plural: {plural}, name: {name}")
+        
+        # First, verify the resource exists before trying to delete
+        try:
+            existing_resource = custom_obj_api.get_namespaced_custom_object(
+                group=group,
+                version=version,
+                namespace=namespace,
+                plural=plural,
+                name=name
+            )
+            logger.info(f"Resource {plural}/{name} exists, proceeding with deletion")
+        except kubernetes.client.ApiException as e:
+            if e.status == 404:
+                st_object.warning(f"Resource {plural}/{name} not found - it may have already been deleted.")
+                logger.warning(f"Resource {plural}/{name} not found (404)")
+                return True  # Consider this success since the resource is gone
+            else:
+                logger.error(f"Error checking if resource exists: {e}")
+                raise  # Re-raise to be handled by outer try-catch
+        
+        # Perform the deletion
+        delete_response = custom_obj_api.delete_namespaced_custom_object(
+            group=group, 
+            version=version, 
+            namespace=namespace, 
+            plural=plural, 
+            name=name
+        )
+        
+        logger.info(f"Delete API call completed for {plural}/{name}")
+        logger.debug(f"Delete response: {delete_response}")
+        
+        # Verify deletion was successful by checking if resource still exists
+        try:
+            # Wait a moment for deletion to propagate
+            import time
+            time.sleep(1)
+            
+            custom_obj_api.get_namespaced_custom_object(
+                group=group,
+                version=version,
+                namespace=namespace,
+                plural=plural,
+                name=name
+            )
+            # If we get here, the resource still exists
+            logger.warning(f"Resource {plural}/{name} still exists after deletion attempt")
+            st_object.warning(f"Deletion initiated but {plural}/{name} may still be terminating...")
+            return True  # Deletion was initiated even if not completed yet
+            
+        except kubernetes.client.ApiException as e:
+            if e.status == 404:
+                logger.info(f"Successfully deleted {plural}/{name} in ns '{namespace}' - resource no longer exists")
+                return True
+            else:
+                logger.error(f"Unexpected error verifying deletion: {e}")
+                return False
+        
+    except kubernetes.client.ApiException as e:
+        logger.error(f"Kubernetes API exception during deletion: {e}")
+        logger.error(f"Exception details - status: {e.status}, reason: {e.reason}, body: {e.body}")
+        _handle_kube_api_exception(
+            st_object, e, f"{plural}/{name}", action="deleting"
+        )
+        return False
+        
+    except Exception as e:
+        logger.error(f"Unexpected error deleting {plural}/{name}: {e}")
+        st_object.error(
+            f"An unexpected error occurred while deleting {plural}/{name}: {e}"
+        )
+        logger.error(
+            f"Unexpected error deleting {plural}/{name} in ns '{namespace}': {e}",
+            exc_info=True,
+        )
+        return False

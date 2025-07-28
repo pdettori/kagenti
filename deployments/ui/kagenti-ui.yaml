@@ -23,7 +23,8 @@ spec:
       serviceAccountName: kagenti-ui-service-account
       containers:
         - name: kagenti-ui-container
-          image: ghcr.io/kagenti/kagenti/ui:latest
+#          image: ghcr.io/kagenti/kagenti/ui:latest
+          image: kagenti-demo-ui:latest 
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8501
@@ -85,7 +86,7 @@ rules:
     verbs: ["get", "list"]
   - apiGroups: ["kagenti.operator.dev"]
     resources: ["components"]
-    verbs: ["get", "list", "create", "update", "patch", "watch"]
+    verbs: ["get", "list", "delete", "create", "update", "patch", "watch"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

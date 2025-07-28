@@ -41,6 +41,7 @@ def render_resource_catalog(
     ],
     generic_api_client: Optional[kubernetes.client.ApiClient],
     session_state_key_selected_resource: str,
+    delete_resource_func: Optional[Callable] = None,
 ):
     """
     Renders a catalog page for a given type of Kubernetes resource.
@@ -56,6 +57,8 @@ def render_resource_catalog(
         custom_obj_api (Optional[kubernetes.client.CustomObjectsApi]): The Kubernetes API client for custom resources.
         generic_api_client (Optional[kubernetes.client.ApiClient]): The Kubernetes API client for generic resources.
         session_state_key_selected_resource (str): The Streamlit session state key for the selected resource.
+        delete_resource_func (Optional[Callable]): A function to delete a resource. Should accept (api_client, resource_name, namespace).
+
 
     Returns:
         None
@@ -189,7 +192,7 @@ def render_resource_catalog(
                 status = is_deployment_ready(resource_item)
 
                 with st_object.container(border=True):
-                    col_name, col_button = st.columns([4, 1])
+                    col_name, col_button = st.columns([3, 2])
                     with col_name:
                         st.markdown(f"### {item_name}")
                         st.write(f"**Description:** {item_description}")
@@ -200,11 +203,72 @@ def render_resource_catalog(
                             "<div style='height: 20px;'></div>", unsafe_allow_html=True
                         )
                         button_key = f"view_details_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
-                        if st.button("View Details", key=button_key):
+                        if st.button("📋 View Details", key=button_key):
                             st.session_state[session_state_key_selected_resource] = (
                                 item_name
                             )
                             st.rerun()
+
+
+                        # Enable the Delete button if delete function is provided in arg list
+                        if delete_resource_func:
+                            delete_confirm_key = f"delete_confirm_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
+                            
+                            # Initialize delete confirmation state for the delete key
+                            if delete_confirm_key not in st.session_state:
+                                st.session_state[delete_confirm_key] = False
+                            
+                            if not st.session_state[delete_confirm_key]:
+                                delete_button_key = f"delete_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
+                                if st.button(
+                                    "🗑️ Delete",
+                                    key=delete_button_key,
+                                    type="secondary",
+                                    help=f"Delete {resource_type_name} '{item_name}'"
+                                ):
+                                    st.session_state[delete_confirm_key] = True
+                                    # Refresh screen to show confirmation buttons
+                                    st.rerun()
+                            else:
+                                # Confirmation buttons
+                                st.write("⚠️ **Confirm delete?**")
+                                
+                                col_confirm, col_cancel = st.columns([1, 1])
+                                
+                                with col_confirm:
+                                    confirm_button_key = f"confirm_delete_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
+                                    if st.button(
+                                        "✅ Yes",
+                                        key=confirm_button_key,
+                                        type="primary",
+                                        help="Confirm deletion"
+                                    ):
+                                        try:
+                                            # Call the delete function
+                                            delete_resource_func(
+                                                custom_obj_api, 
+                                                item_name, 
+                                                namespace_to_use
+                                            )
+                                            st.success(f"Successfully deleted {resource_type_name} '{item_name}'")
+                                            
+                                            # Reset confirmation state
+                                            st.session_state[delete_confirm_key] = False
+                                            st.rerun()
+                                            
+                                        except Exception as e:
+                                            st.error(f"Failed to delete {resource_type_name}: {str(e)}")
+                                            st.session_state[delete_confirm_key] = False
+                                
+                                with col_cancel:
+                                    cancel_button_key = f"cancel_delete_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
+                                    if st.button(
+                                        "❌ No",
+                                        key=cancel_button_key,
+                                        help="Cancel deletion"
+                                    ):
+                                        st.session_state[delete_confirm_key] = False
+                                        st.rerun()                            
         else:
             st_object.info(
                 f"No '{resource_type_name}' custom resources with the required labels found in the '{namespace_to_use}' namespace."
