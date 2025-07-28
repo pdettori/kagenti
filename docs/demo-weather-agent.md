@@ -1,10 +1,20 @@
 # Weather Agent Demo
 
-This document provides detailed steps for running the **Weather Agent** demo proof-of-concept (PoC).
+This document provides detailed steps for running the **Weather Agent** proof-of-concept (PoC) demo.
 
-In the [Import New Agent](#import-new-agent) section, you'll build and deploy the [`acp_weather_service`](https://github.com/kagenti/agent-examples/tree/main/acp/acp_weather_service) agent.
+In this demo, we will use the Kagenti UI to import and deploy both the **Weather Service Agent** and the **Weather Service Tool**.  
+During deployment, we'll configure the **ACP protocol** for managing agent calls and **MCP** for enabling communication between the agent and the weather tool.
 
-In the [Import New Tool](#import-new-tool) section, you'll build and deploy the [`weather_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/weather_tool) tool.
+Once deployed, we will query the agent using a natural language prompt. The agent will then invoke the tool and return the weather data as a response.
+
+This demo illustrates how Kagenti manages the lifecycle of all required components: agents, tools, protocols, and runtime infrastructure.
+
+Here's a breakdown of the sections:
+
+- In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`acp_weather_service`](https://github.com/kagenti/agent-examples/tree/main/acp/acp_weather_service) agent.
+- In [**Import New Tool**](#import-new-tool), you'll build and deploy the [`weather_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/weather_tool) tool.
+- In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
+- In [**Run the Weather Agent Demo**](#run-the-weather-agent-demo), you'll interact with the agent and confirm it responds correctly using real-time weather data.
 
 > **Prerequisites:**  
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](../cn-demos.md#installation) section. This demo uses `ACP` protocol, so you will not need `OPENAI_API_KEY` in your environment setup.
