@@ -16,9 +16,9 @@
 
 Despite the extensive variety of frameworks available for developing agent-based applications, there is a distinct lack of standardized methods for deploying and operating agent code in production environments, as well as for exposing it through a standardized API. Agents are adept at reasoning, planning, and interacting with various tools, but their full potential can be limited by these deployment challenges. **Kagenti** addresses this gap by enhancing existing agent frameworks with the following key components:
 
--  **Kubernetes Platform Operator**: Facilitates the deployment and configuration of agents along with infrastructure dependencies on Kubernetes. It enables scaling and updating configurations seamlessly.
+- **Kubernetes Platform Operator**: Facilitates the deployment and configuration of agents along with infrastructure dependencies on Kubernetes. It enables scaling and updating configurations seamlessly.
 
--  **Agent and Tool Authorization Pattern**: This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end security principles enforcement across agentic workflows.
+- **Agent and Tool Authorization Pattern**: This pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication. Secure token exchanges ensure end-to-end security principles enforcement across agentic workflows.
 
 ## Multi-Framework Agents
 
@@ -29,7 +29,6 @@ In the open-source community, several frameworks are emerging for developing age
 ## Kubernetes Operator
 
 Deploying agents in production involves addressing typical challenges associated with managing complex microservices-based applications, including managing infrastructure services such as key-value store databases, caches, queuing systems and deployment, configuration management and scaling of API servers, and workers. The Kubernetes operator facilitates the deployment of new framework instances, supports the registration and scaling of multi-framework agents, and assists in setting up and configuring identity management and agents' authorizations.
-
 
 ## Agent and Tool Authorization Pattern
 
@@ -55,11 +54,11 @@ These demos are built on the following core technologies:
 - [Kagenti Operator](https://github.com/kagenti/kagenti-operator/blob/main/beeai/INSTALL.md): an operator for building agents and tools from source, managing their lifecycle, and coordinating platform components.
 - Tool-side communication via [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 - Agent-side communication via [A2A](https://google.github.io/A2A) and [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/introduction/welcome)
-- [Llama Stack](https://llama-stack.readthedocs.io): a flexible application stack designed for LLM-driven agents and applications.
 
 ---
 
 ### Try our demo
+
 We provide a quick way to deploy various relevant open source technologies to set up an agentic platform on your local cluster. This demonstrates how agents, tools, and protocols interoperate to fulfill end-to-end application flows in cloud-native environments.
 
 See the [documentation](./docs/demos.md) here for deploying a Cloud-Native Agent Platform with A2A and ACP Multi-Framework Agents.
