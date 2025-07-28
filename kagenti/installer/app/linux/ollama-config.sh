@@ -31,4 +31,4 @@ EOF
 
 ## We also need to update the ollama environment to use dockerhost instead of host.docker.internal
 
-sed -i 's/host\.docker\.internal/dockerhost/g' resources/environments.yaml
+sed -i 's/host\.docker\.internal/dockerhost/g' app/resources/environments.yaml
