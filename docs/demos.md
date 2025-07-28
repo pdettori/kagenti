@@ -1,4 +1,4 @@
-# Cloud Native Proof-Of-Concepts
+# Cloud Native Proofs-Of-Concept
 
 The following proof on concepts apply Cloud Native technologies to manage agentic workloads.
 A diagram and description of the demo architecture is provided [here](./tech-details.md#cloud-native-agent-platform-demo)
