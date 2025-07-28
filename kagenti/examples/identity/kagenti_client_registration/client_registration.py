@@ -1,6 +1,4 @@
 import os
-import logging
-
 from keycloak import KeycloakAdmin, KeycloakPostError
 
 KEYCLOAK_URL = os.environ.get('KEYCLOAK_URL')
@@ -9,9 +7,6 @@ KEYCLOAK_ADMIN_USERNAME = os.environ.get('KEYCLOAK_ADMIN_USERNAME')
 KEYCLOAK_ADMIN_PASSWORD = os.environ.get('KEYCLOAK_ADMIN_PASSWORD')
 CLIENT_NAME = os.environ.get('CLIENT_NAME')
 NAMESPACE = os.environ.get('NAMESPACE')
-
-print("test print")
-logging.info("test log")
 
 def register_client(
     keycloak_url: str,
@@ -24,7 +19,7 @@ def register_client(
     clientId = f'{namespace}/{client_name}'
 
     if keycloak_url is None:
-        print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {clientID}.')
+        print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {clientId}.')
         return
     if keycloak_realm is None:
         raise Exception('Expected environment variable "KEYCLOAK_REALM"')
@@ -58,9 +53,9 @@ def register_client(
             }
         )
 
-        logging.info(f'Created Keycloak client "{clientId}": {llama_stack_client_id}')
+        print(f'Created Keycloak client "{clientId}": {llama_stack_client_id}')
     except KeycloakPostError as e:
-        logging.error(f'Could not create Keycloak client "{clientId}": {e}')
+        print(f'Could not create Keycloak client "{clientId}": {e}')
 
 register_client(
     KEYCLOAK_URL,
