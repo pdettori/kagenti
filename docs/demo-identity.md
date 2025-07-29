@@ -37,3 +37,10 @@ Now test the Tornjak UI access:
 ```shell
 open http://spire-tornjak-ui.localtest.me:8080/
 ```
+
+Agents and Tools get SPIFFE Id as follow:
+
+```console
+spiffe://localhost.me/ns/team/sa/acp-weather-service
+spiffe://localhost.me/ns/team/sa/weather-tool
+```
