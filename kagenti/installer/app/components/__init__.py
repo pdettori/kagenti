@@ -20,6 +20,7 @@ from . import (
     istio,
     keycloak,
     cert_manager,
+    spire,
     operator,
     registry,
     tekton,
