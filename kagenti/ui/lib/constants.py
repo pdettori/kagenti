@@ -45,6 +45,7 @@ MCP_INSPECTOR_URL = "http://mcp-inspector.localtest.me:8080"
 DEFAULT_REPO_URL = "https://github.com/kagenti/agent-examples"
 DEFAULT_REPO_BRANCH = "main"
 DEFAULT_IMAGE_TAG = "v0.0.1"
+DEFAULT_IMAGE_POLICY = "Always"
 
 # --- Kubernetes Secret for Git User ---
 GIT_USER_SECRET_NAME = "github-token-secret"
