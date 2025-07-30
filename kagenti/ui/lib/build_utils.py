@@ -181,7 +181,7 @@ def _construct_tool_resource_body(
                     "image": image_name,
                     "imageTag": image_tag,
                     "imageRegistry": image_registry_prefix,
-                    "imagePullPolicy": "IfNotPresent",
+                    "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
                 },
                 "containerPorts": [
                     {
