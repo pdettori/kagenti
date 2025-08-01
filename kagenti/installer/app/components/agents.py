@@ -63,6 +63,23 @@ def install():
                 ],
                 f"Creating 'github-token-secret' in '{ns}'",
             )
+        # Create docker-registry secret so that we can pull images from private repos
+        if not secret_exists(v1_api, "ghcr-secret", ns):
+            run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "docker-registry",
+                    "ghcr-secret",
+                    "--docker-server=ghcr.io",
+                    f"--docker-username={github_user}",
+                    f"--docker-password={github_token}",
+                    "-n",
+                    ns,
+                ],
+                f"Creating 'ghcr-secret' in '{ns}'",
+            )
 
         if not secret_exists(v1_api, "openai-secret", ns):
             run_command(
