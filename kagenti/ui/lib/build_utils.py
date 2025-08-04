@@ -1077,6 +1077,13 @@ def render_import_form(
             )
     
     elif deployment_method == "Deploy from Existing Image":
+        # You can deploy using a Docker image from either a public or private repository.
+        # *** If you're using a private repository, make sure the .env file in the installer/app folder 
+        #     is set up correctly.
+        # *** One key setting in that file is AGENT_NAMESPACES, which lists the Kubernetes namespaces where 
+        #     agents and tools should be deployed.
+        # *** The Kagenti installer will only copy the necessary configuration (like ConfigMaps and Secrets) for those specific 
+        #     namespaces.
         st_object.write(
             f"Provide Docker image details to deploy a new {resource_type.lower()}."
         )
