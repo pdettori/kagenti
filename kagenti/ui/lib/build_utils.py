@@ -15,6 +15,7 @@
 
 import streamlit as st
 import kubernetes.client
+import re
 import logging
 import json
 import os
@@ -88,6 +89,7 @@ def _construct_tool_resource_body(
     protocol: str,
     framework: str,
     description: str,
+    build_from_source: bool ,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
 ) -> Optional[dict]:
@@ -106,6 +108,7 @@ def _construct_tool_resource_body(
         protocol (str): The protocol to use for the resource.
         framework (str): The framework to use for the resource.
         description (str): A description for the resource.
+        build_from_source (bool): True if build from source is requested, False otherwise
         additional_env_vars (Optional[list]): Additional environment variables to include in the build.
         image_tag (str): The image tag to use for the build.
 
@@ -113,7 +116,7 @@ def _construct_tool_resource_body(
         Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
     """
     k8s_resource_name = sanitize_for_k8s_name(resource_name)
-    image_name = k8s_resource_name
+ #   image_name = k8s_resource_name
     repo_user = get_secret_data(
         core_v1_api,
         build_namespace,
@@ -127,7 +130,12 @@ def _construct_tool_resource_body(
         return None
     st_object.info(f"Using GitHub username '{repo_user}' from secret for build.")
     #image_registry_prefix = f"ghcr.io/{repo_user}"
-    image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+    image_name = k8s_resource_name
+    if build_from_source:
+       image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+    else:
+       image_registry_prefix,image_name,tag =  parse_image_url(repo_url)
+
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
     )
@@ -143,34 +151,6 @@ def _construct_tool_resource_body(
         "suspend": False,
         "tool": {
             "toolType": "MCP",
-            "build": {
-                "mode": "dev",
-                "pipeline": {
-                    "parameters": [
-                        {
-                            "name": "SOURCE_REPO_SECRET",
-                            "value": "github-token-secret",
-                        },
-                        {
-                            "name": "repo-url",
-                            "value": remove_url_prefix(repo_url),
-                        },
-                        {
-                            "name": "revision",
-                            "value":  repo_branch,
-                        },
-                        {
-                            "name": "subfolder-path",
-                            "value": source_subfolder,
-                        },
-                        {
-                            "name": "image",
-                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
-                        },
-                    ], 
-                "cleanupAfterBuild": True,    
-                },
-            },
         },
         "deployer": {
             "name": k8s_resource_name,
@@ -207,7 +187,38 @@ def _construct_tool_resource_body(
             "env": final_env_vars,
         },
     }
-        
+    if build_from_source:
+        spec["tool"] = {
+            "toolType": "MCP",
+            "build": {
+                "mode": "dev",
+                "pipeline": {
+                    "parameters": [
+                        {
+                            "name": "SOURCE_REPO_SECRET",
+                            "value": "github-token-secret",
+                        },
+                        {
+                            "name": "repo-url",
+                            "value": remove_url_prefix(repo_url),
+                        },
+                        {
+                            "name": "revision",
+                            "value":  repo_branch,
+                        },
+                        {
+                            "name": "subfolder-path",
+                            "value": source_subfolder,
+                        },
+                        {
+                            "name": "image",
+                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                        },
+                    ], 
+                "cleanupAfterBuild": True,    
+                },
+            },
+        }                
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -226,6 +237,25 @@ def _construct_tool_resource_body(
     }
     return body
 
+def is_valid_image_url(url: str) -> bool:
+    pattern = re.compile(
+        r'^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$'
+    )
+    return bool(pattern.match(url))
+
+def extract_repo_name(url):
+    pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
+    match = re.match(pattern, url)
+    if match:
+        return match.group(1)  # repo name is the first group
+    return None
+
+def extract_image_name(url):
+    pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
+    match = re.match(pattern, url)
+    if match:
+        return match.group(2)  # image name is the second group
+    return None
 
 def _construct_agent_resource_body(
     st_object,
@@ -239,8 +269,10 @@ def _construct_agent_resource_body(
     protocol: str,
     framework: str,
     description: str,
+    build_from_source: bool ,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
+
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -257,14 +289,16 @@ def _construct_agent_resource_body(
         protocol (str): The protocol to use for the resource.
         framework (str): The framework to use for the resource.
         description (str): A description for the resource.
+        build_from_source (bool): True if build from source is requested, False otherwise
         additional_env_vars (Optional[list]): Additional environment variables to include in the build.
         image_tag (str): The image tag to use for the build.
 
     Returns:
         Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
     """
+
+
     k8s_resource_name = sanitize_for_k8s_name(resource_name)
-    image_name = k8s_resource_name
     repo_user = get_secret_data(
         core_v1_api,
         build_namespace,
@@ -277,7 +311,13 @@ def _construct_agent_resource_body(
         )
         return None
     st_object.info(f"Using GitHub username '{repo_user}' from secret for build.")
-    image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+
+    image_name = k8s_resource_name
+    if build_from_source:
+       image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+    else:
+       image_registry_prefix,image_name,tag =  parse_image_url(repo_url)
+
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
     )
@@ -286,6 +326,7 @@ def _construct_agent_resource_body(
         final_env_vars.extend(additional_env_vars)
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
+    final_env_vars.append({"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME})     
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -304,34 +345,6 @@ def _construct_agent_resource_body(
             "description": description,            
             "suspend": False,
             "agent": {
-                "build": {
-                    "mode": "dev",
-                    "pipeline": {
-                        "parameters": [
-                            {
-                                "name": "SOURCE_REPO_SECRET",
-                                "value": "github-token-secret",
-                            },
-                            {
-                                "name": "repo-url",
-                                "value": remove_url_prefix(repo_url),
-                            },
-                            {
-                                "name": "revision",
-                                "value":  repo_branch,
-                            },
-                            {
-                                "name": "subfolder-path",
-                                "value": source_subfolder,
-                            },
-                            {
-                                "name": "image",
-                                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
-                            },
-                        ], 
-                    "cleanupAfterBuild": True,    
-                    },
-                },
             },
             "deployer": {
                 "name": k8s_resource_name,
@@ -369,6 +382,38 @@ def _construct_agent_resource_body(
             },
         },
     }
+    if build_from_source:
+        body["spec"]["agent"] = {
+            "build": {
+                "mode": "dev",
+                "pipeline": {
+                    "parameters": [
+                        {
+                            "name": "SOURCE_REPO_SECRET",
+                            "value": "github-token-secret",
+                        },
+                        {
+                            "name": "repo-url",
+                            "value": remove_url_prefix(repo_url),
+                        },
+                        {
+                            "name": "revision",
+                            "value":  repo_branch,
+                        },
+                        {
+                            "name": "subfolder-path",
+                            "value": source_subfolder,
+                        },
+                        {
+                            "name": "image",
+                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                        },
+                    ], 
+                "cleanupAfterBuild": True,    
+                },
+            },
+        }        
+
     return body
 
 
@@ -384,7 +429,8 @@ def trigger_and_monitor_build(
     source_subfolder: str,
     protocol: str,
     framework: str,
-    description: str = "",
+    build_from_source: bool,
+    description: str = "",  
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
 ):
     """
@@ -436,6 +482,7 @@ def trigger_and_monitor_build(
            protocol=protocol,
            framework=framework,
            description=description,
+           build_from_source=True,
            additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -451,6 +498,7 @@ def trigger_and_monitor_build(
            protocol=protocol,
            framework=framework,
            description=description,
+           build_from_source=True,           
            additional_env_vars=additional_env_vars,
         )            
     if not build_cr_body:
@@ -620,6 +668,187 @@ def trigger_and_monitor_build(
         )
     return False
 
+
+
+def trigger_and_monitor_deployment_from_image(
+    st_object,
+    custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
+    core_v1_api: Optional[kubernetes.client.CoreV1Api],
+    deployment_namespace: str,
+    resource_name_suggestion: str,
+    resource_type: str,
+    repo_url: str,
+    protocol: str,
+    framework: str,
+    description: str = "",
+    additional_env_vars: Optional[List[Dict[str, Any]]] = None,
+):
+    """
+    Triggers a build for a new resource and monitors its status.
+
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        custom_obj_api (kubernetes.client.CustomObjectsApi): The Kubernetes CustomObjects API client.
+        core_v1_api (kubernetes.client.CoreV1Api): The Kubernetes CoreV1 API client.
+        deployment_namespace (str): The namespace where the resource will be deployed.
+        resource_name_suggestion (str): The suggested name for the new resource.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+        repo_url (str): The URL of the Git repository.
+        protocol (str): The protocol to use for the resource.
+        framework (str): The framework to use for the resource.
+        description (str): A description for the resource.
+        additional_env_vars (Optional[List[Dict[str, Any]]]): Additional environment variables to include in the build.
+
+    Returns:
+        bool: True if the build was successful, False otherwise.
+    """
+    if not custom_obj_api:
+        st_object.error(
+            "Kubernetes CustomObjectsApi client not initialized. Cannot trigger build."
+        )
+        return False
+    if not core_v1_api:
+        st_object.error(
+            "Kubernetes CoreV1Api client not initialized. Cannot fetch secrets for build."
+        )
+        return False
+    logger.info(f"Generating Component manifest\n")
+    k8s_resource_name = sanitize_for_k8s_name(resource_name_suggestion)
+    if not k8s_resource_name:
+        st_object.error("Invalid resource name after sanitization. Cannot proceed.")
+        return False
+    if resource_type.lower() == "agent":
+        cr_body = _construct_agent_resource_body(
+           st_object=st_object,
+           core_v1_api=core_v1_api,
+           build_namespace=deployment_namespace,
+           resource_name=k8s_resource_name,
+           resource_type=resource_type,
+           repo_url=repo_url,
+           repo_branch="",
+           source_subfolder="",
+           protocol=protocol,
+           framework=framework,
+           description=description,
+           build_from_source=False,
+           additional_env_vars=additional_env_vars,
+        )
+    elif resource_type.lower() == "tool":
+        cr_body = _construct_tool_resource_body(
+           st_object=st_object,
+           core_v1_api=core_v1_api,
+           build_namespace=deployment_namespace,
+           resource_name=k8s_resource_name,
+           resource_type=resource_type,
+           repo_url=repo_url,
+           repo_branch="",
+           source_subfolder="",
+           protocol=protocol,
+           framework=framework,
+           description=description,
+           build_from_source=False,
+           additional_env_vars=additional_env_vars,
+        )            
+    if not cr_body:
+        st_object.error(
+            f"Failed to construct resource body for '{k8s_resource_name}'. Check previous errors."
+        )
+        return False
+    with st_object.spinner(
+        f"Submitting deployment for {resource_type} '{k8s_resource_name}' in namespace '{deployment_namespace}'..."
+    ):
+        try:
+
+            logger.info(f"Generated Component manifest:\n%s", json.dumps(cr_body, indent=2))
+            custom_obj_api.create_namespaced_custom_object(
+                group=constants.CRD_GROUP,
+                version=constants.CRD_VERSION,
+                namespace=deployment_namespace,
+                plural=constants.COMPONENTS_PLURAL,
+                body=cr_body,
+            )
+            st_object.success(
+                f"{resource_type.capitalize()} '{k8s_resource_name}' creation request sent to namespace '{deployment_namespace}'."
+            )
+        except kubernetes.client.ApiException as e:
+            _handle_kube_api_exception(
+                st_object,
+                e,
+                f"{resource_type.capitalize()} '{k8s_resource_name}'",
+                action="creating",
+            )
+            return False
+        except Exception as e:
+            st_object.error(
+                f"An unexpected error occurred creating deployment for '{k8s_resource_name}': {e}"
+            )
+            return False
+        
+    status_placeholder = st_object.empty()
+    # Now wait for deployment to complete
+    deployment_retries = 0
+    max_deployment_retries = 120
+    final_deployment_phase = "Unknown"
+
+    with st_object.spinner(
+        f"Waiting for {resource_type} '{k8s_resource_name}' to deploy..."
+    ):
+        while (
+            final_deployment_phase not in ["Ready", "Failed", "Error"]
+            and deployment_retries < max_deployment_retries
+        ):
+            deployment_retries += 1
+            try:
+                # Re-fetch the object to get latest deployment status
+                build_obj = custom_obj_api.get_namespaced_custom_object(
+                    group=constants.CRD_GROUP,
+                    version=constants.CRD_VERSION,
+                    namespace=deployment_namespace,
+                    plural=constants.COMPONENTS_PLURAL,
+                    name=k8s_resource_name,
+                )
+            
+                final_deployment_status = build_obj.get("status", {}).get(
+                    "deploymentStatus", {}
+                )
+                final_deployment_phase = final_deployment_status.get("phase", "Unknown")
+                deployment_message = final_deployment_status.get("deploymentMessage", "")
+            
+                # Update status display
+                status_placeholder.info(
+                    f"Deployment Status for '{k8s_resource_name}': **{final_deployment_phase}**\n"
+                    f"Message: {deployment_message}"
+                )
+            
+                if final_deployment_phase in ["Ready", "Failed", "Error"]:
+                    break
+                
+                time.sleep(constants.POLL_INTERVAL_SECONDS)
+            
+            except Exception as e:
+                st_object.warning(f"Error checking deployment status: {str(e)}")
+                time.sleep(constants.POLL_INTERVAL_SECONDS)
+
+    # Handle final deployment status
+    if final_deployment_phase == "Ready":
+        st_object.success(
+            f"{resource_type.capitalize()} '{k8s_resource_name}' deployed successfully in namespace '{deployment_namespace}'!"
+        )
+        return True
+    elif final_deployment_phase in ["Failed", "Error"]:
+        st_object.error(
+            f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
+        )
+        return False
+    else:
+        # Timeout case
+        st_object.warning(
+            f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
+            f"Last status: {final_deployment_phase}. Manual check might be needed."
+        )
+        return False
+        
+
 def render_import_form(
     st_object,
     resource_type: str,
@@ -671,6 +900,8 @@ def render_import_form(
     initial_selected_build_ns = st.session_state.get(
         "selected_build_k8s_namespace", default_build_ns
     )
+
+
 
     if initial_selected_build_ns not in available_build_namespaces:
         initial_selected_build_ns = (
@@ -724,114 +955,195 @@ def render_import_form(
         )
         st_object.markdown("---")
 
-    st_object.write(
-        f"Provide source details to build and deploy a new {resource_type.lower()}."
-    )
-    source_url = st_object.text_input(
-        f"{resource_type} Source Repository URL",
-        value=constants.DEFAULT_REPO_URL,
-        key=f"{resource_type.lower()}_source_url",
-    )
-    branch_or_tag = st_object.text_input(
-        "Git Branch or Tag",
-        value=constants.DEFAULT_REPO_BRANCH,
-        key=f"{resource_type.lower()}_branch_or_tag",
-    )
-    selected_protocol = default_protocol
-    if protocol_options:
-        current_protocol_index = (
-            protocol_options.index(default_protocol)
-            if default_protocol in protocol_options
-            else 0
+    if not k8s_api_client:
+        st_object.error(
+            "Kubernetes client not available. Cannot proceed with build."
         )
-        selected_protocol = st_object.selectbox(
-            "Select protocol:",
-            options=protocol_options,
-            index=current_protocol_index,
-            key=f"selected_{resource_type.lower()}_protocol_option",
-        )
-    selected_framework = default_framework
-    final_source_subfolder_path = ""
-    if source_url and branch_or_tag:
-        st_object.markdown("---")
-        st_object.subheader("Specify Source Subfolder")
-        subfolder_selection_method = st_object.radio(
-            "Subfolder specification:",
-            ("Select from examples", "Enter manually"),
-            key=f"{resource_type.lower()}_subfolder_method",
-        )
-        if subfolder_selection_method == "Select from examples":
-            if example_subfolders:
-                selected_example = st_object.selectbox(
-                    "Select an example:",
-                    options=[""] + example_subfolders,
-                    key=f"selected_{resource_type.lower()}_example_subfolder",
-                    format_func=lambda x: x if x else "Select an example...",
-                )
-                if selected_example:
-                    final_source_subfolder_path = selected_example
-            else:
-                st_object.info("No example subfolders.")
-        manual_subfolder_input = st_object.text_input(
-            "Source Subfolder Path (relative to root)",
-            value=final_source_subfolder_path if final_source_subfolder_path else "",
-            placeholder=f"e.g., {resource_type.lower()}s/my-new-{resource_type.lower()}",
-            key=f"manual_{resource_type.lower()}_source_subfolder_path",
-        )
-        if manual_subfolder_input:
-            final_source_subfolder_path = manual_subfolder_input
+        return
 
-    if st_object.button(
-        f"Build New {resource_type}", key=f"build_new_{resource_type.lower()}_btn"
-    ):
-        resource_name_suggestion = get_resource_name_from_path(
-            final_source_subfolder_path
+    final_additional_envs = []
+    if selected_env_sets and env_options:
+        for key in selected_env_sets:
+            if key in env_options and isinstance(env_options[key], list):
+                final_additional_envs.extend(env_options[key])
+
+    custom_obj_api = get_custom_objects_api()
+    if not custom_obj_api or not core_v1_api:
+        st_object.error(
+            "K8s API clients not initialized correctly. Cannot trigger build."
         )
-        if not all(
-            [
-                source_url,
-                branch_or_tag,
-                final_source_subfolder_path,
-                resource_name_suggestion,
-                build_namespace_to_use,
-            ]
+        return
+    
+    deployment_method = st_object.radio(
+       "Deployment Method",
+       ("Build from Source", "Deploy from Existing Image"),
+        key=f"{resource_type.lower()}_deployment_method",)
+
+
+    if deployment_method == "Build from Source":     
+        st_object.write(
+            f"Provide source details to build and deploy a new {resource_type.lower()}."
+        )
+        source_url = st_object.text_input(
+            f"{resource_type} Source Repository URL",
+            value=constants.DEFAULT_REPO_URL,
+            key=f"{resource_type.lower()}_source_url",
+        )
+        branch_or_tag = st_object.text_input(
+            "Git Branch or Tag",
+            value=constants.DEFAULT_REPO_BRANCH,
+            key=f"{resource_type.lower()}_branch_or_tag",
+        )
+        selected_protocol = default_protocol
+        if protocol_options:
+            current_protocol_index = (
+                protocol_options.index(default_protocol)
+                if default_protocol in protocol_options
+                else 0
+            )
+            selected_protocol = st_object.selectbox(
+                "Select protocol:",
+                options=protocol_options,
+                index=current_protocol_index,
+                key=f"selected_{resource_type.lower()}_protocol_option",
+            )
+        selected_framework = default_framework
+        final_source_subfolder_path = ""
+        if source_url and branch_or_tag:
+            st_object.markdown("---")
+            st_object.subheader("Specify Source Subfolder")
+            subfolder_selection_method = st_object.radio(
+                "Subfolder specification:",
+                ("Select from examples", "Enter manually"),
+                key=f"{resource_type.lower()}_subfolder_method",
+            )
+            if subfolder_selection_method == "Select from examples":
+                if example_subfolders:
+                    selected_example = st_object.selectbox(
+                        "Select an example:",
+                        options=[""] + example_subfolders,
+                        key=f"selected_{resource_type.lower()}_example_subfolder",
+                        format_func=lambda x: x if x else "Select an example...",
+                    )
+                    if selected_example:
+                        final_source_subfolder_path = selected_example
+                else:
+                    st_object.info("No example subfolders.")
+            manual_subfolder_input = st_object.text_input(
+                "Source Subfolder Path (relative to root)",
+                value=final_source_subfolder_path if final_source_subfolder_path else "",
+                placeholder=f"e.g., {resource_type.lower()}s/my-new-{resource_type.lower()}",
+                key=f"manual_{resource_type.lower()}_source_subfolder_path",
+            )
+            if manual_subfolder_input:
+                final_source_subfolder_path = manual_subfolder_input
+
+        if st_object.button(
+            f"Build New {resource_type}", key=f"build_new_{resource_type.lower()}_btn"
         ):
-            st_object.warning(
-                "Please provide all source details, subfolder path, and select a build namespace."
+            resource_name_suggestion = get_resource_name_from_path(
+                final_source_subfolder_path
             )
-            return
-        if not k8s_api_client:
-            st_object.error(
-                "Kubernetes client not available. Cannot proceed with build."
+            if not all(
+                [
+                    source_url,
+                    branch_or_tag,
+                    final_source_subfolder_path,
+                    resource_name_suggestion,
+                    build_namespace_to_use,
+                ]
+            ):
+                st_object.warning(
+                    "Please provide all source details, subfolder path, and select a build namespace."
+                )
+                return
+
+
+            trigger_and_monitor_build(
+                st_object=st,
+                custom_obj_api=custom_obj_api,
+                core_v1_api=core_v1_api,
+                build_namespace=build_namespace_to_use,
+                resource_name_suggestion=resource_name_suggestion,
+                resource_type=resource_type.lower(),
+                repo_url=source_url,
+                repo_branch=branch_or_tag,
+                source_subfolder=final_source_subfolder_path,
+                protocol=selected_protocol,
+                framework=selected_framework,
+                build_from_source=True,
+                description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
+                additional_env_vars=final_additional_envs,
             )
-            return
-
-        final_additional_envs = []
-        if selected_env_sets and env_options:
-            for key in selected_env_sets:
-                if key in env_options and isinstance(env_options[key], list):
-                    final_additional_envs.extend(env_options[key])
-
-        custom_obj_api = get_custom_objects_api()
-        if not custom_obj_api or not core_v1_api:
-            st_object.error(
-                "K8s API clients not initialized correctly. Cannot trigger build."
-            )
-            return
-
-        trigger_and_monitor_build(
-            st_object=st,
-            custom_obj_api=custom_obj_api,
-            core_v1_api=core_v1_api,
-            build_namespace=build_namespace_to_use,
-            resource_name_suggestion=resource_name_suggestion,
-            resource_type=resource_type.lower(),
-            repo_url=source_url,
-            repo_branch=branch_or_tag,
-            source_subfolder=final_source_subfolder_path,
-            protocol=selected_protocol,
-            framework=selected_framework,
-            description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
-            additional_env_vars=final_additional_envs,
+    
+    elif deployment_method == "Deploy from Existing Image":
+        # You can deploy using a Docker image from either a public or private repository.
+        # *** If you're using a private repository, make sure the .env file in the installer/app folder 
+        #     is set up correctly.
+        # *** One key setting in that file is AGENT_NAMESPACES, which lists the Kubernetes namespaces where 
+        #     agents and tools should be deployed.
+        # *** The Kagenti installer will only copy the necessary configuration (like ConfigMaps and Secrets) for those specific 
+        #     namespaces.
+        st_object.write(
+            f"Provide Docker image details to deploy a new {resource_type.lower()}."
         )
+        docker_image_url = st_object.text_input(
+            "Docker Image (e.g., myrepo/myimage:tag)",
+            key=f"{resource_type.lower()}_docker_image",
+        )
+
+        selected_framework = default_framework
+        selected_protocol = ""
+       
+        if st_object.button(
+            f"Deploy {resource_type} from Image",
+            key=f"deploy_{resource_type.lower()}_from_image_btn"
+        ):
+            if not docker_image_url or not build_namespace_to_use:
+                st_object.warning("Please provide the Docker image and select a namespace.")
+                return
+            if not k8s_api_client:
+                st_object.error("Kubernetes client not available. Cannot proceed with deployment.")
+                return
+            repo, resource_name, tag = parse_image_url(docker_image_url)
+
+            # Trigger deployment using the image
+            custom_obj_api = get_custom_objects_api()
+            if not custom_obj_api or not core_v1_api:
+                st_object.error("K8s API clients not initialized correctly. Cannot trigger deployment.")
+                return
+
+            resource_name_suggestion = extract_image_name(docker_image_url)
+
+            trigger_and_monitor_deployment_from_image(
+                st_object=st,
+                custom_obj_api=custom_obj_api,
+                core_v1_api=core_v1_api,
+                deployment_namespace=build_namespace_to_use,
+                resource_name_suggestion=resource_name,
+                resource_type=resource_type.lower(),
+                repo_url=docker_image_url,
+                protocol=selected_protocol,
+                framework=selected_framework,              
+                description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
+                additional_env_vars=final_additional_envs,
+            )
+        
     st_object.markdown("---")
+
+
+def parse_image_url(url: str):
+    # Split off the tag
+    if ':' not in url:
+        raise ValueError("URL must contain a tag (e.g., :latest)")
+    
+    base, tag = url.rsplit(':', 1)
+    parts = base.strip('/').split('/')
+    
+    if len(parts) < 2:
+        raise ValueError("URL must contain at least a repo and image name")
+    
+    image_name = parts[-1]
+    repo = '/'.join(parts[:-1])
+    
+    return repo, image_name, tag

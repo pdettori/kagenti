@@ -39,6 +39,6 @@ render_import_form(
 )
 
 st.markdown("---")
-st.warning(
-    "**Note:** The build process for 'Tools' currently uses the same 'Component' CRD mechanism."
-)
+#st.warning(
+#    "**Note:** The build process for 'Tools' currently uses the same 'Component' CRD mechanism."
+#)
