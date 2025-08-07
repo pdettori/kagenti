@@ -942,8 +942,12 @@ def render_import_form(
         )
         if env_options is None:
             env_options = {}
-
+    custom_env_vars = []
     selected_env_sets = []
+    import_dialog_key = f"{resource_type.lower()}_import_env_dialog"
+    if import_dialog_key not in st.session_state:
+        st.session_state[import_dialog_key] = False
+
     if env_options:
         st_object.subheader("Select Environment Variable Sets")
         sorted_env_keys = sorted(list(env_options.keys()))
@@ -955,6 +959,181 @@ def render_import_form(
         )
         st_object.markdown("---")
 
+        # --- Custom Envarionment Variables Editor ---
+        st_object.subheader("Custom Environment Variables")
+        st_object.caption(f"Define environment variables specific to this {resource_type}")
+
+        custom_env_key = f"{resource_type.lower()}_custom_env_vars"
+
+        if custom_env_key not in st.session_state:
+            st.session_state[custom_env_key] = []
+
+        def add_env_var():
+            st.session_state[custom_env_key].append({"name": "", "value": ""})   
+
+        def remove_env_var(index):
+            if 0 <= index < len(st.session_state[custom_env_key]):
+                st.session_state[custom_env_key].pop(index)    
+        
+        # takes as input content of the .env file from remote repo and
+        # parses each line to extract name-value pair and adds them to
+        # a list 
+        def parse_env_file(content):
+            env_vars = []
+            lines = content.strip().split('\n')
+            
+            for line_num, line in enumerate(lines, 1):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if '=' not in line:
+                    st_object.warning(f"⚠️ Line {line_num}: Invalid format (missing '='): {line}")
+                    continue
+                name, value = line.split('=', 1)
+                name = name.strip()
+                value = value.strip()
+
+                if value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
+                elif value.startswith("'") and value.endswith("'"):
+                    value = value[1:-1]
+
+                if name:
+                    env_vars.append({"name": name, "value": value})
+                else:
+                    st_object.warning(f"⚠️ Line {line_num}: Empty variable name")        
+            return env_vars
+
+        custom_env_vars = st.session_state[custom_env_key]
+        if custom_env_vars:
+
+            for i, env_var in enumerate(custom_env_vars):
+                col1, col2, col3 = st_object.columns([3, 3, 1])
+
+                with col1:
+                    env_var["name"] = st.text_input( "Name",
+                                                    value=env_var["name"],
+                                                    key=f"{resource_type.lower()}_env_name_{i}",
+                                                    placeholder="example: API_KEY",
+                                                    label_visibility="collapsed" if i > 0 else "visible")    
+                with col2:
+                    env_var["value"] = st.text_input("Value",
+                                                     value=env_var["value"],
+                                                    key=f"{resource_type.lower()}_env_value_{i}",
+                                                    placeholder="example: AAAA_BBBB_CCCC",
+                                                    label_visibility="collapsed" if i > 0 else "visible")    
+
+                with col3:
+                    if i == 0:
+                        st_object.write("")
+                        st_object.write("")
+
+                    if st.button( "🗑️",
+                                 key=f"{resource_type}.lower()-remove_env_{i}",
+                                 help="Remove this environment variable"):
+                        remove_env_var(i)
+                        st.rerun()
+
+        button_col1, button_col2 = st_object.columns([1, 1])
+        with button_col1:
+            if st_object.button("✚ Add Environment Variable",
+                           key=f"{resource_type.lower()}_add_env_var",
+                            help="Add a new custom environment variable"):
+                add_env_var()
+                st.rerun()
+
+        with button_col2:
+            if st_object.button("📥 Import .env File",
+                           key=f"{resource_type.lower()}_import_env_var",
+                            help="Import environment variables from .env file"):
+                st.session_state[import_dialog_key] = True
+                st.rerun()
+
+    # --- Import flow ---
+    if st.session_state.get(import_dialog_key, False):
+        st_object.markdown("---")
+        st_object.subheader("Import Environment Variables from .env file")
+
+        repo_url = st_object.text_input("Github Repository URL:",
+                                        placeholder="http://github.com/username/repository",
+                                        key=f"{resource_type.lower()}_repo_url",
+                                        help="Enter the Github repository URL")
+        
+        file_path = st_object.text_input("Path to .env file:",
+                                        placeholder=". env or config/.env or path/to/your/.env",
+                                        key=f"{resource_type.lower()}_env_file_path",
+                                        help="Enter the path to .env file within the repository")
+
+        import_col1, import_col2, import_col3 = st_object.columns([1, 1, 2])
+        with import_col1:
+            if st_object.button(" 🔄 Import",
+                                key=f"{resource_type.lower()}_do_import",
+                                disabled=not (repo_url and file_path)):
+                try:
+                    with st_object.spinner("Fetching .env file from repository ..."):
+
+                        import requests
+                        # Need to convert Github repo URL to raw file URL
+                        if "github.com" in repo_url:
+
+                            if repo_url.endswith('.git'):
+                                repo_url = repo_url[:-4]
+
+                            repo_path = repo_url.replace("https://github.com/",'').replace("http://github.com/",'')
+                            if '/tree/' in repo_path:
+                               parts = repo_path.split('/tree/')
+                               repo_path = parts[0]
+                               branch = parts[1].split('/')[0]
+                            else:
+                               branch = 'main'
+                            raw_url = f"https://raw.githubusercontent.com/{repo_path}/{branch}/{file_path.lstrip('/')}"
+                        else:
+                            raw_url = f"{repo_url.rstrip('/')}/{file_path.lstrip('/')}"
+
+                        response = requests.get(raw_url, timeout=20)
+                        env_content = response.text
+
+                        imported_vars = parse_env_file(env_content)
+                        if imported_vars:
+                            existing_names = {var["name"] for var in st.session_state[custom_env_key]}
+                            new_vars = [var for var in imported_vars if var["name"] not in existing_names]
+                            duplicate_vars = [var for var in imported_vars if var["name"] in existing_names]
+                            st.session_state[custom_env_key].extend(new_vars)
+                            
+                            st_object.success(f"Successfully imported env vars from the .env file")
+                            if duplicate_vars:
+                                st_object.warning(f"⚠️ Skipped {len(duplicate_vars)} duplicate variables {', '.join([var['name'] for var in duplicate_vars])}")
+                            st.session_state[import_dialog_key] = False
+                            st.rerun()
+                        else:
+                            st_object.error(f"❌ No valid environment variables found in the file")        
+                except requests.RequestException as e:
+                    st_object.error(f"❌ Failed to fetch file: {str(e)}")
+                except Exception as e:
+                    st_object.error(f"❌ Import error: {str(e)}")
+
+        with import_col2:
+            if st_object.button("❌ Cancel", key=f"{resource_type.lower()}_cancel_import"):
+                st.session_state[import_dialog_key] = False
+                st.rerun()
+
+    # Validate custom env vars
+    if custom_env_vars:
+        valid_custom_env_vars = []
+        invalid_custom_env_vars = []
+
+        for env_var in custom_env_vars:
+            if env_var["name"].strip() and env_var["value"].strip():
+                valid_custom_env_vars.append({"name": env_var["name"].strip(),
+                                              "value": env_var["value"].strip()})
+            elif env_var["name".strip() or env_var["value"].strip()]:
+                invalid_custom_env_vars.append(env_var)
+
+        if invalid_custom_env_vars:
+            st_object.warning(f"{len(invalid_custom_env_vars)} environment variable(s) have missing name or value and will be ignored")
+
+    st_object.markdown("---")       
+    
     if not k8s_api_client:
         st_object.error(
             "Kubernetes client not available. Cannot proceed with build."
@@ -966,6 +1145,12 @@ def render_import_form(
         for key in selected_env_sets:
             if key in env_options and isinstance(env_options[key], list):
                 final_additional_envs.extend(env_options[key])
+
+    if custom_env_vars:
+        for env_var in custom_env_vars:
+            if env_var["name"].strip() and env_var["value"].strip():
+                final_additional_envs.append({"name": env_var["name"].strip(),
+                                             "value": env_var["value"].strip()})
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api or not core_v1_api:
@@ -1039,7 +1224,7 @@ def render_import_form(
                 final_source_subfolder_path = manual_subfolder_input
 
         if st_object.button(
-            f"Build New {resource_type}", key=f"build_new_{resource_type.lower()}_btn"
+            f"Build & Deploy New {resource_type}", key=f"build_new_{resource_type.lower()}_btn"
         ):
             resource_name_suggestion = get_resource_name_from_path(
                 final_source_subfolder_path
