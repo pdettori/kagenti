@@ -105,7 +105,7 @@ spec:
               apiVersion: v1
               fieldPath: status.podIP
         image: postgres:12
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: postgres
         ports:
         - containerPort: 5432
