@@ -39,7 +39,7 @@ To import a new agent into the platform, follow these steps:
 #### Deploy from source code.
 
 1. Select "Build from source" as the deployment method
-2. In "Agent Source Repository URL", enter the root of your github repository where your agent project lives.
+2. In "Agent Source Repository URL", enter the root of your GitHub repository where your agent project lives.
 3. In "Git Branch or Tag" - If your agent project exists in a different branch than Main, specify the branch or tag
 4. Under "select protocol", specify an agent-to-agent communication protocol: A2A or ACP. Note: ACP is being deprecated.
 5. Under "Specify Source Subfolder" type the name of the subfolder of your git repo where the agent code can be found.
