@@ -21,6 +21,7 @@ from . import (
     keycloak,
     cert_manager,
     spire,
+    mcp_gateway,
     operator,
     registry,
     tekton,

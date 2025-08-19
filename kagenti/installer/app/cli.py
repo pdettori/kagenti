@@ -26,6 +26,7 @@ from .components import (
     gateway,
     istio,
     spire,
+    mcp_gateway,
     keycloak,
     operator,
     registry,
@@ -50,6 +51,7 @@ INSTALLERS = {
     InstallableComponent.OPERATOR: operator.install,
     InstallableComponent.ISTIO: istio.install,
     InstallableComponent.SPIRE: spire.install,
+    InstallableComponent.MCP_GATEWAY: mcp_gateway.install,
     InstallableComponent.ADDONS: addons.install,
     InstallableComponent.UI: ui.install,
     InstallableComponent.GATEWAY: gateway.install,
@@ -151,6 +153,7 @@ def main(
             deploy_component(InstallableComponent.ADDONS, skip_install)
             deploy_component(InstallableComponent.KEYCLOAK, skip_install)
             deploy_component(InstallableComponent.SPIRE, skip_install)
+            deploy_component(InstallableComponent.MCP_GATEWAY, skip_install)
             deploy_component(InstallableComponent.AGENTS, skip_install)
             deploy_component(InstallableComponent.UI, skip_install)
             deploy_component(InstallableComponent.INSPECTOR, skip_install)
@@ -162,6 +165,11 @@ def main(
         console.print(
             "\n",
             Panel(Text("Installation Complete!", justify="center", style="bold green")),
+            "\n",
+        )
+
+        console.print(
+            "To open Kagenti UI in your browser: open http://kagenti-ui.localtest.me:8080",
             "\n",
         )
 

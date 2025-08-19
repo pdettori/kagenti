@@ -51,7 +51,10 @@ PRELOADABLE_IMAGES = [
     "registry.k8s.io/metrics-server/metrics-server:v0.7.2",
     "ghcr.io/spiffe/oidc-discovery-provider:1.12.4",
     "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
-    "docker.io/nginx/nginx-prometheus-exporter:1.4.2"
+    "docker.io/nginx/nginx-prometheus-exporter:1.4.2",
+    "ghcr.io/kagenti/mcp:latest",
+    "ghcr.io/kagenti/mcp-gateway-wasm:latest",
+    "ghcr.io/modelcontextprotocol/inspector:0.15.0"
 ]
 
 
@@ -67,6 +70,7 @@ class InstallableComponent(str, Enum):
     UI = "ui"
     GATEWAY = "gateway"
     SPIRE = "spire"
+    MCP_GATEWAY = "mcp_gateway"
     KEYCLOAK = "keycloak"
     AGENTS = "agents"
     METRICS_SERVER= "metrics_server"    

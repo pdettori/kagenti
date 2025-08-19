@@ -60,7 +60,7 @@ The installer creates a kind cluster named `agent-platform` and then deploys all
 To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
 ```shell
-uv run kagenti-installer --skip-install keycloak --skip-install spire
+uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
 ```
 
 To get a full list of components and available install parameters issue:
