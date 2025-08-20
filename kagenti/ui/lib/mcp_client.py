@@ -17,7 +17,7 @@ import asyncio
 from typing import Optional, List, Dict, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession  # type: ignore
-from mcp.client.sse import sse_client  # type: ignore
+from mcp.client.streamable_http import streamablehttp_client  # type: ignore
 import httpx
 import logging
 import anyio
@@ -59,16 +59,18 @@ class MCPClientWrapper:
             async with exit_stack:  # Ensures aclose is called on this stack
                 headers = {"Authorization": f"Bearer {self.auth_token}"}
 
-                transport = await exit_stack.enter_async_context(
-                    sse_client(self.mcp_server_url, headers=headers)
+                """Connect to an MCP server running with HTTP Streamable transport"""
+                streams_context = streamablehttp_client(  # pylint: disable=W0201
+                    url=self.mcp_server_url,
+                    headers=headers or {},
                 )
-                stdio, write = transport
+                read_stream, write_stream, _ = await streams_context.__aenter__()  # pylint: disable=E1101
 
-                session = await exit_stack.enter_async_context(
-                    ClientSession(stdio, write)
-                )
+                session_context = ClientSession(read_stream, write_stream)  # pylint: disable=W0201
+                session: ClientSession = await session_context.__aenter__()  # pylint: disable=C2801
 
                 await session.initialize()
+
                 logger.info("MCP session initialized for listing tools.")
 
                 response = await session.list_tools()
@@ -126,14 +128,15 @@ class MCPClientWrapper:
             async with exit_stack:  # Ensures aclose is called on this stack
                 headers = {"Authorization": f"Bearer {self.auth_token}"}
 
-                transport = await exit_stack.enter_async_context(
-                    sse_client(self.mcp_server_url, headers=headers)
+                streams_context = streamablehttp_client(  # pylint: disable=W0201
+                    url=self.mcp_server_url,
+                    headers=headers or {},
                 )
-                stdio, write = transport
+                read_stream, write_stream, _ = await streams_context.__aenter__()  # pylint: disable=E1101
 
-                session = await exit_stack.enter_async_context(
-                    ClientSession(stdio, write)
-                )
+                session_context = ClientSession(read_stream, write_stream)  # pylint: disable=W0201
+                session: ClientSession = await session_context.__aenter__()  # pylint: disable=C2801
+
                 await session.initialize()
                 logger.info(f"MCP session initialized for calling tool '{tool_name}'.")
 
