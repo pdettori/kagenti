@@ -23,6 +23,7 @@ AGENT_EXAMPLE_SUBFOLDERS = [
     "acp/acp_weather_service",
     "a2a/a2a_contact_extractor",
     "a2a/a2a_currency_converter",
+    "a2a/slack_researcher"
 ]
 AGENT_PROTOCOL_OPTIONS = ["acp", "a2a"]
 
