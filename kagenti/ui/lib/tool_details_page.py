@@ -106,7 +106,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
 
     # TODO - should use service info
     mcp_tool_service_port = default_port
-    mcp_sse_path = constants.DEFAULT_MCP_SSE_PATH
+    mcp_path = constants.DEFAULT_MCP_STREAMABLE_HTTP_PATH
 
     if tool_service_name:
         scheme = "http://"
@@ -124,7 +124,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         if not base_url_with_scheme.endswith("/"):
             base_url_with_scheme += "/"
 
-        mcp_server_url = urljoin(base_url_with_scheme, mcp_sse_path)
+        mcp_server_url = urljoin(base_url_with_scheme, mcp_path)
 
         logger.info(
             f"Constructed MCP server URL for '{tool_k8s_name}': {mcp_server_url} (port: {mcp_tool_service_port}, in-cluster: {running_in_cluster})"
@@ -146,7 +146,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     st.link_button(
     "Connect with MCP Inspector",
     # TODO - transport should be a property of MCP server
-    url=f"{constants.MCP_INSPECTOR_URL}?serverUrl={mcp_server_url}&transport=sse",
+    url=f"{constants.MCP_INSPECTOR_URL}?serverUrl={mcp_server_url}&transport=streamable_http",
     help="Click to open the MCP Inspector in a new tab.",
     use_container_width=True,
     )

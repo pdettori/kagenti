@@ -21,7 +21,7 @@ from lib.kube import get_kube_api_client_cached
 TOOL_EXAMPLE_SUBFOLDERS = [
     "mcp/weather_tool",
 ]
-TOOL_PROTOCOL_OPTIONS = ["MCP", "gRPC", "HTTP"] 
+TOOL_PROTOCOL_OPTIONS = ["streamable_http", "sse"] 
 
 # Get the generic ApiClient and status details
 k8s_api_client, k8s_client_msg, k8s_client_icon = get_kube_api_client_cached()
