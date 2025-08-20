@@ -2,12 +2,6 @@
 
 ### NOTE: This demo is currently under ACTIVE development! 
 
-Todos:
- - create a2a agent example and add pointers/flavor text
-   - probably remove all references to acp in favor of a2a
-   - remove all references to weather
- - add documentation to get slack bot token
-
 -----
 This document provides detailed steps for running the **Slack Research Agent** proof-of-concept (PoC) demo.
 
@@ -20,10 +14,10 @@ This demo illustrates how Kagenti manages the lifecycle of all required componen
 
 Here's a breakdown of the sections:
 
-- In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`acp_weather_service`](https://github.com/kagenti/agent-examples/tree/main/acp/acp_weather_service) agent.
+- In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`a2a_slack_researcher`](https://github.com/kagenti/agent-examples/tree/main/a2a/slack_researcher) agent.
 - In [**Import New Tool**](#import-new-tool), you'll build and deploy the [`slack_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/slack_tool) tool.
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
-- In [**Run the Weather Agent Demo**](#run-the-weather-agent-demo), you'll interact with the agent and confirm it responds correctly using real-time slack data.
+- In [**Run the Slack Research Agent Demo**](#run-the-Slack Research-Agent-demo), you'll interact with the agent and confirm it responds correctly using real-time slack data.
 
 > **Prerequisites:**  
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this. 
@@ -40,15 +34,17 @@ To deploy the Weather Agent:
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
    - `mcp-slack`
-   - `ollama`
+   - `openai`
+   - `slack-researcher-config`
+###### TODO probably need to add different variables - maybe do ollama by default, then give option of openai
 4. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
 5. For **Git Branch or Tag**, use the default `main` branch (or select another as needed).
-6. Set **Protocol** to `acp`.
+6. Set **Protocol** to `a2a`.
 7. Under [**Specify Source Subfolder**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#specify-source-subfolder):
    - Click `Select from examples`
-   - Choose: `acp/acp_weather_service`
+   - Choose: `a2a/slack_researcher`
 8. Click **Build New Agent** to deploy.
 
 ---
@@ -81,9 +77,9 @@ To verify that both the agent and tool are running:
 2. Use the namespace you selected during deployment to check the status of the pods:
 
    ```console
-   installer$ kubectl -n <namespace> get po
+   installer$ kubectl get po -n <namespace>
    NAME                                  READY   STATUS    RESTARTS   AGE
-   acp-weather-service-8bb4644fc-4d65d   1/1     Running   0          1m
+   slack-researcher-8bb4644fc-4d65d   1/1     Running   0          1m
    slack-tool-5bb675dd7c-ccmlp         1/1     Running   0          1m
    ```
 
@@ -91,8 +87,8 @@ To verify that both the agent and tool are running:
    For the agent:
 
    ```console
-    installer$ kubectl -n <namespace> logs -f acp-weather-service-8bb4644fc-4d65d
-    Defaulted container "acp-weather-service" out of: acp-weather-service, kagenti-client-registration (init)
+    installer$ kubectl logs -f deployment/slack-researcher -n <namespace>
+    Defaulted container "slack-researcher" out of: slack-researcher, kagenti-client-registration (init)
     INFO:     Started server process [18]
     INFO:     Waiting for application startup.
     INFO:     Application startup complete.
@@ -101,7 +97,7 @@ To verify that both the agent and tool are running:
 
     For the tool:
     ```console
-    installer$ kubectl -n <namespace> logs -f slack-tool-5bb675dd7c-ccmlp
+    installer$ kubectl logs -f deployment/slack-tool -n <namespace>
     Defaulted container "slack-tool" out of: slack-tool, kagenti-client-registration (init)
     INFO:     Started server process [19]
     INFO:     Waiting for application startup.
@@ -119,18 +115,21 @@ Once the deployment is complete, you can run the demo:
 
 1. Navigate to the **Agent Catalog** in the Kagenti UI.
 2. Select the same `<namespace>` used during the agent deployment.
-3. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `acp-weather-service` and click **View Details**.
+3. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `slack-researcher` and click **View Details**.
 4. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
 
    ```console
    What are the channels in the slack? 
    ```
 
-5. You will see the *Agent Thinking...* message. Depending on the speed of your hosting environment, the agent will return a Slack response. For example:
+5. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, the agent will return a Slack response. For example:
 
    ```console
-     The current weather in NY is mostly sunny with a temperature of 22.6 degrees Celsius (73.07 degrees Fahrenheit). There is a gentle breeze blowing at 6.8 km/h (4.2 mph) from the northwest. It's currently daytime, and the weather code indicates fair weather with no precipitation.
-    ```
+    The bot has access to two channels:
+        1. general: This channel is for team-wide announcements and conversations. Everyone is included here.
+        2. random: This channel is for everything else, including team jokes, spur-of-the-moment ideas, and funny GIFs.
+    Please let me know if you need more information about a specific channel.
+   ```
 
 6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
@@ -154,14 +153,16 @@ However, you can manually remove them by deleting their Custom Resources (CRs) f
 ```console
     installer$ kubectl get components.kagenti.operator.dev -n <namespace>
     NAME                  SUSPEND
-    acp-weather-service   false
+    slack-researcher   false
     slack-tool          false
 ```
 
 ### Step 3: Delete the Agent and the Tool
 
+You may navigate to the **Agent Catalog** and **Tool Catalog** in the UI and delete the agent and tool respectively. Else, you may do this in the console:
+
 ```console
-   installer$ kubectl delete components.kagenti.operator.dev acp-weather-service slack-tool -n <namespace>
+   installer$ kubectl delete components.kagenti.operator.dev slack-researcher slack-tool -n <namespace>
 ```
 
 The Kagenti Operator will automatically clean up all related Kubernetes resources.
