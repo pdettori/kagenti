@@ -24,11 +24,20 @@ data:
     ]
   mcp-weather: |
     [
-      {"name": "MCP_URL", "value": "http://weather-tool:8000/sse"}
+      {"name": "MCP_URL", "value": "http://weather-tool:8000/mcp"}
     ]
   mcp-slack: |
     [
       {"name": "MCP_URL", "value": "http://slack-tool:8000/mcp"}
+    ]
+  slack-researcher-config: |
+    [
+      {"name": "TASK_MODEL_ID", "value": "granite3.3:8b"},
+      {"name": "EXTRA_HEADERS", "value": "{}"},
+      {"name": "MODEL_TEMPERATURE", "value": "0"},
+      {"name": "MAX_PLAN_STEPS", "value": "6"},
+      {"name": "SERVICE_PORT", "value": "8000"},
+      {"name": "LOG_LEVEL", "value": "INFO"}
     ]
   mcp-slack-config: |
     [
