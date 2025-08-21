@@ -21,6 +21,8 @@ Here's a breakdown of the sections:
 
 > **Prerequisites:**  
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this. 
+> This demo has been tested skipping the install of mcp-gateway:
+> `uv run kagenti-installer --skip-install mcp_gateway`
 
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
 
