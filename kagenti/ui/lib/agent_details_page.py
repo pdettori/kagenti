@@ -22,6 +22,7 @@ from .utils import (
     display_chat_history,
     append_to_chat_history,
     display_log_history,
+    clear_log_history,
 )
 from .kube import (
     get_custom_objects_api,
@@ -214,9 +215,19 @@ def render_agent_details_content(agent_k8s_name: str):
     initialize_chat_session_state(session_key_prefix)
     display_chat_history(session_key_prefix)
 
+    # log_display_container = st.container(border=True)
+    # with log_display_container:
+    #     st.caption("Interaction Logs:")
+    #     display_log_history(st, session_key_prefix)
     log_display_container = st.container(border=True)
     with log_display_container:
-        st.caption("Interaction Logs:")
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            st.caption("Interaction Logs:")
+        with col2:
+            if st.button("Clear Logs", key=f"clear_logs_{session_key_prefix}"):
+                clear_log_history(session_key_prefix)
+                st.rerun()
         display_log_history(st, session_key_prefix)
 
     agent_chat_name_for_sdk = agent_k8s_name

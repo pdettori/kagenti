@@ -154,3 +154,9 @@ def display_log_history(st_object, session_key_prefix: str):
     if log_history_key in st.session_state:
         for log_entry in st.session_state[log_history_key]:
             st_object.markdown(log_entry)
+
+def clear_log_history(session_key_prefix: str):
+    """Clears the log history for a given session prefix."""
+    log_history_key = f"log_history_{session_key_prefix}"
+    if log_history_key in st.session_state:
+        st.session_state[log_history_key] = []
