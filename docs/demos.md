@@ -12,7 +12,9 @@ Before running the demo setup script, ensure you have the following prerequisite
 * **Python:** Python versionn >=3.9
 * **uv:** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
 * **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. You must alias it to `docker` (e.g. `sudo ln -s /opt/homebrew/bin/podman /usr/local/bin/docker`). On MacOS, you will need also to do `brew install docker-credential-helper`
-  * In Rancher Decktop, configure VM size to at least 8GB of memory and 4 cores
+  * On Rancher or Podman Desktop, configure VM size to at least 12 GB of memory and 4 cores
+  * On Podman Desktop, make sure you use a machine with [rootful connection](https://podman-desktop.io/docs/podman/setting-podman-machine-default-connection)
+  * Make sure to increase your resource limits (for [rancher](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/), for podman you may need to edit inside the machine the file `/etc/security/limits.conf` and restart the machine)
 * **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker (e.g. `brew install kind`).
 * **kubectl:** The Kubernetes command-line tool (installs with **kind**).
 * **Helm:** A package manager for Kubernetes (e.g. `brew install helm`).
