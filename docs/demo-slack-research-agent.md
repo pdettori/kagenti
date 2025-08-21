@@ -17,7 +17,7 @@ Here's a breakdown of the sections:
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`a2a_slack_researcher`](https://github.com/kagenti/agent-examples/tree/main/a2a/slack_researcher) agent.
 - In [**Import New Tool**](#import-new-tool), you'll build and deploy the [`slack_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/slack_tool) tool.
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
-- In [**Run the Slack Research Agent Demo**](#run-the-Slack Research-Agent-demo), you'll interact with the agent and confirm it responds correctly using real-time slack data.
+- In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time slack data.
 
 > **Prerequisites:**  
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this. 
@@ -34,9 +34,9 @@ To deploy the Weather Agent:
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
    - `mcp-slack`
-   - `openai`
+   - `ollama`
    - `slack-researcher-config`
-###### TODO probably need to add different variables - maybe do ollama by default, then give option of openai
+Note that slack-researcher-config defines `TASK_MODEL_ID` as the model that is used by the agent. You may use `openai` instead of `ollama`, but will need to specify a different `TASK_MODEL_ID`. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
 4. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
