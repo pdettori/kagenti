@@ -33,8 +33,11 @@ def render_login():
             logger.info("Authentication is disabled")
 
     st.session_state[ENABLE_AUTH_STRING] = False
-    if ENABLE_AUTH.lower() == "true":    
+    if ENABLE_AUTH.lower() == "true":
         st.session_state[ENABLE_AUTH_STRING] = True
+
+        st.markdown("---")
+        st.subheader("Login")
 
         # Example
         # CLIENT_ID="kagenti"
@@ -49,22 +52,23 @@ def render_login():
         TOKEN_ENDPOINT = os.environ.get('TOKEN_ENDPOINT')
         REDIRECT_URI = os.environ.get('REDIRECT_URI')
         SCOPE = os.environ.get('SCOPE', 'openid profile email')
-        
+
         if CLIENT_SECRET is None:
-            logging.error("Expected CLIENT_SECRET env var but none exists.")
-            return
+            error_message = "Expected CLIENT_SECRET env var but none exists."
+            logging.error(error_message)
+            st.error("Expected CLIENT_SECRET env var but none exists.")
         if AUTH_ENDPOINT is None:
-            logging.error("Expected CLIENT_SECRET env var but none exists.")
-            return
+            error_message = "Expected CLIENT_SECRET env var but none exists."
+            logging.error(error_message)
+            st.error("Expected CLIENT_SECRET env var but none exists.")
         if TOKEN_ENDPOINT is None:
-            logging.error("Expected TOKEN_ENDPOINT env var but none exists.")
-            return
+            error_message = "Expected TOKEN_ENDPOINT env var but none exists."
+            logging.error(error_message)
+            st.error("Expected TOKEN_ENDPOINT env var but none exists.")
         if REDIRECT_URI is None:
-            logging.error("Expected REDIRECT_URI env var but none exists.")
-            return
-        
-        st.markdown("---")
-        st.subheader("Login")
+            error_message = "Expected REDIRECT_URI env var but none exists."
+            logging.error(error_message)
+            st.error("Expected REDIRECT_URI env var but none exists.")
 
         oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTH_ENDPOINT, TOKEN_ENDPOINT)
 
@@ -74,7 +78,7 @@ def render_login():
             decoded = jwt.decode(st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING], options={"verify_signature": False})
             username = decoded.get("preferred_username")
             st.info(f"Welcome, {username}!")
-            
+
             if st.button("Logout"):
                 del st.session_state[TOKEN_STRING]
                 st.rerun()
