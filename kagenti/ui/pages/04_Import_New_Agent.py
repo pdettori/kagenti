@@ -19,13 +19,12 @@ from lib.kube import get_kube_api_client_cached
 
 # --- Define Agent-Specific Settings for the Import Form ---
 AGENT_EXAMPLE_SUBFOLDERS = [
-    "acp/acp_ollama_researcher",
     "a2a/weather_service",
     "a2a/a2a_contact_extractor",
     "a2a/a2a_currency_converter",
     "a2a/slack_researcher",
 ]
-AGENT_PROTOCOL_OPTIONS = ["acp", "a2a"]
+AGENT_PROTOCOL_OPTIONS = ["a2a"]
 
 # Get the generic ApiClient and status details
 k8s_api_client, k8s_client_msg, k8s_client_icon = get_kube_api_client_cached()
@@ -34,7 +33,7 @@ render_import_form(
     st_object=st,
     resource_type="Agent",
     example_subfolders=AGENT_EXAMPLE_SUBFOLDERS,
-    default_protocol="acp",
+    default_protocol="a2a",
     protocol_options=AGENT_PROTOCOL_OPTIONS,
     default_framework="LangGraph",
     k8s_api_client=k8s_api_client,
