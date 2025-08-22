@@ -37,11 +37,11 @@ To deploy the Slack Research Agent:
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
-   - `mcp-slack`
-   - `ollama` or `openai`
-    - If using `ollama`, note that it uses `granite3.3:8b` so you may need to `ollama pull granite3.3:8b` locally
-    - If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
-   - `slack-researcher-config`
+  * `mcp-slack`
+  * `slack-researcher-config`
+  * `ollama` or `openai`
+    * If using `ollama`, note that it uses `granite3.3:8b` so you may need to `ollama pull granite3.3:8b` locally
+    * If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
 4. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
