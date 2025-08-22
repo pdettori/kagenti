@@ -42,7 +42,6 @@ logger = logging.getLogger(__name__)
 # Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
 logging.basicConfig(level=logging.INFO)
 
-
 async def _fetch_agent_card_with_resolver(
     st_object,
     httpx_client: httpx.AsyncClient,

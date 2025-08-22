@@ -1305,7 +1305,6 @@ def render_import_form(
 
     st_object.markdown("---")
 
-
 def parse_image_url(url: str):
     # Split off the tag
     if ':' not in url:

@@ -12,11 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 from lib.constants import ACCESS_TOKEN_STRING, ENABLE_AUTH_STRING, TOKEN_STRING
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 import jwt
+
+# Configure logger for this module
+logger = logging.getLogger(__name__)
+# Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
+logging.basicConfig(level=logging.INFO)
+
+def render_login():
+    ENABLE_AUTH = os.environ.get('ENABLE_AUTH')
+    if ENABLE_AUTH_STRING not in st.session_state:
+        if ENABLE_AUTH.lower() == "true":
+            logger.info("Authentication is enabled")
+        else:
+            logger.info("Authentication is disabled")
+
+    st.session_state[ENABLE_AUTH_STRING] = False
+    if ENABLE_AUTH.lower() == "true":    
+        st.session_state[ENABLE_AUTH_STRING] = True
+
+        # Example
+        # CLIENT_ID="kagenti"
+        # CLIENT_SECRET="xFPc7EPVV..."
+        # AUTH_ENDPOINT="http://localhost:8080/realms/master/protocol/openid-connect/auth"
+        # TOKEN_ENDPOINT="http://localhost:8080/realms/master/protocol/openid-connect/token"
+        # REDIRECT_URI="http://localhost:8502/oauth2/callback"
+        # SCOPE="openid profile email"
+        CLIENT_ID = os.environ.get('CLIENT_ID', 'kagenti')
+        CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+        AUTH_ENDPOINT = os.environ.get('AUTH_ENDPOINT')
+        TOKEN_ENDPOINT = os.environ.get('TOKEN_ENDPOINT')
+        REDIRECT_URI = os.environ.get('REDIRECT_URI')
+        SCOPE = os.environ.get('SCOPE', 'openid profile email')
+        
+        if CLIENT_SECRET is None:
+            logging.error("Expected CLIENT_SECRET env var but none exists.")
+            return
+        if AUTH_ENDPOINT is None:
+            logging.error("Expected CLIENT_SECRET env var but none exists.")
+            return
+        if TOKEN_ENDPOINT is None:
+            logging.error("Expected TOKEN_ENDPOINT env var but none exists.")
+            return
+        if REDIRECT_URI is None:
+            logging.error("Expected REDIRECT_URI env var but none exists.")
+            return
+        
+        st.markdown("---")
+        st.subheader("Login")
+
+        oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTH_ENDPOINT, TOKEN_ENDPOINT)
+
+        # Check if token exists in session state
+        if TOKEN_STRING in st.session_state:
+            # User is not logged in
+            decoded = jwt.decode(st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING], options={"verify_signature": False})
+            username = decoded.get("preferred_username")
+            st.info(f"Welcome, {username}!")
+            
+            if st.button("Logout"):
+                del st.session_state[TOKEN_STRING]
+                st.rerun()
+        else:
+            # If not, show authorize button
+            st.warning("User is not logged in")
+            result = oauth2.authorize_button("Click to login", REDIRECT_URI, SCOPE)
+            if result and TOKEN_STRING in result:
+                # If authorization successful, save token in session state
+                st.session_state.token = result.get(TOKEN_STRING)
+
+                st.rerun()
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -98,49 +168,7 @@ with col2:
     )
 
 # --- Login Redirect ---
-st.session_state[ENABLE_AUTH_STRING] = False
-ENABLE_AUTH = os.environ.get('ENABLE_AUTH')
-if ENABLE_AUTH == "true":
-    st.session_state[ENABLE_AUTH_STRING] = True
-
-    st.markdown("---")
-    st.subheader("Login")
-
-    # Example
-    # CLIENT_ID="kagenti"
-    # CLIENT_SECRET="xFPc7EPVV..."
-    # AUTH_ENDPOINT="http://localhost:8080/realms/master/protocol/openid-connect/auth"
-    # TOKEN_ENDPOINT="http://localhost:8080/realms/master/protocol/openid-connect/token"
-    # REDIRECT_URI="http://localhost:8502/oauth2/callback"
-    # SCOPE="openid profile email"
-    CLIENT_ID = os.environ.get('CLIENT_ID', 'kagenti')
-    CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-    AUTH_ENDPOINT = os.environ.get('AUTH_ENDPOINT')
-    TOKEN_ENDPOINT = os.environ.get('TOKEN_ENDPOINT')
-    REDIRECT_URI = os.environ.get('REDIRECT_URI')
-    SCOPE = os.environ.get('SCOPE', 'openid profile email')
-
-    oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTH_ENDPOINT, TOKEN_ENDPOINT)
-
-    # Check if token exists in session state
-    if TOKEN_STRING in st.session_state:
-        # User is not logged in
-        decoded = jwt.decode(st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING], options={"verify_signature": False})
-        username = decoded.get("preferred_username")
-        st.info(f"Welcome, {username}!")
-        
-        if st.button("Logout"):
-            del st.session_state[TOKEN_STRING]
-            st.rerun()
-    else:
-        # If not, show authorize button
-        st.warning("User is not logged in")
-        result = oauth2.authorize_button("Click to login", REDIRECT_URI, SCOPE)
-        if result and TOKEN_STRING in result:
-            # If authorization successful, save token in session state
-            st.session_state.token = result.get(TOKEN_STRING)
-
-            st.rerun()
+render_login()
 
 st.markdown("---")
 
