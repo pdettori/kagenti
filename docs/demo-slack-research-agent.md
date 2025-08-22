@@ -32,15 +32,16 @@ You should also open the Agent Platform Demo Dashboard as instructed in the [Con
 
 ## Import New Agent
 
-To deploy the Weather Agent:
+To deploy the Slack Research Agent:
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
    - `mcp-slack`
-   - `ollama`
+   - `ollama` or `openai`
+     - If using `ollama`, note that it uses `granite3.3:8b` so you may need to `ollama pull granite3.3:8b` locally
+     - If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
    - `slack-researcher-config`
-Note that `slack-researcher-config` defines `TASK_MODEL_ID` as the model that is used by the agent. You may use `openai` instead of `ollama`, but will need to specify a different `TASK_MODEL_ID`. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
 4. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
@@ -141,27 +142,7 @@ If you encounter any errors, check the [Troubleshooting section](./demos.md#trou
 
 ## Cleanup
 
-Currently, the Kagenti UI does not provide built-in cleanup capabilities for agents or tools.
-However, you can manually remove them by deleting their Custom Resources (CRs) from the cluster.
-
-### Step 1: List Custom Resource Definitions (CRDs)
-
-```console
-    installer$ kubectl get crds | grep kagenti
-    components.kagenti.operator.dev             2025-07-23T23:11:59Z
-    platforms.kagenti.operator.dev              2025-07-23T23:11:59Z
-```
-
-### Step 2: List deployed components in your namespace
-
-```console
-    installer$ kubectl get components.kagenti.operator.dev -n <namespace>
-    NAME                  SUSPEND
-    slack-researcher   false
-    slack-tool          false
-```
-
-### Step 3: Delete the Agent and the Tool
+### Delete the Agent and the Tool
 
 You may navigate to the **Agent Catalog** and **Tool Catalog** in the UI and delete the agent and tool respectively. Else, you may do this in the console:
 
@@ -170,3 +151,4 @@ You may navigate to the **Agent Catalog** and **Tool Catalog** in the UI and del
 ```
 
 The Kagenti Operator will automatically clean up all related Kubernetes resources.
+
