@@ -64,7 +64,7 @@ To deploy the slack Tool:
 4. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
 5. Choose the `main` branch or your preferred branch.
-6. Set **Select Protocol** to `MCP`.
+6. Set **Select Protocol** to `streamable-http`.
 7. Under **Specify Source Subfolder**:
    - Select: `mcp/slack_tool`
 8. Click **Build New Tool** to deploy.
