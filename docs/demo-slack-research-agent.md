@@ -81,7 +81,7 @@ To verify that both the agent and tool are running:
 2. Use the namespace you selected during deployment to check the status of the pods:
 
    ```console
-   installer$ kubectl get po -n <namespace>
+   installer$ kubectl get pods -n <namespace>
    NAME                                  READY   STATUS    RESTARTS   AGE
    slack-researcher-8bb4644fc-4d65d   1/1     Running   0          1m
    slack-tool-5bb675dd7c-ccmlp         1/1     Running   0          1m
