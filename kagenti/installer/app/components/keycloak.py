@@ -167,69 +167,15 @@ def install():
             "-n",
             "keycloak",
             "-f",
-            "https://raw.githubusercontent.com/keycloak/keycloak-quickstarts/refs/heads/main/kubernetes/keycloak.yaml",
+            str(config.RESOURCES_DIR / "keycloak.yaml"),
         ],
-        "Deploying Keycloak statefulset",
+        "Deploying Keycloak with Postgres DB",
     )
+    
     run_command(
-        [
-            "kubectl",
-            "scale",
-            "-n",
-            "keycloak",
-            "statefulset",
-            "keycloak",
-            "--replicas=1",
-        ],
-        "Scaling Keycloak to 1 replica",
+        ["kubectl", "rollout", "status", "-n", "keycloak", "statefulset/postgres"],
+        "Waiting for Postgres rollout",
     )
-
-    patch_str = """
-    {
-        "spec": {
-            "template": {
-                "spec": {
-                    "containers": [
-                        {
-                            "name": "keycloak",
-                            "env": [
-                                {
-                                    "name": "KC_PROXY_HEADERS",
-                                    "value": "forwarded"
-                                }
-                            ],
-                            "resources": {
-                                "limits": {
-                                    "memory": "3000Mi"
-                                }
-                            },
-                            "startupProbe": {
-                                "periodSeconds": 30,
-                                "timeoutSeconds": 60
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    }
-    """
-    run_command(
-        [
-            "kubectl",
-            "patch",
-            "statefulset",
-            "keycloak",
-            "-n",
-            "keycloak",
-            "--type",
-            "strategic",
-            "--patch",
-            patch_str,
-        ],
-        "Patching Keycloak for proxy headers",
-    )
-
     run_command(
         ["kubectl", "rollout", "status", "-n", "keycloak", "statefulset/keycloak"],
         "Waiting for Keycloak rollout",
