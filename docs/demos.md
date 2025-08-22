@@ -21,7 +21,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 * **[ollama](https://ollama.com/download)** to run LLMs locally (e.g. `brew install ollama`). Then start the **ollama* service in the background (e.g.`ollama serve`).
 * **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
 * **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
-* **Slack Bot Token:** Your [Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) for the slack MCP server to access your slack workspace. This is only required if you are attempting the slack MCP Server example. 
+* **Slack Bot Token:** Your [Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) for the Slack MCP server to access your Slack workspace. This is only required if you are attempting the Slack MCP Server example. 
 
 At this time the demo has only been tested on MacOS with M1 processor.
 
