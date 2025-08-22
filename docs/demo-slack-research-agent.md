@@ -6,9 +6,9 @@
 This document provides detailed steps for running the **Slack Research Agent** proof-of-concept (PoC) demo.
 
 In this demo, we will use the Kagenti UI to import and deploy both the **Slack Research Agent** and the **Slack Tool**.  
-During deployment, we'll configure the **A2A protocol** for managing agent calls and **MCP** for enabling communication between the agent and the slack tool.
+During deployment, we'll configure the **A2A protocol** for managing agent calls and **MCP** for enabling communication between the agent and the Slack tool.
 
-Once deployed, we will query the agent using a natural language prompt. The agent will then invoke the tool and return the slack data as a response.
+Once deployed, we will query the agent using a natural language prompt. The agent will then invoke the tool and return the Slack data as a response.
 
 This demo illustrates how Kagenti manages the lifecycle of all required components: agents, tools, protocols, and runtime infrastructure.
 
@@ -17,7 +17,7 @@ Here's a breakdown of the sections:
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`a2a_slack_researcher`](https://github.com/kagenti/agent-examples/tree/main/a2a/slack_researcher) agent.
 - In [**Import New Tool**](#import-new-tool), you'll build and deploy the [`slack_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/slack_tool) tool.
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
-- In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time slack data.
+- In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time Slack data.
 
 > **Prerequisites:**  
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this. 
@@ -40,7 +40,7 @@ To deploy the Weather Agent:
    - `mcp-slack`
    - `ollama`
    - `slack-researcher-config`
-Note that slack-researcher-config defines `TASK_MODEL_ID` as the model that is used by the agent. You may use `openai` instead of `ollama`, but will need to specify a different `TASK_MODEL_ID`. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
+Note that `slack-researcher-config` defines `TASK_MODEL_ID` as the model that is used by the agent. You may use `openai` instead of `ollama`, but will need to specify a different `TASK_MODEL_ID`. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
 4. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
@@ -55,7 +55,7 @@ Note that slack-researcher-config defines `TASK_MODEL_ID` as the model that is u
 
 ## Import New Tool
 
-To deploy the slack Tool:
+To deploy the Slack Tool:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
 2. Select the same `<namespace>` as used for the agent.
@@ -123,7 +123,7 @@ Once the deployment is complete, you can run the demo:
 4. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
 
    ```console
-   What are the channels in the slack? 
+   What are the channels in the Slack? 
    ```
 
 5. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, the agent will return a Slack response. For example:
