@@ -26,6 +26,25 @@ data:
     [
       {"name": "MCP_URL", "value": "http://weather-tool:8000/mcp"}
     ]
+  mcp-slack: |
+    [
+      {"name": "MCP_URL", "value": "http://slack-tool:8000/mcp"}
+    ]
+  slack-researcher-config: |
+    [
+      {"name": "EXTRA_HEADERS", "value": "{}"},
+      {"name": "MODEL_TEMPERATURE", "value": "0"},
+      {"name": "MAX_PLAN_STEPS", "value": "6"},
+      {"name": "SERVICE_PORT", "value": "8000"},
+      {"name": "LOG_LEVEL", "value": "INFO"}
+    ]
+  mcp-slack-config: |
+    [
+      {
+        "name": "SLACK_BOT_TOKEN",
+        "valueFrom": {"secretKeyRef": {"name": "slack-secret", "key": "bot-token"}}
+      }
+    ]
   KEYCLOAK_URL: "http://keycloak.keycloak:8080"
   KEYCLOAK_REALM: "master"
   KEYCLOAK_ADMIN_USERNAME: "admin"

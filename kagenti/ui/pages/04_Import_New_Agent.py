@@ -20,9 +20,10 @@ from lib.kube import get_kube_api_client_cached
 # --- Define Agent-Specific Settings for the Import Form ---
 AGENT_EXAMPLE_SUBFOLDERS = [
     "acp/acp_ollama_researcher",
-    "acp/acp_weather_service",
+    "a2a/weather_service",
     "a2a/a2a_contact_extractor",
     "a2a/a2a_currency_converter",
+    "a2a/slack_researcher",
 ]
 AGENT_PROTOCOL_OPTIONS = ["acp", "a2a"]
 
