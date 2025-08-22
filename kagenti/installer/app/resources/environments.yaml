@@ -32,7 +32,6 @@ data:
     ]
   slack-researcher-config: |
     [
-      {"name": "TASK_MODEL_ID", "value": "granite3.3:8b"},
       {"name": "EXTRA_HEADERS", "value": "{}"},
       {"name": "MODEL_TEMPERATURE", "value": "0"},
       {"name": "MAX_PLAN_STEPS", "value": "6"},
