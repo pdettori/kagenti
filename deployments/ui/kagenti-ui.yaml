@@ -25,6 +25,45 @@ spec:
         - name: kagenti-ui-container
           image: ghcr.io/kagenti/kagenti/ui:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: "ENABLE_AUTH"
+              value: "false"
+            - name: "CLIENT_ID"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "CLIENT_ID"
+                  optional: true
+            - name: "CLIENT_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "CLIENT_SECRET"
+                  optional: true
+            - name: "AUTH_ENDPOINT"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "AUTH_ENDPOINT"
+                  optional: true
+            - name: "TOKEN_ENDPOINT"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "TOKEN_ENDPOINT"
+                  optional: true
+            - name: "REDIRECT_URI"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "REDIRECT_URI"
+                  optional: true
+            - name: "SCOPE"
+              valueFrom:
+                secretKeyRef:
+                  name: "auth" 
+                  key: "SCOPE"
+                  optional: true
           ports:
             - containerPort: 8501
           resources:
@@ -34,7 +73,6 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi  
-
 ---
 apiVersion: v1
 kind: Service
