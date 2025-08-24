@@ -36,6 +36,7 @@ from a2a.types import (
 )
 from . import constants
 from .utils import append_to_log_history, sanitize_for_session_state_key
+from lib.constants import ACCESS_TOKEN_STRING, TOKEN_STRING
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -366,8 +367,13 @@ async def run_agent_chat_stream_a2a(
             streaming_request = SendStreamingMessageRequest(
                 id=str(uuid4()), params=MessageSendParams(**send_message_payload)
             )
+            http_kwargs = {}
+            if TOKEN_STRING in st.session_state:
+                if ACCESS_TOKEN_STRING in st.session_state[TOKEN_STRING]:
+                    bearer_token = st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING]
+                    http_kwargs = {"headers": {"Authorization": f"Bearer {bearer_token}"}}
 
-            stream_response_iterator = client.send_message_streaming(streaming_request)
+            stream_response_iterator = client.send_message_streaming(streaming_request, http_kwargs=http_kwargs)
 
             async for chunk in stream_response_iterator:
                 chunk_text, is_final = _process_a2a_stream_chunk(
