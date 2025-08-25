@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+User interface for Tool Catalog page.
+"""
+
 import streamlit as st
 from lib.kube import (
     get_custom_objects_api,
@@ -33,6 +37,7 @@ custom_obj_api = get_custom_objects_api()  # Correct function to get CustomObjec
 generic_api_client, _, _ = get_kube_api_client_cached()
 
 # Wrapper function to call delete_custom_resource with agent-specific parameters
+# pylint: disable=redefined-outer-name
 def delete_tool_resource(custom_obj_api, name, namespace):
     """
     Wrapper function to delete agent resources specifically.
@@ -42,7 +47,7 @@ def delete_tool_resource(custom_obj_api, name, namespace):
         st_object=st,
         custom_obj_api=custom_obj_api,
         group="kagenti.operator.dev",
-        version="v1alpha1",   
+        version="v1alpha1",
         namespace=namespace,
         plural="components",
         name=name
@@ -57,5 +62,5 @@ render_resource_catalog(
     custom_obj_api=custom_obj_api,  # Pass the CustomObjectsApi
     generic_api_client=generic_api_client,  # Pass the generic ApiClient
     session_state_key_selected_resource="selected_tool_name",
-    delete_resource_func=delete_tool_resource, 
+    delete_resource_func=delete_tool_resource,
 )

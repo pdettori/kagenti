@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Utilities for handling [ACP](https://agentcommunicationprotocol.dev/introduction/welcome) protocol.
+"""
+
+
+import logging
+from datetime import datetime
 import streamlit as st
 from acp_sdk import GenericEvent, MessageCompletedEvent, MessagePartEvent
 from acp_sdk.client import Client
@@ -20,13 +27,12 @@ from acp_sdk.models import (
     Message,
     MessagePart,
 )
-import logging
 from .utils import append_to_log_history
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
 async def run_agent_chat_stream_acp(
     st_object,
     session_key_prefix: str,
@@ -57,7 +63,7 @@ async def run_agent_chat_stream_acp(
     )
 
     try:
-        async with Client(base_url=agent_url) as client, client.session() as session:
+        async with Client(base_url=agent_url) as client, client.session():
             user_message_input = Message(
                 parts=[MessagePart(content=user_message, role="user")]
             )
@@ -122,6 +128,7 @@ async def run_agent_chat_stream_acp(
     return full_response_content
 
 
+# pylint: disable=too-many-locals, too-many-branches, too-many-statements
 async def display_acp_agent_metadata(
     st_object,
     agent_logical_name: str,
@@ -134,11 +141,12 @@ async def display_acp_agent_metadata(
         st_object: Streamlit object for displaying messages.
         agent_logical_name: The logical name of the ACP agent.
         agent_url: The base URL of the ACP agent service.
-    """    
+    """
     displayed_once = False
     # Normalize the logical name from UI/K8s to match SDK's typical underscore usage for comparison
     normalized_logical_name_for_comparison = agent_logical_name.replace("-", "_")
     logger.info(
+        # pylint: disable=line-too-long
         f"Displaying ACP metadata for: {agent_logical_name} (normalized for comparison to: {normalized_logical_name_for_comparison})"
     )
 
@@ -156,6 +164,7 @@ async def display_acp_agent_metadata(
                     )
 
                     logger.debug(
+                        # pylint: disable=line-too-long
                         f"Checking SDK agent: '{sdk_agent_name}' (normalized: '{normalized_sdk_agent_name_for_comparison}') against logical: '{normalized_logical_name_for_comparison}'"
                     )
                     if (
@@ -348,6 +357,7 @@ async def display_acp_agent_metadata(
 
             if not displayed_once:
                 st_object.info(
+                    # pylint: disable=line-too-long
                     f"No ACP metadata object found for agent named '{agent_logical_name}' (normalized: '{normalized_logical_name_for_comparison}') from `client.agents()` stream."
                 )
                 logger.warning(

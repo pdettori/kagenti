@@ -1,0 +1,13 @@
+[MAIN]
+
+init-hook=import sys; sys.path.append("/Users/snible/src/kagenti/kagenti/installer/app");
+
+disable=
+  logging-fstring-interpolation,
+  broad-exception-caught,
+  invalid-name,
+  duplicate-code,
+  fixme
+
+[FORMAT]
+max-line-length=130

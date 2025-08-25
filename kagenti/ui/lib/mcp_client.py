@@ -13,14 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
+"""
+MCP Client.
+"""
+
+import logging
 from typing import Optional, List, Dict, Any
 from contextlib import AsyncExitStack
+import anyio
 from mcp import ClientSession  # type: ignore
 from mcp.client.streamable_http import streamablehttp_client  # type: ignore
 import httpx
-import logging
-import anyio
 
 DEFAULT_AUTH_TOKEN = "my_token"
 
@@ -58,7 +61,7 @@ class MCPClientWrapper:
             async with exit_stack:  # Ensures aclose is called on this stack
                 headers = {"Authorization": f"Bearer {self.auth_token}"}
 
-                """Connect to an MCP server running with HTTP Streamable transport"""
+                # Connect to an MCP server running with HTTP Streamable transport
                 streams_context = streamablehttp_client(  # pylint: disable=W0201
                     url=self.mcp_server_url,
                     headers=headers or {},
@@ -89,9 +92,9 @@ class MCPClientWrapper:
                     )
                     self.last_list_tools_successful = True
                     return self.cached_tools
-                else:
-                    logger.warning("MCP list_tools response was empty or malformed.")
-                    return []
+
+                logger.warning("MCP list_tools response was empty or malformed.")
+                return []
         except httpx.ConnectError as e:
             logger.error(
                 f"MCP Connection Error while listing tools from {self.mcp_server_url}: {e}",

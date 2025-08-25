@@ -13,7 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Common utilities for UI.
+"""
+
+from typing import Callable, Optional
 import streamlit as st
+import kubernetes
 from .utils import (
     display_tags,
     extract_tags_from_labels,
@@ -23,16 +29,15 @@ from .kube import (
     is_deployment_ready,
     get_kubernetes_namespace,
     get_all_namespaces,
-    get_kube_api_client_cached,
 )
-from typing import Callable, List, Dict, Any, Optional
 from . import constants
-import kubernetes
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals, too-many-branches, too-many-statements
 def render_resource_catalog(
     st_object,
     resource_type_name: str,
     list_resources_func: Callable,
+    # pylint: disable=unused-argument
     get_details_func: Callable,
     render_details_func: Callable,
     custom_obj_api: Optional[
@@ -42,6 +47,7 @@ def render_resource_catalog(
     session_state_key_selected_resource: str,
     delete_resource_func: Optional[Callable] = None,
 ):
+    # pylint: disable=line-too-long
     """
     Renders a catalog page for a given type of Kubernetes resource.
     Manages selection and navigation between list and detail views.
@@ -211,6 +217,7 @@ def render_resource_catalog(
 
                         # Enable the Delete button if delete function is provided in arg list
                         if delete_resource_func:
+                            # pylint: disable=line-too-long
                             delete_confirm_key = f"delete_confirm_{sanitize_for_session_state_key(item_name)}_{resource_type_name.lower()}"
 
                             # Initialize delete confirmation state for the delete key
@@ -307,9 +314,9 @@ def display_resource_metadata(st_object, resource_details: dict):
 def check_auth():
     '''If authentication is enabled, display content only if the user is logged in'''
     if constants.ENABLE_AUTH_STRING in st.session_state and \
-        st.session_state[constants.ENABLE_AUTH_STRING] and \
-        constants.TOKEN_STRING not in st.session_state:
-            st.page_link("Home.py", label="Click here to login", icon="🏠")
+            st.session_state[constants.ENABLE_AUTH_STRING] and \
+            constants.TOKEN_STRING not in st.session_state:
+        st.page_link("Home.py", label="Click here to login", icon="🏠")
 
-            # Stop rendering other content
-            st.stop()
+        # Stop rendering other content
+        st.stop()

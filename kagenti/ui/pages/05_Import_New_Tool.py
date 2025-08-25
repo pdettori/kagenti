@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from lib.common_ui import check_auth
+"""
+User interface for Import New Tool page.
+"""
+
 import streamlit as st
+from lib.common_ui import check_auth
 from lib.build_utils import render_import_form
-from lib import constants
 from lib.kube import get_kube_api_client_cached
 
 # --- Define Tool-Specific Settings for the Import Form ---

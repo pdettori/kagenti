@@ -13,10 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
+"""
+Utilities for UI code.
+"""
+
 import re
-from . import constants
 import os
+import streamlit as st
+from . import constants
 
 
 def display_tags(st_object, tags_dict: dict):

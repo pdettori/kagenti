@@ -1,4 +1,4 @@
-# Assisted by watsonx Code Assistant 
+# Assisted by watsonx Code Assistant
 # Copyright 2025 IBM Corp.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
+"""
+Tool details.
+"""
+
 import asyncio
 import json
 import logging
 from urllib.parse import urljoin
+import streamlit as st
 from .utils import sanitize_for_session_state_key
 from .kube import (
     get_custom_objects_api,
@@ -52,6 +56,7 @@ def get_mcp_client_from_session(session_key: str, mcp_url: str) -> MCPClientWrap
         client: MCPClientWrapper = st.session_state[session_key]
         if client.mcp_server_url != mcp_url:
             logger.info(
+                # pylint: disable=line-too-long
                 f"MCP URL changed for '{session_key}'. Re-initializing MCPClientWrapper from {client.mcp_server_url} to {mcp_url}."
             )
             st.session_state[session_key] = MCPClientWrapper(mcp_server_url=mcp_url)
@@ -62,6 +67,7 @@ def get_mcp_client_from_session(session_key: str, mcp_url: str) -> MCPClientWrap
     return st.session_state[session_key]
 
 
+# pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def render_mcp_tool_details_content(tool_k8s_name: str):
     """
     Renders the detailed view for a specific MCP-enabled Tool.
@@ -90,7 +96,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     session_key_prefix = sanitize_for_session_state_key(tool_k8s_name)
     mcp_client_session_key = f"mcp_client_{session_key_prefix}"
 
-    tags = display_resource_metadata(st, tool_details_data)
+    _tags = display_resource_metadata(st, tool_details_data)
     st.markdown("---")
 
     # TODO - should use service info
@@ -127,6 +133,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         mcp_server_url = urljoin(base_url_with_scheme, mcp_path)
 
         logger.info(
+            # pylint: disable=line-too-long
             f"Constructed MCP server URL for '{tool_k8s_name}': {mcp_server_url} (port: {mcp_tool_service_port}, in-cluster: {running_in_cluster})"
         )
     else:
@@ -217,7 +224,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
                 tool_name_on_mcp = mcp_tool_data.get("name", f"Unnamed Tool {i+1}")
                 with st.expander(
                     f"Tool: {tool_name_on_mcp}",
-                    expanded=True if len(mcp_tools_list) == 1 else False,
+                    expanded=len(mcp_tools_list) == 1,
                 ):
                     st.markdown(
                         f"**Description:** {mcp_tool_data.get('description', 'N/A')}"
