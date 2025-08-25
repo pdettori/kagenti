@@ -38,9 +38,9 @@ from a2a.types import (
     TextPart,
     DataPart,
 )
+from lib.constants import ACCESS_TOKEN_STRING, TOKEN_STRING
 from . import constants
 from .utils import append_to_log_history
-from lib.constants import ACCESS_TOKEN_STRING, TOKEN_STRING
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
