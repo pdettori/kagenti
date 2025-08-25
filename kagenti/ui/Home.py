@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+User interface home page.
+"""
+
 import logging
 import os
 from lib.constants import ACCESS_TOKEN_STRING, ENABLE_AUTH_STRING, TOKEN_STRING
@@ -25,6 +29,10 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 def render_login():
+    """
+    Render the login page.
+    """
+
     ENABLE_AUTH = os.environ.get('ENABLE_AUTH')
     if ENABLE_AUTH_STRING not in st.session_state:
         if ENABLE_AUTH.lower() == "true":

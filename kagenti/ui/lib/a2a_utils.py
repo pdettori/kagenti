@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
-import httpx
+"""
+Utilities for handling [A2A](https://github.com/a2aproject/A2A) protocol.
+"""
+
 import logging
 from uuid import uuid4
 from typing import Any, Tuple
+import streamlit as st
+import httpx
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import (
     AgentCard,
@@ -34,9 +38,9 @@ from a2a.types import (
     TextPart,
     DataPart,
 )
-from . import constants
-from .utils import append_to_log_history, sanitize_for_session_state_key
 from lib.constants import ACCESS_TOKEN_STRING, TOKEN_STRING
+from . import constants
+from .utils import append_to_log_history
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -122,10 +126,10 @@ async def get_effective_agent_card(st_object, base_url: str) -> AgentCard | None
             if extended_card:
                 logger.info("Using AUTHENTICATED EXTENDED agent card.")
                 return extended_card
-            else:
-                logger.warning(
-                    "Failed to fetch extended card, falling back to public card."
-                )
+
+            logger.warning(
+                "Failed to fetch extended card, falling back to public card."
+            )
         else:
             logger.info(
                 "Public card does not support extended card, or fetching failed. Using public card."
@@ -133,6 +137,7 @@ async def get_effective_agent_card(st_object, base_url: str) -> AgentCard | None
         return public_card
 
 
+# pylint: disable=too-many-branches
 def display_a2a_agent_card_details(st_object, agent_card: AgentCard):
     """Displays formatted details of an A2A AgentCard using Streamlit components."""
     if not agent_card:
@@ -215,6 +220,7 @@ async def render_a2a_agent_card(st_object, base_url: str):
         st_object.error("Could not retrieve agent card to display.")
 
 
+# pylint: disable=too-many-branches, too-many-statements
 def _process_a2a_stream_chunk(
     chunk_data, session_key_prefix: str, log_container, message_placeholder
 ) -> Tuple[str, bool]:
@@ -311,6 +317,7 @@ def _process_a2a_stream_chunk(
     return full_response_content_chunk, is_final_event
 
 
+# pylint: disable=too-many-branches, too-many-statements, too-many-arguments, too-many-locals, too-many-positional-arguments
 async def run_agent_chat_stream_a2a(
     st_object,
     session_key_prefix: str,

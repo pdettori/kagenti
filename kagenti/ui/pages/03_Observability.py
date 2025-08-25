@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from lib.common_ui import check_auth
+"""
+User interface for Observability page.
+"""
+
 import streamlit as st
+from lib.common_ui import check_auth
 from lib import constants  # For URLs
 
 # --- Page Configuration (Optional) ---

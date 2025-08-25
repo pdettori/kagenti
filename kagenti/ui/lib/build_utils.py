@@ -13,14 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
-import kubernetes.client
+# pylint: disable=too-many-lines
+
+"""
+Utilities for building UI.
+"""
+
 import re
 import logging
 import json
 import os
 import time
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any
+import requests
+import streamlit as st
+import kubernetes.client
 from keycloak import KeycloakAdmin
 from . import constants
 from .kube import (
@@ -33,7 +40,6 @@ from .kube import (
     _display_kube_config_status_once,
 )
 from .utils import sanitize_for_k8s_name, remove_url_prefix, get_resource_name_from_path
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +82,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         )
         return ""
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
 def _construct_tool_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -124,6 +131,7 @@ def _construct_tool_resource_body(
     )
     if not repo_user:
         st_object.error(
+            # pylint: disable=line-too-long
             f"Failed to fetch GitHub username from secret '{constants.GIT_USER_SECRET_NAME}' (key: '{constants.GIT_USER_SECRET_KEY}') in namespace '{build_namespace}'. Ensure secret exists and K8s client is functional."
         )
         return None
@@ -131,9 +139,9 @@ def _construct_tool_resource_body(
     #image_registry_prefix = f"ghcr.io/{repo_user}"
     image_name = k8s_resource_name
     if build_from_source:
-       image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+        image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
-       image_registry_prefix,image_name,tag =  parse_image_url(repo_url)
+        image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -236,12 +244,14 @@ def _construct_tool_resource_body(
     return body
 
 def is_valid_image_url(url: str) -> bool:
+    """Is URL valid?"""
     pattern = re.compile(
         r'^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$'
     )
     return bool(pattern.match(url))
 
 def extract_repo_name(url):
+    """Given a URL, extract the repo name"""
     pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
     match = re.match(pattern, url)
     if match:
@@ -249,6 +259,7 @@ def extract_repo_name(url):
     return None
 
 def extract_image_name(url):
+    """Given a URL, extract the image name"""
     pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
     match = re.match(pattern, url)
     if match:
@@ -305,6 +316,7 @@ def _construct_agent_resource_body(
     )
     if not repo_user:
         st_object.error(
+            # pylint: disable=line-too-long
             f"Failed to fetch GitHub username from secret '{constants.GIT_USER_SECRET_NAME}' (key: '{constants.GIT_USER_SECRET_KEY}') in namespace '{build_namespace}'. Ensure secret exists and K8s client is functional."
         )
         return None
@@ -312,9 +324,9 @@ def _construct_agent_resource_body(
 
     image_name = k8s_resource_name
     if build_from_source:
-       image_registry_prefix = f"registry.cr-system.svc.cluster.local:5000"
+        image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
-       image_registry_prefix,image_name,tag =  parse_image_url(repo_url)
+        image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -414,6 +426,7 @@ def _construct_agent_resource_body(
 
     return body
 
+# pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
 def trigger_and_monitor_build(
     st_object,
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
@@ -426,6 +439,7 @@ def trigger_and_monitor_build(
     source_subfolder: str,
     protocol: str,
     framework: str,
+    # pylint: disable=unused-argument
     build_from_source: bool,
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
@@ -461,11 +475,12 @@ def trigger_and_monitor_build(
             "Kubernetes CoreV1Api client not initialized. Cannot fetch secrets for build."
         )
         return False
-    logger.info(f"Generating Component manifest\n")
+    logger.info("Generating Component manifest\n")
     k8s_resource_name = sanitize_for_k8s_name(resource_name_suggestion)
     if not k8s_resource_name:
         st_object.error("Invalid resource name after sanitization. Cannot proceed.")
         return False
+    build_cr_body = None
     if resource_type.lower() == "agent":
         build_cr_body = _construct_agent_resource_body(
            st_object=st_object,
@@ -508,7 +523,7 @@ def trigger_and_monitor_build(
     ):
         try:
 
-            logger.info(f"Generated Component manifest:\n%s", json.dumps(build_cr_body, indent=2))
+            logger.info("Generated Component manifest:\n%s", json.dumps(build_cr_body, indent=2))
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
@@ -563,6 +578,7 @@ def trigger_and_monitor_build(
                 deployment_phase = deployment_status_data.get("phase", "Unknown")
 
                 status_placeholder.info(
+                    # pylint: disable=line-too-long
                     f"Build Status for '{k8s_resource_name}': **{current_build_status}**\nMessage: {status_message}\nDeployment Status: **{deployment_phase}**"
                 )
                 if current_build_status in ["Succeeded", "Failed", "Error"]:
@@ -602,9 +618,9 @@ def trigger_and_monitor_build(
         final_deployment_phase = "Unknown"
 
         with st_object.spinner(
-           f"Build succeeded. Waiting for {resource_type} '{k8s_resource_name}' to deploy..."
+            f"Build succeeded. Waiting for {resource_type} '{k8s_resource_name}' to deploy..."
         ):
-           while (
+            while (
               final_deployment_phase not in ["Ready", "Failed", "Error"]
               and deployment_retries < max_deployment_retries
             ):
@@ -632,39 +648,44 @@ def trigger_and_monitor_build(
                     )
 
                     if final_deployment_phase in ["Ready", "Failed", "Error"]:
-                       break
+                        break
 
                     time.sleep(constants.POLL_INTERVAL_SECONDS)
 
                 except Exception as e:
-                   st_object.warning(f"Error checking deployment status: {str(e)}")
-                   time.sleep(constants.POLL_INTERVAL_SECONDS)
+                    st_object.warning(f"Error checking deployment status: {str(e)}")
+                    time.sleep(constants.POLL_INTERVAL_SECONDS)
 
         # Handle final deployment status
         if final_deployment_phase == "Ready":
             st_object.success(
-               f"{resource_type.capitalize()} '{k8s_resource_name}' built and deployed successfully in namespace '{build_namespace}'!"
+                # pylint: disable=line-too-long
+                f"{resource_type.capitalize()} '{k8s_resource_name}' built and deployed successfully in namespace '{build_namespace}'!"
             )
             return True
-        elif final_deployment_phase in ["Failed", "Error"]:
+        if final_deployment_phase in ["Failed", "Error"]:
             st_object.error(
+              # pylint: disable=line-too-long
               f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
             )
             return False
-        else:
-           # Timeout case
-            st_object.warning(
-               f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
-               f"Last status: {final_deployment_phase}. Manual check might be needed."
-            )
-            return False
 
-    else:
-        st_object.error(
-          f"{resource_type.capitalize()} build for '{k8s_resource_name}' in '{build_namespace}' finished with status: {current_build_status}. Check operator logs."
+        # Timeout case
+        st_object.warning(
+            # pylint: disable=line-too-long
+            f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
+            f"Last status: {final_deployment_phase}. Manual check might be needed."
         )
+        return False
+
+
+    st_object.error(
+        # pylint: disable=line-too-long
+        f"{resource_type.capitalize()} build for '{k8s_resource_name}' in '{build_namespace}' finished with status: {current_build_status}. Check operator logs."
+    )
     return False
 
+# pylint: disable=too-many-return-statements, too-many-branches
 def trigger_and_monitor_deployment_from_image(
     st_object,
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
@@ -707,11 +728,12 @@ def trigger_and_monitor_deployment_from_image(
             "Kubernetes CoreV1Api client not initialized. Cannot fetch secrets for build."
         )
         return False
-    logger.info(f"Generating Component manifest\n")
+    logger.info("Generating Component manifest\n")
     k8s_resource_name = sanitize_for_k8s_name(resource_name_suggestion)
     if not k8s_resource_name:
         st_object.error("Invalid resource name after sanitization. Cannot proceed.")
         return False
+    cr_body = None
     if resource_type.lower() == "agent":
         cr_body = _construct_agent_resource_body(
            st_object=st_object,
@@ -754,7 +776,7 @@ def trigger_and_monitor_deployment_from_image(
     ):
         try:
 
-            logger.info(f"Generated Component manifest:\n%s", json.dumps(cr_body, indent=2))
+            logger.info("Generated Component manifest:\n%s", json.dumps(cr_body, indent=2))
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
@@ -827,19 +849,21 @@ def trigger_and_monitor_deployment_from_image(
             f"{resource_type.capitalize()} '{k8s_resource_name}' deployed successfully in namespace '{deployment_namespace}'!"
         )
         return True
-    elif final_deployment_phase in ["Failed", "Error"]:
+    if final_deployment_phase in ["Failed", "Error"]:
         st_object.error(
+            # pylint: disable=line-too-long
             f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
         )
         return False
-    else:
-        # Timeout case
-        st_object.warning(
-            f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
-            f"Last status: {final_deployment_phase}. Manual check might be needed."
-        )
-        return False
 
+    # Timeout case
+    st_object.warning(
+        f"{resource_type.capitalize()} '{k8s_resource_name}' deployment timed out after {max_deployment_retries} attempts. "
+        f"Last status: {final_deployment_phase}. Manual check might be needed."
+    )
+    return False
+
+# pylint: disable=too-many-branches
 def render_import_form(
     st_object,
     resource_type: str,
@@ -848,7 +872,7 @@ def render_import_form(
     k8s_api_client: Optional[kubernetes.client.ApiClient],
     k8s_client_status_msg: Optional[str],
     k8s_client_status_icon: Optional[str],
-    example_subfolders: List[str] = [],
+    example_subfolders: List[str] = None,
     protocol_options: Optional[List[str]] = None,
 ):
     """
@@ -908,6 +932,7 @@ def render_import_form(
         options=available_build_namespaces,
         index=build_ns_index,
         key=f"{resource_type.lower()}_build_namespace_selector",
+            # pylint: disable=line-too-long
         help=f"The Component resource, the {resource_type}, and the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap will be in this namespace.",
     )
 
@@ -946,6 +971,7 @@ def render_import_form(
             "Select environments to append:",
             options=sorted_env_keys,
             key=f"{resource_type.lower()}_env_sets_selector",
+            # pylint: disable=line-too-long
             help=f"Select sets of environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}'.",
         )
         st_object.markdown("---")
@@ -1054,7 +1080,7 @@ def render_import_form(
                                         key=f"{resource_type.lower()}_env_file_path",
                                         help="Enter the path to .env file within the repository")
 
-        import_col1, import_col2, import_col3 = st_object.columns([1, 1, 2])
+        import_col1, import_col2, _import_col3 = st_object.columns([1, 1, 2])
         with import_col1:
             if st_object.button(" 🔄 Import",
                                 key=f"{resource_type.lower()}_do_import",
@@ -1062,7 +1088,6 @@ def render_import_form(
                 try:
                     with st_object.spinner("Fetching .env file from repository ..."):
 
-                        import requests
                         # Need to convert Github repo URL to raw file URL
                         if "github.com" in repo_url:
 
@@ -1071,11 +1096,11 @@ def render_import_form(
 
                             repo_path = repo_url.replace("https://github.com/",'').replace("http://github.com/",'')
                             if '/tree/' in repo_path:
-                               parts = repo_path.split('/tree/')
-                               repo_path = parts[0]
-                               branch = parts[1].split('/')[0]
+                                parts = repo_path.split('/tree/')
+                                repo_path = parts[0]
+                                branch = parts[1].split('/')[0]
                             else:
-                               branch = 'main'
+                                branch = 'main'
                             raw_url = f"https://raw.githubusercontent.com/{repo_path}/{branch}/{file_path.lstrip('/')}"
                         else:
                             raw_url = f"{repo_url.rstrip('/')}/{file_path.lstrip('/')}"
@@ -1089,13 +1114,14 @@ def render_import_form(
                             new_vars = [var for var in imported_vars if var["name"] not in existing_names]
                             duplicate_vars = [var for var in imported_vars if var["name"] in existing_names]
                             st.session_state[custom_env_key].extend(new_vars)
-                            st_object.success(f"Successfully imported env vars from the .env file")
+                            st_object.success("Successfully imported env vars from the .env file")
                             if duplicate_vars:
+                                # pylint: disable=line-too-long
                                 st_object.warning(f"⚠️ Skipped {len(duplicate_vars)} duplicate variables {', '.join([var['name'] for var in duplicate_vars])}")
                             st.session_state[import_dialog_key] = False
                             st.rerun()
                         else:
-                            st_object.error(f"❌ No valid environment variables found in the file")
+                            st_object.error("❌ No valid environment variables found in the file")
                 except requests.RequestException as e:
                     st_object.error(f"❌ Failed to fetch file: {str(e)}")
                 except Exception as e:
@@ -1119,6 +1145,7 @@ def render_import_form(
                 invalid_custom_env_vars.append(env_var)
 
         if invalid_custom_env_vars:
+            # pylint: disable=line-too-long
             st_object.warning(f"{len(invalid_custom_env_vars)} environment variable(s) have missing name or value and will be ignored")
 
     st_object.markdown("---")
@@ -1153,6 +1180,8 @@ def render_import_form(
        ("Build from Source", "Deploy from Existing Image"),
         key=f"{resource_type.lower()}_deployment_method",)
 
+    if example_subfolders is None:
+        example_subfolders = []
 
     if deployment_method == "Build from Source":
         st_object.write(
@@ -1279,7 +1308,7 @@ def render_import_form(
             if not k8s_api_client:
                 st_object.error("Kubernetes client not available. Cannot proceed with deployment.")
                 return
-            repo, resource_name, tag = parse_image_url(docker_image_url)
+            _repo, resource_name, _tag = parse_image_url(docker_image_url)
 
             # Trigger deployment using the image
             custom_obj_api = get_custom_objects_api()
@@ -1306,6 +1335,7 @@ def render_import_form(
     st_object.markdown("---")
 
 def parse_image_url(url: str):
+    """Parse an Image URL"""
     # Split off the tag
     if ':' not in url:
         raise ValueError("URL must contain a tag (e.g., :latest)")

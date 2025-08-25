@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
+"""
+User interface for agent details.
+"""
+
 import asyncio
 import logging
+import streamlit as st
 from .utils import (
     sanitize_for_session_state_key,
     initialize_chat_session_state,
@@ -37,6 +41,7 @@ from . import constants
 
 logger = logging.getLogger(__name__)
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def _handle_chat_interaction(
     st_object,
     agent_k8s_name: str,
@@ -122,6 +127,7 @@ def _handle_chat_interaction(
 
 
 # --- Main Render Function for Agent Details ---
+# pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def render_agent_details_content(agent_k8s_name: str):
     """
     Renders the detailed view for a specific agent, including chat interface.
@@ -178,6 +184,7 @@ def render_agent_details_content(agent_k8s_name: str):
         )
         if not running_in_cluster:
             st.caption(
+                # pylint: disable=line-too-long
                 f"Attempting to connect via local URL: `{agent_url}`. Ensure port-forwarding or Ingress to this port is active if the agent runs in-cluster."
             )
 

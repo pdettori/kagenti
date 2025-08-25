@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
-import kubernetes.client
-import kubernetes.config
+"""
+Kubernetes configuration
+"""
+
 import os
-from . import constants
 import logging
 from typing import Tuple, Optional, Any, List, Dict
 import base64  # For decoding secret data
 import json
+import time
+import streamlit as st
+import kubernetes.client
+import kubernetes.config
+from . import constants
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +50,11 @@ def get_kube_api_client_cached() -> (
                 "✅ Loaded in-cluster K8s config.",
                 "🎉",
             )
-        else:
-            logger.info("KUBERNETES_SERVICE_HOST not found, attempting kubeconfig.")
-            raise kubernetes.config.ConfigException(
-                "Not an in-cluster environment based on env vars."
-            )
+
+        logger.info("KUBERNETES_SERVICE_HOST not found, attempting kubeconfig.")
+        raise kubernetes.config.ConfigException(
+            "Not an in-cluster environment based on env vars."
+        )
     except kubernetes.config.ConfigException:
         try:
             kubernetes.config.load_kube_config()
@@ -177,11 +182,12 @@ def get_secret_data(
                 f"Successfully fetched and decoded key '{data_key}' from secret '{secret_name}'."
             )
             return decoded_data
-        else:
-            logger.warning(
-                f"Key '{data_key}' not found in secret '{secret_name}' in namespace '{namespace}'. Data keys: {list(secret.data.keys()) if secret.data else 'None'}"
-            )
-            return None
+
+        logger.warning(
+            # pylint: disable=line-too-long
+            f"Key '{data_key}' not found in secret '{secret_name}' in namespace '{namespace}'. Data keys: {list(secret.data.keys()) if secret.data else 'None'}"
+        )
+        return None
     except kubernetes.client.ApiException as e:
         if e.status == 404:
             logger.warning(
@@ -253,11 +259,12 @@ def get_config_map_data(
             f"Unexpected error reading ConfigMap '{config_map_name}' in ns '{namespace}': {e}",
             exc_info=True,
         )
-        st.error(f"An unexpected error occurred while fetching the environments ConfigMap.")
+        st.error("An unexpected error occurred while fetching the environments ConfigMap.")
         return None
 
 
 def is_running_in_cluster() -> bool:
+    """Is UI executing from a Kubernetes cluster?"""
     return bool(os.getenv("KUBERNETES_SERVICE_HOST"))
 
 
@@ -278,13 +285,14 @@ def _handle_kube_api_exception(st_object, e, resource_name, action="fetching"):
         if hasattr(e, "body"):
             try:
                 st_object.code(e.body, language="json")
-            except:
+            except: # pylint: disable=bare-except
                 st_object.text(f"Raw error body: {e.body}")
     else:
         st_object.error(f"An unexpected error occurred {action} {resource_name}: {e}")
 
 
 def is_deployment_ready(resource_data: dict) -> str:
+    """Is a deployment ready?"""
     if not isinstance(resource_data, dict):
         return "Unknown"
     conditions = resource_data.get("status", {}).get("conditions", [])
@@ -302,6 +310,7 @@ def is_deployment_ready(resource_data: dict) -> str:
     return "Not Ready"
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def list_custom_resources(
     st_object,
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
@@ -311,6 +320,7 @@ def list_custom_resources(
     plural: str,
     label_selector: str = None,
 ):
+    """List custom resources"""
     if not custom_obj_api:
         st_object.error("Kubernetes CustomObjectsApi client not initialized.")
         return []
@@ -346,6 +356,7 @@ def get_custom_resource(
     plural: str,
     name: str,
 ):
+    """Get a Kubernetes CR"""
     if not custom_obj_api:
         st_object.error("Kubernetes CustomObjectsApi client not initialized.")
         return None
@@ -375,6 +386,7 @@ def list_agents(
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
     namespace="default",
 ):
+    """List agents known to K8s"""
     return list_custom_resources(
         st_object=st_object,
         custom_obj_api=custom_obj_api,
@@ -392,6 +404,7 @@ def get_agent_details(
     agent_name: str,
     namespace="default",
 ):
+    """Get agent details from Kubernetes"""
     return get_custom_resource(
         st_object=st_object,
         custom_obj_api=custom_obj_api,
@@ -408,6 +421,7 @@ def list_tools(
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
     namespace="default",
 ):
+    """List tools using Kubernetes"""
     return list_custom_resources(
         st_object=st_object,
         custom_obj_api=custom_obj_api,
@@ -425,6 +439,7 @@ def get_tool_details(
     tool_name: str,
     namespace="default",
 ):
+    """Get tool details from Kubernetes"""
     return get_custom_resource(
         st_object=st_object,
         custom_obj_api=custom_obj_api,
@@ -437,6 +452,7 @@ def get_tool_details(
 
 
 def get_kubernetes_namespace():
+    """Get the Kubernetes namespace"""
     if (
         "selected_k8s_namespace" in st.session_state
         and st.session_state.selected_k8s_namespace
@@ -460,6 +476,7 @@ def get_kubernetes_namespace():
     return os.getenv("KUBERNETES_NAMESPACE", "default")
 
 
+# pylint: disable=too-many-return-statements
 def delete_custom_resource(
     st_object,
     custom_obj_api: Optional[kubernetes.client.CustomObjectsApi],
@@ -471,7 +488,7 @@ def delete_custom_resource(
 ):
     """
     Delete a custom resource from Kubernetes.
-    
+
     Args:
         st_object: Streamlit object for displaying messages
         custom_obj_api: Kubernetes CustomObjectsApi client
@@ -480,21 +497,22 @@ def delete_custom_resource(
         namespace: Kubernetes namespace
         plural: Plural name of the custom resource
         name: Name of the resource to delete
-        
+
     Returns:
         bool: True if deletion was successful, False otherwise
     """
     if not custom_obj_api:
         st_object.error("Kubernetes CustomObjectsApi client not initialized.")
         return False
-    
+
     try:
         logger.info(f"Deleting {plural}/{name} in ns '{namespace}'")
+        # pylint: disable=line-too-long
         logger.info(f"Delete parameters - group: {group}, version: {version}, namespace: {namespace}, plural: {plural}, name: {name}")
-        
+
         # First, verify the resource exists before trying to delete
         try:
-            existing_resource = custom_obj_api.get_namespaced_custom_object(
+            _existing_resource = custom_obj_api.get_namespaced_custom_object(
                 group=group,
                 version=version,
                 namespace=namespace,
@@ -507,28 +525,27 @@ def delete_custom_resource(
                 st_object.warning(f"Resource {plural}/{name} not found - it may have already been deleted.")
                 logger.warning(f"Resource {plural}/{name} not found (404)")
                 return True  # Consider this success since the resource is gone
-            else:
-                logger.error(f"Error checking if resource exists: {e}")
-                raise  # Re-raise to be handled by outer try-catch
-        
+
+            logger.error(f"Error checking if resource exists: {e}")
+            raise  # Re-raise to be handled by outer try-catch
+
         # Perform the deletion
         delete_response = custom_obj_api.delete_namespaced_custom_object(
-            group=group, 
-            version=version, 
-            namespace=namespace, 
-            plural=plural, 
+            group=group,
+            version=version,
+            namespace=namespace,
+            plural=plural,
             name=name
         )
-        
+
         logger.info(f"Delete API call completed for {plural}/{name}")
         logger.debug(f"Delete response: {delete_response}")
-        
+
         # Verify deletion was successful by checking if resource still exists
         try:
             # Wait a moment for deletion to propagate
-            import time
             time.sleep(1)
-            
+
             custom_obj_api.get_namespaced_custom_object(
                 group=group,
                 version=version,
@@ -540,15 +557,15 @@ def delete_custom_resource(
             logger.warning(f"Resource {plural}/{name} still exists after deletion attempt")
             st_object.warning(f"Deletion initiated but {plural}/{name} may still be terminating...")
             return True  # Deletion was initiated even if not completed yet
-            
+
         except kubernetes.client.ApiException as e:
             if e.status == 404:
                 logger.info(f"Successfully deleted {plural}/{name} in ns '{namespace}' - resource no longer exists")
                 return True
-            else:
-                logger.error(f"Unexpected error verifying deletion: {e}")
-                return False
-        
+
+            logger.error(f"Unexpected error verifying deletion: {e}")
+            return False
+
     except kubernetes.client.ApiException as e:
         logger.error(f"Kubernetes API exception during deletion: {e}")
         logger.error(f"Exception details - status: {e.status}, reason: {e.reason}, body: {e.body}")
@@ -556,7 +573,7 @@ def delete_custom_resource(
             st_object, e, f"{plural}/{name}", action="deleting"
         )
         return False
-        
+
     except Exception as e:
         logger.error(f"Unexpected error deleting {plural}/{name}: {e}")
         st_object.error(

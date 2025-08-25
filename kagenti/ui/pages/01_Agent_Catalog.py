@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+User interface for Agent Catalog page.
+"""
+
 import streamlit as st
 from lib.kube import (
     get_custom_objects_api,
@@ -33,6 +37,7 @@ custom_obj_api = get_custom_objects_api()  # Use the correct function name
 generic_api_client, _, _ = get_kube_api_client_cached()
 
 # Wrapper function to call delete_custom_resource with agent-specific parameters
+# pylint: disable=redefined-outer-name
 def delete_agent_resource(custom_obj_api, name, namespace):
     """
     Wrapper function to delete agent resources specifically.
