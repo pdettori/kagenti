@@ -1,4 +1,4 @@
 
 .PHONY: lint
 lint:
-	pylint kagenti/ui/pages/*.py kagenti/ui/*.py kagenti/ui/lib/*.py
+	cd kagenti/ui; uv run pylint Home.py pages/*.py lib/*.py

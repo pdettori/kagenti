@@ -28,3 +28,8 @@ build-backend = "setuptools.build_meta"
 # --- Setuptools configuration ---
 [tool.setuptools]
 packages = ["lib"]
+
+[dependency-groups]
+dev = [
+    "pylint>=3.3.8",
+]
