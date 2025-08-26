@@ -47,7 +47,7 @@ app = typer.Typer(
 INSTALLERS = {
     InstallableComponent.REGISTRY: registry.install,
     InstallableComponent.TEKTON: tekton.install,
-    InstallableComponent.CERT_MANAGER: cert_manager.install, 
+    InstallableComponent.CERT_MANAGER: cert_manager.install,
     InstallableComponent.OPERATOR: operator.install,
     InstallableComponent.ISTIO: istio.install,
     InstallableComponent.SPIRE: spire.install,
@@ -58,7 +58,7 @@ INSTALLERS = {
     InstallableComponent.KEYCLOAK: keycloak.install,
     InstallableComponent.AGENTS: agents.install,
     InstallableComponent.METRICS_SERVER: metrics_server.install,
-    InstallableComponent.INSPECTOR: inspector.install,  
+    InstallableComponent.INSPECTOR: inspector.install,
 }
 
 
@@ -103,6 +103,11 @@ def main(
         "--preload-images",
         help="Flag to enable preloading of images in kind.",
     ),
+    silent: bool = typer.Option(
+        False,
+        "--silent",
+        help="Flag to run the install without user interaction.",
+    ),
 ):
     """
     Installer for the Agent Platform. Checks dependencies and sets up a Kind cluster with optional components.
@@ -120,13 +125,13 @@ def main(
         checker.check_env_vars()
 
         should_install_registry = InstallableComponent.REGISTRY not in skip_install
-        cluster.create_kind_cluster(install_registry=should_install_registry)
+        cluster.create_kind_cluster(install_registry=should_install_registry, silent=silent)
 
         if preload_images:
             cluster.preload_images_in_kind(config.PRELOADABLE_IMAGES)
 
         if InstallableComponent.AGENTS not in skip_install:
-            cluster.check_and_create_agent_namespaces()
+            cluster.check_and_create_agent_namespaces(silent=silent)
         else:
             console.print(
                 "[yellow]Skipping Agent Namespace check/creation as requested.[/yellow]\n"
@@ -141,11 +146,11 @@ def main(
 
         deploy_component(InstallableComponent.REGISTRY, skip_install)
         deploy_component(InstallableComponent.TEKTON, skip_install)
-        deploy_component(InstallableComponent.CERT_MANAGER, skip_install)          
+        deploy_component(InstallableComponent.CERT_MANAGER, skip_install)
         deploy_component(InstallableComponent.OPERATOR, skip_install)
         deploy_component(InstallableComponent.ISTIO, skip_install)
-        deploy_component(InstallableComponent.METRICS_SERVER, skip_install)        
-            
+        deploy_component(InstallableComponent.METRICS_SERVER, skip_install)
+
 
         # Components that depend on Istio
         if InstallableComponent.ISTIO not in skip_install:
