@@ -59,7 +59,15 @@ def kind_cluster_running():
         raise typer.Exit(1)
 
 
-def create_kind_cluster(install_registry: bool):
+def confirm_ask(prompt: str, default: bool, silent: bool):
+    """Prompt the user unless silent mode is enabled."""
+    if silent:
+        return default
+    else:
+        return Confirm.ask(prompt, default=default)
+
+
+def create_kind_cluster(install_registry: bool, silent: bool):
     """Creates a Kind cluster if it doesn't already exist."""
     console.print(
         Panel(
@@ -79,9 +87,10 @@ def create_kind_cluster(install_registry: bool):
             console.print("[bold red]Cannot proceed. Exiting.[/bold red]")
             raise typer.Exit(1)
 
-    if not Confirm.ask(
+    if not confirm_ask(
         f"[bold yellow]?[/bold yellow] Kind cluster '{config.CLUSTER_NAME}' not found. Create it now?",
         default=True,
+        silent=silent,
     ):
         console.print("[bold red]Cannot proceed without a cluster. Exiting.[/bold red]")
         raise typer.Exit()
@@ -151,7 +160,7 @@ def preload_images_in_kind(images: list[str]):
     console.print()
 
 
-def check_and_create_agent_namespaces():
+def check_and_create_agent_namespaces(silent: bool):
     """Checks for agent namespaces and creates them if they are missing."""
     console.print(
         Panel(
@@ -185,7 +194,7 @@ def check_and_create_agent_namespaces():
         console.print(
             f"The following required agent namespaces do not exist: [bold yellow]{', '.join(missing_namespaces)}[/bold yellow]"
         )
-        if Confirm.ask("Do you want to create them now?", default=True):
+        if confirm_ask("Do you want to create them now?", default=True, silent=silent):
             for ns in missing_namespaces:
                 run_command(
                     ["kubectl", "create", "namespace", ns], f"Creating namespace '{ns}'"
