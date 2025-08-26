@@ -18,10 +18,10 @@ User interface home page.
 
 import logging
 import os
-from lib.constants import ACCESS_TOKEN_STRING, ENABLE_AUTH_STRING, TOKEN_STRING
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 import jwt
+from lib.constants import ACCESS_TOKEN_STRING, ENABLE_AUTH_STRING, TOKEN_STRING
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
