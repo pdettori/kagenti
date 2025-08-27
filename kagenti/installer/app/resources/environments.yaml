@@ -57,6 +57,22 @@ data:
       {
         "name": "CLIENT_SECRET",
         "valueFrom": {"secretKeyRef": {"name": "slack-tool-client-secret", "key": "client-secret"}}
+      }, 
+      {
+        "name": "ISSUER",
+        "value": "http://keycloak.localtest.me:8080/realms/master"
+      },
+      {
+        "name": "INTROSPECTION_ENDPOINT",
+        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/token/introspect"
+      },
+      {
+        "name": "AUDIENCE",
+        "value": "spiffe://kagenti.localtest.me/sa/slack-tool"
+      },
+      {
+        "name": "ADMIN_SLACK_BOT_TOKEN",
+        "valueFrom": {"secretKeyRef": {"name": "slack-secret", "key": "admin-bot-token"}}
       }
     ]
   KEYCLOAK_URL: "http://keycloak.keycloak:8080"
