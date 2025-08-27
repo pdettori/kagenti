@@ -9,7 +9,7 @@ A diagram and description of the demo architecture is provided [here](./tech-det
 
 Before running the demo setup script, ensure you have the following prerequisites in place:
 
-* **Python:** Python versionn >=3.9
+* **Python:** Python version >=3.9
 * **uv:** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
 * **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. You must alias it to `docker` (e.g. `sudo ln -s /opt/homebrew/bin/podman /usr/local/bin/docker`). On MacOS, you will need also to do `brew install docker-credential-helper`
   * On Rancher or Podman Desktop, configure VM size to at least 12 GB of memory and 4 cores
@@ -21,7 +21,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 * **[ollama](https://ollama.com/download)** to run LLMs locally (e.g. `brew install ollama`). Then start the **ollama* service in the background (e.g.`ollama serve`).
 * **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
 * **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
-* **Slack Bot Token:** Your [Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) for the Slack MCP server to access your Slack workspace. This is only required if you are attempting the Slack MCP Server example. 
+* **Slack Bot Token:** Your [Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) for the Slack MCP server to access your Slack workspace. This is only required if you are attempting the Slack MCP Server example.
 
 At this time the demo has only been tested on MacOS with M1 processor.
 
@@ -125,7 +125,7 @@ delete the secret in all your auto-created namespaces, then re-run the install
 
 ```shell
 kubectl get secret --all-namespaces
-kubectl -n my-namespace delete github-token-secret 
+kubectl -n my-namespace delete github-token-secret
 uv run kagenti-installer
 ```
 
@@ -195,7 +195,7 @@ A few problem fixes might include:
 * clean, fresh Podman start:
 
    ```console
-   podman machine rm -f 
+   podman machine rm -f
    podman machine init
    podman machine set --memory=8192
    podman machine start
