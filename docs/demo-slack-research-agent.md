@@ -1,4 +1,4 @@
-# Slack Research Agent Demo
+# Authorized Slack Research Agent Demo
 
 ### NOTE: This demo is currently under ACTIVE development! 
 
