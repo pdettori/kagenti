@@ -37,6 +37,11 @@ if KEYCLOAK_URL is None:
     print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {CLIENT_ID}.')
     exit() # KEYCLOAK_URL is optional so do not raise an error
 
+# TODO: use the function from kagenti/ui/lib/kube.py
+def is_running_in_cluster() -> bool:
+    return bool(os.getenv("KUBERNETES_SERVICE_HOST"))
+
+# TODO: refactor this function so kagenti-client-registration image can use it
 def register_client(
     keycloak_admin: KeycloakAdmin,
     client_id: str,
@@ -109,11 +114,11 @@ data = {
     "SCOPE": "openid profile email"
 }
 
-config.load_incluster_config()
-# # For local development
-# config.load_kube_config()
-
 # Connect to Kubernetes API
+if is_running_in_cluster():
+    config.load_incluster_config()
+else:
+    config.load_kube_config()
 v1 = client.CoreV1Api()
 
 # Create the Kubernetes secret

@@ -7,6 +7,6 @@ This `kagenti-ui-oauth-secret` secret is then read by the `kagenti-ui`, which al
 # Publish image
 
 ```sh
-docker -D build  --no-cache -t ghcr.io/kagenti/kagenti-ui-oauth-secret:latest -f Dockerfile .
-docker push ghcr.io/kagenti/kagenti-ui-oauth-secret:latest 
+docker -D build  --no-cache -t ghcr.io/kagenti/kagenti/ui-oauth-secret:latest -f Dockerfile .
+docker push ghcr.io/kagenti/kagenti/ui-oauth-secret:latest 
 ```
