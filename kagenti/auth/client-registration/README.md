@@ -38,21 +38,10 @@ Select `Build Agent`.
 
 ### Verify client registration
 
-```sh
-kubectl port-forward service/keycloak -n keycloak 8081:8080
-```
-
-Open Keycloak at [http://localhost:8081](http://localhost:8081).
+Open Keycloak at [http://keycloak.localtest.me:8080](http://keycloak.localtest.me:8080).
 
 The default username and password are `admin`.
 
 Go to `Clients` tab on the sidebar.
 
 After a while, a new client `kagenti/acp-ollama-researcher` should appear.
-
-# Publish image
-
-```sh
-docker -D build  --no-cache -t ghcr.io/kagenti/kagenti/ui-oauth-secret:latest -f Dockerfile .
-docker push ghcr.io/kagenti/kagenti/ui-oauth-secret:latest 
-```
