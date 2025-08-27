@@ -20,7 +20,7 @@ from ..utils import console, run_command
 
 
 def install():
-    """Installs the Kagent UI from its deployment YAML."""
+    """Installs the Kagenti UI from its deployment YAML."""
     run_command(
         [
             "kubectl",
