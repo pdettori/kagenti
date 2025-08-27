@@ -21,11 +21,23 @@ from ..utils import console, run_command
 
 def install():
     """Installs the Kagent UI from its deployment YAML."""
-    # Create the auth secret, containing the Keycloak client secret
     run_command(
         [
             "kubectl",
             "apply",
+            "-n",
+            "kagenti-system",
+            "-f",
+            str(config.RESOURCES_DIR / "global-environments.yaml"),
+        ],
+        f"Applying global-environments configmap in 'kagenti-system'",
+    )
+    # Create the auth secret, containing the Keycloak client secret
+    run_command(
+        [
+            "kubectl",
+            "replace", # Use replace --force to ensure the job gets replaced
+            "--force",
             "-f",
             str(config.RESOURCES_DIR / "ui-oauth-secret.yaml"),
         ],
@@ -37,7 +49,7 @@ def install():
             "wait",
             "--for=condition=complete",
             "job/kagenti-ui-oauth-job",
-            "-n", "kagenti",
+            "-n", "kagenti-system",
             "--timeout=300s",
         ],
         "Waiting for auth secret job to complete",
