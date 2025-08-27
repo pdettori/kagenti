@@ -93,6 +93,8 @@ spec:
               value: 'keycloak'
             - name: 'KC_DB_USERNAME'
               value: 'keycloak'
+            - name: KC_DB_URL_PROPERTIES
+              value: ?sslmode=disable  
           ports:
             - name: http
               containerPort: 8080
