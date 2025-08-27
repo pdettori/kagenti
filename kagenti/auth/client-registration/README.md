@@ -2,7 +2,7 @@
 
 `kagenti-client-registration` is the image that enables Kagenti to automatically register a client (agent or tool) in Keycloak.
 
-## Usage
+# Local development
 
 ### Build the image
 
@@ -38,11 +38,7 @@ Select `Build Agent`.
 
 ### Verify client registration
 
-```sh
-kubectl port-forward service/keycloak -n keycloak 8081:8080
-```
-
-Open Keycloak at [http://localhost:8081](http://localhost:8081).
+Open Keycloak at [http://keycloak.localtest.me:8080](http://keycloak.localtest.me:8080).
 
 The default username and password are `admin`.
 

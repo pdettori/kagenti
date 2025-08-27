@@ -171,7 +171,6 @@ def install():
         ],
         "Deploying Keycloak with Postgres DB",
     )
-    
     run_command(
         ["kubectl", "rollout", "status", "-n", "keycloak", "statefulset/postgres"],
         "Waiting for Postgres rollout",
