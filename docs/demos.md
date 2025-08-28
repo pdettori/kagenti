@@ -58,8 +58,13 @@ Run the installer.
 cd kagenti/installer
 uv run kagenti-installer
 ```
-
 The installer creates a kind cluster named `agent-platform` and then deploys all platform components.
+
+Using `--silent` flag removes the interactive install mode.
+
+```shell
+uv run kagenti-installer --silent
+```
 
 To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
@@ -97,6 +102,56 @@ For step-by-step instructions for importing and running agents and tools, see
 ## Importing Your Own Agent to Kagenti
 
 See the document: [Importing Your Own Agent to Kagenti](new-agent.md)
+
+## Identity
+
+### SPIRE Setup
+
+Spire configuration is defined in [spire-helm-values.yaml](../kagenti/installer/app/resources/spire-helm-values.yaml). SPIRE is deployed by default unless `--skip-install spire` is used.
+
+To verify if OIDC service for SPIRE is properly setup execute the following:
+
+```shell
+curl http://spire-oidc.localtest.me:8080/keys
+curl http://spire.localtest.me:8080/.well-known/openid-configuration
+```
+
+Test the Tornjak API access:
+
+```shell
+curl http://spire-tornjak-api.localtest.me:8080/
+```
+
+This should return something like:
+
+```console
+"Welcome to the Tornjak Backend!"
+```
+
+Now test the Tornjak UI access with browser:
+
+```shell
+open http://spire-tornjak-ui.localtest.me:8080/
+```
+
+### Keycloak
+
+[Keycloak](https://www.keycloak.org/) is an Open Source Identity and Access Management tool used for managing access to various Kagenti components.
+
+To access Keycloak:
+
+```shell
+open http://keycloak.localtest.me:8080/
+```
+
+The default Keyclaok admin credentials are:
+
+```console
+userid: admin
+password: admin
+```
+
+---
 
 ## Troubleshooting
 
