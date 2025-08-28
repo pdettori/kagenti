@@ -73,6 +73,10 @@ data:
       {
         "name": "ADMIN_SLACK_BOT_TOKEN",
         "valueFrom": {"secretKeyRef": {"name": "slack-secret", "key": "admin-bot-token"}}
+      },
+      {
+        "name": "ADMIN_SCOPE_NAME",
+        "value": "slack-full-access"
       }
     ]
   KEYCLOAK_URL: "http://keycloak.keycloak:8080"
