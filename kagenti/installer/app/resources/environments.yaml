@@ -68,7 +68,7 @@ data:
       },
       {
         "name": "AUDIENCE",
-        "value": "spiffe://kagenti.localtest.me/sa/slack-tool"
+        "value": "spiffe://localtest.me/sa/slack-tool"
       },
       {
         "name": "ADMIN_SLACK_BOT_TOKEN",

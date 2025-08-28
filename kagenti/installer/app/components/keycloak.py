@@ -109,7 +109,7 @@ class KeycloakSetup:
 
     def create_client(self, app_name):
         try:
-            client_name = f"spiffe://kagenti.localtest.me/sa/{app_name}"
+            client_name = f"spiffe://localtest.me/sa/{app_name}"
             client_id = self.keycloak_admin.create_client(
                 {
                     "clientId": client_name,
