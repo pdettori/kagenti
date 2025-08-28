@@ -106,7 +106,7 @@ def install():
                     "generic",
                     "slack-secret",
                     f"--from-literal=bot-token={slack_bot_token}",
-                    f"--from-literal=admin-bot-token={admin_slack_bot_token}"
+                    f"--from-literal=admin-bot-token={admin_slack_bot_token}",
                     "-n",
                     ns,
                 ],
