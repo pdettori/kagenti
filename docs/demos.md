@@ -189,29 +189,26 @@ uv run kagenti-installer
 Kagenti UI shows Connection errors:
 
 ```console
-Error: Failed to process weather request. Connection error.
+An unexpected error occurred during A2A chat streaming: HTTP Error 503: Network communication error: peer closed connection without sending complete message body (incomplete chunked read)
 ```
 
 Agent log shows errors:
 
 ```console
-kagenti$ kubectl -n teams logs -f acp-weather-service-7f984f478d-4jzv9
+kagenti$ kubectl -n teams logs -f weather-service-7f984f478d-4jzv9
 .
 .
-ERROR:    Graph execution error: Connection error.
-ERROR:acp:Run failed
-Traceback (most recent call last):
-  File "/app/.venv/lib/python3.11/site-packages/acp_sdk/server/bundle.py", line 151, in _execute
-    generic = AnyModel.model_validate(next)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/app/.venv/lib/python3.11/site-packages/pydantic/main.py", line 703, in model_validate
-    return cls.__pydantic_validator__.validate_python(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for AnyModel
-  Input should be a valid dictionary or instance of AnyModel [type=model_type, input_value=ACPError(), input_type=ACPError]
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/app/.venv/lib/python3.11/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+  |     result = await app(  # type: ignore[func-returns-value]
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | ..
+  +-+---------------- 1 ----------------
+    | urllib3.exceptions.ProtocolError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
 ```
 
-Most likely the ACP protocol is failing because *ollama* service is not installed or running.
+Most likely the A2A protocol is failing because *ollama* service is not installed or running.
 
 Start *ollama* service in the terminal and keep it running:
 

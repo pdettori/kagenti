@@ -34,7 +34,6 @@ from .kube import (
     get_kubernetes_namespace,
     is_running_in_cluster,
 )
-from .acp_utils import run_agent_chat_stream_acp, display_acp_agent_metadata
 from .a2a_utils import run_agent_chat_stream_a2a, render_a2a_agent_card
 from .common_ui import display_resource_metadata
 from . import constants
@@ -61,7 +60,7 @@ def _handle_chat_interaction(
         agent_url (str): The URL of the agent.
         session_key_prefix (str): The prefix for session state keys.
         log_display_container (streamlit.container.Container): The container for displaying logs.
-        protocol (str): The protocol of the agent ('acp' or 'a2a').
+        protocol (str): The protocol of the agent ('a2a').
     """
     prompt_key = f"chat_input_{session_key_prefix}"
     if prompt := st_object.chat_input("Say something to the agent...", key=prompt_key):
@@ -79,18 +78,6 @@ def _handle_chat_interaction(
                         assistant_message_placeholder.error(response)
                         logger.error(
                             f"Agent URL not available for agent {agent_k8s_name}"
-                        )
-                    elif protocol == "acp":
-                        response = asyncio.run(
-                            run_agent_chat_stream_acp(
-                                st,
-                                session_key_prefix,
-                                prompt,
-                                agent_chat_name,
-                                agent_url,
-                                assistant_message_placeholder,
-                                log_display_container,
-                            )
                         )
                     elif protocol == "a2a":
                         response = asyncio.run(
@@ -198,9 +185,7 @@ def render_agent_details_content(agent_k8s_name: str):
 
     # Display protocol-specific card/metadata
     if agent_url:
-        if protocol == "acp":
-            asyncio.run(display_acp_agent_metadata(st, agent_k8s_name, agent_url))
-        elif protocol == "a2a":
+        if protocol == "a2a":
             asyncio.run(render_a2a_agent_card(st, agent_url))
         elif not protocol:
             st.warning(
@@ -242,7 +227,7 @@ def render_agent_details_content(agent_k8s_name: str):
     #     # Show access token
     #     st.session_state[constants.TOKEN_STRING][constants.ACCESS_TOKEN_STRING]
 
-    if agent_url and protocol in ["acp", "a2a"]:
+    if agent_url and protocol in ["a2a"]:
         _handle_chat_interaction(
             st,
             agent_k8s_name,

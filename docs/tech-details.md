@@ -25,8 +25,8 @@ graph TB
     subgraph default_namespace ["default Namespace"]
       A2AContactExtractorAgent(a2a-contact-extractor-agent)
       A2ACurrencyAgent(a2a-currency-agent)
-      ACPOllamaResearcher(acp-ollama-researcher)
-      ACPWeatherService(acp-weather-service)
+      OllamaResearcher(ollama-researcher)
+      WeatherService(weather-service)
       
       subgraph MCPGetWeather ["MCP Get Weather"]
         direction LR
@@ -51,17 +51,17 @@ graph TB
 
   IngressGateway -->|HTTP Routes| A2AContactExtractorAgent
   IngressGateway -->|HTTP Routes| A2ACurrencyAgent
-  IngressGateway -->|HTTP Routes| ACPOllamaResearcher
-  IngressGateway -->|HTTP Routes| ACPWeatherService
-  ACPWeatherService --> Service
+  IngressGateway -->|HTTP Routes| OllamaResearcher
+  IngressGateway -->|HTTP Routes| WeatherService
+  WeatherService --> Service
   Service --> Deployment
 
   A2AContactExtractorAgent -.->|Istio Mesh| ZTunnel
   A2ACurrencyAgent -.->|Istio Mesh| ZTunnel
-  ACPOllamaResearcher -.->|Istio Mesh| ZTunnel
-  ACPWeatherService -.->|Istio Mesh| ZTunnel
+  OllamaResearcher -.->|Istio Mesh| ZTunnel
+  WeatherService -.->|Istio Mesh| ZTunnel
   Service -.->|Istio Mesh| ZTunnel
-  ACPWeatherService -.-> Keycloak
+  WeatherService -.-> Keycloak
 
   Client --> IngressGateway
 ```
@@ -83,9 +83,8 @@ It is deployed in the `kagenti-system` namespace.
 - **a2a-contact-extractor-agent**: Marvin agent exposed via [A2A](https://google.github.io/A2A) protocol. 
 It extracts structured contact information from text using Marvin's extraction capabilities
 - **a2a-currency-agent**: LangGraph agent exposed via A2A protocol. It provides exchange rates for currencies.
-- **acp-ollama-researcher**: LangGraph agent exposed via [ACP](https://agentcommunicationprotocol.dev/introduction/welcome) protocol.
-It implements a research assistant to perform various research tasks.
-- **acp-weather-service**: LangGraph agent exposed via ACP protocol, that provides a simple weather info assistant.
+- **slack-researcher**: Autogen agent exposed via A2A protocol. It implements a slack assistant to perform various research tasks on slack.
+- **weather-service**: LangGraph agent exposed via A2A protocol, that provides a simple weather info assistant.
 
 ### Tools 
 

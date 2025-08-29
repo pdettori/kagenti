@@ -30,9 +30,9 @@ Open the Agent Platform Demo Dashboard at [http://kagenti-ui.localtest.me:8080](
 
 Go to the `Import New Agent` tab on the sidebar.
 
-Select the `kagenti` namespace.
+Select the one of the enabled namespaces - e.g. `team1`.
 
-Select the `acp/aco_ollama_researcher`.
+Select the `a2a/weather-service`.
 
 Select `Build Agent`.
 
@@ -44,4 +44,4 @@ The default username and password are `admin`.
 
 Go to `Clients` tab on the sidebar.
 
-After a while, a new client `kagenti/acp-ollama-researcher` should appear.
+After a while, a new client `team1/weather-service` should appear.
