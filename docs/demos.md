@@ -159,12 +159,15 @@ password: admin
 
 Sometimes it can take a long time to pull container images.  Try re-running the installer.
 
-### Agent stops responding through gateway
+### Service stops responding through gateway
 
-Restart the following daemonset
+It may happens with Keycloak or even the UI.
+
+Restart the following:
 
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
+kubectl rollout restart -n kagenti-system deployment http-istio 
 ```
 
 ### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
