@@ -94,7 +94,13 @@ spec:
             - name: 'KC_DB_USERNAME'
               value: 'keycloak'
             - name: KC_DB_URL_PROPERTIES
-              value: ?sslmode=disable  
+              value: ?sslmode=disable
+            - name: KC_DB_POOL_INITIAL_SIZE
+              value: "5"
+            - name: KC_DB_POOL_MIN_SIZE
+              value: "5"
+            - name: KC_DB_POOL_MAX_SIZE
+              value: "20"
           ports:
             - name: http
               containerPort: 8080
@@ -155,6 +161,13 @@ spec:
               value: "keycloak"
             - name: POSTGRES_LOG_STATEMENT
               value: "all"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"    
           ports:
             - name: postgres
               containerPort: 5432
