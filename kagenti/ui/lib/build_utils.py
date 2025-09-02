@@ -44,6 +44,54 @@ from .utils import sanitize_for_k8s_name, remove_url_prefix, get_resource_name_f
 logger = logging.getLogger(__name__)
 
 
+def get_pipeline_steps_for_mode(mode):
+    """
+    Returns the pipeline steps configuration based on mode.
+    
+    Args:
+        mode: Pipeline mode ('dev-local' or 'dev-external')
+        
+    Returns:
+        list: Pipeline steps configuration
+    """
+    if mode == "dev-external":
+        return [
+            {
+                "name": "github-clone",
+                "configMap": "github-clone-step",
+                "enabled": True,
+            },
+            {
+                "name": "folder-verification",
+                "configMap": "check-subfolder-step",
+                "enabled": True,
+            },
+            {
+                "name": "kaniko-build",
+                "configMap": "kaniko-docker-build-step-external",
+                "enabled": True,
+            },
+        ]
+    else:  # dev-local
+        return [
+            {
+                "name": "github-clone",
+                "configMap": "github-clone-step",
+                "enabled": True,
+            },
+            {
+                "name": "folder-verification",
+                "configMap": "check-subfolder-step",
+                "enabled": True,
+            },
+            {
+                "name": "kaniko-build",
+                "configMap": "kaniko-docker-build-step-local",
+                "enabled": True,
+            },
+        ]
+
+
 def _get_keycloak_client_secret(st_object, client_name: str) -> str:
     """
     Retrieves the client secret from Keycloak for the given client name.
@@ -96,6 +144,7 @@ def _construct_tool_resource_body(
     framework: str,
     description: str,
     build_from_source: bool ,
+    registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
 ) -> Optional[dict]:
@@ -139,7 +188,11 @@ def _construct_tool_resource_body(
     #image_registry_prefix = f"ghcr.io/{repo_user}"
     image_name = k8s_resource_name
     if build_from_source:
-        image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
+        # Use configured registry or fall back to local
+        if registry_config and registry_config.get("registry_url"):
+            image_registry_prefix = registry_config["registry_url"]
+        else:
+            image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
         image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
 
@@ -194,35 +247,52 @@ def _construct_tool_resource_body(
         },
     }
     if build_from_source:
+        selected_mode = "dev-external" if (registry_config and registry_config.get("requires_auth")) else "dev-local"
+        pipeline_steps = get_pipeline_steps_for_mode(selected_mode)
+        
+        build_params = [
+            {
+                "name": "SOURCE_REPO_SECRET",
+                "value": "github-token-secret",
+            },
+            {
+                "name": "repo-url",
+                "value": remove_url_prefix(repo_url),
+            },
+            {
+                "name": "revision",
+                "value":  repo_branch,
+            },
+            {
+                "name": "subfolder-path",
+                "value": source_subfolder,
+            },
+            {
+                "name": "image",
+                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+            },
+        ]
+        
+        # Add registry credentials for external registries
+        if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
+            st_object.info(f"DEBUG: Adding registry-secret parameter with value: {registry_config['credentials_secret']}")
+            build_params.append({
+                "name": "registry-secret",  # Use the parameter name expected by kaniko task
+                "value": registry_config["credentials_secret"],
+            })
+        else:
+            st_object.info(f"DEBUG: NOT adding registry-secret. registry_config={registry_config}")
+        
         spec["tool"] = {
             "toolType": "MCP",
             "build": {
-                "mode": "dev",
+                "mode": "custom",  # Always use custom mode since we're providing steps
                 "pipeline": {
-                    "parameters": [
-                        {
-                            "name": "SOURCE_REPO_SECRET",
-                            "value": "github-token-secret",
-                        },
-                        {
-                            "name": "repo-url",
-                            "value": remove_url_prefix(repo_url),
-                        },
-                        {
-                            "name": "revision",
-                            "value":  repo_branch,
-                        },
-                        {
-                            "name": "subfolder-path",
-                            "value": source_subfolder,
-                        },
-                        {
-                            "name": "image",
-                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
-                        },
-                    ],
-                "cleanupAfterBuild": True,
+                    "namespace": build_namespace,
+                    "steps": pipeline_steps,
+                    "parameters": build_params,
                 },
+                "cleanupAfterBuild": True,
             },
         }
     body = {
@@ -279,6 +349,7 @@ def _construct_agent_resource_body(
     framework: str,
     description: str,
     build_from_source: bool ,
+    registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
 
@@ -324,7 +395,11 @@ def _construct_agent_resource_body(
 
     image_name = k8s_resource_name
     if build_from_source:
-        image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
+        # Use configured registry or fall back to local
+        if registry_config and registry_config.get("registry_url"):
+            image_registry_prefix = registry_config["registry_url"]
+        else:
+            image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
         image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
 
@@ -393,32 +468,44 @@ def _construct_agent_resource_body(
         },
     }
     if build_from_source:
+        build_params = [
+            {
+                "name": "SOURCE_REPO_SECRET",
+                "value": "github-token-secret",
+            },
+            {
+                "name": "repo-url",
+                "value": remove_url_prefix(repo_url),
+            },
+            {
+                "name": "revision",
+                "value":  repo_branch,
+            },
+            {
+                "name": "subfolder-path",
+                "value": source_subfolder,
+            },
+            {
+                "name": "image",
+                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+            },
+        ]
+        
+        # Add registry credentials for external registries
+        if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
+            st_object.info(f"DEBUG: Adding registry-secret parameter with value: {registry_config['credentials_secret']}")
+            build_params.append({
+                "name": "registry-secret",  # Use the parameter name expected by kaniko task
+                "value": registry_config["credentials_secret"],
+            })
+        else:
+            st_object.info(f"DEBUG: NOT adding registry-secret. registry_config={registry_config}")
+        
         body["spec"]["agent"] = {
             "build": {
-                "mode": "dev",
+                "mode": "dev-external" if (registry_config and registry_config.get("requires_auth")) else "dev-local",
                 "pipeline": {
-                    "parameters": [
-                        {
-                            "name": "SOURCE_REPO_SECRET",
-                            "value": "github-token-secret",
-                        },
-                        {
-                            "name": "repo-url",
-                            "value": remove_url_prefix(repo_url),
-                        },
-                        {
-                            "name": "revision",
-                            "value":  repo_branch,
-                        },
-                        {
-                            "name": "subfolder-path",
-                            "value": source_subfolder,
-                        },
-                        {
-                            "name": "image",
-                            "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
-                        },
-                    ],
+                    "parameters": build_params,
                 "cleanupAfterBuild": True,
                 },
             },
@@ -442,6 +529,7 @@ def trigger_and_monitor_build(
     # pylint: disable=unused-argument
     build_from_source: bool,
     description: str = "",
+    registry_config: Optional[dict] = None,
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
 ):
     """
@@ -495,6 +583,7 @@ def trigger_and_monitor_build(
            framework=framework,
            description=description,
            build_from_source=True,
+           registry_config=registry_config,
            additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -511,6 +600,7 @@ def trigger_and_monitor_build(
            framework=framework,
            description=description,
            build_from_source=True,
+           registry_config=registry_config,
            additional_env_vars=additional_env_vars,
         )
     if not build_cr_body:
@@ -1197,6 +1287,12 @@ def render_import_form(
             value=constants.DEFAULT_REPO_BRANCH,
             key=f"{resource_type.lower()}_branch_or_tag",
         )
+        
+        # Registry configuration section
+        st_object.markdown("---")
+        registry_config = get_registry_config_from_ui(st_object, resource_type, True)
+        if registry_config and not validate_registry_config(registry_config, st_object):
+            return
         selected_protocol = default_protocol
         if protocol_options:
             current_protocol_index = (
@@ -1260,6 +1356,13 @@ def render_import_form(
                     "Please provide all source details, subfolder path, and select a build namespace."
                 )
                 return
+                
+            # Validate registry configuration for external registries
+            if registry_config and registry_config.get("requires_auth") and not registry_config.get("credentials_secret"):
+                st_object.warning(
+                    "Please specify a registry secret name for external registry authentication."
+                )
+                return
 
 
             trigger_and_monitor_build(
@@ -1276,6 +1379,7 @@ def render_import_form(
                 framework=selected_framework,
                 build_from_source=True,
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
+                registry_config=registry_config,
                 additional_env_vars=final_additional_envs,
             )
 
@@ -1350,3 +1454,111 @@ def parse_image_url(url: str):
     repo = '/'.join(parts[:-1])
 
     return repo, image_name, tag
+
+
+# Registry configuration constants
+DEFAULT_REGISTRY_OPTIONS = {
+    "Local Registry": "registry.cr-system.svc.cluster.local:5000",
+    "Quay.io": "quay.io",
+    "Docker Hub": "docker.io",
+    "GitHub Container Registry": "ghcr.io"
+}
+
+
+def get_registry_config_from_ui(st_object, resource_type, build_from_source):
+    """
+    Renders registry configuration UI and returns selected registry settings.
+    
+    Args:
+        st_object: Streamlit object
+        resource_type: "Agent" or "Tool"
+        build_from_source: Whether building from source or deploying from image
+        
+    Returns:
+        dict: Registry configuration with 'registry_url', 'registry_type', 'credentials_secret', 'requires_auth'
+    """
+    if not build_from_source:
+        return None
+        
+    st_object.subheader("Container Registry Configuration")
+    
+    # Registry selection
+    registry_options = list(DEFAULT_REGISTRY_OPTIONS.keys())
+    selected_registry_key = st_object.selectbox(
+        "Select Container Registry:",
+        options=registry_options,
+        index=1,  # Default to Quay.io
+        key=f"{resource_type.lower()}_registry_selector",
+        help="Choose the container registry where the built image will be pushed"
+    )
+    
+    registry_url = DEFAULT_REGISTRY_OPTIONS[selected_registry_key]
+    
+    # For Quay.io and other external registries, ask for namespace/organization
+    if selected_registry_key in ["Quay.io", "Docker Hub", "GitHub Container Registry"]:
+        namespace_or_org = st_object.text_input(
+            f"{selected_registry_key} Organization/Namespace:",
+            placeholder="your-org-name",
+            key=f"{resource_type.lower()}_registry_namespace",
+            help=f"Your organization or namespace in {selected_registry_key}"
+        )
+        
+        # Show authentication requirements
+        if selected_registry_key == "Quay.io":
+            st_object.info(
+                "📝 **Quay.io Authentication Required**\n"
+                "Ensure your Kubernetes cluster has access to Quay.io:\n"
+                "1. Create a robot account in your Quay.io organization\n"
+                "2. Create a Kubernetes secret with registry credentials\n"
+                "3. Configure the build pipeline with the secret name"
+            )
+            
+            secret_name = st_object.text_input(
+                "Registry Secret Name:",
+                value="quay-registry-secret",
+                key=f"{resource_type.lower()}_registry_secret",
+                help="Name of the Kubernetes secret containing Quay.io credentials"
+            )
+        else:
+            secret_name = st_object.text_input(
+                f"{selected_registry_key} Secret Name:",
+                value=f"{selected_registry_key.lower().replace(' ', '-').replace('.', '-')}-registry-secret",
+                key=f"{resource_type.lower()}_registry_secret",
+                help=f"Name of the Kubernetes secret containing {selected_registry_key} credentials"
+            )
+            
+        if not namespace_or_org:
+            st_object.warning(f"Please specify your {selected_registry_key} organization/namespace")
+            return None
+            
+        full_registry_url = f"{registry_url}/{namespace_or_org}"
+    else:
+        # Local registry
+        full_registry_url = registry_url
+        secret_name = None
+        
+    return {
+        "registry_url": full_registry_url,
+        "registry_type": selected_registry_key,
+        "credentials_secret": secret_name,
+        "requires_auth": selected_registry_key != "Local Registry"
+    }
+
+
+def validate_registry_config(registry_config, st_object):
+    """
+    Validates the registry configuration and shows helpful error messages.
+    """
+    if not registry_config:
+        return False
+        
+    if registry_config["requires_auth"] and not registry_config.get("credentials_secret"):
+        st_object.error("External registries require authentication. Please specify a secret name.")
+        return False
+        
+    if registry_config["registry_type"] == "Quay.io":
+        if not registry_config["registry_url"].startswith("quay.io/"):
+            st_object.error("Invalid Quay.io registry URL format.")
+            return False
+            
+    return True
