@@ -267,7 +267,7 @@ Keycloack stops working and log shows [connection errors](https://github.com/kag
 
 At this time there is no reliable sequence of bringing down and up again
 postgres and keycloak. The only reliable approach found so far is either to destroy and re-install
-the cluster or delete and re-install keycloack as follows:
+the cluster or delete and re-install keycloak as follows:
 
 Make sure you are in `<kagenti-project-root>/kagenti/installer`, then:
 
