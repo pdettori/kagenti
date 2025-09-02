@@ -60,8 +60,7 @@ PRELOADABLE_IMAGES = [
     "ghcr.io/spiffe/oidc-discovery-provider:1.12.4",
     "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
     "docker.io/nginx/nginx-prometheus-exporter:1.4.2",
-    "ghcr.io/kagenti/mcp:latest",
-    "ghcr.io/kagenti/mcp-gateway-wasm:latest",
+    "ghcr.io/kagenti/mcp-gateway:v0.1",
     "ghcr.io/modelcontextprotocol/inspector:0.15.0"
 ]
 
