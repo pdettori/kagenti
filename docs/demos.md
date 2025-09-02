@@ -261,3 +261,21 @@ A few problem fixes might include:
   ```console
   kind delete cluster --name agent-platform
   ```
+### Keycloak stops working
+
+Keycloack stops working and log shows [connection errors](https://github.com/kagenti/kagenti/issues/115).
+
+At this time there is no reliable sequence of bringing down and up again
+postgres and keycloak. The only reliable approach found so far is either to destroy and re-install
+the cluster or delete and re-install keycloak as follows:
+
+Make sure you are in `<kagenti-project-root>/kagenti/installer`, then:
+
+```shell
+kubectl delete -n keycloak -f app/resources/keycloak.yaml
+kubectl apply -n keycloak -f app/resources/keycloak.yaml
+kubectl rollout restart daemonset -n istio-system  ztunnel
+kubectl rollout restart -n kagenti-system deployment http-istio
+uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
+kubectl rollout restart -n kagenti-system deployment kagenti-ui
+```

@@ -17,6 +17,7 @@ import os
 import time
 import typer
 import requests
+import base64
 from kubernetes import client, config as kube_config
 
 from .. import config
@@ -239,3 +240,21 @@ def install():
                 ],
                 f"Creating 'keycloak-client-secret' in '{ns}'",
             )
+        else:
+            # The secret value MUST be base64 encoded for the patch data.
+            encoded_secret = base64.b64encode(client_secret.encode("utf-8")).decode("utf-8")
+            patch_string = f'{{"data":{{"client-secret":"{encoded_secret}"}}}}'
+            run_command(
+                [
+                    "kubectl",
+                    "patch",
+                    "secret",
+                    "keycloak-client-secret",
+                    "--type=merge",
+                    "-p",
+                    patch_string,
+                    "-n",
+                    ns,
+                ],
+                f"🔄 Patching 'keycloak-client-secret' in namespace '{ns}'",
+            )    
