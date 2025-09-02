@@ -260,19 +260,19 @@ def install():
             )
         else:
             # The secret value MUST be base64 encoded for the patch data.
-            encoded_secret = base64.b64encode(client_secret.encode("utf-8")).decode("utf-8")
+            encoded_secret = base64.b64encode(slack_tool_client_secret.encode("utf-8")).decode("utf-8")
             patch_string = f'{{"data":{{"client-secret":"{encoded_secret}"}}}}'
             run_command(
                 [
                     "kubectl",
                     "patch",
                     "secret",
-                    "keycloak-client-secret",
+                    "slack-tool-client-secret",
                     "--type=merge",
                     "-p",
                     patch_string,
                     "-n",
                     ns,
                 ],
-                f"🔄 Patching 'keycloak-client-secret' in namespace '{ns}'",
+                f"🔄 Patching 'slack-tool-client-secret' in namespace '{ns}'",
             )    
