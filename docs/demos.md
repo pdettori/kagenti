@@ -167,7 +167,7 @@ Restart the following:
 
 ```shell
 kubectl rollout restart daemonset -n istio-system  ztunnel
-kubectl rollout restart -n kagenti-system deployment http-istio 
+kubectl rollout restart -n kagenti-system deployment http-istio
 ```
 
 ### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
@@ -261,9 +261,10 @@ A few problem fixes might include:
   ```console
   kind delete cluster --name agent-platform
   ```
+
 ### Keycloak stops working
 
-Keycloack stops working and log shows [connection errors](https://github.com/kagenti/kagenti/issues/115).
+Keycloak stops working and logs show [connection errors](https://github.com/kagenti/kagenti/issues/115).
 
 At this time there is no reliable sequence of bringing down and up again
 postgres and keycloak. The only reliable approach found so far is either to destroy and re-install
@@ -278,4 +279,8 @@ kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
 uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
+```
+Deployed agents may need to be restarted to update the keycloak client.
+```shell
+kubectl rollout restart -n <agent-namespace> deployment <agent-deployment e.g. weather-service>
 ```

@@ -976,7 +976,7 @@ def render_import_form(
         )
         st_object.markdown("---")
 
-        # --- Custom Envarionment Variables Editor ---
+        # --- Custom Environment Variables Editor ---
         st_object.subheader("Custom Environment Variables")
         st_object.caption(f"Define environment variables specific to this {resource_type}")
 
@@ -1028,14 +1028,14 @@ def render_import_form(
                 col1, col2, col3 = st_object.columns([3, 3, 1])
 
                 with col1:
-                    env_var["name"] = st.text_input( "Name",
+                    env_var["name"] = st.text_input("Name",
                                                     value=env_var["name"],
                                                     key=f"{resource_type.lower()}_env_name_{i}",
                                                     placeholder="example: API_KEY",
                                                     label_visibility="collapsed" if i > 0 else "visible")
                 with col2:
                     env_var["value"] = st.text_input("Value",
-                                                     value=env_var["value"],
+                                                    value=env_var["value"],
                                                     key=f"{resource_type.lower()}_env_value_{i}",
                                                     placeholder="example: AAAA_BBBB_CCCC",
                                                     label_visibility="collapsed" if i > 0 else "visible")
