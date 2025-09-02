@@ -275,13 +275,10 @@ def _construct_tool_resource_body(
         
         # Add registry credentials for external registries
         if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
-            st_object.info(f"DEBUG: Adding registry-secret parameter with value: {registry_config['credentials_secret']}")
             build_params.append({
                 "name": "registry-secret",  # Use the parameter name expected by kaniko task
                 "value": registry_config["credentials_secret"],
             })
-        else:
-            st_object.info(f"DEBUG: NOT adding registry-secret. registry_config={registry_config}")
         
         spec["tool"] = {
             "toolType": "MCP",
@@ -493,13 +490,10 @@ def _construct_agent_resource_body(
         
         # Add registry credentials for external registries
         if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
-            st_object.info(f"DEBUG: Adding registry-secret parameter with value: {registry_config['credentials_secret']}")
             build_params.append({
                 "name": "registry-secret",  # Use the parameter name expected by kaniko task
                 "value": registry_config["credentials_secret"],
             })
-        else:
-            st_object.info(f"DEBUG: NOT adding registry-secret. registry_config={registry_config}")
         
         body["spec"]["agent"] = {
             "build": {
