@@ -20,15 +20,20 @@ Here's a breakdown of the sections:
 - In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time Slack data.
 
 > **Prerequisites:**  
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this.
+> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
+>
+> This demo uses `SLACK_BOT_TOKEN` and `ADMIN_SLACK_BOT_TOKEN` env. variables. See the section
+[Slack Tokens](#slack-tokens) below for more details.
 >
 > **Note:**
 > This demo has been tested skipping the install of mcp-gateway:
-> `uv run kagenti-installer --skip-install mcp_gateway`
+> `uv run kagenti-installer --skip-install mcp_gateway --silent`
 
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
 
 ---
+
+## Slack Tokens
 
 ## Import New Agent
 
