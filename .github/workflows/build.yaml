@@ -83,24 +83,24 @@ jobs:
           tags: ${{ steps.ui-oauth-secret-meta.outputs.tags }}
           labels: ${{ steps.ui-oauth-secret-meta.outputs.labels }}
 
-      # # 7. `client-registration` Docker image 
-      # # This action automatically creates useful tags based on the Git event.
-      # # In this case, it will use the Git tag as the Docker image tag.
-      # - name: Extract Docker metadata
-      #   id: client-registration-meta
-      #   uses: docker/metadata-action@v5
-      #   with:
-      #     images: ghcr.io/${{ github.repository }}/client-registration
-      #     tags: |
-      #       # extract tag from git ref, e.g., v1.0.0 -> 1.0.0
-      #       type=ref,event=tag
+      # 7. `client-registration` Docker image 
+      # This action automatically creates useful tags based on the Git event.
+      # In this case, it will use the Git tag as the Docker image tag.
+      - name: Extract Docker metadata
+        id: client-registration-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/client-registration
+          tags: |
+            # extract tag from git ref, e.g., v1.0.0 -> 1.0.0
+            type=ref,event=tag
 
-      # - name: Build and push client-registration Docker image
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     context: ./kagenti/auth/client-registration
-      #     file: ./kagenti/auth/client-registration/Dockerfile
-      #     push: true
-      #     platforms: linux/amd64,linux/arm64
-      #     tags: ${{ steps.client-registration-meta.outputs.tags }}
-      #     labels: ${{ steps.client-registration-meta.outputs.labels }}
+      - name: Build and push client-registration Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./kagenti/auth/client-registration
+          file: ./kagenti/auth/client-registration/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.client-registration-meta.outputs.tags }}
+          labels: ${{ steps.client-registration-meta.outputs.labels }}
