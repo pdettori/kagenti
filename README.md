@@ -3,6 +3,7 @@
 
 **Kagenti** is a Cloud-native middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API. It includes key services such as:
 
+- Authentication and Authorization
 - Trusted identity
 - Deployment
 - Configuration
@@ -24,7 +25,7 @@ Despite the extensive variety of frameworks available for developing agent-based
 
 In the open-source community, several frameworks are emerging for developing agent-based applications. These include **LangGraph**, **CrewAI**, **AG2**, **Llama Stack**, and **BeeAI**. The selection of a specific framework is often driven by the use case requirements. For scenarios requiring complex orchestration with a high degree of control over the agent workflow, frameworks like LangGraph are usually a better fit. They allow explicit graph creation where nodes perform LLM model inference and tool calls, with routing that can be either predefined or dynamically influenced by LLM decisions. On the other hand, frameworks such as CrewAI are designed to assign roles and tasks to agents, enabling them to autonomously work towards achieving predefined goals. Llama Stack agents are primarily pre-built state machines focused on ReAct-style patterns. Users configure the system’s prompts, tools, models, and then simply input data and prompts, allowing the agent to execute without the need for backend code development.
 
-**Kagenti** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by supporting APIs based on emerging standards such as [ACP](https://agentcommunicationprotocol.dev) and [A2A](https://google.github.io/A2A/#/documentation).
+**Kagenti** provides a unified platform to deploy, scale, configure, and orchestrate agents created across these various frameworks by supporting APIs based on emerging standards such as  [A2A](https://google.github.io/A2A/#/documentation).
 
 ## Kubernetes Operator
 
@@ -53,7 +54,7 @@ These demos are built on the following core technologies:
 - Cloud-native infrastructure including [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io), [Istio Ambient Mesh](https://istio.io/latest/docs/ambient/), and [Kiali](https://kiali.io).
 - [Kagenti Operator](https://github.com/kagenti/kagenti-operator/tree/main/platform-operator): an operator for building agents and tools from source, managing their lifecycle, and coordinating platform components.
 - Tool-side communication via [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
-- Agent-side communication via [A2A](https://google.github.io/A2A) and [Agent Communication Protocol (ACP)](https://agentcommunicationprotocol.dev/introduction/welcome)
+- Agent-side communication via [A2A](https://google.github.io/A2A)
 
 ---
 
