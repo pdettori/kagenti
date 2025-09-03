@@ -35,6 +35,22 @@ You should also open the Agent Platform Demo Dashboard as instructed in the [Con
 
 ## Slack Tokens
 
+For this demo you need to add two variables to the `kagenti/installer/app/.env` file. Visit
+[Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) page and follow instructions to create new token:
+
+- Create a pre-configured app
+- Select the Slack workspace (e.g. [kagenti-dev](https://kagenti-dev.slack.com) reach out to us to be added.)
+- Edit Configurations
+  - Change the name, by replacing `my-powerful-app` with a custom name
+- Create
+- Select `Install App` under Settings
+
+Once Installed, copy the User OAuth Token. This will be value for your `ADMIN_SLACK_BOT_TOKEN`.
+
+Repeat the above for another app with a new name. This time limit the scope to `connections:write` only. This will be your `SLACK_BOT_TOKEN`.
+
+Add both variables into `kagenti/installer/app/.env` before executing Kagenti install.
+
 ## Import New Agent
 
 To deploy the Slack Research Agent:

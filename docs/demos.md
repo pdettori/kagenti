@@ -3,25 +3,31 @@
 The following proof on concepts apply Cloud Native technologies to manage agentic workloads.
 A diagram and description of the demo architecture is provided [here](./tech-details.md#cloud-native-agent-platform-demo)
 
+## Demo List
+
+Check the details for running various demos.
+
+- Simplest Demo - [Weather Service](./demo-weather-agent.md)
+- [Slack Authentication](./demo-slack-research-agent/README.md)
+
 ## Installation
 
 ### Prerequisites
 
 Before running the demo setup script, ensure you have the following prerequisites in place:
 
-* **Python:** Python version >=3.9
-* **uv:** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
-* **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. You must alias it to `docker` (e.g. `sudo ln -s /opt/homebrew/bin/podman /usr/local/bin/docker`). On MacOS, you will need also to do `brew install docker-credential-helper`
-  * On Rancher or Podman Desktop, configure VM size to at least 12 GB of memory and 4 cores
-  * On Podman Desktop, make sure you use a machine with [rootful connection](https://podman-desktop.io/docs/podman/setting-podman-machine-default-connection)
-  * Make sure to increase your resource limits (for [rancher](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/), for podman you may need to edit inside the machine the file `/etc/security/limits.conf` and restart the machine)
-* **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker (e.g. `brew install kind`).
-* **kubectl:** The Kubernetes command-line tool (installs with **kind**).
-* **Helm:** A package manager for Kubernetes (e.g. `brew install helm`).
-* **[ollama](https://ollama.com/download)** to run LLMs locally (e.g. `brew install ollama`). Then start the **ollama* service in the background (e.g.`ollama serve`).
-* **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
-* **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
-* **Slack Bot Token:** Your [Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) for the Slack MCP server to access your Slack workspace. This is only required if you are attempting the Slack MCP Server example. Create app in selected workspace, Install App, accept the defaults, get the Token value.
+- **Python:** Python version >=3.9
+- **uv:** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
+- **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. You must alias it to `docker` (e.g. `sudo ln -s /opt/homebrew/bin/podman /usr/local/bin/docker`). On MacOS, you will need also to do `brew install docker-credential-helper`
+  - On Rancher or Podman Desktop, configure VM size to at least 12 GB of memory and 4 cores
+  - On Podman Desktop, make sure you use a machine with [rootful connection](https://podman-desktop.io/docs/podman/setting-podman-machine-default-connection)
+  - Make sure to increase your resource limits (for [rancher](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/), for podman you may need to edit inside the machine the file `/etc/security/limits.conf` and restart the machine)
+- **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker (e.g. `brew install kind`).
+- **kubectl:** The Kubernetes command-line tool (installs with **kind**).
+- **Helm:** A package manager for Kubernetes (e.g. `brew install helm`).
+- **[ollama](https://ollama.com/download)** to run LLMs locally (e.g. `brew install ollama`). Then start the **ollama* service in the background (e.g.`ollama serve`).
+- **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
+- **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
 
 At this time the demo has only been tested on MacOS with M1 processor.
 
@@ -47,7 +53,7 @@ Edit the file `kagenti/installer/app/.env` to fill in the following:
 ```shell
 GITHUB_USER=<Your public Github User ID>
 GITHUB_TOKEN=<Your GitHub Token, as explained above>
-OPENAI_API_KEY=<This is required only for A2A agents, if only using the ACP agents can just put a placeholder>
+OPENAI_API_KEY=<This is required only for A2A agents using OpenAI. Not needed when using ollama>
 AGENT_NAMESPACES=<comma separated list of Kubernetes namespaces to set up in Kind for agents deployment e.g., `team1,team2`>
 SLACK_BOT_TOKEN=<This is required only if you wish to use the Slack tool example.>
 ```
@@ -88,7 +94,7 @@ open http://kagenti-ui.localtest.me:8080
 
 From the UI, you can:
 
-* Import agents written in any framework, wrapped with either the A2A or ACP protocol.
+* Import agents written in any framework, wrapped with the A2A protocol.
 * Import and deploy MCP Server tools directly from source.
 * Test agents interactively and inspect their behavior.
 * Monitor traces, logs, and network traffic between agents and tools.
