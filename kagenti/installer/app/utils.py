@@ -113,6 +113,29 @@ def secret_exists(v1_api: client.CoreV1Api, name: str, namespace: str) -> bool:
         )
         raise typer.Exit(1)
 
+
+def create_or_update_secret(v1_api: client.CoreV1Api, namespace: str, secret_body: client.V1Secret):
+    """Create or update a Kubernetes secret in a given namespace."""
+    secret_name = secret_body.metadata.name
+    try:
+        v1_api.create_namespaced_secret(namespace=namespace, body=secret_body)
+        console.log(
+            f"[bold green]✓[/bold green] Secret '{secret_name}' creation in '{namespace}' [bold green]done[/bold green]."
+        )
+    except client.ApiException as e:
+        # Secret already exists - patch it
+        if e.status == 409:
+            v1_api.patch_namespaced_secret(name=secret_name, namespace=namespace, body=secret_body)
+            console.log(
+                f"[bold green]✓[/bold green] Secret '{secret_name}' patch in '{namespace}' [bold green]done[/bold green]."
+            )
+        else:
+            console.log(
+                f"[bold red]Error creating secret '{secret_name}' in '{namespace}': {e}[/bold red]"
+            )
+            raise typer.Exit(1)
+
+
 def wait_for_deployment(namespace, deployment_name, retries=30, delay=10):
     """Waits for a deployment to be created."""
     for _ in range(retries):
