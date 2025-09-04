@@ -1,7 +1,8 @@
 # Demo set up
 
-This script performs the following steps
+This script configures Keycloak for the Kagenti auth demo, where logging into Kagenti with accounts of different permissions affects the results those accounts recieve.
 
+This script performs the following steps:
 1) Create the `slack-partial-access` client scope
 2) Assign the `slack-partial-access` realm role to the `slack-partial-access` client scope
 3) Set the `slack-partial-access` client scope as the default client scope
@@ -17,7 +18,23 @@ This script performs the following steps
 13) Assign `view-clients` (master realm) client role to `spiffe://localtest.me/sa/slack-tool` client
 14) Set the realm access token lifespan to 10 minutes
 
+The script assumes there to be:
+* `kagenti` client
+* `spiffe://localtest.me/sa/slack-tool` client
+* `view-clients` client role in the realm
+* `slack-partial-access` realm role
+* `slack-full-access` realm role
+
+These components should be installed by the Kagenti installer.
+
 ### Instructions
+
+Run the Kagenti installer
+
+```sh
+cd kagenti/installer
+uv run kagenti-installer
+```
 
 Set up Python environment
 
