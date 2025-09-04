@@ -61,7 +61,7 @@ These demos are built on the following core technologies:
 
 We provide a quick way to deploy various relevant open source technologies to set up an agentic platform on your local cluster. This demonstrates how agents, tools, and protocols interoperate to fulfill end-to-end application flows in cloud-native environments.
 
-See the [documentation](./docs/demos.md) here for deploying a Cloud-Native Agent Platform with A2A Multi-Framework Agents.
+See the **[Demo Documentation](./docs/demos.md)** for deploying a Cloud-Native Agent Platform with A2A Multi-Framework Agents.
 
 ## Blogs
 
