@@ -157,7 +157,7 @@ try:
         partial_user_roles
     )
 except Exception as e:
-    print(f'Could not add "{partial_user_roles}" realm roles to user "{slack_partial_access_user_string}"')
+    print(f'Could not add "{partial_user_roles}" realm roles to user "{slack_partial_access_user_string}": {e}')
 
 
 
@@ -178,7 +178,7 @@ try:
         full_user_roles
     )
 except Exception as e:
-    print(f'Could not add "{full_user_roles}" realm roles to user "{slack_full_access_user_string}"')
+    print(f'Could not add "{full_user_roles}" realm roles to user "{slack_full_access_user_string}": {e}')
 
 
 
@@ -189,7 +189,7 @@ try:
     client["serviceAccountsEnabled"] = True
     keycloak_admin.update_client(internal_slack_client_id, client)
 except Exception as e:
-    print(f'Could not enable service accounts for client {slack_client_id}')
+    print(f'Could not enable service accounts for client {slack_client_id}: {e}')
 
 
 
@@ -199,7 +199,13 @@ try:
     keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, full_client_scope_id, {})
     keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, partial_client_scope_id, {})
 except Exception as e:
-    print(f'Could not enable service accounts for client {slack_client_id}')
+    print(f'Could not enable service accounts for client {slack_client_id}: {e}')
+
+
+slack_service_account_user_id = keycloak_admin.get_client_service_account_user(internal_slack_client_id)
+role = keycloak_admin.get_realm_role("view-clients")
+keycloak_admin.assign_realm_roles(user_id=slack_service_account_user_id, roles=[role])
+
 
 
 # Set the realm access token lifespan to 10 minutes
