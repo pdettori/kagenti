@@ -150,7 +150,6 @@ except Exception as e:
 
 
 
-
 # Create the partial access user and add the realm roles
 partial_user_id = keycloak_admin.create_user(
         {
@@ -162,28 +161,30 @@ partial_user_id = keycloak_admin.create_user(
 
 keycloak_admin.set_user_password(partial_user_id, "password", temporary=False)
 
-partial_user_roles = [slack_partial_access_string]
+slack_partial_access_role = keycloak_admin.get_realm_role(slack_partial_access_string)
+partial_user_roles = [slack_partial_access_role]
 try:
     keycloak_admin.assign_realm_roles(
         partial_user_id,
         partial_user_roles
     )
 except Exception as e:
-    print(f'Could not add "{partial_user_roles}" realm roles to user "{slack_partial_access_user_string}": {e}')
+    print(f'Could not add "{slack_partial_access_string}" realm role to user "{slack_partial_access_user_string}": {e}')
 
 
 
 # Create the full access user and add the realm roles
 full_user_id = keycloak_admin.create_user(
     {
-        "username": "slack_full_access-user",
+        "username": slack_full_access_user_string,
         "enabled": True,
     },
     True
 )
 keycloak_admin.set_user_password(full_user_id, "password", temporary=False)
 
-full_user_roles = [slack_partial_access_string, slack_full_access_string]
+slack_full_access_role = keycloak_admin.get_realm_role(slack_full_access_string)
+full_user_roles = [slack_partial_access_role, slack_full_access_role]
 try:
     keycloak_admin.assign_realm_roles(
         full_user_id,
