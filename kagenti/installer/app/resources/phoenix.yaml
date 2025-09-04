@@ -115,6 +115,18 @@ spec:
             - sh
             - -c
             - exec pg_isready --host $POD_IP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-data
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -140,7 +152,7 @@ spec:
     name: grpc
     port: 4317
     protocol: TCP
-    targetPort: 4317    
+    targetPort: 4317
   selector:
     app: phoenix
   type: ClusterIP
@@ -160,5 +172,5 @@ spec:
     - "phoenix.localtest.me"
   rules:
     - backendRefs:
-        - name: phoenix 
-          port: 6006 
+        - name: phoenix
+          port: 6006

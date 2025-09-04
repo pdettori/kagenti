@@ -1,14 +1,14 @@
-# `kagenti-client-registration`
+# `client-registration`
 
-`kagenti-client-registration` is the image that enables Kagenti to automatically register a client (agent or tool) in Keycloak.
+`client-registration` is the image that enables Kagenti to automatically register a client (agent or tool) in Keycloak.
 
 # Local development
 
 ### Build the image
 
 ```sh
-cd kagenti/examples/identity/kagenti-client-registration
-docker build -t kagenti-client-registration .
+cd kagenti/auth/client-registration
+docker build -t client-registration .
 ```
 
 ### Install Kagenti
@@ -21,7 +21,7 @@ uv run kagenti-installer
 ### Load the image into the cluster
 
 ```sh
-kind load docker-image kagenti-client-registration --name agent-platform
+kind load docker-image client-registration --name agent-platform
 ```
 
 ### Import a new agent
