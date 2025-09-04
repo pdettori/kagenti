@@ -77,7 +77,7 @@ def install():
         ghcr_secret = client.V1Secret(
             api_version="v1",
             kind="Secret",
-            metadata=client.V1ObjectMeta(name="ghcr-secret"),
+            metadata=client.V1ObjectMeta(name="ghcr-secret", namespace=ns),
             data={
                 ".dockerconfigjson": base64.b64encode(
                     json.dumps(docker_config).encode("utf-8")
