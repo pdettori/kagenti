@@ -23,8 +23,8 @@ spec:
       serviceAccountName: kagenti-ui-service-account
       containers:
         - name: kagenti-ui-container
-          image: quay.io/rcook/tools:kagenti
-          imagePullPolicy: Always 
+          image: ghcr.io/kagenti/kagenti/ui:latest
+          imagePullPolicy: IfNotPresent
           env:
             - name: "ENABLE_AUTH"
               value: "true"
