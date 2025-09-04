@@ -1,6 +1,17 @@
 # Demo set up
 
-Import partial representation
+Set up Python environment
+
+```sh
+cd kagenti/examples/identity/auth_demo
+python -m venv venv
+```
+
+Install Python modules
+
+```sh
+pip install -r requirements.txt
+```
 
 Run Python script
 
