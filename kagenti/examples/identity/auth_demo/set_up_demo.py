@@ -203,8 +203,8 @@ except Exception as e:
 
 
 slack_service_account_user_id = keycloak_admin.get_client_service_account_user(internal_slack_client_id)
-role = keycloak_admin.get_realm_role("view-clients")
-keycloak_admin.assign_realm_roles(user_id=slack_service_account_user_id, roles=[role])
+role = keycloak_admin.get_client_role("master-realm", "view-clients")
+keycloak_admin.assign_client_role(user_id=slack_service_account_user_id, client_id="master-realm", roles=[role])
 
 
 
