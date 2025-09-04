@@ -24,6 +24,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from . import config
+from .config import ContainerEngine
 from .utils import console, run_command
 
 
@@ -46,15 +47,19 @@ def kind_cluster_exists():
 def kind_cluster_running():
     """Checks if the Kind cluster is already running."""
     try:
+        container_engine = ContainerEngine(config.CONTAINER_ENGINE)
         result = subprocess.run(
-            ["docker", "ps", "--format", "{{.Names}}"],
+            [container_engine.value, "ps", "--format", "{{.Names}}"],
             capture_output=True,
             text=True,
             check=True,
         )
         return f"{config.CLUSTER_NAME}-control-plane" in result.stdout.split()
+    except ValueError as e:
+        console.log(f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py [/bold red]")
+        raise typer.Exit(1)
     except subprocess.CalledProcessError as e:
-        console.log(f"[bold red]✗ Failed to run docker ps.[/bold red]")
+        console.log(f"[bold red]✗ Failed to run {config.CONTAINER_ENGINE} ps.[/bold red]")
         console.log(f"[red]{e.stderr.strip()}[/red]")
         raise typer.Exit(1)
 
@@ -145,14 +150,20 @@ containerdConfigPatches:
 
 
 def preload_images_in_kind(images: list[str]):
-    """Pulls and preloads a list of Docker images into the Kind cluster."""
+    """Pulls and preloads a list of Container images into the Kind cluster."""
     console.print(
         Panel(
             Text("Preloading Images into Kind", justify="center", style="bold yellow")
         )
     )
+    try:
+        container_engine = config.ContainerEngine(config.CONTAINER_ENGINE)
+    except ValueError as e:
+        console.log(f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py[/bold red]")
+        raise typer.Exit(1)
+
     for image in images:
-        run_command(["docker", "pull", image], f"Pulling image {image}")
+        run_command([container_engine.value, "pull", image], f"Pulling image {image}")
         run_command(
             ["kind", "load", "docker-image", image, "--name", config.CLUSTER_NAME],
             f"Loading image {image} into kind",
