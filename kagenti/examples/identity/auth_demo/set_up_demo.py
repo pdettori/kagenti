@@ -86,12 +86,13 @@ try:
             "protocolMapper": "oidc-audience-mapper",
             "consentRequired": False,
             "config": {
-                "included.client.audience": "spiffe://localhost.me/sa/slack-tool", # This part doesn't seem to work
-                "included.custom.audience": "",
+                "included.client.audience": "spiffe://localtest.me/sa/slack-tool",
+                "introspection.token.claim": "true",
+                "userinfo.token.claim": "false",
                 "id.token.claim": "false",
+                "lightweight.claim": "false",
                 "access.token.claim": "true",
-                "lightweight.access.token.claim": "false",
-                "introspection.token.claim": "true"
+                "lightweight.access.token.claim": "false"
             }
         }
     )
@@ -136,6 +137,17 @@ try:
     keycloak_admin.add_default_default_client_scope(full_client_scope_id)
 except Exception as e:
     print(f'Could not set slack-full-access client scope to a default client scope: {e}')
+
+
+
+# Add slack-partial-access and slack-full-access client scopes to the kagenti client
+try:
+    internal_kagenti_client_id = keycloak_admin.get_client_id(kagenti_client_id)
+    keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, partial_client_scope_id, {})
+    keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, full_client_scope_id, {})
+except Exception as e:
+    print(f'Could not enable service accounts for client {slack_client_id}: {e}')
+
 
 
 
@@ -193,18 +205,11 @@ except Exception as e:
 
 
 
-# Add slack-partial-access client scope to the kagenti client
-try:
-    internal_kagenti_client_id = keycloak_admin.get_client_id(kagenti_client_id)
-    keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, full_client_scope_id, {})
-    keycloak_admin.add_client_default_client_scope(internal_kagenti_client_id, partial_client_scope_id, {})
-except Exception as e:
-    print(f'Could not enable service accounts for client {slack_client_id}: {e}')
-
-
+# Assign view-clients (master realm) client role to slack client
 slack_service_account_user_id = keycloak_admin.get_client_service_account_user(internal_slack_client_id)
-role = keycloak_admin.get_client_role("master-realm", "view-clients")
-keycloak_admin.assign_client_role(user_id=slack_service_account_user_id, client_id="master-realm", roles=[role])
+internal_master_realm_client_id = keycloak_admin.get_client_id("master-realm")
+role = keycloak_admin.get_client_role(internal_master_realm_client_id, "view-clients")
+keycloak_admin.assign_client_role(user_id=slack_service_account_user_id["id"], client_id=internal_master_realm_client_id, roles=[role])
 
 
 
