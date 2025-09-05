@@ -61,6 +61,7 @@ To deploy the Slack Research Agent:
 
    - `mcp-slack`
    - `slack-researcher-config`
+   - `slack-researcher-auth-config`
    - `ollama` or `openai`
 
 4. Depending on the LLM provider you need to do a following:
