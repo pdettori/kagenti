@@ -35,7 +35,7 @@ REQ_VERSIONS = {
     "docker": {"min": "5.0.0", "max": "29.0.0"},
     "kubectl": {"min": "1.29.0", "max": "1.35.0"},
     "helm": {"min": "3.14.0", "max": "3.19.0"},
-    "git": {"min": "2.99.0", "max": "3.0.0"},
+    "git": {"min": "2.30.0", "max": "3.0.0"},
 }
 
 # --- Images to preload in the kind cluster ---
