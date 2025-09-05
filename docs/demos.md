@@ -64,6 +64,7 @@ Run the installer.
 cd kagenti/installer
 uv run kagenti-installer
 ```
+
 The installer creates a kind cluster named `agent-platform` and then deploys all platform components.
 
 Using `--silent` flag removes the interactive install mode.
@@ -92,18 +93,30 @@ Open the Kagenti UI in your browser:
 open http://kagenti-ui.localtest.me:8080
 ```
 
+You will be required to login using Kagenti userid.
+
+*Important: Please note that Kagenti user is managed by Keycloak, so if you have Keycloak session open in another tab of your browser, Kagenti will be using the same Keycloak userid. To change the user, logout on Keycloak session first.*
+
+Login with the default Kagenti userid:
+
+```console
+userid: admin
+password: admin
+```
+
 From the UI, you can:
 
-* Import agents written in any framework, wrapped with the A2A protocol.
-* Import and deploy MCP Server tools directly from source.
-* Test agents interactively and inspect their behavior.
-* Monitor traces, logs, and network traffic between agents and tools.
+- Login and Logout with the Kagenti user id managed by Keycloak
+- Import agents written in any framework, wrapped with the A2A protocol.
+- Import and deploy MCP Server tools directly from source.
+- Test agents interactively and inspect their behavior.
+- Monitor traces, logs, and network traffic between agents and tools.
 
 ## Detailed Instructions for Running the Weather Demo
 
 For step-by-step instructions for importing and running agents and tools, see
 
-* [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
+- [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
 
 ## Importing Your Own Agent to Kagenti
 
@@ -247,19 +260,19 @@ The install script expects `docker` to be in your runtime path.
 
 A few problem fixes might include:
 
-* create `/usr/local/bin/docker` link to podman:
+- create `/usr/local/bin/docker` link to podman:
 
   ```console
    sudo ln -s /opt/podman/bin/podman /usr/local/bin/docker
    ```
 
-* install `docker-credential-helper`:
+- install `docker-credential-helper`:
 
    ```console
    brew install docker-credential-helper
    ```
 
-* fix an issue with `insufficient memory to start keycloak`:
+- fix an issue with `insufficient memory to start keycloak`:
 
    ```console
    podman machine stop
@@ -267,7 +280,7 @@ A few problem fixes might include:
    podman machine start
    ```
 
-* clean, fresh Podman start:
+- clean, fresh Podman start:
 
    ```console
    podman machine rm -f
@@ -276,7 +289,7 @@ A few problem fixes might include:
    podman machine start
    ```
 
-* clean the cluster, keep the Podman VM as is:
+- clean the cluster, keep the Podman VM as is:
 
   ```console
   kind delete cluster --name agent-platform
@@ -300,7 +313,9 @@ kubectl rollout restart -n kagenti-system deployment http-istio
 uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
 ```
-Deployed agents may need to be restarted to update the keycloak client.
+
+Deployed agents may need to be restarted to update the Keycloak client.
+
 ```shell
 kubectl rollout restart -n <agent-namespace> deployment <agent-deployment e.g. weather-service>
 ```
