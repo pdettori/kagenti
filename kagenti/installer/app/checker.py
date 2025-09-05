@@ -23,6 +23,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from . import config
+from .config import ContainerEngine
 from .utils import console, get_command_version
 
 
@@ -32,7 +33,16 @@ def check_dependencies():
         Panel(Text("1. Checking Dependencies", justify="center", style="bold yellow"))
     )
     all_ok = True
+    try:
+        container_engine = ContainerEngine(config.CONTAINER_ENGINE)
+    except ValueError:
+        console.log(f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]")
+        raise typer.Exit(1)
     for tool, versions in config.REQ_VERSIONS.items():
+        if tool == "docker" and tool != container_engine.value:
+            continue
+        if tool == "podman" and tool != container_engine.value:
+            continue
         with console.status(f"[cyan]Checking for {tool}..."):
             time.sleep(0.5)
             version = get_command_version(tool)
