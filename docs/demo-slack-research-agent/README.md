@@ -1,8 +1,8 @@
 # Authorized Slack Research Agent Demo
 
-### NOTE: This demo is currently under ACTIVE development! 
+## NOTE: This demo is currently under ACTIVE development
 
------
+---
 This document provides detailed steps for running the **Slack Research Agent** proof-of-concept (PoC) demo.
 
 In this demo, we will use the Kagenti UI to import and deploy both the **Slack Research Agent** and the **Slack Tool**.  
@@ -20,42 +20,81 @@ Here's a breakdown of the sections:
 - In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time Slack data.
 
 > **Prerequisites:**  
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section. This demo uses `SLACK_BOT_TOKEN` so please include this. 
-
+> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
+>
+> This demo uses `SLACK_BOT_TOKEN` and `ADMIN_SLACK_BOT_TOKEN` env. variables. See the section
+[Slack Tokens](#slack-tokens) below for more details.
+>
 > **Note:**
 > This demo has been tested skipping the install of mcp-gateway:
-> `uv run kagenti-installer --skip-install mcp_gateway`
+> `uv run kagenti-installer --skip-install mcp_gateway --silent`
 
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
 
 ---
 
+## Slack Tokens
+
+For this demo you need to add two variables to the `kagenti/installer/app/.env` file. Visit
+[Slack Bot Token](https://api.slack.com/tutorials/tracks/getting-a-token) page and follow instructions to create new token:
+
+- Create a pre-configured app
+- Select the Slack workspace (e.g. [kagenti-dev](https://kagenti-dev.slack.com) reach out to us to be added.)
+- Edit Configurations
+  - Change the name, by replacing `my-powerful-app` with a custom name
+- Create
+- Select `Install App` under Settings
+
+Once Installed, copy the User OAuth Token. This will be value for your `ADMIN_SLACK_BOT_TOKEN`.
+
+Repeat the above for another app with a new name. This time limit the scope to `connections:write` only. This will be your `SLACK_BOT_TOKEN`.
+
+Add both variables into `kagenti/installer/app/.env` before executing Kagenti install.
+
 ## Import New Agent
+
+To import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid)
 
 To deploy the Slack Research Agent:
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
-  * `mcp-slack`
-  * `slack-researcher-config`
-  * `slack-researcher-auth-config`
-  * `ollama` or `openai`
-    * If using `ollama`, note that it uses `granite3.3:8b` so you may need to `ollama pull granite3.3:8b` locally
-    * If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
-4. In the **Agent Source Repository URL** field, use the default:
+
+   - `mcp-slack`
+   - `slack-researcher-config`
+   - `slack-researcher-auth-config`
+   - `ollama` or `openai`
+
+4. Depending on the LLM provider you need to do a following:
+
+   - If using `ollama`, note that it uses `granite3.3:8b`, so you may need to run locally:
+
+     ```console
+     ollama serve
+     ```
+
+     ```console
+     ollama pull granite3.3:8b
+     ```
+
+   - If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
+
+5. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
-5. For **Git Branch or Tag**, use the default `main` branch (or select another as needed).
-6. Set **Protocol** to `a2a`.
-7. Under [**Specify Source Subfolder**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#specify-source-subfolder):
+6. For **Git Branch or Tag**, use the default `main` branch (or select another as needed).
+7. Set **Protocol** to `a2a`.
+8. Under [**Specify Source Subfolder**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#specify-source-subfolder):
    - Click `Select from examples`
    - Choose: `a2a/slack_researcher`
-8. Click **Build New Agent** to deploy.
+9. Click **Build & Deploy New Agent** button.
 
 ---
 
 ## Import New Tool
+
+To import tools you can use [default Kagenti userid](../demos.md#default-kagenti-userid)
 
 To deploy the Slack Tool:
 
@@ -70,7 +109,7 @@ To deploy the Slack Tool:
 6. Set **Select Protocol** to `streamable-http`.
 7. Under **Specify Source Subfolder**:
    - Select: `mcp/slack_tool`
-8. Click **Build New Tool** to deploy.
+8. Click **Build & Deploy New Tool** button.
 
 ---
 
@@ -85,8 +124,8 @@ To verify that both the agent and tool are running:
 
    ```console
    installer$ kubectl get pods -n <namespace>
-   NAME                                  READY   STATUS    RESTARTS   AGE
-   slack-researcher-8bb4644fc-4d65d   1/1     Running   0          1m
+   NAME                                READY   STATUS    RESTARTS   AGE
+   slack-researcher-8bb4644fc-4d65d    1/1     Running   0          1m
    slack-tool-5bb675dd7c-ccmlp         1/1     Running   0          1m
    ```
 
@@ -103,6 +142,7 @@ To verify that both the agent and tool are running:
     ```
 
     For the tool:
+
     ```console
     installer$ kubectl logs -f deployment/slack-tool -n <namespace>
     Defaulted container "slack-tool" out of: slack-tool, kagenti-client-registration (init)
@@ -118,28 +158,65 @@ To verify that both the agent and tool are running:
 
 ## Configure Keycloak
 
-Now that the agent and tool have been deployed, the Keycloak Administrator must configure the policies to give the UI delegated access to the tool. We have automated these steps in a script. Simply run:
+Now that the agent and tool have been deployed, the Keycloak Administrator must configure the policies to give the UI delegated access to the tool. We have automated these steps in a script.
 
+### Set up Python environment
+
+```console
+cd kagenti/auth/auth_demo/
+python -m venv venv
 ```
-<insert command to run keycloak automation>
+
+To run the Keycloak configuration script, you must have Python Keycloak library installed.
+
+```console
+pip install -r requirements.txt
 ```
+
+Define environment variables for accessing Keycloak:
+
+```console
+export KEYCLOAK_URL="http://keycloak.localtest.me:8080"
+export KEYCLOAK_REALM=master
+export KEYCLOAK_ADMIN_USERNAME=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin
+```
+
+Now run the configuration script:
+
+```console
+python set_up_demo.py
+```
+
+For more information about the configuration script check the [detailed README.md](../../kagenti/auth/auth_demo/README.md) file.
 
 ---
 
 ## Chat with the Agent
 
-Once the deployment is complete, you can run the demo:
+Once the deployment is complete and the Keycloak configured, you can run the demo.
 
+This example demonstrates different results based on the user access control.
+The Keycloak was pre-configured with two Kagenti demo users:
+
+- **slack-full-access-user** - Kagenti user that is tied to Slack token `ADMIN_SLACK_BOT_TOKEN`. This user has a full access to all the Slack channels and capabilities.
+- **slack-partial-access-user** - Kagenti user that is tied to Slack token `SLACK_BOT_TOKEN`. This user has a limited access to all the Slack channels and limited capabilities. E.g., it can list channels but not read them.
+
+Both users use `password` as password.
+
+Try each userid for the following interactions with the Slack agent:
+
+1. Login with the Kagenti userid.
 1. Navigate to the **Agent Catalog** in the Kagenti UI.
-2. Select the same `<namespace>` used during the agent deployment.
-3. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `slack-researcher` and click **View Details**.
-4. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
+1. Select the same `<namespace>` used during the agent deployment.
+1. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `slack-researcher` and click **View Details**.
+1. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
 
    ```console
    What are the channels in the Slack? 
    ```
 
-5. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, the agent will return a Slack response. For example:
+1. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, and the userid Slack access level, the agent will return a Slack response. For example:
 
    ```console
     The bot has access to two channels:
@@ -148,7 +225,7 @@ Once the deployment is complete, you can run the demo:
     Please let me know if you need more information about a specific channel.
    ```
 
-6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
+1. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
 If you encounter any errors, check the [Troubleshooting section](./demos.md#troubleshooting).
 
@@ -163,4 +240,3 @@ You may navigate to the **Agent Catalog** and **Tool Catalog** in the UI and del
 ```
 
 The Kagenti Operator will automatically clean up all related Kubernetes resources.
-
