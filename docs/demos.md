@@ -97,6 +97,8 @@ You will be required to login using Kagenti userid.
 
 *Important: Please note that Kagenti user is managed by Keycloak, so if you have Keycloak session open in another tab of your browser, Kagenti will be using the same Keycloak userid. To change the user, logout on Keycloak session first.*
 
+### Default Kagenti Userid
+
 Login with the default Kagenti userid:
 
 ```console

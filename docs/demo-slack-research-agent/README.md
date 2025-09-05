@@ -53,6 +53,8 @@ Add both variables into `kagenti/installer/app/.env` before executing Kagenti in
 
 ## Import New Agent
 
+To import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid)
+
 To deploy the Slack Research Agent:
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
@@ -92,6 +94,8 @@ To deploy the Slack Research Agent:
 
 ## Import New Tool
 
+To import tools you can use [default Kagenti userid](../demos.md#default-kagenti-userid)
+
 To deploy the Slack Tool:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
@@ -120,8 +124,8 @@ To verify that both the agent and tool are running:
 
    ```console
    installer$ kubectl get pods -n <namespace>
-   NAME                                  READY   STATUS    RESTARTS   AGE
-   slack-researcher-8bb4644fc-4d65d   1/1     Running   0          1m
+   NAME                                READY   STATUS    RESTARTS   AGE
+   slack-researcher-8bb4644fc-4d65d    1/1     Running   0          1m
    slack-tool-5bb675dd7c-ccmlp         1/1     Running   0          1m
    ```
 
@@ -154,28 +158,65 @@ To verify that both the agent and tool are running:
 
 ## Configure Keycloak
 
-Now that the agent and tool have been deployed, the Keycloak Administrator must configure the policies to give the UI delegated access to the tool. We have automated these steps in a script. Simply run:
+Now that the agent and tool have been deployed, the Keycloak Administrator must configure the policies to give the UI delegated access to the tool. We have automated these steps in a script.
 
+### Set up Python environment
+
+```console
+cd kagenti/auth/auth_demo/
+python -m venv venv
 ```
-<insert command to run keycloak automation>
+
+To run the Keycloak configuration script, you must have Python Keycloak library installed.
+
+```console
+pip install -r requirements.txt
 ```
+
+Define environment variables for accessing Keycloak:
+
+```console
+export KEYCLOAK_URL="http://keycloak.localtest.me:8080"
+export KEYCLOAK_REALM=master
+export KEYCLOAK_ADMIN_USERNAME=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin
+```
+
+Now run the configuration script:
+
+```console
+python set_up_demo.py
+```
+
+For more information about the configuration script check the [detailed README.md](../../kagenti/auth/auth_demo/README.md) file.
 
 ---
 
 ## Chat with the Agent
 
-Once the deployment is complete, you can run the demo:
+Once the deployment is complete and the Keycloak configured, you can run the demo.
 
+This example demonstrates different results based on the user access control.
+The Keycloak was pre-configured with two Kagenti demo users:
+
+- **slack-full-access-user** - Kagenti user that is tied to Slack token `ADMIN_SLACK_BOT_TOKEN`. This user has a full access to all the Slack channels and capabilities.
+- **slack-partial-access-user** - Kagenti user that is tied to Slack token `SLACK_BOT_TOKEN`. This user has a limited access to all the Slack channels and limited capabilities. E.g., it can list channels but not read them.
+
+Both users use `password` as password.
+
+Try each userid for the following interactions with the Slack agent:
+
+1. Login with the Kagenti userid.
 1. Navigate to the **Agent Catalog** in the Kagenti UI.
-2. Select the same `<namespace>` used during the agent deployment.
-3. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `slack-researcher` and click **View Details**.
-4. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
+1. Select the same `<namespace>` used during the agent deployment.
+1. Under [**Available Agents in <namespace>**](http://kagenti-ui.localtest.me:8080/Agent_Catalog#available-agents-in-kagenti-system), select `slack-researcher` and click **View Details**.
+1. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
 
    ```console
    What are the channels in the Slack? 
    ```
 
-5. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, the agent will return a Slack response. For example:
+1. You will see the *Agent Thinking...* message and a series of `Task Status Update`. Depending on the speed of your hosting environment, and the userid Slack access level, the agent will return a Slack response. For example:
 
    ```console
     The bot has access to two channels:
@@ -184,7 +225,7 @@ Once the deployment is complete, you can run the demo:
     Please let me know if you need more information about a specific channel.
    ```
 
-6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
+1. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
 If you encounter any errors, check the [Troubleshooting section](./demos.md#troubleshooting).
 
