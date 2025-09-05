@@ -409,6 +409,8 @@ def _construct_agent_resource_body(
             image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
         image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
+        if _tag:
+            image_tag = _tag
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
