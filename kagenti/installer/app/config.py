@@ -26,7 +26,6 @@ RESOURCES_DIR = SCRIPT_DIR / "resources"
 CLUSTER_NAME = "agent-platform"
 OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
-LATEST_TAG = "0.2.0-alpha.5"
 KEYCLOAK_URL = "http://keycloak.localtest.me:8080/realms/master"
 
 # --- Dependency Version Requirements ---
@@ -36,6 +35,7 @@ REQ_VERSIONS = {
     "docker": {"min": "5.0.0", "max": "29.0.0"},
     "kubectl": {"min": "1.29.0", "max": "1.35.0"},
     "helm": {"min": "3.14.0", "max": "3.19.0"},
+    "git": {"min": "2.30.0", "max": "3.0.0"},
 }
 
 # --- Images to preload in the kind cluster ---
