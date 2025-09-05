@@ -1,4 +1,4 @@
-# Demo set up
+# Auth Demo Set Up
 
 This script configures Keycloak for the Kagenti auth demo, where logging into Kagenti with accounts of different permissions affects the results those accounts recieve.
 
@@ -52,9 +52,10 @@ pip install -r requirements.txt
 Run Python script
 
 ```sh
-KEYCLOAK_URL="http://keycloak.localtest.me:8080"
-KEYCLOAK_REALM=master
-KEYCLOAK_ADMIN_USERNAME=admin
-KEYCLOAK_ADMIN_PASSWORD=admin
+export KEYCLOAK_URL="http://keycloak.localtest.me:8080"
+export KEYCLOAK_REALM=master
+export KEYCLOAK_ADMIN_USERNAME=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin
+
 python set_up_demo.py
 ```
