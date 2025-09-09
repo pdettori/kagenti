@@ -9,6 +9,7 @@
 ```sh
 cd kagenti/auth/client-registration
 docker build -t client-registration .
+docker tag client-registration ghcr.io/kagenti/kagenti/client-registration:latest
 ```
 
 ### Install Kagenti
@@ -21,7 +22,7 @@ uv run kagenti-installer
 ### Load the image into the cluster
 
 ```sh
-kind load docker-image client-registration --name agent-platform
+kind load docker-image ghcr.io/kagenti/kagenti/client-registration:latest --name agent-platform
 ```
 
 ### Import a new agent
@@ -44,4 +45,4 @@ The default username and password are `admin`.
 
 Go to `Clients` tab on the sidebar.
 
-After a while, a new client `team1/weather-service` should appear.
+After a while, a new client should appear.

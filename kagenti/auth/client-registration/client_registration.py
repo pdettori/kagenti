@@ -6,6 +6,7 @@ KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM')
 KEYCLOAK_ADMIN_USERNAME = os.environ.get('KEYCLOAK_ADMIN_USERNAME')
 KEYCLOAK_ADMIN_PASSWORD = os.environ.get('KEYCLOAK_ADMIN_PASSWORD')
 CLIENT_NAME = os.environ.get('CLIENT_NAME')
+CLIENT_ID = os.environ.get('CLIENT_ID')
 NAMESPACE = os.environ.get('NAMESPACE')
 
 def register_client(
@@ -14,12 +15,13 @@ def register_client(
     keycloak_admin_username: str,
     keycloak_admin_password: str,
     client_name: str,
+    client_id: str,
     namespace: str
 ):
-    clientId = f'{namespace}/{client_name}'
+    # clientId = f'{namespace}/{client_name}'
 
     if keycloak_url is None:
-        print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {clientId}.')
+        print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {client_id}.')
         return
     if keycloak_realm is None:
         raise Exception('Expected environment variable "KEYCLOAK_REALM"')
@@ -29,6 +31,8 @@ def register_client(
         raise Exception('Expected environment variable "KEYCLOAK_ADMIN_PASSWORD"')
     if client_name is None:
         raise Exception('Expected environment variable "CLIENT_NAME"')
+    if client_id is None:
+        raise Exception('Expected environment variable "CLIENT_ID"')
     if namespace is None:
         raise Exception('Expected environment variable "NAMESPACE"')
 
@@ -45,7 +49,7 @@ def register_client(
         internal_client_id = keycloak_admin.create_client(
             {
                 "name": client_name,
-                "clientId": clientId,
+                "clientId": client_id,
                 "standardFlowEnabled": True,
                 "directAccessGrantsEnabled": True,
                 "fullScopeAllowed": False,
@@ -53,9 +57,9 @@ def register_client(
             }
         )
 
-        print(f'Created Keycloak client "{clientId}": {internal_client_id}')
+        print(f'Created Keycloak client "{client_id}": {internal_client_id}')
     except KeycloakPostError as e:
-        print(f'Could not create Keycloak client "{clientId}": {e}')
+        print(f'Could not create Keycloak client "{client_id}": {e}')
 
 register_client(
     KEYCLOAK_URL,
@@ -63,5 +67,6 @@ register_client(
     KEYCLOAK_ADMIN_USERNAME,
     KEYCLOAK_ADMIN_PASSWORD,
     CLIENT_NAME,
+    CLIENT_ID,
     NAMESPACE
 )
