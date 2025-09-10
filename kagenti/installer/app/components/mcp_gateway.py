@@ -19,8 +19,8 @@ from ..utils import run_command
 
 def install():
 
-    """Deploy Envoy Gateway CRDs."""
-    # This command sets up Envoy Gateway CRDs
+    """Install K8s Gateway CRDs."""
+    # This command installs K8s Gateway CRDs
     run_command(
         [
             "kubectl",
@@ -28,51 +28,48 @@ def install():
             "-k",
             "https://github.com/kubernetes-sigs/gateway-api/config/crd?ref=v1.3.0",
         ],
-        "Installing Envoy Gateway CRDs",
+        "Installing K8s Gateway CRDs",
     )
 
-    """Deploy Envoy Gateway control-plane."""
-    # This command installs or upgrades Envoy Gateway control-plane (idempotent)
+    """Create MCPGateway namespaces."""
+    # This command creates namespaces for MCP gateway components
     run_command(
-        [
-            "helm",
-            "upgrade",
-            "--install",
-            "eg",
-            "oci://docker.io/envoyproxy/gateway-helm",
-            "--version",
-            "v1.4.1",
-            "-n",
-            "envoy-gateway-system",
-            "--create-namespace",
-        ],
-        "Deploy Envoy Gateway control-plane",
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-namespaces.yaml")],
+        "Creating MCPGateway namespaces",
     )
 
-    """Deploy Envoy Gateway data-plane."""
-    # This command installs Envoy Gateway data-plane
+
+    """Create Gateway listeners."""
+    # This command installs listeners on the Gateway
     run_command(
         ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway.yaml")],
-        "Deploy Envoy Gateway data-plane",
+        "Creating Gateway listeners",
     )
 
-    """Deploy Envoy Gateway EnvoyProxy CR."""
-    # This command installs Envoy Gateway EnvoyProxy CR
+    """Enable ext-proc filter on the Gateway."""
+    # This command enables ext-proc based filter on the Gateway
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "envoyproxy.yaml")],
-        "Deploy Envoy Gateway EnvoyProxy CR",
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "envoyfilter.yaml")],
+        "Enabling ext-proc filter on the Gateway",
     )
 
-    """Deploy Envoy Gateway helper."""
-    # This command installs Envoy Gateway helper
+    """Install MCPGateway CRDs."""
+    # This command installs MCPGateway CRDs
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-helper.yaml")],
-        "Deploy Envoy Gateway helper",
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-crd.yaml")],
+        "Installing MCPGateway CRDs",
     )
 
-    """Deploy Envoy Gateway WASM filter."""
-    # This command installs Envoy Gateway WASM filter
+    """Deploy MCPGateway Broker, Router, and Controller."""
+    # This command installs MCPGateway components
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "wasm-filter.yaml")],
-        "Deploy Envoy Gateway WASM filter",
+        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-deployment.yaml")],
+        "Deploying MCPGateway Broker, Router, and Controller",
     )
+
+    #"""Init MCPServer CR."""
+    # This command creates an empty MCPServer resource
+    #run_command(
+    #    ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-mcpserver.yaml")],
+    #    "Initing MCPServer CR",
+    #)
