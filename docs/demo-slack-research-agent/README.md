@@ -74,7 +74,7 @@ The agent will work with a variety of OpenAI models. The following have been tes
 
 To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI. 
 
-To deploy the Slack Research Agent:
+### To deploy the Slack Research Agent:
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
