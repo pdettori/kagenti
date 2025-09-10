@@ -56,9 +56,25 @@ Add both variables into `kagenti/installer/app/.env` before executing Kagenti in
 
 ## Import New Agent
 
-To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI.
+### Pre-requisite: Pick an LLM provider
 
-To deploy the Slack Research Agent:
+The Slack Researcher agent supports any OpenAI-compatible backend. The following models have been tested:
+
+*Ollama*
+- granite3.3:8b
+This has been tested with an Apple M3 processor and 64 GB of RAM. You will likely need at least 32GB of RAM to run this example locally.
+
+*OpenAI*
+The agent will work with a variety of OpenAI models. The following have been tested:
+- gpt-4.1-nano
+- gpt-4.1-mini
+- gpt-4.1
+- gpt-4o
+- gpt-4o-mini
+
+To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI. 
+
+### To deploy the Slack Research Agent:
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
@@ -81,7 +97,9 @@ To deploy the Slack Research Agent:
      ollama pull granite3.3:8b
      ```
 
-   - If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. This demo has been tested with `openai` environment with `TASK_MODEL_ID=gpt-4o-mini-2024-07-18`
+     **IMPORTANT**: The default context length in Ollama is 4k; However we need a 128k context length. Go to Ollama -> Settings and adjust the context length to 128k.
+
+   - If using `openai`, you will need to specify a different `TASK_MODEL_ID`, and can do so in the `Custom Environment Variables` section. i.e. `TASK_MODEL_ID=gpt-4.1-nano`
 
 5. In the **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
