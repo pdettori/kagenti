@@ -22,7 +22,6 @@ Utilities for building UI.
 import re
 import logging
 import json
-import yaml
 import os
 import time
 from typing import Optional, List, Dict, Any
@@ -1094,63 +1093,31 @@ def render_import_form(
                 st.session_state[custom_env_key].pop(index)
 
         def load_all_configmap_vars():
-            """load all configmap vars into custom env vars"""
-
+            """load original configmap vars, keeping user-added custom vars"""
             if not env_options:
-                st_object.warning(f"No environment variable sets found in ConfigMap '{constants.ENV_CONFIG_MAP_NAME}' in namespace '{build_namespace_to_use}'")
+                st_object.warning(f"No configMap data available to load in namespace '{build_namespace_to_use}'")
                 return
-            """convert raw configmap data to list of env vars. Handles different
-            formats (Json arrays, simple key-value pairs, secret references, etc)"""
-            all_configmap_vars = parse_configmap_data_to_env_vars(env_options)
-
-            if not all_configmap_vars:
-                st_object.warning(f"No valid environment variables found in ConfigMap '{constants.ENV_CONFIG_MAP_NAME}' in namespace '{build_namespace_to_use}'")
-                return
-            """preserve user-added custom vars, remove previously loaded configmap vars". Prevents
-            duplication on multiple loads"""
-            current_custom_vars = [var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)]
-
-            configmap_as_custom = []
-            for var in all_configmap_vars:
-                configmap_as_custom.append({
-                    "name": var["name"], 
-                    "value": var["value"],
-                    'configmap_origin': True,
-                    'configmap_section': var.get('section', ''),
-                    'configmap_type': var.get('type', 'configmap')
-                    })
-                
-            st.session_state[custom_env_key] = current_custom_vars + configmap_as_custom
-            st.session_state[configmap_loaded_key] = True
-
-        def reload_all_configmap_vars():
-            """reload original configmap vars, keeping user-added custom vars"""
-            if not env_options:
-                st_object.warning(f"No configMap data available to reload in namespace '{build_namespace_to_use}'")
-                return
-            
+            # First, remove any previously loaded configmap vars
             user_custom_vars = [var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)]
+            # Then, add all configmap vars
+            config_map_data = get_config_map_data(
+                core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME)
             
-            all_configmap_vars = parse_configmap_data_to_env_vars(env_options)
-
-            if not all_configmap_vars:
-                st_object.warning(f"No valid environment variables found in ConfigMap '{constants.ENV_CONFIG_MAP_NAME}' in namespace '{build_namespace_to_use}'")
+            if config_map_data:       
+                # Parse configmap data into env vars
+                all_configmap_vars = parse_configmap_data_to_env_vars(config_map_data)
+                configmap = []
+                for var in all_configmap_vars:
+                    configmap.append({
+                        "name": var["name"], 
+                        "value": var["value"],
+                        'configmap_origin': True,
+                        'configmap_section': var.get('section', ''),
+                        'configmap_type': var.get('type', 'configmap')
+                        })
+                st.session_state[custom_env_key] = configmap + user_custom_vars
+                st.session_state[configmap_loaded_key] = True
                 return
-            current_custom_vars = [var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)]
-
-            configmap_as_custom = []
-            for var in all_configmap_vars:
-                configmap_as_custom.append({
-                    "name": var["name"], 
-                    "value": var["value"],
-                    'configmap_origin': True,
-                    'configmap_section': var.get('section', ''),
-                    'configmap_type': var.get('type', 'configmap')
-                    })
-                
-            st.session_state[custom_env_key] = current_custom_vars + configmap_as_custom
-            st.session_state[configmap_loaded_key] = True
-
 
         # takes as input content of the .env file from remote repo and
         # parses each line to extract name-value pair and adds them to
@@ -1197,7 +1164,7 @@ def render_import_form(
                 if st_object.button("🔄 Reload Global Environment Vars",
                                key=f"{resource_type.lower()}_reload_configmap",
                                 help=f"Restore original environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace"):
-                    reload_all_configmap_vars()
+                    load_all_configmap_vars()
                     st_object.success(f"Restored environment variables from a '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap") 
                     st.rerun()
 
