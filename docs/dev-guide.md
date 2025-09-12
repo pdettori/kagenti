@@ -44,7 +44,24 @@ git rebase main
 
 Resolve any conflict if needed, then you can make your PR by doing:
 
+```shell
+git commit -am "<your commit message>" -s
+```
 
+Note that commits must be all signed off to pass DCO checks. 
+It is reccomended (but not enforced) to follow best practices
+for commits comments such as [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
+
+Push the PR:
+
+```shell
+ git push --set-upstream origin <name-of-your-branch>
+ ```
+
+ Open the URL printed by the git push command for the PR and complete the PR by
+ entering all the required info - pay attention to the type of PR indicator that goes
+ at the start of the title, a meaningful description of what the PR does
+ and possibly which issue is neing fixed.
 
 
 ### Tagging and triggering a build for new tag
@@ -59,7 +76,7 @@ if working on a fork and "upstream" is the name of the upstream remote (commmon 
 git checkout main; git fetch upstream; git merge --ff-only upstream/main
 ```
 
-if using a branch upstream directly (not reccomended)
+if a maintainer using a branch upstream directly (not reccomended)
 
 ```shell
 git checkout main; git pull
@@ -86,7 +103,6 @@ Push the tag upstream
 ```shell
 git push upstream v0.0.4-alpha.10
 ```
-
 
 ## Kagenti UI Development
 
