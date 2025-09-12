@@ -20,8 +20,6 @@ import subprocess
 from typing import Optional
 
 from kubernetes import client
-import kubernetes.config
-from kubernetes.client import ApisApi, ApiException
 from packaging.version import Version, parse
 from rich.console import Console
 import typer
@@ -154,48 +152,3 @@ def wait_for_deployment(namespace, deployment_name, retries=30, delay=10):
             # Deployment does not exist yet; wait and retry
             time.sleep(delay)
     return False
-
-
-def is_openshift_cluster():
-    """
-    Detects if the current Kubernetes context is pointing to an OpenShift cluster.
-
-    This is done by checking for the presence of OpenShift-specific API groups
-    (e.g., 'route.openshift.io') which are not present in a standard
-    Kubernetes cluster.
-
-    Returns:
-        bool: True if the cluster is OpenShift, False otherwise.
-
-    Raises:
-        kubernetes.config.ConfigException: If it fails to load the kubeconfig.
-        kubernetes.client.ApiException: For other API errors (e.g., authentication).
-    """
-    try:
-        # Load Kubernetes configuration from default location
-        # (e.g., ~/.kube/config or in-cluster service account)
-        kubernetes.config.load_kube_config()
-        
-        # Create a client to query for API information
-        api_client = ApisApi()
-
-        # Get the list of all API groups from the cluster
-        api_groups = api_client.get_api_versions()
-
-        # Check if any of the group names contain 'openshift.io'
-        for group in api_groups.groups:
-            if 'openshift.io' in group.name:
-                return True
-        
-        return False
-
-    except ApiException as e:
-        # Handle cases where the API call itself fails for reasons other
-        # than just not finding the API group.
-        print(f"API Exception: {e}")
-        # Depending on requirements, you might want to handle this differently
-        # or re-raise the exception.
-        raise
-    except kubernetes.config.ConfigException as e:
-        print(f"Kubeconfig loading failed: {e}")
-        raise

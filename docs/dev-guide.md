@@ -95,7 +95,7 @@ v0.0.4-alpha.9
 create a new tag e.g.
 
 ```shell
-git tag v0.0.4-alpha.10
+git v0.0.4-alpha.10
 ```
 
 Push the tag upstream
