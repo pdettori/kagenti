@@ -37,7 +37,7 @@ from .components import (
     cert_manager
 )
 from .config import InstallableComponent
-from .utils import console
+from .utils import console, is_openshift_cluster
 
 app = typer.Typer(
     help="A CLI tool to install the Agent Platform on a local Kind cluster.",
@@ -119,6 +119,14 @@ def main(
                 expand=False,
             )
         )
+
+        # --- Check if OpenShift ---
+        is_ocp = is_openshift_cluster()
+        if is_ocp:
+            console.print(
+                "[yellow]OpenShift Cluster detected[/yellow]\n"
+            )
+            os.exit 
 
         # --- Setup and Pre-flight Checks ---
         checker.check_dependencies()
