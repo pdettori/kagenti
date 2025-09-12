@@ -1,5 +1,93 @@
 # Developer's Guide
 
+## Working with Git
+
+### Setting up your local repo
+
+1. Create a [fork of kagenti](https://github.com/kagenti/kagenti/fork)
+
+2. Clone your fork – command only shown for HTTPS; adjust the URL if you prefer SSH
+
+```shell
+git clone https://github.com/<your-username>/kagenti.git
+cd kagenti
+```
+
+3. Add the upstream repository as a remote (adjust the URL if you prefer SSH)
+
+```shell
+git remote add upstream https://github.com/kubestellar/kubeflex.git
+```
+
+4. Fetch all tags from upstream
+
+```shell
+git fetch upstream --tags
+```
+
+### Making a PR
+
+Work on your local repo cloned from your fork. Create a branch:
+
+```shell
+git checkout -b <name-of-your-branch>
+```
+
+When ready to make your PR, make sure first to rebase from upstream 
+(things may have changed while you have been working on the PR):
+
+```shell
+git checkout main; git fetch upstream; git merge --ff-only upstream/main
+git checkout <name-of-your-branch>
+git rebase main
+```
+
+Resolve any conflict if needed, then you can make your PR by doing:
+
+
+
+
+### Tagging and triggering a build for new tag
+
+Note - this is only enabled for maintainers for the project.
+
+Checkout `main` and make sure it equals `main` in the upstream repo as follows:
+
+if working on a fork and "upstream" is the name of the upstream remote (commmon convention)
+
+```shell
+git checkout main; git fetch upstream; git merge --ff-only upstream/main
+```
+
+if using a branch upstream directly (not reccomended)
+
+```shell
+git checkout main; git pull
+```
+
+check existing tags e.g.,
+
+```shell
+git tag
+v0.0.1-alpha.1
+v0.0.2-alpha.1
+...
+v0.0.4-alpha.9
+```
+
+create a new tag e.g.
+
+```shell
+git v0.0.4-alpha.10
+```
+
+Push the tag upstream
+
+```shell
+git push upstream v0.0.4-alpha.10
+```
+
+
 ## Kagenti UI Development
 
 ### Running locally
