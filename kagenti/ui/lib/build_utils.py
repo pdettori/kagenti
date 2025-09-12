@@ -1098,7 +1098,7 @@ def render_import_form(
                 st_object.warning(f"No configMap data available to load in namespace '{build_namespace_to_use}'")
                 return
             # First, remove any previously loaded configmap vars
-            user_custom_vars = [var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)]
+            user_custom_vars = [var for var in st.session_state.get(custom_env_key,[]) if not var.get('configmap_origin', False)]
             # Then, add all configmap vars
             config_map_data = get_config_map_data(
                 core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME)
@@ -1644,15 +1644,15 @@ def validate_registry_config(registry_config, st_object):
 
     return True
 
-def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[str, str]]:
+def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Parses ConfigMap data and return all environment variables as a flat list.
 
     Args:
-        configmap_data (Dict[str, Any]): The data from the ConfigMap.
+        env_options(Dict[str, Any]): The data from the ConfigMap.
 
     Returns:
-        List[Dict[str, str]]: A list of environment variable dictionaries.
+        List[Dict[str, Any]]: A list of environment variable dictionaries.
     """
 
     env_vars = []
