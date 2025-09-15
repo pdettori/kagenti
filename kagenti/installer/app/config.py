@@ -78,7 +78,8 @@ class InstallableComponent(str, Enum):
     TEKTON = "tekton"
     OPERATOR = "operator"
     ISTIO = "istio"
-    ADDONS = "addons"  # Prometheus, Kiali & Phoenix
+    ADDONS = "addons"  #  Kiali & Phoenix
+    OTEL = "otel"
     UI = "ui"
     GATEWAY = "gateway"
     SPIRE = "spire"
