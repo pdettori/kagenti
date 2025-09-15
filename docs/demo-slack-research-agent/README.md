@@ -61,20 +61,22 @@ Add both variables into `kagenti/installer/app/.env` before executing Kagenti in
 The Slack Researcher agent supports any OpenAI-compatible backend. The following models have been tested:
 
 *Ollama*
+
 - granite3.3:8b
 This has been tested with an Apple M3 processor and 64 GB of RAM. You will likely need at least 32GB of RAM to run this example locally.
 
 *OpenAI*
 The agent will work with a variety of OpenAI models. The following have been tested:
+
 - gpt-4.1-nano
 - gpt-4.1-mini
 - gpt-4.1
 - gpt-4o
 - gpt-4o-mini
 
-To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI. 
+To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI.
 
-### To deploy the Slack Research Agent:
+### To deploy the Slack Research Agent
 
 1. Navigate to [Import New Agent](http://kagenti-ui.localtest.me:8080/Import_New_Agent#import-new-agent) in the Kagenti UI.
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
