@@ -152,7 +152,7 @@ def setup_keycloak() -> str:
     return (setup.get_client_secret(kagenti_keycloak_client_id))
 
 
-def install():
+def install(use_existing_cluster: bool = False, **kwargs):
     """Installs Keycloak, patches it for proxy headers, and runs initial setup."""
     run_command(
         [
@@ -209,23 +209,24 @@ def install():
         "Adding Keycloak to Istio ambient mesh",
     )
 
-    # Setup Keycloak demo realm, user, and agent client
-    (kagenti_keycloak_client_secret) = setup_keycloak()
+    if not use_existing_cluster:
+        # Setup Keycloak demo realm, user, and agent client
+        kagenti_keycloak_client_secret = setup_keycloak()
 
-    # Distribute client secret to agent namespaces
-    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
-    if not namespaces_str:
-        return
+        # Distribute client secret to agent namespaces
+        namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+        if not namespaces_str:
+            return
 
-    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
-    try:
-        kube_config.load_kube_config()
-        v1_api = client.CoreV1Api()
-    except Exception as e:
-        console.log(
-            f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
-        )
-        raise typer.Exit(1)
+        agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+        try:
+            kube_config.load_kube_config()
+            v1_api = client.CoreV1Api()
+        except Exception as e:
+            console.log(
+                f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
+            )
+            raise typer.Exit(1)
 
     for ns in agent_namespaces:
         if not secret_exists(v1_api, "kagenti-keycloak-client-secret", ns):
