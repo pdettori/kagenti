@@ -233,9 +233,9 @@ def get_config_map_data(
             try:
                 parsed_data[key] = json.loads(value)
             except json.JSONDecodeError:
-                logger.warning(
-                    f"Could not parse JSON for key '{key}' in ConfigMap '{config_map_name}'. Skipping."
-                )
+                # if not json, just store raw string
+                parsed_data[key] = value
+
         logger.info(
             f"Successfully fetched and parsed data from ConfigMap '{config_map_name}'."
         )
