@@ -211,7 +211,7 @@ def install(use_existing_cluster: bool = False, **kwargs):
 
     if not use_existing_cluster:
         # Setup Keycloak demo realm, user, and agent client
-        (kagenti_keycloak_client_secret, slack_tool_client_secret) = setup_keycloak()
+        kagenti_keycloak_client_secret = setup_keycloak()
 
         # Distribute client secret to agent namespaces
         namespaces_str = os.getenv("AGENT_NAMESPACES", "")
