@@ -89,11 +89,7 @@ This option will:
 
 Make sure your `KUBECONFIG` is properly set and points to a cluster where you have admin privileges before using this option.
 
-**Note:** When using an existing cluster, you may want to skip the registry component as it's primarily designed for kind clusters:
-
-```shell
-uv run kagenti-installer --use-existing-cluster --skip-install registry
-```
+**Note:** When using an existing cluster, the registry component is automatically skipped as it's primarily designed for kind clusters that have been initialized with a specific configuration.
 
 To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
