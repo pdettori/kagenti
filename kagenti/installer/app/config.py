@@ -67,7 +67,7 @@ PRELOADABLE_IMAGES = [
 # --- Git Repos and fallback tag versions ---
 OPERATOR_FALLBACK_VERSION = "0.2.0-alpha.4"
 OPERATOR_GIT_REPO = "https://github.com/kagenti/kagenti-operator.git"
-UI_FALLBACK_VERSION = "v0.0.4-alpha.2"
+UI_FALLBACK_VERSION = "v0.0.4-alpha.13"
 UI_GIT_REPO = "https://github.com/kagenti/kagenti.git"
 
 # --- Enum for Skippable Components ---
