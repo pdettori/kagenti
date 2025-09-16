@@ -70,6 +70,7 @@ The simpler approach at this point to expose the UI is to use an OpenShift route
 (TODO - explore how HTTPRoute could be used with istio ingress gateway and TLS termination)
 
 ```shell
+kubectl create namespace kagenti-system
 kubectl apply -f app/resources/ocp/ui-route.yaml
 ```
 
