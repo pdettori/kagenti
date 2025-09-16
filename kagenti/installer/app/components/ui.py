@@ -20,9 +20,6 @@ import yaml
 from .. import config
 from ..utils import console, get_latest_tagged_version, run_command
 
-UI_FALLBACK = "v0.0.4-alpha.2"
-UI_REPO = "https://github.com/kagenti/kagenti.git"
-
 
 def install(**kwargs):
     """Installs the Kagenti UI from its deployment YAML."""
@@ -75,7 +72,7 @@ def install(**kwargs):
                 # In case there are multiple containers, only update the expected UI one
                 if container["name"] == "kagenti-ui-container":
                     image_name = container["image"].split(":")[0]
-                    updated_tag = get_latest_tagged_version(github_repo=UI_REPO, fallback_version=UI_FALLBACK)
+                    updated_tag = get_latest_tagged_version(github_repo=config.UI_GIT_REPO, fallback_version=config.UI_FALLBACK_VERSION)
                     print(f"Using image tag {updated_tag} for Kagenti UI deployment")
                     container["image"] = f"{image_name}:{updated_tag}"
     with tempfile.NamedTemporaryFile("w", delete=True, suffix=".yaml") as tmp_file:

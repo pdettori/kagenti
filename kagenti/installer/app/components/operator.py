@@ -16,14 +16,15 @@
 from .. import config
 from ..utils import get_latest_tagged_version, run_command
 
-OPERATOR_FALLBACK = "0.2.0-alpha.4"
-OPERATOR_REPO = "https://github.com/kagenti/kagenti-operator.git"
 
 def install(**kwargs):
     """Installs the Platform Operator using its Helm chart."""
 
     # Operator version strips v from tag
-    operator_version = get_latest_tagged_version(github_repo=OPERATOR_REPO, fallback_version=OPERATOR_FALLBACK).lstrip('v')
+    operator_version = get_latest_tagged_version(
+        github_repo=config.OPERATOR_GIT_REPO,
+        fallback_version=config.OPERATOR_FALLBACK_VERSION
+    ).lstrip('v')
     print(f"Using Platform Operator version: {operator_version}")
 
     run_command(
