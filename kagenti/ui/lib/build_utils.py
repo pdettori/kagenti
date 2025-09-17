@@ -1102,14 +1102,14 @@ def render_import_form(
             # Then, add all configmap vars
             config_map_data = get_config_map_data(
                 core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME)
-            
-            if config_map_data:       
+
+            if config_map_data:
                 # Parse configmap data into env vars
                 all_configmap_vars = parse_configmap_data_to_env_vars(config_map_data)
                 configmap = []
                 for var in all_configmap_vars:
                     configmap.append({
-                        "name": var["name"], 
+                        "name": var["name"],
                         "value": var["value"],
                         'configmap_origin': True,
                         'configmap_section': var.get('section', ''),
@@ -1157,7 +1157,7 @@ def render_import_form(
                 load_all_configmap_vars()
                 if st.session_state[configmap_loaded_key]:
                     configmap_var_count = len([var for var in st.session_state[custom_env_key] if var.get('configmap_origin', False)])
-                    st_object.success(f"Loaded {configmap_var_count} environment variables from ConfigMap") 
+                    st_object.success(f"Loaded {configmap_var_count} environment variables from ConfigMap")
                 st.rerun()
         with configmap_col2:
             if st.session_state[configmap_loaded_key]:
@@ -1165,7 +1165,7 @@ def render_import_form(
                                key=f"{resource_type.lower()}_reload_configmap",
                                 help=f"Restore original environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace"):
                     load_all_configmap_vars()
-                    st_object.success(f"Restored environment variables from a '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap") 
+                    st_object.success(f"Restored environment variables from a '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap")
                     st.rerun()
 
         if st.session_state[configmap_loaded_key]:
@@ -1173,10 +1173,10 @@ def render_import_form(
             user_vars_count = len([var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)])
 
             st_object.caption(f"Loaded {configmap_vars_count} environment variables from ConfigMap ")
-           
+
         custom_env_vars = st.session_state[custom_env_key]
         if custom_env_vars:
-            # --------- Render each env var 
+            # --------- Render each env var
             for i, env_var in enumerate(custom_env_vars):
                 col1, col2, col3, col4 = st_object.columns([3, 3, 2, 1])
                 """Determine if this env var originated from configmap or custom added"""
@@ -1203,13 +1203,13 @@ def render_import_form(
                     if is_configmap_var:
                         var_type = env_var.get('configmap_type', 'configmap')
                         if var_type == 'secret':
-                            st_object.markdown(f"<span style='font-size: 10px; color: blue; '>🔒 **Custom Secret**</span>", unsafe_allow_html=True) 
+                            st_object.markdown("<span style='font-size: 10px; color: blue; '>🔒 **Custom Secret**</span>", unsafe_allow_html=True)
                         elif var_type == 'configmap-secret':
-                            st_object.markdown(f"<span style='font-size: 10px; color: green; '>🔒 **ConfigMap Secret**</span>", unsafe_allow_html=True) 
+                            st_object.markdown("<span style='font-size: 10px; color: green; '>🔒 **ConfigMap Secret**</span>", unsafe_allow_html=True)
                         else:
-                            st_object.markdown(f"<span style='font-size: 10px; color: green'>🗂️ **ConfigMap**</span>", unsafe_allow_html=True)
+                            st_object.markdown("<span style='font-size: 10px; color: green'>🗂️ **ConfigMap**</span>", unsafe_allow_html=True)
                     else:
-                        st_object.markdown(f"<span style='font-size: 10px; color: blue; '>✏️ **Custom**</span>", unsafe_allow_html=True)       
+                        st_object.markdown("<span style='font-size: 10px; color: blue; '>✏️ **Custom**</span>", unsafe_allow_html=True)
 
                 with col4:
                     if i == 0:
@@ -1664,7 +1664,7 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
                     parsed_var = {
                         'name': var['name'],
                         'section': section_name,
-                        'configmap_origin': True                      
+                        'configmap_origin': True
                     }
 
                     if 'valueFrom' in var and isinstance(var['valueFrom'], dict):
@@ -1695,7 +1695,7 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
                             parsed_var = {
                                'name': var['name'],
                                'section': section_name,
-                               'configmap_origin': True,                        
+                               'configmap_origin': True,
                             }
                             if 'valueFrom' in var and isinstance(var['valueFrom'], dict):
                                 secret_ref = var['valueFrom'].get('secretKeyRef', {})
@@ -1722,13 +1722,13 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
                    'section': section_name,
                    'configmap_origin': True,
                    'type': 'configmap'
-               })   
+               })
         elif isinstance(section_content, dict):
             if 'name' in section_content:
                 parsed_var = {
                     'name': section_content['name'],
                     'section': section_name,
-                    'configmap_origin': True,                    
+                    'configmap_origin': True,
                 }
                 if 'valueFrom' in section_content and isinstance(section_content['valueFrom'], dict):
                     secret_ref = section_content['valueFrom'].get('secretKeyRef', {})
@@ -1746,7 +1746,7 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
                 else:
                     parsed_var['value'] = str(section_content)
                     parsed_var['type'] = 'configmap'
-                env_vars.append(parsed_var)       
+                env_vars.append(parsed_var)
         else:
             # Treat as single env var with section name as prefix
             env_vars.append({
@@ -1756,6 +1756,6 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
                 'configmap_origin': True,
                 'type': 'configmap'
             })
-    
+
     return env_vars
 
