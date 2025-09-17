@@ -32,7 +32,7 @@ def install(**kwargs):
             "-f",
             str(config.RESOURCES_DIR / "global-environments.yaml"),
         ],
-        f"Applying global-environments configmap in 'kagenti-system'",
+        "Applying global-environments configmap in 'kagenti-system'",
     )
     # Create the auth secret, containing the Keycloak client secret
     run_command(
@@ -72,7 +72,10 @@ def install(**kwargs):
                 # In case there are multiple containers, only update the expected UI one
                 if container["name"] == "kagenti-ui-container":
                     image_name = container["image"].split(":")[0]
-                    updated_tag = get_latest_tagged_version(github_repo=config.UI_GIT_REPO, fallback_version=config.UI_FALLBACK_VERSION)
+                    updated_tag = get_latest_tagged_version(
+                        github_repo=config.UI_GIT_REPO,
+                        fallback_version=config.UI_FALLBACK_VERSION
+                    )
                     console.log(f"  Using image tag {updated_tag} for Kagenti UI deployment")
                     container["image"] = f"{image_name}:{updated_tag}"
     with tempfile.NamedTemporaryFile("w", delete=True, suffix=".yaml") as tmp_file:

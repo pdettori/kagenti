@@ -56,10 +56,14 @@ def get_latest_tagged_version(github_repo, fallback_version) -> str:
                 if '^{}' not in tag:  # Exclude annotated tags
                     return tag
 
-        console.log("[yellow]Could not find tag name in the response. Using fallback version.[/yellow]")
+        console.log(
+            "[yellow]Could not find tag name in the response. Using fallback version.[/yellow]"
+        )
         return fallback_version
     except subprocess.CalledProcessError as e:
-        console.log(f"[bold red]Error fetching latest version: {e}. Using fallback version.[/bold red]")
+        console.log(
+            f"[bold red]Error fetching latest version: {e}. Using fallback version.[/bold red]"
+        )
         return fallback_version
 
 
