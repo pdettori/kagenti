@@ -73,7 +73,7 @@ def install(**kwargs):
                 if container["name"] == "kagenti-ui-container":
                     image_name = container["image"].split(":")[0]
                     updated_tag = get_latest_tagged_version(github_repo=config.UI_GIT_REPO, fallback_version=config.UI_FALLBACK_VERSION)
-                    print(f"Using image tag {updated_tag} for Kagenti UI deployment")
+                    console.log(f"  Using image tag {updated_tag} for Kagenti UI deployment")
                     container["image"] = f"{image_name}:{updated_tag}"
     with tempfile.NamedTemporaryFile("w", delete=True, suffix=".yaml") as tmp_file:
         yaml.safe_dump_all(ui_yamls, tmp_file)
