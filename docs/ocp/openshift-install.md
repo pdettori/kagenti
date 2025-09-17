@@ -70,6 +70,7 @@ The simpler approach at this point to expose the UI is to use an OpenShift route
 (TODO - explore how HTTPRoute could be used with istio ingress gateway and TLS termination)
 
 ```shell
+kubectl create namespace kagenti-system
 kubectl apply -f app/resources/ocp/ui-route.yaml
 ```
 
@@ -151,7 +152,7 @@ for key in username password; do echo -n "$key: "; kubectl get secret keycloak-i
 ## Installing Tekton (OpenShift Pipelines)
 
 ```shell
-kubectl apply -n keycloak -f app/resources/ocp/openshift-pipelines-operator.yaml
+kubectl apply -f app/resources/ocp/openshift-pipelines-operator.yaml
 ```
 
 ```shell
@@ -165,7 +166,7 @@ kubectl create ns cert-manager-operator
 ```
 
 ```shell
-kubectl apply -n keycloak -f app/resources/ocp/cert-manager-operator.yaml
+kubectl apply -f app/resources/ocp/cert-manager-operator.yaml
 ```
 
 ```shell
