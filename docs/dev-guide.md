@@ -16,7 +16,7 @@ cd kagenti
 3. Add the upstream repository as a remote (adjust the URL if you prefer SSH)
 
 ```shell
-git remote add upstream https://github.com/kubestellar/kubeflex.git
+git remote add upstream https://github.com/kagenti/kagenti.git
 ```
 
 4. Fetch all tags from upstream
