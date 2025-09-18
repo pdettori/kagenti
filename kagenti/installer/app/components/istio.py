@@ -13,10 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from ..utils import run_command
+from .. import config
 
 
-def install(**kwargs):
+def install(use_openshift_cluster: bool = False, **kwargs):
+    if use_openshift_cluster:
+        _install_on_openshift()
+    else:
+        _install_on_k8s()
+
+
+def _install_on_k8s():
     """Installs all Istio components using the official Helm charts."""
     run_command(
         [
@@ -115,4 +124,13 @@ def install(**kwargs):
     run_command(
         ["kubectl", "rollout", "status", "-n", "istio-system", "deployment/istiod"],
         "Waiting for Istiod rollout",
+    )
+
+
+def _install_on_openshift():
+    """Installs Istio ambient on OpenShift using the Sail operator."""
+    deploy_path: Path = config.RESOURCES_DIR / "ocp" / "servicemeshoperator3.yaml"
+    run_command(
+        ["kubectl", "apply", "-n", "openshift-operators", "-f", deploy_path],
+        "Installing Service Mesh Operator 3"
     )
