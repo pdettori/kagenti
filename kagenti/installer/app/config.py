@@ -63,11 +63,6 @@ PRELOADABLE_IMAGES = [
     "ghcr.io/kagenti/mcp-gateway:v0.1",
     "ghcr.io/modelcontextprotocol/inspector:0.15.0",
     "public.ecr.aws/docker/library/registry:3.0.0-rc.4",
-    # Preloads images for versions matching the yaml file/URL
-    # for run command in cert_manager.py
-    "quay.io/jetstack/cert-manager-webhook:v1.17.2",
-    "quay.io/jetstack/cert-manager-cainjector:v1.17.2",
-    "quay.io/jetstack/cert-manager-controller:v1.17.2"
 ]
 
 # --- Git Repos and fallback tag versions ---
