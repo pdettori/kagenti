@@ -61,7 +61,8 @@ PRELOADABLE_IMAGES = [
     "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
     "docker.io/nginx/nginx-prometheus-exporter:1.4.2",
     "ghcr.io/kagenti/mcp-gateway:v0.1",
-    "ghcr.io/modelcontextprotocol/inspector:0.15.0"
+    "ghcr.io/modelcontextprotocol/inspector:0.15.0",
+    "public.ecr.aws/docker/library/registry:3.0.0-rc.4",
 ]
 
 # --- Git Repos and fallback tag versions ---
