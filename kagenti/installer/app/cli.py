@@ -24,7 +24,7 @@ from rich.text import Text
 from . import checker, cluster, config
 from .components import (
     addons,
-    agents,
+    agent_namespaces,
     gateway,
     istio,
     spire,
@@ -62,7 +62,7 @@ INSTALLER_MAP = {
     InstallableComponent.UI: ui.install,
     InstallableComponent.GATEWAY: gateway.install,
     InstallableComponent.KEYCLOAK: keycloak.install,
-    InstallableComponent.AGENTS: agents.install,
+    InstallableComponent.AGENT_NAMESPACES: agent_namespaces.install,
     InstallableComponent.METRICS_SERVER: metrics_server.install,
     InstallableComponent.INSPECTOR: inspector.install,
 }
@@ -78,10 +78,10 @@ CORE_COMPONENTS = [
     InstallableComponent.GATEWAY,
     InstallableComponent.MCP_GATEWAY,
     InstallableComponent.KEYCLOAK,
-    InstallableComponent.AGENTS,
-    InstallableComponent.UI,
+    InstallableComponent.AGENT_NAMESPACES,
     InstallableComponent.INSPECTOR,
     InstallableComponent.SPIRE,
+    InstallableComponent.UI,
 ]
 
 ISTIO_DEPENDENT_COMPONENTS = [
@@ -155,13 +155,20 @@ def _handle_automatic_skips(
             )
             skip_set.add(InstallableComponent.REGISTRY)
 
-    # Rule: METRICS_SERVER is not needed for OpenShift as it has a built-in equivalent.
     if context.is_openshift:
+         # Rule: METRICS_SERVER is not needed for OpenShift as it has a built-in equivalent.
         if InstallableComponent.METRICS_SERVER not in skip_set:
             console.print(
                 "[yellow]Info: Using an OpenShift cluster, automatically skipping METRICS_SERVER installation.[/yellow]\n"
             )
             skip_set.add(InstallableComponent.METRICS_SERVER)
+
+        # Rule: GATEWAY is not needed for OpenShift as it has a built-in equivalent.
+        if InstallableComponent.GATEWAY not in skip_set:
+            console.print(
+                "[yellow]Info: Using an OpenShift cluster, automatically skipping ingress GATEWAY installation.[/yellow]\n"
+            )
+            skip_set.add(InstallableComponent.GATEWAY)        
 
     return skip_set
 
@@ -193,7 +200,7 @@ def _setup_cluster(
         using_kind_cluster=context.is_kind
     )
 
-    if InstallableComponent.AGENTS not in skip_set:
+    if InstallableComponent.AGENT_NAMESPACES not in skip_set:
         cluster.check_and_create_agent_namespaces(silent=silent)
     else:
         console.print(
