@@ -22,9 +22,14 @@ import time
 from pathlib import Path
 from kubernetes import client, config as kube_config
 from .. import config
-from ..utils import console, run_command, secret_exists
+from ..utils import console, run_command, secret_exists, get_secret_values, get_api_client
 from keycloak import KeycloakAdmin, KeycloakPostError
 from ..ocp_utils import verify_operator_installation, get_admitted_openshift_route_host
+
+DEFAULT_BASE_URL = "http://keycloak.localtest.me:8080"
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin"
+DEFAULT_REALM_NAME = "demo"
 
 class KeycloakSetup:
     def __init__(self, server_url, admin_username, admin_password, realm_name):
@@ -130,14 +135,10 @@ class KeycloakSetup:
         return self.keycloak_admin.get_client_secrets(client_id)["value"]
 
 
-def setup_keycloak() -> str:
+def setup_keycloak(base_url, admin_username, admin_password, realm_name) -> str:
     """Setup keycloak and return client secret"""
-    base_url = "http://keycloak.localtest.me:8080"
-    admin_username = "admin"
-    admin_password = "admin"
-    demo_realm_name = "demo"
 
-    setup = KeycloakSetup(base_url, admin_username, admin_password, demo_realm_name)
+    setup = KeycloakSetup(base_url, admin_username, admin_password, realm_name)
     setup.connect()
     setup.create_realm()
 
@@ -150,11 +151,12 @@ def setup_keycloak() -> str:
     return (setup.get_client_secret(kagenti_keycloak_client_id))
 
 
-def install(use_openshift_cluster: bool = False, **kwargs):
+def install(use_openshift_cluster: bool = False,use_existing_cluster: bool = False, **kwargs):
     if use_openshift_cluster:
         _install_on_openshift()
     else:
         _install_on_k8s()
+    setup(use_openshift_cluster, use_existing_cluster, **kwargs)
 
 
 def _install_on_k8s(use_existing_cluster: bool = False, **kwargs):
@@ -212,68 +214,19 @@ def _install_on_k8s(use_existing_cluster: bool = False, **kwargs):
             "--overwrite",
         ],
         "Adding Keycloak to Istio ambient mesh",
-    )
-
-    if not use_existing_cluster:
-        # Setup Keycloak demo realm, user, and agent client
-        kagenti_keycloak_client_secret = setup_keycloak()
-
-        # Distribute client secret to agent namespaces
-        namespaces_str = os.getenv("AGENT_NAMESPACES", "")
-        if not namespaces_str:
-            return
-
-        agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
-        try:
-            kube_config.load_kube_config()
-            v1_api = client.CoreV1Api()
-        except Exception as e:
-            console.log(
-                f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
-            )
-            raise typer.Exit(1)
-
-        for ns in agent_namespaces:
-            if not secret_exists(v1_api, "kagenti-keycloak-client-secret", ns):
-                run_command(
-                    [
-                        "kubectl",
-                        "create",
-                        "secret",
-                        "generic",
-                        "kagenti-keycloak-client-secret",
-                        f"--from-literal=client-secret={kagenti_keycloak_client_secret}",
-                        "-n",
-                        ns,
-                    ],
-                    f"Creating 'kagenti-keycloak-client-secret' in '{ns}'",
-                )
-            else:
-                # The secret value MUST be base64 encoded for the patch data.
-                encoded_secret = base64.b64encode(kagenti_keycloak_client_secret.encode("utf-8")).decode("utf-8")
-                patch_string = f'{{"data":{{"client-secret":"{encoded_secret}"}}}}'
-                run_command(
-                    [
-                        "kubectl",
-                        "patch",
-                        "secret",
-                        "kagenti_keycloak_client_secret",
-                        "--type=merge",
-                        "-p",
-                        patch_string,
-                        "-n",
-                        ns,
-                    ],
-                    f"🔄 Patching 'kagenti_keycloak_client_secret' in namespace '{ns}'",
-                )
-    else:
-        console.print(
-                f"[bold yellow]Skipping initial Keycloak setup because existing cluster is used.[/bold yellow]"
-            )                
+    )       
 
 def _install_on_openshift():
     """Installs Keycloak on OpenShift using the Keycloak operator."""
 
+    try:
+        custom_obj_api = get_api_client(client.CustomObjectsApi)
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+ 
     postgres_path: Path = config.RESOURCES_DIR / "ocp" / "keycloak-postgres.yaml"
     namespace = "keycloak"
     run_command(
@@ -289,6 +242,7 @@ def _install_on_openshift():
     )
 
     verify_operator_installation(
+        custom_obj_api,
         subscription_name=subscription,
         namespace=namespace,
     )
@@ -310,9 +264,75 @@ def _install_on_openshift():
         "Waiting for Keycloak StatefulSet rollout",
     )
 
-    keycloak_url = get_admitted_openshift_route_host("keycloak","keycloak")
 
-    print(f"Keycloak is available at https://{keycloak_url}")
+def setup(use_openshift_cluster: bool = False,use_existing_cluster: bool = False, **kwargs):
+    if use_existing_cluster and not use_openshift_cluster:
+        console.print(
+                f"[bold yellow]Skipping initial Keycloak setup because existing cluster is used.[/bold yellow]"
+        )
+        return 
 
-    import sys
-    sys.exit(0) 
+    url = DEFAULT_BASE_URL
+    admin_username = DEFAULT_ADMIN_USERNAME
+    admin_password = DEFAULT_ADMIN_PASSWORD
+    realm_name = DEFAULT_REALM_NAME
+
+    try:
+        v1_api = get_api_client(client.CoreV1Api)
+        custom_obj_api = get_api_client(client.CustomObjectsApi)
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+
+    if use_openshift_cluster:
+        url = get_admitted_openshift_route_host(custom_obj_api, "keycloak","keycloak")
+        admin_username, admin_password = get_secret_values(v1_api, "keycloak", "keycloak-initial-admin", "username", "password" )
+        print(f"Keycloak is available at {url} admin_username={admin_username} admin_password={admin_password}")  
+
+    # Setup Keycloak demo realm, user, and agent client
+    kagenti_keycloak_client_secret = setup_keycloak(base_url=url, admin_username=admin_username, admin_password=admin_password,realm_name=realm_name)
+
+    # Distribute client secret to agent namespaces
+    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+    if not namespaces_str:
+        return
+
+    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+
+
+    for ns in agent_namespaces:
+        if not secret_exists(v1_api, "kagenti-keycloak-client-secret", ns):
+            run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "generic",
+                    "kagenti-keycloak-client-secret",
+                    f"--from-literal=client-secret={kagenti_keycloak_client_secret}",
+                    "-n",
+                    ns,
+                ],
+                f"Creating 'kagenti-keycloak-client-secret' in '{ns}'",
+            )
+        else:
+            # The secret value MUST be base64 encoded for the patch data.
+            encoded_secret = base64.b64encode(kagenti_keycloak_client_secret.encode("utf-8")).decode("utf-8")
+            patch_string = f'{{"data":{{"client-secret":"{encoded_secret}"}}}}'
+            run_command(
+                [
+                    "kubectl",
+                    "patch",
+                    "secret",
+                    "kagenti-keycloak-client-secret",
+                    "--type=merge",
+                    "-p",
+                    patch_string,
+                    "-n",
+                    ns,
+                ],
+                f"🔄 Patching 'kagenti-keycloak-client-secret' in namespace '{ns}'",
+            )
+      

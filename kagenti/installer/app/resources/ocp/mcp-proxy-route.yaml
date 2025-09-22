@@ -1,0 +1,18 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+  name: mcp-proxy
+  namespace: kagenti-system
+spec:
+  path: /
+  port:
+    targetPort: proxy
+  to:
+    kind: Service
+    name: mcp-proxy
+  wildcardPolicy: None
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

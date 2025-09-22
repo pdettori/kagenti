@@ -1,0 +1,18 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+  name: mcp-inspector
+  namespace: kagenti-system
+spec:
+  path: /
+  port:
+    targetPort: ui
+  to:
+    kind: Service
+    name: mcp-inspector
+  wildcardPolicy: None
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

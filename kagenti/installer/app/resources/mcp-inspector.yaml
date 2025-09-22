@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: mcp-inspector
-          image: ghcr.io/modelcontextprotocol/inspector:0.15.0
+          image: ghcr.io/modelcontextprotocol/inspector:0.16.8
           ports:
             - containerPort: 6274
             - containerPort: 6277
@@ -30,7 +30,19 @@ spec:
           - name: DANGEROUSLY_OMIT_AUTH
             value: "true"
           - name: ALLOWED_ORIGINS
-            value: http://mcp-inspector.localtest.me:8080
+            valueFrom:
+              secretKeyRef:
+                name: mcp-inspector-config
+                key: ALLOWED_ORIGINS
+          - name: MCP_PROXY_FULL_ADDRESS
+            valueFrom:
+              secretKeyRef:
+                name: mcp-inspector-config
+                key: MCP_PROXY_FULL_ADDRESS
+          # - name: ALLOWED_ORIGINS
+          #   value: http://mcp-inspector.localtest.me:8080
+          # - name: MCP_PROXY_FULL_ADDRESS
+          #   value: http://mcp-proxy.localtest.me:8080
           - name: HOST
             value: 0.0.0.0
 ---

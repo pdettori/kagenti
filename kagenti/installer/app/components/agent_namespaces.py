@@ -24,7 +24,7 @@ from .. import config
 from ..utils import console, run_command, create_or_update_secret
 
 
-def install(**kwargs):
+def install(use_openshift_cluster: bool = False, **kwargs):
     """Applies required secrets and labels to the agent namespaces defined in .env."""
     namespaces_str = os.getenv("AGENT_NAMESPACES")
     if not namespaces_str:
@@ -110,15 +110,16 @@ def install(**kwargs):
         )
         create_or_update_secret(v1_api=v1_api, namespace=ns, secret_body=slack_secret)
 
-        # if user operating system is linux, do some special config to enable ollama
-        if platform.system() == "Linux":
-            run_command(
-                [
-                    "sh",
-                    "app/linux/ollama-config.sh"
-                ],
-                "Customizing ollama environment for Linux",
-            )
+        # if user operating system is linux and not openshift, do some special config to enable ollama
+        if not use_openshift_cluster:
+            if platform.system() == "Linux":
+                run_command(
+                    [
+                        "sh",
+                        "app/linux/ollama-config.sh"
+                    ],
+                    "Customizing ollama environment for Linux",
+                )
 
         run_command(
             [

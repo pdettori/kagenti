@@ -15,14 +15,70 @@
 
 import typer
 
+from pathlib import Path
+from kubernetes import client, config
 from .. import config
-from ..utils import console, run_command
+from ..utils import console, run_command, create_or_update_secret, get_api_client
+from ..ocp_utils import get_admitted_openshift_route_host
+
+ALLOWED_ORIGINS_DEFAULT = "http://mcp-inspector.localtest.me:8080"
+MCP_PROXY_FULL_ADDRESS_DEFAULT = "http://mcp-proxy.localtest.me:8080"
+kagenti_namespace = "kagenti-system"
 
 
-def install(**kwargs):
-    """Installs the MCP inspector """
-    deploy_path = str(config.RESOURCES_DIR /  "mcp-inspector.yaml")
-    run_command(["kubectl", "apply", "-f", str(deploy_path)], "Installing MCP Inspector")
+def install(use_openshift_cluster: bool = False, **kwargs):
+    """Installs the MCP inspector"""
+
+    allowed_origins = ALLOWED_ORIGINS_DEFAULT
+    mcp_proxy_full_address = MCP_PROXY_FULL_ADDRESS_DEFAULT
+
+    try:
+        v1_api = get_api_client(client.CoreV1Api)
+        custom_obj_api = get_api_client(client.CustomObjectsApi)
+    except Exception as e:
+        console.log(
+            f"[bold red]✗ Could not connect to Kubernetes to create secrets: {e}[/bold red]"
+        )
+        raise typer.Exit(1)
+
+    if use_openshift_cluster:
+        inspector_route_path: Path = (
+            config.RESOURCES_DIR / "ocp" / "mcp-inspector-route.yaml"
+        )
+        run_command(
+            ["kubectl", "apply", "-f", inspector_route_path],
+            "Creating MCP Inspector Route",
+        )
+        allowed_origins = get_admitted_openshift_route_host(
+            custom_obj_api,
+            kagenti_namespace, "mcp-inspector"
+        )
+
+        proxy_route_path: Path = config.RESOURCES_DIR / "ocp" / "mcp-proxy-route.yaml"
+        run_command(
+            ["kubectl", "apply", "-f", proxy_route_path], "Creating MCP Proxy Route"
+        )
+        mcp_proxy_full_address = get_admitted_openshift_route_host(
+            custom_obj_api,
+            kagenti_namespace, "mcp-proxy"
+        )
+
+    # create config secret
+    config_secret = client.V1Secret(
+        api_version="v1",
+        kind="Secret",
+        metadata=client.V1ObjectMeta(name="mcp-inspector-config", namespace=kagenti_namespace),
+        string_data = {
+            "ALLOWED_ORIGINS": allowed_origins,
+            "MCP_PROXY_FULL_ADDRESS": mcp_proxy_full_address
+        },
+    )
+    create_or_update_secret(v1_api, "kagenti-system", config_secret)
+
+    deploy_path = str(config.RESOURCES_DIR / "mcp-inspector.yaml")
+    run_command(
+        ["kubectl", "apply", "-f", str(deploy_path)], "Installing MCP Inspector"
+    )
     run_command(
         [
             "kubectl",
@@ -45,3 +101,6 @@ def install(**kwargs):
         ],
         "Waiting for mcp-inspector rollout",
     )
+
+    import sys
+    sys.exit(0)

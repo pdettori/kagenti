@@ -18,13 +18,25 @@ import time
 import shutil
 import subprocess
 from typing import Optional
-
-from kubernetes import client
+import base64
+import logging
+from typing import Type, TypeVar
+from kubernetes import client, config
+from kubernetes.client.rest import ApiException
 from packaging.version import Version, parse
 from rich.console import Console
 import typer
 
 console = Console()
+# Set up a logger for this module
+logger = logging.getLogger(__name__)
+
+# Use a TypeVar to represent any Kubernetes API client class, like CoreV1Api, AppsV1Api, etc.
+T = TypeVar("T")
+
+class KubeConfigError(Exception):
+    """Custom exception raised when Kubernetes config cannot be loaded."""
+    pass
 
 def get_latest_tagged_version(github_repo, fallback_version) -> str:
     """Fetches the latest version tag of the component from GitHub releases.
@@ -137,6 +149,41 @@ def run_command(command: list[str], description: str):
             raise typer.Exit(1)
 
 
+def get_api_client(api_client_class: Type[T]) -> T:
+    """Initializes and returns a specific Kubernetes API client.
+
+    This function attempts to load the Kubernetes configuration by trying two methods
+    in order: first from the default kubeconfig file (e.g., `~/.kube/config`) and
+    then from the in-cluster service account environment if running inside a pod.
+
+    Args:
+        api_client_class: The Kubernetes client class to instantiate.
+                          For example, `client.CoreV1Api` or `client.AppsV1Api`.
+
+    Returns:
+        An initialized instance of the requested Kubernetes API client class.
+
+    Raises:
+        KubeConfigError: If both the local kubeconfig file and the in-cluster
+                         configuration fail to load.
+    """
+    try:
+        config.load_kube_config()
+        logger.debug("Successfully loaded configuration from kubeconfig file.")
+    except config.ConfigException:
+        logger.debug("Could not load from kubeconfig. Attempting in-cluster config.")
+        try:
+            config.load_incluster_config()
+            logger.debug("Successfully loaded in-cluster configuration.")
+        except config.ConfigException as e:
+            error_msg = "Failed to load both local and in-cluster Kubernetes config."
+            logger.error(error_msg)
+            # Chain the original exception for better debugging context
+            raise KubeConfigError(error_msg) from e
+
+    return api_client_class()
+
+
 def secret_exists(v1_api: client.CoreV1Api, name: str, namespace: str) -> bool:
     """Checks if a Kubernetes secret exists in a given namespace."""
     try:
@@ -192,3 +239,44 @@ def wait_for_deployment(namespace, deployment_name, retries=30, delay=10):
             # Deployment does not exist yet; wait and retry
             time.sleep(delay)
     return False
+
+def get_secret_values(v1_api: client.CoreV1Api, namespace: str, secret_name: str, key1_name: str, key2_name: str) -> dict | None:
+    """
+    Extracts and returns the decoded values of two named keys from a Kubernetes secret.
+
+    Args:
+        namespace (str): The Kubernetes namespace where the secret is located.
+        secret_name (str): The name of the secret.
+        key1_name (str): The name of the first key to retrieve from the secret's data.
+        key2_name (str): The name of the second key to retrieve from the secret's data.
+
+    Returns:
+        key values if successful,
+        otherwise None.
+    """
+    try:
+        secret = v1_api.read_namespaced_secret(name=secret_name, namespace=namespace)
+
+        if not secret.data:
+            console.log(f"⚠️ Error: Secret '{secret_name}' in namespace '{namespace}' contains no data.")
+            return None
+
+        if key1_name not in secret.data or key2_name not in secret.data:
+            missing = {key for key in [key1_name, key2_name] if key not in secret.data}
+            console.log(f"⚠️ Error: Key(s) {missing} not found in secret '{secret_name}'.")
+            return None
+
+        value1 = base64.b64decode(secret.data[key1_name]).decode('utf-8')
+        value2 = base64.b64decode(secret.data[key2_name]).decode('utf-8')
+
+        return value1, value2
+
+    except ApiException as e:
+        if e.status == 404:
+            console.log(f"❌ Error: Secret '{secret_name}' not found in namespace '{namespace}'.")
+        else:
+            console.log(f"❌ API Error reading secret '{secret_name}': {e.reason}")
+        return None
+    except Exception as e:
+        console.log(f"An unexpected error occurred: {e}")
+        return None

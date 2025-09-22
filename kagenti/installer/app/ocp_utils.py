@@ -27,6 +27,7 @@ OPERATOR_API_VERSION = "v1alpha1"
 
 
 def verify_operator_installation(
+    api: client.CustomObjectsApi,
     subscription_name: str,
     namespace: str,
     timeout_seconds: int = 300,
@@ -47,19 +48,6 @@ def verify_operator_installation(
         True if the operator installed successfully within the timeout, False otherwise.
     """
     console = Console()
-    try:
-        # Load Kubernetes configuration from default location (e.g., ~/.kube/config)
-        # or from within a cluster if running in a pod.
-        config.load_kube_config()
-    except config.ConfigException:
-        print("Could not load kube config. Trying in-cluster config.")
-        try:
-            config.load_incluster_config()
-        except config.ConfigException:
-            print("Failed to load both local and in-cluster kube config. Aborting.")
-            return None
-
-    api = client.CustomObjectsApi()
     start_time = time.time()
 
     def has_timed_out() -> bool:
@@ -155,7 +143,7 @@ def verify_operator_installation(
     return False
 
 
-def get_admitted_openshift_route_host(route_name: str, namespace: str, timeout_seconds: int = 180) -> str | None:
+def get_admitted_openshift_route_host(api: client.CustomObjectsApi, namespace: str, route_name: str, timeout_seconds: int = 180) -> str | None:
     """
     Waits for an OpenShift Route to have an 'Admitted' condition with status 'True'
     and then returns its host.
@@ -164,13 +152,13 @@ def get_admitted_openshift_route_host(route_name: str, namespace: str, timeout_s
     or until the timeout is reached.
 
     Args:
-        route_name (str): The name of the OpenShift Route.
         namespace (str): The namespace where the Route is located.
+        route_name (str): The name of the OpenShift Route.
         timeout_seconds (int): The maximum time in seconds to wait for the route
                                to become admitted. Defaults to 180.
 
     Returns:
-        str | None: The value of .spec.host from the route if it becomes admitted
+        str | None: The value of .spec.host prepended with "https://" from the route if it becomes admitted
                     within the timeout period. Otherwise, returns None.
     
     Raises:
@@ -178,22 +166,7 @@ def get_admitted_openshift_route_host(route_name: str, namespace: str, timeout_s
                       other than a 404 Not Found error which is handled gracefully.
         Exception: For any other unexpected errors during the process.
     """
-    try:
-        # Load Kubernetes configuration from default location (e.g., ~/.kube/config)
-        # or from within a cluster if running in a pod.
-        config.load_kube_config()
-    except config.ConfigException:
-        print("Could not load kube config. Trying in-cluster config.")
-        try:
-            config.load_incluster_config()
-        except config.ConfigException:
-            print("Failed to load both local and in-cluster kube config. Aborting.")
-            return None
-        
     console = Console()
-
-    # OpenShift Routes are accessed via the CustomObjectsApi
-    api = client.CustomObjectsApi()
     
     # API group, version, and plural for OpenShift Routes
     group = 'route.openshift.io'
@@ -227,7 +200,7 @@ def get_admitted_openshift_route_host(route_name: str, namespace: str, timeout_s
                                     console.print(
                                         f"✅  [bold green]SUCCESS:[/bold green] Route '{route_name}' is admitted."
                                     )
-                                    return host
+                                    return f"https://{host}"
                                 else:
                                     console.log(f"[bold red]Error: Route '{route_name}' is admitted but has no .spec.host value.[/bold red]")
                                     return None
