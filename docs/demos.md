@@ -196,7 +196,7 @@ password: admin
 
 ### kagenti-installer reports "exceeded its progress deadline"
 
-Sometimes it can take a long time to pull container images.  Try re-running the installer.
+Sometimes it can take a long time to pull container images.  Try re-running the installer.  Use `oc get deployments --all-namespaces` to see pinpoint a failing deployment.
 
 ### Service stops responding through gateway
 
@@ -239,6 +239,8 @@ Error text:
 
 Check your [personal access token (classic)](https://github.com/settings/personal-access-tokens/).
 Make sure to grant scopes `all:repo`, `write:packages`, and `read:packages`.
+
+You may also get "ghcr.io: 403 Forbidden" errors installing Helm charts during Kagenti installation.  You may have cached credentials that are no longer valid.  The fix is `docker logout ghcr.io`.
 
 ### Agent log shows communication errors
 

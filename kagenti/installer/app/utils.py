@@ -134,6 +134,8 @@ def run_command(command: list[str], description: str):
                 f"[bold red]✗[/bold red] {description} [bold red]failed[/bold red]."
             )
             console.log(f"[red]Error: {e.stderr.strip()}[/red]")
+            console.log("[red]Failed command[/red]")
+            console.log(" ".join(command))
             raise typer.Exit(1)
 
 
