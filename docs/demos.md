@@ -196,7 +196,7 @@ password: admin
 
 ### kagenti-installer reports "exceeded its progress deadline"
 
-Sometimes it can take a long time to pull container images.  Try re-running the installer.  Use `oc get deployments --all-namespaces` to see pinpoint a failing deployment.
+Sometimes it can take a long time to pull container images.  Try re-running the installer.  Use `oc get deployments --all-namespaces` to identify failing deployments.
 
 ### Service stops responding through gateway
 
