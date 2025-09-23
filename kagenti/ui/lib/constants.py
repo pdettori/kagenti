@@ -39,7 +39,7 @@ KEYCLOAK_CONSOLE_URL_OFF_CLUSTER = (
     "http://keycloak.localtest.me:8080/admin/master/console/"
 )
 KEYCLOAK_CONSOLE_URL_IN_CLUSTER = (
-    "http://keycloak.keycloak.svc.cluster.local:8080/admin/master/console/"
+    "http://keycloak-service.keycloak.svc.cluster.local:8080/admin/master/console/"
 )
 TRACES_DASHBOARD_URL = "http://phoenix.localtest.me:8080"
 NETWORK_TRAFFIC_DASHBOARD_URL = "http://kiali.localtest.me:8080"

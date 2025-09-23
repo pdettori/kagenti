@@ -20,6 +20,7 @@ Tool details.
 import asyncio
 import json
 import logging
+import os
 from urllib.parse import urljoin
 import streamlit as st
 from .utils import sanitize_for_session_state_key
@@ -76,6 +77,8 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         tool_k8s_name (str): The name of the MCP-enabled Tool in Kubernetes.
     """
     st.header(f"MCP Tool: {tool_k8s_name}")
+
+    mcp_inspector_url = os.environ.get('MCP_INSPECTOR_URL', constants.MCP_INSPECTOR_URL)
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api:
@@ -153,7 +156,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     st.link_button(
     "Connect with MCP Inspector",
     # TODO - transport should be a property of MCP server
-    url=f"{constants.MCP_INSPECTOR_URL}?serverUrl={mcp_server_url}&transport=streamable_http",
+    url=f"{mcp_inspector_url}?serverUrl={mcp_server_url}&transport=streamable_http",
     help="Click to open the MCP Inspector in a new tab.",
     use_container_width=True,
     )
