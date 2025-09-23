@@ -221,6 +221,28 @@ def create_or_update_secret(v1_api: client.CoreV1Api, namespace: str, secret_bod
                 f"[bold red]Error creating secret '{secret_name}' in '{namespace}': {e}[/bold red]"
             )
             raise typer.Exit(1)
+        
+
+def create_or_update_configmap(v1_api: client.CoreV1Api, namespace: str, configmap: client.V1ConfigMap):
+    """Create or update a Kubernetes configmap in a given namespace."""
+    configmap_name = configmap.metadata.name
+    try:
+        v1_api.create_namespaced_config_map(namespace=namespace, body=configmap)
+        console.log(
+            f"[bold green]✓[/bold green] ConfigMap '{configmap_name}' creation in '{namespace}' [bold green]done[/bold green]."
+        )
+    except client.ApiException as e:
+        # Configmap already exists - patch it
+        if e.status == 409:
+            v1_api.patch_namespaced_config_map(name=configmap_name, namespace=namespace, body=configmap)
+            console.log(
+                f"[bold green]✓[/bold green] Secret '{configmap_name}' patch in '{namespace}' [bold green]done[/bold green]."
+            )
+        else:
+            console.log(
+                f"[bold red]Error creating secret '{configmap_name}' in '{namespace}': {e}[/bold red]"
+            )
+            raise typer.Exit(1)        
 
 
 def wait_for_deployment(namespace, deployment_name, retries=30, delay=10):

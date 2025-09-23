@@ -31,12 +31,12 @@ spec:
             value: "true"
           - name: ALLOWED_ORIGINS
             valueFrom:
-              secretKeyRef:
+              configMapKeyRef:
                 name: mcp-inspector-config
                 key: ALLOWED_ORIGINS
           - name: MCP_PROXY_FULL_ADDRESS
             valueFrom:
-              secretKeyRef:
+              configMapKeyRef:
                 name: mcp-inspector-config
                 key: MCP_PROXY_FULL_ADDRESS
           # - name: ALLOWED_ORIGINS

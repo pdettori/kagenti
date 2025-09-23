@@ -16,8 +16,8 @@
 from .. import config
 from ..utils import run_command
 
-
-def install(**kwargs):
+# TODO - need more work to run in openshift
+def install(use_openshift_cluster: bool = False, **kwargs):
     """Installs all SPIRE components using the official Helm charts."""
     # This command sets up SPIRE CRDs
     run_command(
@@ -36,12 +36,17 @@ def install(**kwargs):
         ],
         "Installing SPIRE CRDs",
     )
-    # run_command(
-    #     [
-    #         "pwd",
-    #     ],
-    #     "Print working directory",
-    # )
+
+    config_path = str(config.RESOURCES_DIR / "spire-helm-values.yaml")
+
+    if use_openshift_cluster:
+        # Setup namespace permissions for openshift
+        run_command(
+            ["kubectl", "label", "--overwrite", "ns", "spire-server", "pod-security.kubernetes.io/enforce=privileged"],
+            "Applying Pod security policy on namespace",
+        )
+        config_path = str(config.RESOURCES_DIR / "ocp" / "spire-helm-values.yaml")
+
     # Install SPIRE using provided helm configuration
     run_command(
         [
@@ -55,8 +60,8 @@ def install(**kwargs):
             "--repo",
             "https://spiffe.github.io/helm-charts-hardened/",
             "-f",
-            str(config.RESOURCES_DIR / "spire-helm-values.yaml"),
-            "--wait",
+            config_path,
+           # "--wait",
         ],
         "Installing SPIRE Server",
     )
@@ -99,7 +104,3 @@ def install(**kwargs):
         ],
         "Adding Spire to Istio ambient mesh",
     )
-
-
-    import sys
-    sys.exit(0)

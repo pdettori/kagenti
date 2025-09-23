@@ -14,8 +14,10 @@
 # limitations under the License.
 
 from pathlib import Path
+from kubernetes import client
+import typer
 from .. import config
-from ..utils import run_command
+from ..utils import run_command, get_api_client, console
 from ..ocp_utils import verify_operator_installation
 
 def install(use_openshift_cluster: bool = False, **kwargs):
@@ -41,7 +43,16 @@ def _install_on_openshift():
         "Installing OpenShift Pipelines operator"
     )
 
+    try:
+        custom_obj_api = get_api_client(client.CustomObjectsApi)
+    except Exception as e:
+        console.log(
+                f"[bold red]✗ Could not connect to Kubernetes: {e}[/bold red]"
+            )
+        raise typer.Exit(1)
+    
     verify_operator_installation(
+        custom_obj_api,
         subscription_name=subscription,
         namespace=namespace,
     )

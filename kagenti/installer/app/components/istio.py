@@ -18,7 +18,8 @@ import subprocess
 import shutil
 from rich.console import Console
 import typer
-from ..utils import run_command
+from kubernetes import client
+from ..utils import run_command, console, get_api_client
 from .. import config
 from ..ocp_utils import verify_operator_installation
 
@@ -183,7 +184,16 @@ def _install_on_openshift():
         "Installing Service Mesh Operator 3"
     )
 
+    try:
+        custom_obj_api = get_api_client(client.CustomObjectsApi)
+    except Exception as e:
+        console.log(
+                f"[bold red]✗ Could not connect to Kubernetes: {e}[/bold red]"
+            )
+        raise typer.Exit(1)
+
     verify_operator_installation(
+        custom_obj_api,
         subscription_name=subscription,
         namespace=namespace,
     )
