@@ -28,6 +28,30 @@ spec:
           env:
             - name: UV_CACHE_DIR
               value: "/app/.cache/uv"
+            - name: TRACES_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "kagenti-ui-config"
+                  key: "TRACES_DASHBOARD_URL"
+                  optional: true
+            - name: NETWORK_TRAFFIC_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "kagenti-ui-config"
+                  key: "NETWORK_TRAFFIC_DASHBOARD_URL"
+                  optional: true
+            - name: MCP_INSPECTOR_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "kagenti-ui-config"
+                  key: "MCP_INSPECTOR_URL"
+                  optional: true
+            - name: KEYCLOAK_CONSOLE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "kagenti-ui-config"
+                  key: "KEYCLOAK_CONSOLE_URL"
+                  optional: true              
             - name: "ENABLE_AUTH"
               value: "true"
             - name: "CLIENT_ID"
