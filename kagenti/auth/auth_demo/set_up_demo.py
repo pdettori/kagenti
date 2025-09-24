@@ -1,13 +1,13 @@
 import json
 import os
-import logging
 
-from keycloak import KeycloakAdmin, KeycloakPostError
+from keycloak import KeycloakAdmin
 
-KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL")
-KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM")
-KEYCLOAK_ADMIN_USERNAME = os.environ.get("KEYCLOAK_ADMIN_USERNAME")
-KEYCLOAK_ADMIN_PASSWORD = os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
+KEYCLOAK_URL = os.environ.get('KEYCLOAK_URL')
+KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM')
+KEYCLOAK_ADMIN_USERNAME = os.environ.get('KEYCLOAK_ADMIN_USERNAME')
+KEYCLOAK_ADMIN_PASSWORD = os.environ.get('KEYCLOAK_ADMIN_PASSWORD')
+NAMESPACE = os.environ.get('NAMESPACE')
 
 if KEYCLOAK_URL is None:
     raise Exception('Expected environment variable "KEYCLOAK_URL"')
@@ -17,6 +17,8 @@ if KEYCLOAK_ADMIN_USERNAME is None:
     raise Exception('Expected environment variable "KEYCLOAK_ADMIN_USERNAME"')
 if KEYCLOAK_ADMIN_PASSWORD is None:
     raise Exception('Expected environment variable "KEYCLOAK_ADMIN_PASSWORD"')
+if NAMESPACE is None:
+    raise Exception('Expected environment variable "NAMESPACE"')
 
 
 def assign_realm_role_to_client_scope(
@@ -36,7 +38,7 @@ slack_partial_access_string = "slack-partial-access"
 slack_full_access_string = "slack-full-access"
 slack_partial_access_user_string = f"{slack_partial_access_string}-user"
 slack_full_access_user_string = f"{slack_full_access_string}-user"
-slack_client_id = "spiffe://localtest.me/sa/slack-tool"
+slack_client_id = f"spiffe://localtest.me/ns/{NAMESPACE}/sa/slack-tool"
 kagenti_client_id = "kagenti"
 
 slack_agent_access_string = "slack-agent-access"
@@ -84,7 +86,7 @@ try:
             "protocolMapper": "oidc-audience-mapper",
             "consentRequired": False,
             "config": {
-                "included.client.audience": "spiffe://localtest.me/sa/slack-tool",
+                "included.client.audience": slack_client_id,
                 "introspection.token.claim": "true",
                 "userinfo.token.claim": "false",
                 "id.token.claim": "false",
