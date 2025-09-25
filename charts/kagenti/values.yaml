@@ -30,15 +30,16 @@ components:
   otel:
     enabled: false
   registry:
-    enabled: true
+    enabled: false
   spire:
-    enabled: true
+    enabled: false
   tekton:
     enabled: false
   ui:
     enabled: true  
 
-# Environment variables for secrets
+# Environment variables for secrets - they should be overriden by a .secrets.yaml file
+# or by using --set secrets.githubUser="" etc.
 secrets:
   githubUser: ""
   githubToken: ""
@@ -56,7 +57,9 @@ common:
 # ------------------------------------------------------------------
 #  Agents Namespaces
 # ------------------------------------------------------------------
-agentNamespaces: []
+agentNamespaces:
+- team1
+- team2
 
 # ------------------------------------------------------------------
 #  UI Configuration
@@ -118,3 +121,9 @@ kagentiPlatformOperator:
     resources:
       limits:
         memory: 512Mi
+
+# ------------------------------------------------------------------
+#  Spire Configuration
+# ------------------------------------------------------------------
+spire:
+  namespace: zero-trust-workload-identity-manager
