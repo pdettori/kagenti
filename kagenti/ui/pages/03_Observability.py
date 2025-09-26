@@ -16,6 +16,7 @@
 User interface for Observability page.
 """
 
+import os
 import streamlit as st
 from lib.common_ui import check_auth
 from lib import constants  # For URLs
@@ -24,6 +25,9 @@ from lib import constants  # For URLs
 # st.set_page_config(page_title="Observability", layout="wide")
 
 check_auth()
+
+traces_dashboard_url = os.environ.get('TRACES_DASHBOARD_URL', constants.TRACES_DASHBOARD_URL)
+network_traffic_dashboard_url = os.environ.get('NETWORK_TRAFFIC_DASHBOARD_URL', constants.NETWORK_TRAFFIC_DASHBOARD_URL)
 
 # --- Main Page Content ---
 st.header("🔭 Observability Dashboard")
@@ -36,23 +40,23 @@ st.markdown("---")
 st.subheader("Tracing & Performance Monitoring")
 st.link_button(
     "Go to Traces Dashboard (Phoenix/OpenTelemetry)",
-    url=constants.TRACES_DASHBOARD_URL,
+    url=traces_dashboard_url,
     help="Click to open the application traces dashboard in a new tab. Useful for debugging and performance analysis.",
     use_container_width=True,
 )
-st.caption(f"Access detailed trace data at: `{constants.TRACES_DASHBOARD_URL}`")
+st.caption(f"Access detailed trace data at: `{traces_dashboard_url}`")
 
 st.markdown("---")
 
 st.subheader("Network Traffic & Service Mesh")
 st.link_button(
     "Go to Network Traffic Dashboard (Kiali/Istio)",
-    url=constants.NETWORK_TRAFFIC_DASHBOARD_URL,
+    url=network_traffic_dashboard_url,
     help="Click to open the network traffic and service mesh visualization dashboard in a new tab.",
     use_container_width=True,
 )
 st.caption(
-    f"Visualize service interactions at: `{constants.NETWORK_TRAFFIC_DASHBOARD_URL}`"
+    f"Visualize service interactions at: `{network_traffic_dashboard_url}`"
 )
 
 st.markdown("---")

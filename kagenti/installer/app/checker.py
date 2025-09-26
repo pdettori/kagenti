@@ -95,7 +95,6 @@ def check_env_vars():
         required_vars = [
             "GITHUB_USER",
             "GITHUB_TOKEN",
-            "OPENAI_API_KEY",
             "AGENT_NAMESPACES",
         ]
         missing = [v for v in required_vars if not os.getenv(v)]

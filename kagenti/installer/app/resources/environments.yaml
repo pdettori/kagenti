@@ -43,6 +43,18 @@ data:
       {
         "name": "CLIENT_SECRET",
         "valueFrom": {"secretKeyRef": {"name": "kagenti-keycloak-client-secret", "key": "client-secret"}}
+      },
+      {
+        "name": "ISSUER",
+        "value": "http://keycloak.localtest.me:8080/realms/master"
+      },
+      {
+        "name": "JWKS_URI",
+        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
+      },
+      {
+        "name": "AUDIENCE",
+        "value": "spiffe://localtest.me/sa/slack-researcher"
       }
     ]
   mcp-slack-config: |
@@ -55,16 +67,12 @@ data:
   mcp-slack-auth-config: |
     [
       {
-        "name": "CLIENT_SECRET",
-        "valueFrom": {"secretKeyRef": {"name": "kagenti-keycloak-client-secret", "key": "client-secret"}}
-      }, 
-      {
         "name": "ISSUER",
         "value": "http://keycloak.localtest.me:8080/realms/master"
       },
       {
-        "name": "INTROSPECTION_ENDPOINT",
-        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/token/introspect"
+        "name": "JWKS_URI",
+        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
       },
       {
         "name": "AUDIENCE",

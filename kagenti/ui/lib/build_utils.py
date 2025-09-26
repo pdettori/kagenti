@@ -140,6 +140,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         )
         return ""
 
+
 # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
 def _construct_tool_resource_body(
     st_object,
@@ -153,7 +154,7 @@ def _construct_tool_resource_body(
     protocol: str,
     framework: str,
     description: str,
-    build_from_source: bool ,
+    build_from_source: bool,
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
@@ -181,7 +182,7 @@ def _construct_tool_resource_body(
         Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
     """
     k8s_resource_name = sanitize_for_k8s_name(resource_name)
- #   image_name = k8s_resource_name
+    #   image_name = k8s_resource_name
     repo_user = get_secret_data(
         core_v1_api,
         build_namespace,
@@ -195,7 +196,7 @@ def _construct_tool_resource_body(
         )
         return None
     st_object.info(f"Using GitHub username '{repo_user}' from secret for build.")
-    #image_registry_prefix = f"ghcr.io/{repo_user}"
+    # image_registry_prefix = f"ghcr.io/{repo_user}"
     image_name = k8s_resource_name
     if build_from_source:
         # Use configured registry or fall back to local
@@ -204,7 +205,7 @@ def _construct_tool_resource_body(
         else:
             image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
-        image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
+        image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -277,7 +278,11 @@ def _construct_tool_resource_body(
         },
     }
     if build_from_source:
-        selected_mode = DEV_EXTERNAL_MODE if (registry_config and registry_config.get("requires_auth")) else DEV_LOCAL_MODE
+        selected_mode = (
+            DEV_EXTERNAL_MODE
+            if (registry_config and registry_config.get("requires_auth"))
+            else DEV_LOCAL_MODE
+        )
         pipeline_steps = get_pipeline_steps_for_mode(selected_mode)
 
         build_params = [
@@ -291,7 +296,7 @@ def _construct_tool_resource_body(
             },
             {
                 "name": "revision",
-                "value":  repo_branch,
+                "value": repo_branch,
             },
             {
                 "name": "subfolder-path",
@@ -299,16 +304,22 @@ def _construct_tool_resource_body(
             },
             {
                 "name": "image",
-                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                "value": f"{image_registry_prefix}/{image_name}:{image_tag}",
             },
         ]
 
         # Add registry credentials for external registries
-        if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
-            build_params.append({
-                "name": "registry-secret",  # Use the parameter name expected by kaniko task
-                "value": registry_config["credentials_secret"],
-            })
+        if (
+            registry_config
+            and registry_config.get("requires_auth")
+            and registry_config.get("credentials_secret")
+        ):
+            build_params.append(
+                {
+                    "name": "registry-secret",  # Use the parameter name expected by kaniko task
+                    "value": registry_config["credentials_secret"],
+                }
+            )
 
         spec["tool"] = {
             "toolType": "MCP",
@@ -340,28 +351,30 @@ def _construct_tool_resource_body(
     }
     return body
 
+
 def is_valid_image_url(url: str) -> bool:
     """Is URL valid?"""
-    pattern = re.compile(
-        r'^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$'
-    )
+    pattern = re.compile(r"^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$")
     return bool(pattern.match(url))
+
 
 def extract_repo_name(url):
     """Given a URL, extract the repo name"""
-    pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
+    pattern = r"^([^\/:]+)\/([^\/:]+):([^\/:]+)$"
     match = re.match(pattern, url)
     if match:
         return match.group(1)  # repo name is the first group
     return None
 
+
 def extract_image_name(url):
     """Given a URL, extract the image name"""
-    pattern = r'^([^\/:]+)\/([^\/:]+):([^\/:]+)$'
+    pattern = r"^([^\/:]+)\/([^\/:]+):([^\/:]+)$"
     match = re.match(pattern, url)
     if match:
         return match.group(2)  # image name is the second group
     return None
+
 
 def _construct_agent_resource_body(
     st_object,
@@ -375,11 +388,10 @@ def _construct_agent_resource_body(
     protocol: str,
     framework: str,
     description: str,
-    build_from_source: bool ,
+    build_from_source: bool,
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
-
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -404,7 +416,6 @@ def _construct_agent_resource_body(
         Optional[dict]: The constructed Kubernetes resource body, or None if an error occurred.
     """
 
-
     k8s_resource_name = sanitize_for_k8s_name(resource_name)
     repo_user = get_secret_data(
         core_v1_api,
@@ -428,7 +439,7 @@ def _construct_agent_resource_body(
         else:
             image_registry_prefix = "registry.cr-system.svc.cluster.local:5000"
     else:
-        image_registry_prefix,image_name,_tag =  parse_image_url(repo_url)
+        image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
 
@@ -440,7 +451,9 @@ def _construct_agent_resource_body(
         final_env_vars.extend(additional_env_vars)
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
-    final_env_vars.append({"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME})
+    final_env_vars.append(
+        {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
+    )
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -458,8 +471,7 @@ def _construct_agent_resource_body(
         "spec": {
             "description": description,
             "suspend": False,
-            "agent": {
-            },
+            "agent": {},
             "deployer": {
                 "name": k8s_resource_name,
                 "namespace": build_namespace,
@@ -490,7 +502,6 @@ def _construct_agent_resource_body(
                         "limits": constants.DEFAULT_RESOURCE_LIMITS,
                         "requests": constants.DEFAULT_RESOURCE_REQUESTS,
                     },
-
                 },
                 "env": final_env_vars,
             },
@@ -508,7 +519,7 @@ def _construct_agent_resource_body(
             },
             {
                 "name": "revision",
-                "value":  repo_branch,
+                "value": repo_branch,
             },
             {
                 "name": "subfolder-path",
@@ -516,28 +527,37 @@ def _construct_agent_resource_body(
             },
             {
                 "name": "image",
-                "value":  f"{image_registry_prefix}/{image_name}:{image_tag}"
+                "value": f"{image_registry_prefix}/{image_name}:{image_tag}",
             },
         ]
 
         # Add registry credentials for external registries
-        if registry_config and registry_config.get("requires_auth") and registry_config.get("credentials_secret"):
-            build_params.append({
-                "name": "registry-secret",  # Use the parameter name expected by kaniko task
-                "value": registry_config["credentials_secret"],
-            })
+        if (
+            registry_config
+            and registry_config.get("requires_auth")
+            and registry_config.get("credentials_secret")
+        ):
+            build_params.append(
+                {
+                    "name": "registry-secret",  # Use the parameter name expected by kaniko task
+                    "value": registry_config["credentials_secret"],
+                }
+            )
 
         body["spec"]["agent"] = {
             "build": {
-                "mode": DEV_EXTERNAL_MODE if (registry_config and registry_config.get("requires_auth")) else DEV_LOCAL_MODE,
+                "mode": DEV_EXTERNAL_MODE
+                if (registry_config and registry_config.get("requires_auth"))
+                else DEV_LOCAL_MODE,
                 "pipeline": {
                     "parameters": build_params,
-                "cleanupAfterBuild": True,
+                    "cleanupAfterBuild": True,
                 },
             },
         }
 
     return body
+
 
 # pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
 def trigger_and_monitor_build(
@@ -597,37 +617,37 @@ def trigger_and_monitor_build(
     build_cr_body = None
     if resource_type.lower() == "agent":
         build_cr_body = _construct_agent_resource_body(
-           st_object=st_object,
-           core_v1_api=core_v1_api,
-           build_namespace=build_namespace,
-           resource_name=k8s_resource_name,
-           resource_type=resource_type,
-           repo_url=repo_url,
-           repo_branch=repo_branch,
-           source_subfolder=source_subfolder,
-           protocol=protocol,
-           framework=framework,
-           description=description,
-           build_from_source=True,
-           registry_config=registry_config,
-           additional_env_vars=additional_env_vars,
+            st_object=st_object,
+            core_v1_api=core_v1_api,
+            build_namespace=build_namespace,
+            resource_name=k8s_resource_name,
+            resource_type=resource_type,
+            repo_url=repo_url,
+            repo_branch=repo_branch,
+            source_subfolder=source_subfolder,
+            protocol=protocol,
+            framework=framework,
+            description=description,
+            build_from_source=True,
+            registry_config=registry_config,
+            additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
         build_cr_body = _construct_tool_resource_body(
-           st_object=st_object,
-           core_v1_api=core_v1_api,
-           build_namespace=build_namespace,
-           resource_name=k8s_resource_name,
-           resource_type=resource_type,
-           repo_url=repo_url,
-           repo_branch=repo_branch,
-           source_subfolder=source_subfolder,
-           protocol=protocol,
-           framework=framework,
-           description=description,
-           build_from_source=True,
-           registry_config=registry_config,
-           additional_env_vars=additional_env_vars,
+            st_object=st_object,
+            core_v1_api=core_v1_api,
+            build_namespace=build_namespace,
+            resource_name=k8s_resource_name,
+            resource_type=resource_type,
+            repo_url=repo_url,
+            repo_branch=repo_branch,
+            source_subfolder=source_subfolder,
+            protocol=protocol,
+            framework=framework,
+            description=description,
+            build_from_source=True,
+            registry_config=registry_config,
+            additional_env_vars=additional_env_vars,
         )
     if not build_cr_body:
         st_object.error(
@@ -638,8 +658,9 @@ def trigger_and_monitor_build(
         f"Submitting build for {resource_type} '{k8s_resource_name}' in namespace '{build_namespace}'..."
     ):
         try:
-
-            logger.info("Generated Component manifest:\n%s", json.dumps(build_cr_body, indent=2))
+            logger.info(
+                "Generated Component manifest:\n%s", json.dumps(build_cr_body, indent=2)
+            )
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
@@ -684,12 +705,12 @@ def trigger_and_monitor_build(
                     name=k8s_resource_name,
                 )
                 status_data = build_obj.get("status", {})
-                #current_build_status = status_data.get("buildStatus", "Unknown")
+                # current_build_status = status_data.get("buildStatus", "Unknown")
                 build_status_data = status_data.get("buildStatus", {})
                 current_build_status = build_status_data.get("phase", "Unknown")
 
                 status_message = build_status_data.get("message", "")
-                #deployment_status = status_data.get("deploymentStatus", "")
+                # deployment_status = status_data.get("deploymentStatus", "")
                 deployment_status_data = status_data.get("deploymentStatus", {})
                 deployment_phase = deployment_status_data.get("phase", "Unknown")
 
@@ -737,30 +758,34 @@ def trigger_and_monitor_build(
             f"Build succeeded. Waiting for {resource_type} '{k8s_resource_name}' to deploy..."
         ):
             while (
-              final_deployment_phase not in ["Ready", "Failed", "Error"]
-              and deployment_retries < max_deployment_retries
+                final_deployment_phase not in ["Ready", "Failed", "Error"]
+                and deployment_retries < max_deployment_retries
             ):
                 deployment_retries += 1
                 try:
-                   # Re-fetch the object to get latest deployment status
+                    # Re-fetch the object to get latest deployment status
                     build_obj = custom_obj_api.get_namespaced_custom_object(
-                      group=constants.CRD_GROUP,
-                      version=constants.CRD_VERSION,
-                      namespace=build_namespace,
-                      plural=constants.COMPONENTS_PLURAL,
-                      name=k8s_resource_name,
+                        group=constants.CRD_GROUP,
+                        version=constants.CRD_VERSION,
+                        namespace=build_namespace,
+                        plural=constants.COMPONENTS_PLURAL,
+                        name=k8s_resource_name,
                     )
 
                     final_deployment_status = build_obj.get("status", {}).get(
-                       "deploymentStatus", {}
+                        "deploymentStatus", {}
                     )
-                    final_deployment_phase = final_deployment_status.get("phase", "Unknown")
-                    deployment_message = final_deployment_status.get("deploymentMessage", "")
+                    final_deployment_phase = final_deployment_status.get(
+                        "phase", "Unknown"
+                    )
+                    deployment_message = final_deployment_status.get(
+                        "deploymentMessage", ""
+                    )
 
                     # Update status display
                     status_placeholder.info(
-                       f"Deployment Status for '{k8s_resource_name}': **{final_deployment_phase}**\n"
-                       f"Message: {deployment_message}"
+                        f"Deployment Status for '{k8s_resource_name}': **{final_deployment_phase}**\n"
+                        f"Message: {deployment_message}"
                     )
 
                     if final_deployment_phase in ["Ready", "Failed", "Error"]:
@@ -781,8 +806,8 @@ def trigger_and_monitor_build(
             return True
         if final_deployment_phase in ["Failed", "Error"]:
             st_object.error(
-              # pylint: disable=line-too-long
-              f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
+                # pylint: disable=line-too-long
+                f"{resource_type.capitalize()} '{k8s_resource_name}' deployment failed with status: {final_deployment_phase}. Check operator logs."
             )
             return False
 
@@ -794,12 +819,12 @@ def trigger_and_monitor_build(
         )
         return False
 
-
     st_object.error(
         # pylint: disable=line-too-long
         f"{resource_type.capitalize()} build for '{k8s_resource_name}' in '{build_namespace}' finished with status: {current_build_status}. Check operator logs."
     )
     return False
+
 
 # pylint: disable=too-many-return-statements, too-many-branches
 def trigger_and_monitor_deployment_from_image(
@@ -852,35 +877,35 @@ def trigger_and_monitor_deployment_from_image(
     cr_body = None
     if resource_type.lower() == "agent":
         cr_body = _construct_agent_resource_body(
-           st_object=st_object,
-           core_v1_api=core_v1_api,
-           build_namespace=deployment_namespace,
-           resource_name=k8s_resource_name,
-           resource_type=resource_type,
-           repo_url=repo_url,
-           repo_branch="",
-           source_subfolder="",
-           protocol=protocol,
-           framework=framework,
-           description=description,
-           build_from_source=False,
-           additional_env_vars=additional_env_vars,
+            st_object=st_object,
+            core_v1_api=core_v1_api,
+            build_namespace=deployment_namespace,
+            resource_name=k8s_resource_name,
+            resource_type=resource_type,
+            repo_url=repo_url,
+            repo_branch="",
+            source_subfolder="",
+            protocol=protocol,
+            framework=framework,
+            description=description,
+            build_from_source=False,
+            additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
         cr_body = _construct_tool_resource_body(
-           st_object=st_object,
-           core_v1_api=core_v1_api,
-           build_namespace=deployment_namespace,
-           resource_name=k8s_resource_name,
-           resource_type=resource_type,
-           repo_url=repo_url,
-           repo_branch="",
-           source_subfolder="",
-           protocol=protocol,
-           framework=framework,
-           description=description,
-           build_from_source=False,
-           additional_env_vars=additional_env_vars,
+            st_object=st_object,
+            core_v1_api=core_v1_api,
+            build_namespace=deployment_namespace,
+            resource_name=k8s_resource_name,
+            resource_type=resource_type,
+            repo_url=repo_url,
+            repo_branch="",
+            source_subfolder="",
+            protocol=protocol,
+            framework=framework,
+            description=description,
+            build_from_source=False,
+            additional_env_vars=additional_env_vars,
         )
     if not cr_body:
         st_object.error(
@@ -891,8 +916,9 @@ def trigger_and_monitor_deployment_from_image(
         f"Submitting deployment for {resource_type} '{k8s_resource_name}' in namespace '{deployment_namespace}'..."
     ):
         try:
-
-            logger.info("Generated Component manifest:\n%s", json.dumps(cr_body, indent=2))
+            logger.info(
+                "Generated Component manifest:\n%s", json.dumps(cr_body, indent=2)
+            )
             custom_obj_api.create_namespaced_custom_object(
                 group=constants.CRD_GROUP,
                 version=constants.CRD_VERSION,
@@ -943,7 +969,9 @@ def trigger_and_monitor_deployment_from_image(
                     "deploymentStatus", {}
                 )
                 final_deployment_phase = final_deployment_status.get("phase", "Unknown")
-                deployment_message = final_deployment_status.get("deploymentMessage", "")
+                deployment_message = final_deployment_status.get(
+                    "deploymentMessage", ""
+                )
                 # Update status display
                 status_placeholder.info(
                     f"Deployment Status for '{k8s_resource_name}': **{final_deployment_phase}**\n"
@@ -978,6 +1006,7 @@ def trigger_and_monitor_deployment_from_image(
         f"Last status: {final_deployment_phase}. Manual check might be needed."
     )
     return False
+
 
 # pylint: disable=too-many-branches
 def render_import_form(
@@ -1032,8 +1061,6 @@ def render_import_form(
         "selected_build_k8s_namespace", default_build_ns
     )
 
-
-
     if initial_selected_build_ns not in available_build_namespaces:
         initial_selected_build_ns = (
             default_build_ns
@@ -1048,7 +1075,7 @@ def render_import_form(
         options=available_build_namespaces,
         index=build_ns_index,
         key=f"{resource_type.lower()}_build_namespace_selector",
-            # pylint: disable=line-too-long
+        # pylint: disable=line-too-long
         help=f"The Component resource, the {resource_type}, and the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap will be in this namespace.",
     )
 
@@ -1098,7 +1125,9 @@ def render_import_form(
 
         # --- Custom Environment Variables Editor ---
         st_object.subheader("Environment Variables")
-        st_object.caption(f"Define environment variables specific to this {resource_type}")
+        st_object.caption(
+            f"Define environment variables specific to this {resource_type}"
+        )
 
         custom_env_key = f"{resource_type.lower()}_custom_env_vars"
 
@@ -1115,26 +1144,35 @@ def render_import_form(
         def load_all_configmap_vars():
             """load original configmap vars, keeping user-added custom vars"""
             if not env_options:
-                st_object.warning(f"No configMap data available to load in namespace '{build_namespace_to_use}'")
+                st_object.warning(
+                    f"No configMap data available to load in namespace '{build_namespace_to_use}'"
+                )
                 return
             # First, remove any previously loaded configmap vars
-            user_custom_vars = [var for var in st.session_state.get(custom_env_key,[]) if not var.get('configmap_origin', False)]
+            user_custom_vars = [
+                var
+                for var in st.session_state.get(custom_env_key, [])
+                if not var.get("configmap_origin", False)
+            ]
             # Then, add all configmap vars
             config_map_data = get_config_map_data(
-                core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME)
-            
-            if config_map_data:       
+                core_v1_api, build_namespace_to_use, constants.ENV_CONFIG_MAP_NAME
+            )
+
+            if config_map_data:
                 # Parse configmap data into env vars
                 all_configmap_vars = parse_configmap_data_to_env_vars(config_map_data)
                 configmap = []
                 for var in all_configmap_vars:
-                    configmap.append({
-                        "name": var["name"], 
-                        "value": var["value"],
-                        'configmap_origin': True,
-                        'configmap_section': var.get('section', ''),
-                        'configmap_type': var.get('type', 'configmap')
-                        })
+                    configmap.append(
+                        {
+                            "name": var["name"],
+                            "value": var["value"],
+                            "configmap_origin": True,
+                            "configmap_section": var.get("section", ""),
+                            "configmap_type": var.get("type", "configmap"),
+                        }
+                    )
                 st.session_state[custom_env_key] = configmap + user_custom_vars
                 st.session_state[configmap_loaded_key] = True
                 return
@@ -1144,16 +1182,18 @@ def render_import_form(
         # a list
         def parse_env_file(content):
             env_vars = []
-            lines = content.strip().split('\n')
+            lines = content.strip().split("\n")
 
             for line_num, line in enumerate(lines, 1):
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                if '=' not in line:
-                    st_object.warning(f"⚠️ Line {line_num}: Invalid format (missing '='): {line}")
+                if "=" not in line:
+                    st_object.warning(
+                        f"⚠️ Line {line_num}: Invalid format (missing '='): {line}"
+                    )
                     continue
-                name, value = line.split('=', 1)
+                name, value = line.split("=", 1)
                 name = name.strip()
                 value = value.strip()
 
@@ -1168,52 +1208,77 @@ def render_import_form(
                     st_object.warning(f"⚠️ Line {line_num}: Empty variable name")
             return env_vars
 
-
-        configmap_col1, configmap_col2, configmap_col3 = st_object.columns([2, 2, 2])
+        configmap_col1, configmap_col2, _ = st_object.columns([2, 2, 2])
         with configmap_col1:
-            if st_object.button("📄 Load Global Environment Vars",
-                           key=f"{resource_type.lower()}_load_configmap",
-                            help=f"Load all environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace"):
+            if st_object.button(
+                "📄 Load Global Environment Vars",
+                key=f"{resource_type.lower()}_load_configmap",
+                # pylint: disable=line-too-long
+                help=f"Load all environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace",
+            ):
                 load_all_configmap_vars()
                 if st.session_state[configmap_loaded_key]:
-                    configmap_var_count = len([var for var in st.session_state[custom_env_key] if var.get('configmap_origin', False)])
-                    st_object.success(f"Loaded {configmap_var_count} environment variables from ConfigMap") 
+                    configmap_var_count = len(
+                        [
+                            var
+                            for var in st.session_state[custom_env_key]
+                            if var.get("configmap_origin", False)
+                        ]
+                    )
+                    st_object.success(
+                        f"Loaded {configmap_var_count} environment variables from ConfigMap"
+                    )
                 st.rerun()
         with configmap_col2:
             if st.session_state[configmap_loaded_key]:
-                if st_object.button("🔄 Reload Global Environment Vars",
-                               key=f"{resource_type.lower()}_reload_configmap",
-                                help=f"Restore original environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace"):
+                if st_object.button(
+                    "🔄 Reload Global Environment Vars",
+                    key=f"{resource_type.lower()}_reload_configmap",
+                    # pylint: disable=line-too-long
+                    help=f"Restore original environment variables from the '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap in '{build_namespace_to_use}' namespace",
+                ):
                     load_all_configmap_vars()
-                    st_object.success(f"Restored environment variables from a '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap") 
+                    st_object.success(
+                        f"Restored environment variables from a '{constants.ENV_CONFIG_MAP_NAME}' ConfigMap"
+                    )
                     st.rerun()
 
         if st.session_state[configmap_loaded_key]:
-            configmap_vars_count = len([var for var in st.session_state[custom_env_key] if var.get('configmap_origin', False)])
-            user_vars_count = len([var for var in st.session_state[custom_env_key] if not var.get('configmap_origin', False)])
+            configmap_vars_count = len(
+                [
+                    var
+                    for var in st.session_state[custom_env_key]
+                    if var.get("configmap_origin", False)
+                ]
+            )
+            st_object.caption(
+                f"Loaded {configmap_vars_count} environment variables from ConfigMap "
+            )
 
-            st_object.caption(f"Loaded {configmap_vars_count} environment variables from ConfigMap ")
-           
         custom_env_vars = st.session_state[custom_env_key]
         if custom_env_vars:
-            # --------- Render each env var 
+            # --------- Render each env var
             for i, env_var in enumerate(custom_env_vars):
                 col1, col2, col3, col4 = st_object.columns([3, 3, 2, 1])
-                """Determine if this env var originated from configmap or custom added"""
-                is_configmap_var = env_var.get('configmap_origin', False)
+                # Determine if this env var originated from configmap or custom added
+                is_configmap_var = env_var.get("configmap_origin", False)
 
                 with col1:
-                    env_var["name"] = st.text_input("Name",
-                                                    value=env_var["name"],
-                                                    key=f"{resource_type.lower()}_env_name_{i}",
-                                                    placeholder="example: API_KEY",
-                                                    label_visibility="collapsed" if i > 0 else "visible")
+                    env_var["name"] = st.text_input(
+                        "Name",
+                        value=env_var["name"],
+                        key=f"{resource_type.lower()}_env_name_{i}",
+                        placeholder="example: API_KEY",
+                        label_visibility="collapsed" if i > 0 else "visible",
+                    )
                 with col2:
-                    env_var["value"] = st.text_input("Value",
-                                                    value=env_var["value"],
-                                                    key=f"{resource_type.lower()}_env_value_{i}",
-                                                    placeholder="example: AAAA_BBBB_CCCC",
-                                                    label_visibility="collapsed" if i > 0 else "visible")
+                    env_var["value"] = st.text_input(
+                        "Value",
+                        value=env_var["value"],
+                        key=f"{resource_type.lower()}_env_value_{i}",
+                        placeholder="example: AAAA_BBBB_CCCC",
+                        label_visibility="collapsed" if i > 0 else "visible",
+                    )
 
                 with col3:
                     if i == 0:
@@ -1221,39 +1286,57 @@ def render_import_form(
                         st_object.write("")
 
                     if is_configmap_var:
-                        var_type = env_var.get('configmap_type', 'configmap')
-                        if var_type == 'secret':
-                            st_object.markdown(f"<span style='font-size: 10px; color: blue; '>🔒 **Custom Secret**</span>", unsafe_allow_html=True) 
-                        elif var_type == 'configmap-secret':
-                            st_object.markdown(f"<span style='font-size: 10px; color: green; '>🔒 **ConfigMap Secret**</span>", unsafe_allow_html=True) 
+                        var_type = env_var.get("configmap_type", "configmap")
+                        if var_type == "secret":
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: blue; '>🔒 **Custom Secret**</span>",
+                                unsafe_allow_html=True,
+                            )
+                        elif var_type == "configmap-secret":
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: green; '>🔒 **ConfigMap Secret**</span>",
+                                unsafe_allow_html=True,
+                            )
                         else:
-                            st_object.markdown(f"<span style='font-size: 10px; color: green'>🗂️ **ConfigMap**</span>", unsafe_allow_html=True)
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: green'>🗂️ **ConfigMap**</span>",
+                                unsafe_allow_html=True,
+                            )
                     else:
-                        st_object.markdown(f"<span style='font-size: 10px; color: blue; '>✏️ **Custom**</span>", unsafe_allow_html=True)       
+                        st_object.markdown(
+                            "<span style='font-size: 10px; color: blue; '>✏️ **Custom**</span>",
+                            unsafe_allow_html=True,
+                        )
 
                 with col4:
                     if i == 0:
                         st_object.write("")
                         st_object.write("")
 
-                    if st.button( "🗑️",
-                                 key=f"{resource_type}.lower()-remove_env_{i}",
-                                 help="Remove this environment variable"):
+                    if st.button(
+                        "🗑️",
+                        key=f"{resource_type}.lower()-remove_env_{i}",
+                        help="Remove this environment variable",
+                    ):
                         remove_env_var(i)
                         st.rerun()
 
-        button_col1, button_col2, button_col3 = st_object.columns([1, 1, 1])
+        button_col1, button_col2, _ = st_object.columns([1, 1, 1])
         with button_col1:
-            if st_object.button("✚ Add Environment Variable",
-                           key=f"{resource_type.lower()}_add_env_var",
-                            help="Add a new custom environment variable"):
+            if st_object.button(
+                "✚ Add Environment Variable",
+                key=f"{resource_type.lower()}_add_env_var",
+                help="Add a new custom environment variable",
+            ):
                 add_env_var()
                 st.rerun()
 
         with button_col2:
-            if st_object.button("📥 Import .env File",
-                           key=f"{resource_type.lower()}_import_env_var",
-                            help="Import environment variables from .env file"):
+            if st_object.button(
+                "📥 Import .env File",
+                key=f"{resource_type.lower()}_import_env_var",
+                help="Import environment variables from .env file",
+            ):
                 st.session_state[import_dialog_key] = True
                 st.rerun()
 
@@ -1262,36 +1345,42 @@ def render_import_form(
         st_object.markdown("---")
         st_object.subheader("Import Environment Variables from .env file")
 
-        repo_url = st_object.text_input("Github Repository URL:",
-                                        placeholder="http://github.com/username/repository",
-                                        key=f"{resource_type.lower()}_repo_url",
-                                        help="Enter the Github repository URL")
-        file_path = st_object.text_input("Path to .env file:",
-                                        placeholder=". env or config/.env or path/to/your/.env",
-                                        key=f"{resource_type.lower()}_env_file_path",
-                                        help="Enter the path to .env file within the repository")
+        repo_url = st_object.text_input(
+            "Github Repository URL:",
+            placeholder="http://github.com/username/repository",
+            key=f"{resource_type.lower()}_repo_url",
+            help="Enter the Github repository URL",
+        )
+        file_path = st_object.text_input(
+            "Path to .env file:",
+            placeholder=". env or config/.env or path/to/your/.env",
+            key=f"{resource_type.lower()}_env_file_path",
+            help="Enter the path to .env file within the repository",
+        )
 
         import_col1, import_col2, _import_col3 = st_object.columns([1, 1, 2])
         with import_col1:
-            if st_object.button(" 🔄 Import",
-                                key=f"{resource_type.lower()}_do_import",
-                                disabled=not (repo_url and file_path)):
+            if st_object.button(
+                " 🔄 Import",
+                key=f"{resource_type.lower()}_do_import",
+                disabled=not (repo_url and file_path),
+            ):
                 try:
                     with st_object.spinner("Fetching .env file from repository ..."):
-
                         # Need to convert Github repo URL to raw file URL
                         if "github.com" in repo_url:
-
-                            if repo_url.endswith('.git'):
+                            if repo_url.endswith(".git"):
                                 repo_url = repo_url[:-4]
 
-                            repo_path = repo_url.replace("https://github.com/",'').replace("http://github.com/",'')
-                            if '/tree/' in repo_path:
-                                parts = repo_path.split('/tree/')
+                            repo_path = repo_url.replace(
+                                "https://github.com/", ""
+                            ).replace("http://github.com/", "")
+                            if "/tree/" in repo_path:
+                                parts = repo_path.split("/tree/")
                                 repo_path = parts[0]
-                                branch = parts[1].split('/')[0]
+                                branch = parts[1].split("/")[0]
                             else:
-                                branch = 'main'
+                                branch = "main"
                             raw_url = f"https://raw.githubusercontent.com/{repo_path}/{branch}/{file_path.lstrip('/')}"
                         else:
                             raw_url = f"{repo_url.rstrip('/')}/{file_path.lstrip('/')}"
@@ -1301,25 +1390,43 @@ def render_import_form(
 
                         imported_vars = parse_env_file(env_content)
                         if imported_vars:
-                            existing_names = {var["name"] for var in st.session_state[custom_env_key]}
-                            new_vars = [var for var in imported_vars if var["name"] not in existing_names]
-                            duplicate_vars = [var for var in imported_vars if var["name"] in existing_names]
+                            existing_names = {
+                                var["name"] for var in st.session_state[custom_env_key]
+                            }
+                            new_vars = [
+                                var
+                                for var in imported_vars
+                                if var["name"] not in existing_names
+                            ]
+                            duplicate_vars = [
+                                var
+                                for var in imported_vars
+                                if var["name"] in existing_names
+                            ]
                             st.session_state[custom_env_key].extend(new_vars)
-                            st_object.success("Successfully imported env vars from the .env file")
+                            st_object.success(
+                                "Successfully imported env vars from the .env file"
+                            )
                             if duplicate_vars:
                                 # pylint: disable=line-too-long
-                                st_object.warning(f"⚠️ Skipped {len(duplicate_vars)} duplicate variables {', '.join([var['name'] for var in duplicate_vars])}")
+                                st_object.warning(
+                                    f"⚠️ Skipped {len(duplicate_vars)} duplicate variables {', '.join([var['name'] for var in duplicate_vars])}"
+                                )
                             st.session_state[import_dialog_key] = False
                             st.rerun()
                         else:
-                            st_object.error("❌ No valid environment variables found in the file")
+                            st_object.error(
+                                "❌ No valid environment variables found in the file"
+                            )
                 except requests.RequestException as e:
                     st_object.error(f"❌ Failed to fetch file: {str(e)}")
                 except Exception as e:
                     st_object.error(f"❌ Import error: {str(e)}")
 
         with import_col2:
-            if st_object.button("❌ Cancel", key=f"{resource_type.lower()}_cancel_import"):
+            if st_object.button(
+                "❌ Cancel", key=f"{resource_type.lower()}_cancel_import"
+            ):
                 st.session_state[import_dialog_key] = False
                 st.rerun()
 
@@ -1330,21 +1437,22 @@ def render_import_form(
 
         for env_var in custom_env_vars:
             if env_var["name"].strip() and env_var["value"].strip():
-                valid_custom_env_vars.append({"name": env_var["name"].strip(),
-                                              "value": env_var["value"].strip()})
+                valid_custom_env_vars.append(
+                    {"name": env_var["name"].strip(), "value": env_var["value"].strip()}
+                )
             elif env_var["name".strip() or env_var["value"].strip()]:
                 invalid_custom_env_vars.append(env_var)
 
         if invalid_custom_env_vars:
             # pylint: disable=line-too-long
-            st_object.warning(f"{len(invalid_custom_env_vars)} environment variable(s) have missing name or value and will be ignored")
+            st_object.warning(
+                f"{len(invalid_custom_env_vars)} environment variable(s) have missing name or value and will be ignored"
+            )
 
     st_object.markdown("---")
 
     if not k8s_api_client:
-        st_object.error(
-            "Kubernetes client not available. Cannot proceed with build."
-        )
+        st_object.error("Kubernetes client not available. Cannot proceed with build.")
         return
 
     final_additional_envs = []
@@ -1356,8 +1464,9 @@ def render_import_form(
     if custom_env_vars:
         for env_var in custom_env_vars:
             if env_var["name"].strip() and env_var["value"].strip():
-                final_additional_envs.append({"name": env_var["name"].strip(),
-                                             "value": env_var["value"].strip()})
+                final_additional_envs.append(
+                    {"name": env_var["name"].strip(), "value": env_var["value"].strip()}
+                )
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api or not core_v1_api:
@@ -1367,9 +1476,10 @@ def render_import_form(
         return
 
     deployment_method = st_object.radio(
-       "Deployment Method",
-       ("Build from Source", "Deploy from Existing Image"),
-        key=f"{resource_type.lower()}_deployment_method",)
+        "Deployment Method",
+        ("Build from Source", "Deploy from Existing Image"),
+        key=f"{resource_type.lower()}_deployment_method",
+    )
 
     if example_subfolders is None:
         example_subfolders = []
@@ -1431,7 +1541,9 @@ def render_import_form(
                     st_object.info("No example subfolders.")
             manual_subfolder_input = st_object.text_input(
                 "Source Subfolder Path (relative to root)",
-                value=final_source_subfolder_path if final_source_subfolder_path else "",
+                value=final_source_subfolder_path
+                if final_source_subfolder_path
+                else "",
                 placeholder=f"e.g., {resource_type.lower()}s/my-new-{resource_type.lower()}",
                 key=f"manual_{resource_type.lower()}_source_subfolder_path",
             )
@@ -1439,7 +1551,8 @@ def render_import_form(
                 final_source_subfolder_path = manual_subfolder_input
 
         if st_object.button(
-            f"Build & Deploy New {resource_type}", key=f"build_new_{resource_type.lower()}_btn"
+            f"Build & Deploy New {resource_type}",
+            key=f"build_new_{resource_type.lower()}_btn",
         ):
             resource_name_suggestion = get_resource_name_from_path(
                 final_source_subfolder_path
@@ -1459,12 +1572,15 @@ def render_import_form(
                 return
 
             # Validate registry configuration for external registries
-            if registry_config and registry_config.get("requires_auth") and not registry_config.get("credentials_secret"):
+            if (
+                registry_config
+                and registry_config.get("requires_auth")
+                and not registry_config.get("credentials_secret")
+            ):
                 st_object.warning(
                     "Please specify a registry secret name for external registry authentication."
                 )
                 return
-
 
             trigger_and_monitor_build(
                 st_object=st,
@@ -1505,20 +1621,26 @@ def render_import_form(
 
         if st_object.button(
             f"Deploy {resource_type} from Image",
-            key=f"deploy_{resource_type.lower()}_from_image_btn"
+            key=f"deploy_{resource_type.lower()}_from_image_btn",
         ):
             if not docker_image_url or not build_namespace_to_use:
-                st_object.warning("Please provide the Docker image and select a namespace.")
+                st_object.warning(
+                    "Please provide the Docker image and select a namespace."
+                )
                 return
             if not k8s_api_client:
-                st_object.error("Kubernetes client not available. Cannot proceed with deployment.")
+                st_object.error(
+                    "Kubernetes client not available. Cannot proceed with deployment."
+                )
                 return
             _repo, resource_name, _tag = parse_image_url(docker_image_url)
 
             # Trigger deployment using the image
             custom_obj_api = get_custom_objects_api()
             if not custom_obj_api or not core_v1_api:
-                st_object.error("K8s API clients not initialized correctly. Cannot trigger deployment.")
+                st_object.error(
+                    "K8s API clients not initialized correctly. Cannot trigger deployment."
+                )
                 return
 
             resource_name_suggestion = extract_image_name(docker_image_url)
@@ -1539,20 +1661,21 @@ def render_import_form(
 
     st_object.markdown("---")
 
+
 def parse_image_url(url: str):
     """Parse an Image URL"""
     # Split off the tag
-    if ':' not in url:
+    if ":" not in url:
         raise ValueError("URL must contain a tag (e.g., :latest)")
 
-    base, tag = url.rsplit(':', 1)
-    parts = base.strip('/').split('/')
+    base, tag = url.rsplit(":", 1)
+    parts = base.strip("/").split("/")
 
     if len(parts) < 2:
         raise ValueError("URL must contain at least a repo and image name")
 
     image_name = parts[-1]
-    repo = '/'.join(parts[:-1])
+    repo = "/".join(parts[:-1])
 
     return repo, image_name, tag
 
@@ -1562,7 +1685,7 @@ DEFAULT_REGISTRY_OPTIONS = {
     LOCAL_REGISTRY: "registry.cr-system.svc.cluster.local:5000",
     QUAY_REGISTRY: "quay.io",
     DOCKER_HUB_REGISTRY: "docker.io",
-    GITHUB_REGISTRY: "ghcr.io"
+    GITHUB_REGISTRY: "ghcr.io",
 }
 
 
@@ -1590,7 +1713,7 @@ def get_registry_config_from_ui(st_object, resource_type, build_from_source):
         options=registry_options,
         index=0,  # Default to Local Registry
         key=f"{resource_type.lower()}_registry_selector",
-        help="Choose the container registry where the built image will be pushed"
+        help="Choose the container registry where the built image will be pushed",
     )
 
     registry_url = DEFAULT_REGISTRY_OPTIONS[selected_registry_key]
@@ -1601,7 +1724,7 @@ def get_registry_config_from_ui(st_object, resource_type, build_from_source):
             f"{selected_registry_key} Organization/Namespace:",
             placeholder="your-org-name",
             key=f"{resource_type.lower()}_registry_namespace",
-            help=f"Your organization or namespace in {selected_registry_key}"
+            help=f"Your organization or namespace in {selected_registry_key}",
         )
 
         # Show authentication requirements
@@ -1618,18 +1741,20 @@ def get_registry_config_from_ui(st_object, resource_type, build_from_source):
                 "Registry Secret Name:",
                 value="quay-registry-secret",
                 key=f"{resource_type.lower()}_registry_secret",
-                help="Name of the Kubernetes secret containing Quay.io credentials"
+                help="Name of the Kubernetes secret containing Quay.io credentials",
             )
         else:
             secret_name = st_object.text_input(
                 f"{selected_registry_key} Secret Name:",
                 value=f"{selected_registry_key.lower().replace(' ', '-').replace('.', '-')}-registry-secret",
                 key=f"{resource_type.lower()}_registry_secret",
-                help=f"Name of the Kubernetes secret containing {selected_registry_key} credentials"
+                help=f"Name of the Kubernetes secret containing {selected_registry_key} credentials",
             )
 
         if not namespace_or_org:
-            st_object.warning(f"Please specify your {selected_registry_key} organization/namespace")
+            st_object.warning(
+                f"Please specify your {selected_registry_key} organization/namespace"
+            )
             return None
 
         full_registry_url = f"{registry_url}/{namespace_or_org}"
@@ -1642,7 +1767,7 @@ def get_registry_config_from_ui(st_object, resource_type, build_from_source):
         "registry_url": full_registry_url,
         "registry_type": selected_registry_key,
         "credentials_secret": secret_name,
-        "requires_auth": selected_registry_key != LOCAL_REGISTRY
+        "requires_auth": selected_registry_key != LOCAL_REGISTRY,
     }
 
 
@@ -1653,8 +1778,12 @@ def validate_registry_config(registry_config, st_object):
     if not registry_config:
         return False
 
-    if registry_config["requires_auth"] and not registry_config.get("credentials_secret"):
-        st_object.error("External registries require authentication. Please specify a secret name.")
+    if registry_config["requires_auth"] and not registry_config.get(
+        "credentials_secret"
+    ):
+        st_object.error(
+            "External registries require authentication. Please specify a secret name."
+        )
         return False
 
     if registry_config["registry_type"] == QUAY_REGISTRY:
@@ -1664,7 +1793,10 @@ def validate_registry_config(registry_config, st_object):
 
     return True
 
-def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def parse_configmap_data_to_env_vars(
+    env_options: Dict[str, Any],
+) -> List[Dict[str, Any]]:
     """
     Parses ConfigMap data and return all environment variables as a flat list.
 
@@ -1677,105 +1809,115 @@ def parse_configmap_data_to_env_vars(env_options: Dict[str, Any]) -> List[Dict[s
 
     env_vars = []
 
+    # pylint: disable=too-many-nested-blocks
     for section_name, section_content in env_options.items():
         if isinstance(section_content, list):
-            for i, var in enumerate(section_content):
-                if isinstance(var, dict) and 'name' in var:
+            for _, var in enumerate(section_content):
+                if isinstance(var, dict) and "name" in var:
                     parsed_var = {
-                        'name': var['name'],
-                        'section': section_name,
-                        'configmap_origin': True                      
+                        "name": var["name"],
+                        "section": section_name,
+                        "configmap_origin": True,
                     }
 
-                    if 'valueFrom' in var and isinstance(var['valueFrom'], dict):
-                        secret_ref = var['valueFrom'].get('secretKeyRef', {})
+                    if "valueFrom" in var and isinstance(var["valueFrom"], dict):
+                        secret_ref = var["valueFrom"].get("secretKeyRef", {})
                         if secret_ref:
-                            secret_name = secret_ref.get('name', '')
-                            secret_key = secret_ref.get('key', '')
-                            parsed_var['value'] = f"<{secret_name}:{secret_key}>"
-                            parsed_var['type'] = 'configmap-secret'
+                            secret_name = secret_ref.get("name", "")
+                            secret_key = secret_ref.get("key", "")
+                            parsed_var["value"] = f"<{secret_name}:{secret_key}>"
+                            parsed_var["type"] = "configmap-secret"
                         else:
-                            parsed_var['value'] = str(var.get('valueFrom',''))
-                            parsed_var['type'] = 'configmap'
-                    elif 'value' in var:
-                        parsed_var['value'] = var['value']
-                        parsed_var['type'] = 'configmap'
+                            parsed_var["value"] = str(var.get("valueFrom", ""))
+                            parsed_var["type"] = "configmap"
+                    elif "value" in var:
+                        parsed_var["value"] = var["value"]
+                        parsed_var["type"] = "configmap"
                     else:
-                        parsed_var['value'] = str(var)
-                        parsed_var['type'] = 'configmap'
+                        parsed_var["value"] = str(var)
+                        parsed_var["type"] = "configmap"
 
                     env_vars.append(parsed_var)
 
         elif isinstance(section_content, str):
-           try:
-               parsed_content = json.loads(section_content)
-               if isinstance(parsed_content, list):
-                   for var in parsed_content:
-                       if isinstance(var, dict) and 'name' in var:
+            try:
+                parsed_content = json.loads(section_content)
+                if isinstance(parsed_content, list):
+                    for var in parsed_content:
+                        if isinstance(var, dict) and "name" in var:
                             parsed_var = {
-                               'name': var['name'],
-                               'section': section_name,
-                               'configmap_origin': True,                        
+                                "name": var["name"],
+                                "section": section_name,
+                                "configmap_origin": True,
                             }
-                            if 'valueFrom' in var and isinstance(var['valueFrom'], dict):
-                                secret_ref = var['valueFrom'].get('secretKeyRef', {})
+                            if "valueFrom" in var and isinstance(
+                                var["valueFrom"], dict
+                            ):
+                                secret_ref = var["valueFrom"].get("secretKeyRef", {})
                                 if secret_ref:
-                                    secret_name = secret_ref.get('name', '')
-                                    secret_key = secret_ref.get('key', '')
-                                    parsed_var['value'] = f"<{secret_name}:{secret_key}>"
-                                    parsed_var['type'] = 'configmap-secret'
+                                    secret_name = secret_ref.get("name", "")
+                                    secret_key = secret_ref.get("key", "")
+                                    parsed_var["value"] = (
+                                        f"<{secret_name}:{secret_key}>"
+                                    )
+                                    parsed_var["type"] = "configmap-secret"
                                 else:
-                                    parsed_var['value'] = str(var.get('valueFrom',''))
-                                    parsed_var['type'] = 'configmap'
-                            elif 'value' in var:
-                                parsed_var['value'] = var['value']
-                                parsed_var['type'] = 'configmap'
+                                    parsed_var["value"] = str(var.get("valueFrom", ""))
+                                    parsed_var["type"] = "configmap"
+                            elif "value" in var:
+                                parsed_var["value"] = var["value"]
+                                parsed_var["type"] = "configmap"
                             else:
-                                parsed_var['value'] = str(var)
-                                parsed_var['type'] = 'configmap'
+                                parsed_var["value"] = str(var)
+                                parsed_var["type"] = "configmap"
                             env_vars.append(parsed_var)
-           except json.JSONDecodeError:
-               # If not JSON, treat as single env var with section name as prefix
-               env_vars.append({
-                   'name': section_name.upper(),
-                   'value': str(section_content),
-                   'section': section_name,
-                   'configmap_origin': True,
-                   'type': 'configmap'
-               })   
+            except json.JSONDecodeError:
+                # If not JSON, treat as single env var with section name as prefix
+                env_vars.append(
+                    {
+                        "name": section_name.upper(),
+                        "value": str(section_content),
+                        "section": section_name,
+                        "configmap_origin": True,
+                        "type": "configmap",
+                    }
+                )
         elif isinstance(section_content, dict):
-            if 'name' in section_content:
+            if "name" in section_content:
                 parsed_var = {
-                    'name': section_content['name'],
-                    'section': section_name,
-                    'configmap_origin': True,                    
+                    "name": section_content["name"],
+                    "section": section_name,
+                    "configmap_origin": True,
                 }
-                if 'valueFrom' in section_content and isinstance(section_content['valueFrom'], dict):
-                    secret_ref = section_content['valueFrom'].get('secretKeyRef', {})
+                if "valueFrom" in section_content and isinstance(
+                    section_content["valueFrom"], dict
+                ):
+                    secret_ref = section_content["valueFrom"].get("secretKeyRef", {})
                     if secret_ref:
-                        secret_name = secret_ref.get('name', '')
-                        secret_key = secret_ref.get('key', '')
-                        parsed_var['value'] = f"<{secret_name}:{secret_key}>"
-                        parsed_var['type'] = 'configmap-secret'
+                        secret_name = secret_ref.get("name", "")
+                        secret_key = secret_ref.get("key", "")
+                        parsed_var["value"] = f"<{secret_name}:{secret_key}>"
+                        parsed_var["type"] = "configmap-secret"
                     else:
-                        parsed_var['value'] = str(section_content.get('valueFrom',''))
-                        parsed_var['type'] = 'configmap'
-                elif 'value' in section_content:
-                    parsed_var['value'] = section_content['value']
-                    parsed_var['type'] = 'configmap'
+                        parsed_var["value"] = str(section_content.get("valueFrom", ""))
+                        parsed_var["type"] = "configmap"
+                elif "value" in section_content:
+                    parsed_var["value"] = section_content["value"]
+                    parsed_var["type"] = "configmap"
                 else:
-                    parsed_var['value'] = str(section_content)
-                    parsed_var['type'] = 'configmap'
-                env_vars.append(parsed_var)       
+                    parsed_var["value"] = str(section_content)
+                    parsed_var["type"] = "configmap"
+                env_vars.append(parsed_var)
         else:
             # Treat as single env var with section name as prefix
-            env_vars.append({
-                'name': section_name.upper(),
-                'value': str(section_content),
-                'section': section_name,
-                'configmap_origin': True,
-                'type': 'configmap'
-            })
-    
-    return env_vars
+            env_vars.append(
+                {
+                    "name": section_name.upper(),
+                    "value": str(section_content),
+                    "section": section_name,
+                    "configmap_origin": True,
+                    "type": "configmap",
+                }
+            )
 
+    return env_vars

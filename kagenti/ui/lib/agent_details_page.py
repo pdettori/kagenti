@@ -40,10 +40,12 @@ from . import constants
 
 logger = logging.getLogger(__name__)
 
+
 # pylint: disable=too-many-arguments, too-many-positional-arguments
 def _handle_chat_interaction(
     st_object,
     agent_k8s_name: str,
+    # pylint: disable=unused-argument
     agent_chat_name: str,
     agent_url: str,
     session_key_prefix: str,

@@ -26,6 +26,46 @@ import typer
 
 console = Console()
 
+def get_latest_tagged_version(github_repo, fallback_version) -> str:
+    """Fetches the latest version tag of the component from GitHub releases.
+
+    Args:
+        github_repo (str): The GitHub repository path of the component.
+        fallback_version (str): The fallback version to return if fetching fails.
+
+    Returns:
+        str: The latest version tag or the fallback version.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git", "ls-remote", "--tags", "--sort=-version:refname",
+                github_repo,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30
+        )
+
+        lines = result.stdout.strip().split('\n')
+        for line in lines:
+            if line and 'refs/tags/' in line:
+                # Extract tag name
+                tag = line.split('refs/tags/')[-1]
+                if '^{}' not in tag:  # Exclude annotated tags
+                    return tag
+
+        console.log(
+            "[yellow]Could not find tag name in the response. Using fallback version.[/yellow]"
+        )
+        return fallback_version
+    except subprocess.CalledProcessError as e:
+        console.log(
+            f"[bold red]Error fetching latest version: {e}. Using fallback version.[/bold red]"
+        )
+        return fallback_version
+
 
 def get_command_version(command: str) -> Optional[Version]:
     """Finds a command on PATH and extracts its version string."""
@@ -94,6 +134,8 @@ def run_command(command: list[str], description: str):
                 f"[bold red]✗[/bold red] {description} [bold red]failed[/bold red]."
             )
             console.log(f"[red]Error: {e.stderr.strip()}[/red]")
+            console.log("[red]Failed command[/red]")
+            console.log(" ".join(command))
             raise typer.Exit(1)
 
 

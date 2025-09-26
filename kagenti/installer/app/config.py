@@ -61,9 +61,15 @@ PRELOADABLE_IMAGES = [
     "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
     "docker.io/nginx/nginx-prometheus-exporter:1.4.2",
     "ghcr.io/kagenti/mcp-gateway:v0.1",
-    "ghcr.io/modelcontextprotocol/inspector:0.15.0"
+    "ghcr.io/modelcontextprotocol/inspector:0.15.0",
+    "public.ecr.aws/docker/library/registry:3.0.0-rc.4",
 ]
 
+# --- Git Repos and fallback tag versions ---
+OPERATOR_FALLBACK_VERSION = "0.2.0-alpha.4"
+OPERATOR_GIT_REPO = "https://github.com/kagenti/kagenti-operator.git"
+UI_FALLBACK_VERSION = "v0.0.4-alpha.13"
+UI_GIT_REPO = "https://github.com/kagenti/kagenti.git"
 
 # --- Enum for Skippable Components ---
 class InstallableComponent(str, Enum):
@@ -80,6 +86,6 @@ class InstallableComponent(str, Enum):
     MCP_GATEWAY = "mcp_gateway"
     KEYCLOAK = "keycloak"
     AGENTS = "agents"
-    METRICS_SERVER= "metrics_server"    
+    METRICS_SERVER= "metrics_server"
     INSPECTOR = "inspector"
     CERT_MANAGER = "cert_manager"
