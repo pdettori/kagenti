@@ -8,33 +8,33 @@ components:
   agentNamespaces:
     enabled: true
   certManager:
-    enabled: false
+    enabled: true
   ingressGateway:
     enabled: false
   mcpInspector:
     enabled: true
   istio:
-    enabled: false
+    enabled: true
   kiali:
-    enabled: false  
+    enabled: true  
   gatewayApi:
     enabled: false  
   keycloak:
-    enabled: false
+    enabled: true
   mcpGateway:
     enabled: true
   metricsServer:
     enabled: false
   platformOperator:
-    enabled: false
+    enabled: true
   otel:
-    enabled: false
+    enabled: true
   registry:
     enabled: false
   spire:
     enabled: false
   tekton:
-    enabled: false
+    enabled: true
   ui:
     enabled: true  
 
@@ -65,12 +65,10 @@ agentNamespaces:
 #  UI Configuration
 # ------------------------------------------------------------------
 ui:
-  replicaCount: 1
-  image:
-    repository: "quay.io/kagenti/ui"
-    tag: "latest"
-  service:
-    port: 8501
+  auth:
+    enabled: false
+  namespace: kagenti-system
+  image: ghcr.io/kagenti/kagenti/ui:v0.0.4-alpha.16
 
 # ------------------------------------------------------------------
 #  Keycloak Configuration
@@ -118,12 +116,27 @@ certManager:
 # ------------------------------------------------------------------
 kagentiPlatformOperator:
   controllerManager:
-    resources:
-      limits:
-        memory: 512Mi
+    container:
+      args:
+      - "--leader-elect"
+      - "--metrics-bind-address=:8443"
+      - "--health-probe-bind-address=:8081"
+      - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
+      - "--enable-client-registration=false"
+      resources:
+        limits:
+          memory: 512Mi
 
 # ------------------------------------------------------------------
 #  Spire Configuration
 # ------------------------------------------------------------------
 spire:
   namespace: zero-trust-workload-identity-manager
+
+# ------------------------------------------------------------------
+#  MCP Gateway Configuration
+# ------------------------------------------------------------------
+mcpGateway:
+  namespaces:
+    mcpSystem: mcp-system
+    gatewaySystem: gateway-system
