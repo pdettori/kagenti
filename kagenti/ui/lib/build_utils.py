@@ -253,6 +253,26 @@ def _construct_tool_resource_body(
                     "limits": constants.DEFAULT_RESOURCE_LIMITS,
                     "requests": constants.DEFAULT_RESOURCE_REQUESTS,
                 },
+                "volumes": [
+                    {
+                        "name": "cache",
+                        "emptyDir": {},
+                    },
+                    {
+                        "name": "venv",
+                        "emptyDir": {},
+                    },
+                ],
+                "volumeMounts": [
+                    {
+                        "name": "cache",
+                        "mountPath": "/app/.cache",
+                    },
+                    {
+                        "name": "venv",
+                        "mountPath": "/app/.venv",
+                    },
+                ],
             },
             "env": final_env_vars,
         },

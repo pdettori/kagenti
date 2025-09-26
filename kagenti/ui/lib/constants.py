@@ -69,7 +69,13 @@ DEFAULT_ENV_VARS = [
         "name": "KEYCLOAK_URL",
         "value": "http://keycloak.keycloak.svc.cluster.local:8080",
     },
+    {   "name": "UV_CACHE_DIR", 
+        "value": "/app/.cache/uv"
+    },
+        
 ]
+
+
 
 # --- Resource Limits and Requests ---
 DEFAULT_RESOURCE_LIMITS = {"cpu": "500m", "memory": "1Gi"}
