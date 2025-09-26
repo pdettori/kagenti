@@ -16,8 +16,8 @@
 User interface for Admin Catalog page.
 """
 
-import streamlit as st
 import os
+import streamlit as st
 from lib.common_ui import check_auth
 from lib import constants  # For Keycloak URL
 
@@ -26,7 +26,9 @@ from lib import constants  # For Keycloak URL
 
 check_auth()
 
-keycloak__console_url = os.environ.get('KEYCLOAK_CONSOLE_URL', constants.KEYCLOAK_CONSOLE_URL_OFF_CLUSTER)
+keycloak__console_url = os.environ.get(
+    "KEYCLOAK_CONSOLE_URL", constants.KEYCLOAK_CONSOLE_URL_OFF_CLUSTER
+)
 
 # --- Main Page Content ---
 st.header("🔑 Administration & Identity Management")
@@ -51,9 +53,7 @@ st.link_button(
     ),
     use_container_width=True,
 )
-st.caption(
-    f"Keycloak admin console accessible at: `{keycloak__console_url}`"
-)
+st.caption(f"Keycloak admin console accessible at: `{keycloak__console_url}`")
 
 st.markdown("---")
 
