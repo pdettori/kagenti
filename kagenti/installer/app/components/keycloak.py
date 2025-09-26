@@ -229,20 +229,22 @@ def install(use_existing_cluster: bool = False, **kwargs):
             )
             raise typer.Exit(1)
 
+        kagenti_keycloak_secret_name = "kagenti-keycloak-client-secret"
+
         for ns in agent_namespaces:
-            if not secret_exists(v1_api, "kagenti-keycloak-client-secret", ns):
+            if not secret_exists(v1_api, kagenti_keycloak_secret_name, ns):
                 run_command(
                     [
                         "kubectl",
                         "create",
                         "secret",
                         "generic",
-                        "kagenti-keycloak-client-secret",
+                        kagenti_keycloak_secret_name,
                         f"--from-literal=client-secret={kagenti_keycloak_client_secret}",
                         "-n",
                         ns,
                     ],
-                    f"Creating 'kagenti-keycloak-client-secret' in '{ns}'",
+                    f"Creating '{kagenti_keycloak_secret_name}' in '{ns}'",
                 )
             else:
                 # The secret value MUST be base64 encoded for the patch data.
@@ -255,14 +257,14 @@ def install(use_existing_cluster: bool = False, **kwargs):
                         "kubectl",
                         "patch",
                         "secret",
-                        "kagenti-keycloak-client-secret",
+                        kagenti_keycloak_secret_name,
                         "--type=merge",
                         "-p",
                         patch_string,
                         "-n",
                         ns,
                     ],
-                    f"🔄 Patching 'kagenti-keycloak-client-secret' in namespace '{ns}'",
+                    f"🔄 Patching '{kagenti_keycloak_secret_name}' in namespace '{ns}'",
                 )
     else:
         console.log(
