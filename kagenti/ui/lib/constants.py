@@ -69,12 +69,8 @@ DEFAULT_ENV_VARS = [
         "name": "KEYCLOAK_URL",
         "value": "http://keycloak.keycloak.svc.cluster.local:8080",
     },
-    {   "name": "UV_CACHE_DIR", 
-        "value": "/app/.cache/uv"
-    },
-        
+    {"name": "UV_CACHE_DIR", "value": "/app/.cache/uv"},
 ]
-
 
 
 # --- Resource Limits and Requests ---
@@ -93,7 +89,7 @@ POLL_INTERVAL_SECONDS = 2
 AGENT_NAME_SEPARATOR = "-"
 ENABLE_AUTH_STRING = "enable_auth"
 TOKEN_STRING = "token"
-ACCESS_TOKEN_STRING = 'access_token'
+ACCESS_TOKEN_STRING = "access_token"
 
 # --- Default Ports for Agent/Tool Services ---
 DEFAULT_IN_CLUSTER_PORT = 8000
