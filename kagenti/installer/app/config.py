@@ -46,7 +46,8 @@ REQ_VERSIONS = {
     "git": {"min": "2.30.0", "max": "3.0.0"},
 }
 
-# --- Images to preload in the kind cluster ---
+# --- Images to preload in the kind cluster                                                         ---
+# --- Note - this should only be required for images from dockerhub where rate limiting was observed --
 PRELOADABLE_IMAGES = [
     "docker.io/istio/proxyv2:1.26.1-distroless",
     "docker.io/istio/install-cni:1.26.1-distroless",
@@ -54,16 +55,11 @@ PRELOADABLE_IMAGES = [
     "docker.io/istio/ztunnel:1.26.1",
     "otel/opentelemetry-collector-contrib:0.122.1",
     "arizephoenix/phoenix:version-8.32.1",
-    "postgres:12",
     "prom/prometheus:v3.1.0",
-    "registry.k8s.io/metrics-server/metrics-server:v0.7.2",
-    "ghcr.io/spiffe/oidc-discovery-provider:1.12.4",
     "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
-    "docker.io/nginx/nginx-prometheus-exporter:1.4.2",
-    "ghcr.io/kagenti/mcp-gateway:v0.1",
-    "ghcr.io/modelcontextprotocol/inspector:0.15.0",
-    "public.ecr.aws/docker/library/registry:3.0.0-rc.4",
+    "docker.io/bitnamilegacy/postgresql:12",
 ]
+
 
 # --- Git Repos and fallback tag versions ---
 OPERATOR_FALLBACK_VERSION = "0.2.0-alpha.4"

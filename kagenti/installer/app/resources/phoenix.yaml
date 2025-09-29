@@ -102,7 +102,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
-        image: docker.io/bitnami/postgresql:12
+        image: docker.io/bitnamilegacy/postgresql:12
         imagePullPolicy: IfNotPresent
         name: postgres
         ports:
