@@ -34,7 +34,7 @@ components:
   spire:
     enabled: false
   tekton:
-    enabled: true
+    enabled: false
   ui:
     enabled: true  
 
