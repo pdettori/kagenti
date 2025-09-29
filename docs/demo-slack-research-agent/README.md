@@ -170,6 +170,16 @@ python set_up_demo.py
 
 For more information about the configuration script check the [detailed README.md](../../kagenti/auth/auth_demo/README.md) file.
 
+### Enable Token exchange for the agent
+
+Finally, to enable the agent to perform token exchange, we must [go to Keycloak](http://keycloak.localtest.me:8080/) in the browser. Log in with the admin credentials `admin` and `admin`. 
+
+Click on `Clients` in the left sidebar, and select `spiffe://localtest.me/sa/slack-researcher`. 
+
+Under the `Settings` tab, scroll down to Capability config. Double check that `Client authentication` is enabled. Then enable `Standard Token Exchange` under `Authentication flow`. Then click `Save`. 
+
+Now Keycloak has been fully configured for our example!
+
 ---
 
 ## Validate The Deployment
