@@ -259,7 +259,7 @@ def _construct_tool_resource_body(
                         "emptyDir": {},
                     },
                     {
-                        "name": "venv",
+                        "name": "marvin",
                         "emptyDir": {},
                     },
                 ],
@@ -269,8 +269,8 @@ def _construct_tool_resource_body(
                         "mountPath": "/app/.cache",
                     },
                     {
-                        "name": "venv",
-                        "mountPath": "/app/.venv",
+                        "name": "marvin",
+                        "mountPath": "/.marvin",
                     },
                 ],
             },
@@ -502,6 +502,26 @@ def _construct_agent_resource_body(
                         "limits": constants.DEFAULT_RESOURCE_LIMITS,
                         "requests": constants.DEFAULT_RESOURCE_REQUESTS,
                     },
+                    "volumes": [
+                        {
+                            "name": "cache",
+                            "emptyDir": {},
+                        },
+                        {
+                            "name": "marvin",
+                            "emptyDir": {},
+                        },
+                    ],
+                    "volumeMounts": [
+                        {
+                            "name": "cache",
+                            "mountPath": "/app/.cache",
+                        },
+                        {
+                            "name": "marvin",
+                            "mountPath": "/.marvin",
+                        },
+                    ],
                 },
                 "env": final_env_vars,
             },
