@@ -205,7 +205,13 @@ try:
 except Exception as e:
     print(f'Could not enable service accounts for client {slack_client_id}: {e}')
 
-
+# Add slack-partial-access and slack-full-access client scopes to the agent client
+try:
+    agent_client_id = keycloak_admin.get_client_id(slack_agent_client_id)
+    keycloak_admin.add_client_optional_client_scope(agent_client_id, partial_client_scope_id, {})
+    keycloak_admin.add_client_optional_client_scope(agent_client_id, full_client_scope_id, {})
+except Exception as e:
+    print(f'Could not enable service accounts for client {agent_client_id}: {e}')
 
 # Create the partial access user and add the realm roles
 partial_user_id = keycloak_admin.create_user(
