@@ -54,7 +54,7 @@ Make sure your `kubectl` or `oc` points to your OpenShift cluster. You may edit
 deployment (under `agentNamespaces:`) and enable or disable components to install
 under `components:`.
 
-Finally, installe the chart with the command:
+Finally, install the chart with the command:
 
 ```shell
 helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml 
