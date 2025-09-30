@@ -1,9 +1,9 @@
 
-Kiali
+Kagenti UI
 
-The route for kiali can be found with the command:
+The route for kagenti UI can be found with the command:
 
 ```
-kubectl get routes -n istio-system kiali 
+echo https://$(kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].host}')
 ```
 

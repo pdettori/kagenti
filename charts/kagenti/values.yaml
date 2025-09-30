@@ -34,7 +34,7 @@ components:
   spire:
     enabled: false
   tekton:
-    enabled: false
+    enabled: true
   ui:
     enabled: true  
 
@@ -68,7 +68,7 @@ ui:
   auth:
     enabled: false
   namespace: kagenti-system
-  image: ghcr.io/kagenti/kagenti/ui:v0.0.4-alpha.16
+  image: ghcr.io/kagenti/kagenti/ui:v0.0.4-alpha.17
 
 # ------------------------------------------------------------------
 #  Keycloak Configuration
