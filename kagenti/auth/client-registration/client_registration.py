@@ -55,7 +55,7 @@ def register_client(
                 "standardFlowEnabled": True,
                 "directAccessGrantsEnabled": True,
                 "fullScopeAllowed": False,
-                "publicClient": True # Disable client authentication
+                "publicClient": False # Enable client authentication
             }
         )
 
