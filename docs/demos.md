@@ -14,6 +14,11 @@ Check the details for running various demos.
 
 ## Installation
 
+For installing on OpenShift, please refer to [these installation instructions](./ocp/openshift-install.md).
+
+**Note: OpenShift support is currently a work in progress. Be sure to review the limitations detailed in the instructions.**
+
+
 ### Prerequisites
 
 Before running the demo setup script, ensure you have the following prerequisites in place:
@@ -31,7 +36,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 - **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
 - **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
 
-At this time the demo has only been tested on MacOS with M1 processor.
+At this time the demo has only been tested on MacOS and RHEL.
 
 When you encounter any problems, review our [Troubleshooting](#troubleshooting) section.
 
