@@ -1,14 +1,16 @@
 # Cloud Native Proofs-Of-Concept
 
 The following proof on concepts apply Cloud Native technologies to manage agentic workloads.
-A diagram and description of the demo architecture is provided [here](./tech-details.md#cloud-native-agent-platform-demo)
+A diagram and description of the demo architecture is provided on [technical details](./tech-details.md#cloud-native-agent-platform-demo) page.
+
+Detailed overview of the identity concepts are covered in the [Kagenti Identity PDF document](./2025-10.Kagenti-Identity.pdf).
 
 ## Demo List
 
 Check the details for running various demos.
 
 - Simplest Demo - [Weather Service](./demo-weather-agent.md)
-- [Slack Authentication](./demo-slack-research-agent/README.md)
+- Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent/README.md)
 
 ## Installation
 
