@@ -65,16 +65,10 @@ def register_client(
 
     # Always try to get the secret
     try:
-        info = keycloak_admin.get_server_info()
-        # print(f'Server info: {info}')
-        clients = keycloak_admin.get_clients()
-        client_ids = [client['clientId'] for client in clients]
-        print(client_ids)
-        
-        internal_client_id = keycloak_admin.get_client_id("{client_name}")
-        print(f'Retrieving client_id for client "{client_name}", id: {internal_client_id}.')
+        internal_client_id = keycloak_admin.get_client_id(f"{client_id}")
+        print(f'Retrieving client_id for client "{client_id}", id: {internal_client_id}.')
         secret = keycloak_admin.get_client_secrets(internal_client_id)["value"]
-        print(f'Successfully retrieved secret for client "{client_name}": {secret}.')
+        print(f'Successfully retrieved secret for client "{client_name}".')
     except KeycloakPostError as e:
         print(f"Could not retrieve secret for client '{client_name}': {e}")
         return
