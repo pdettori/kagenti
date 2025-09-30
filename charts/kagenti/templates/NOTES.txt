@@ -1,0 +1,9 @@
+
+Kagenti UI
+
+The route for kagenti UI can be found with the command:
+
+```
+echo https://$(kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].host}')
+```
+
