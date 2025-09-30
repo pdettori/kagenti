@@ -1,6 +1,6 @@
 # Kagenti Installation on OpenShift
 
-**This document is work in progress - main focus is to define the steps that are required on OpenShift that need to be automated in the installer**
+**This document is work in progress**
 
 
 ## Current limitations 
