@@ -2,181 +2,93 @@
 
 **This document is work in progress - main focus is to define the steps that are required on OpenShift that need to be automated in the installer**
 
-## Istio Ambient Installation
 
-Istio Ambient can be installed with the [OpenShift Service Mesh 3.0 operator](https://developers.redhat.com/articles/2025/03/12/try-istio-ambient-mode-red-hat-openshift#).
+## Current limitations 
 
-### Operator Installation
+These limitations will be addressed in successive PRs.
 
-1. Go to the installer directory:
+- UI Auth and token management is disabled
+- Only [quay.io](https://quay.io) registry has been tested in build from source
+- Istio Ambient and network observability has not been tested and is not enabled by default
+- URLs for Kiali, Phoenix and Keycloak are not working in UI
+- Ollama models not tested - OpenAI key required for now
+- MCP inspector integration in tools details page is not enabled yet
+- MCP Gateway integration has not been tested yet
 
-```shell
-cd kagenti/installer
-```
+## Requirements 
 
-2. Install the operator by creating a subscription
+- helm >= v3.18.0
+- kubectl >= v1.32.1 or oc >= 4.16.0
+- git >= 2.48.0
+- Access to OpenShift cluster with admin authority (We tested with OpenShift 4.18.21)
 
-```shell
-kubectl apply -n openshift-operators -f app/resources/ocp/servicemeshoperator3.yaml 
-```
+## Setup
 
-3. Check operator installation is complete
-
-```shell
-python ../examples/ocp/check-operator-install.py servicemeshoperator3 openshift-operators
-```
-
-### Installing Istio ambient mode 
-
-These steps are from the [Red Hat OpenShift Service Mesh documents](https://docs.redhat.com/en/documentation/red_hat_openshift_service_mesh/3.1/html/installing/ossm-istio-ambient-mode#ossm-installing-istio-ambient-mode_ossm-istio-ambient-mode)
-
-1. Install the Istio control plane
+Clone this project:
 
 ```shell
-kubectl create namespace istio-system
-kubectl label namespace istio-system istio-discovery=enabled
-kubectl apply -n openshift-operators -f app/resources/ocp/istio.yaml 
-kubectl wait --for=condition=Ready istios/default --timeout=3m
+git clone https://github.com/kagenti/kagenti.git
+cd kagenti
 ```
 
-2. Install the Istio Container Network Interface (CNI)
+Setup your helm secrets file:
 
 ```shell
-kubectl create namespace istio-cni
-kubectl label namespace istio-cni istio-discovery=enabled
-kubectl apply -f app/resources/ocp/istio-cni.yaml 
-kubectl wait --for=condition=Ready istios/default --timeout=3m
+cp charts/kagenti/.secrets_template.yaml charts/kagenti/.secrets.yaml
 ```
 
-3. Install the Ztunnel proxy
+Edit the file `charts/kagenti/.secrets.yaml` to fill in the following:
+
+```yaml
+githubUser: # Your public Github User ID
+githubToken: # Your personal GitHub Token
+openaiApiKey: # Required as Ollama not yet available
+slackBotToken: # not required until auth is enabled and slack demo agent is used
+adminSlackBotToken: # not required until auth is enabled and slack demo agent is used
+```
+
+## Install the helm chart
+
+Make sure your `kubectl` or `oc` points to your OpenShift cluster. You may edit
+`charts/kagenti/values.yaml` to define the namespaces to enable for agents and tools
+deployment (under `agentNamespaces:`) and enable or disable components to install
+under `components:`.
+
+Finally, installe the chart with the command:
 
 ```shell
-kubectl create namespace ztunnel
-kubectl label namespace ztunnel istio-discovery=enabled
-kubectl apply -f app/resources/ocp/ztunnel.yaml
-kubectl wait --for=condition=Ready ztunnel/default --timeout=3m
+helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml 
 ```
 
-### Install Gateway API (if not already present)
+## Access the UI
+
+After the chart installs, you may access the UI following the instructions in the notes; the URL to UI can be found 
+running this command:
 
 ```shell
-kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || \
-{ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml; }
+echo https://$(kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].host}')
 ```
 
-## UI deployment
+## Running the demo
 
-The simpler approach at this point to expose the UI is to use an OpenShift route
-(TODO - explore how HTTPRoute could be used with istio ingress gateway and TLS termination)
+At this time, only the OpenAI API-backed agents have been tested (`a2a-content-extractor` and `a2a-currency-converter`).
+You may use the pre-built images available at https://github.com/orgs/kagenti/packages?repo_name=agent-examples
+or build from source. Building from source has been tested only with `quay.io`, and requires setting up a robot account on [quay.io](https://quay.io), creating empty repos in your organization for the repos to build (e.g.`a2a-contact-extractor` and `a2a-currency-converter`) and granting the robot account write access to those repos.
 
-```shell
-kubectl create namespace kagenti-system
-kubectl apply -f app/resources/ocp/ui-route.yaml
-```
+Finally, you may get the Kubernetes secret from the robot account you created, and apply the secret to the namespaces
+you enabled for agents and tools (e.g. `team1` and `team2`). 
 
-## Kiali Deployment
+You should now be able to use the UI to:
 
-1. Install the operator by creating a subscription
-
-```shell
-kubectl apply -n openshift-operators -f app/resources/ocp/kiali-operator.yaml 
-```
-
-2. Check operator installation is complete
-
-```shell
-python ../examples/ocp/check-operator-install.py kiali-ossm openshift-operators
-```
-
-3. Apply kiali config
-
-```shell
-kubectl apply -f app/resources/ocp/kiali-config.yaml 
-```
-
-Note: may still need to [enable user workload monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/monitoring/configuring-user-workload-monitoring#preparing-to-configure-the-monitoring-stack-uwm)
-
-## Phoenix and otel-collector deployment
-
-```shell
-kubectl apply -n kagenti-system -f app/resources/phoenix.yaml
-kubectl apply -n kagenti-system -f app/resources/ocp/phoenix-route.yaml
-kubectl apply -n kagenti-system -f app/resources/otel-collector.yaml
-```
-
-## Keycloak
-
-1. Create namespace
-
-```shell
-kubectl create ns keycloak
-```
-
-2. Deploy a postgres instance
-
-```shell
-kubectl apply -n keycloak -f app/resources/ocp/keycloak-postgres.yaml 
-```
-
-3. Install the operator by creating a subscription
-
-```shell
-kubectl apply -n keycloak -f app/resources/ocp/keycloak-operator.yaml 
-```
-
-4. Check operator installation is complete
-
-```shell
-python ../examples/ocp/check-operator-install.py rhbk-operator keycloak
-```
-
-5. Create keycloak instance
-
-```shell
-kubectl apply -n keycloak -f app/resources/ocp/keycloak.yaml 
-```
-
-To access it, get the URL from the route:
-
-```shell
-kubectl get route -n keycloak -l app=keycloak
-```
-
-The admin user and password can be retrived from the secret:
-
-```shell
-for key in username password; do echo -n "$key: "; kubectl get secret keycloak-initial-admin -n keycloak -o jsonpath="{.data.$key}" | base64 --decode && echo; done
-```
+- Import an agent
+- List the agent
+- Interact with the agent from the agent details page
+- Import a MCP tool 
+- List the tool 
+- Interact with the tool from the tool details page
 
 
-## Installing Tekton (OpenShift Pipelines)
 
-```shell
-kubectl apply -f app/resources/ocp/openshift-pipelines-operator.yaml
-```
 
-```shell
-python ../examples/ocp/check-operator-install.py openshift-pipelines-operator-rh openshift-operators
-```
 
-## Installing Cert Manager
 
-```shell
-kubectl create ns cert-manager-operator
-```
-
-```shell
-kubectl apply -f app/resources/ocp/cert-manager-operator.yaml
-```
-
-```shell
-python ../examples/ocp/check-operator-install.py openshift-cert-manager-operator cert-manager-operator
-```
-
-## Installing the Kagenti Platform Operator
-
-```shell
-export OPERATOR_NAMESPACE=kagenti-system
-export LATEST_TAG=0.2.0-alpha.6
-helm upgrade --install kagenti-platform-operator --create-namespace --namespace ${OPERATOR_NAMESPACE} oci://ghcr.io/kagenti/kagenti-operator/kagenti-platform-operator-chart --version ${LATEST_TAG} --set controllerManager.resources.limits.memory=512Mi
-```

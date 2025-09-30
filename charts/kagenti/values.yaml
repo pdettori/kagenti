@@ -17,8 +17,6 @@ components:
     enabled: true
   kiali:
     enabled: true  
-  gatewayApi:
-    enabled: false  
   keycloak:
     enabled: true
   mcpGateway:
@@ -96,14 +94,6 @@ istio:
   istiod: 
     profile: ambient
     namespace: '{{ .Values.istio.namespace | quote }}'
-
-# ------------------------------------------------------------------
-#  Gateway API Configuration
-# ------------------------------------------------------------------
-gatewayApi:
-  manifestUrl: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
-  installer:
-    image: quay.io/kubestellar/kubectl:1.30.14
 
 # ------------------------------------------------------------------
 #  Cert Manager Configuration
