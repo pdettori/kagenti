@@ -9,6 +9,8 @@ CLIENT_NAME = os.environ.get('CLIENT_NAME')
 CLIENT_ID = os.environ.get('CLIENT_ID')
 NAMESPACE = os.environ.get('NAMESPACE')
 
+secret_file = "secret.txt"
+
 def register_client(
     keycloak_url: str,
     keycloak_realm: str,
@@ -60,6 +62,30 @@ def register_client(
         print(f'Created Keycloak client "{client_id}": {internal_client_id}')
     except KeycloakPostError as e:
         print(f'Could not create Keycloak client "{client_id}": {e}')
+
+    # Always try to get the secret
+    try:
+        info = keycloak_admin.get_server_info()
+        # print(f'Server info: {info}')
+        clients = keycloak_admin.get_clients()
+        client_ids = [client['clientId'] for client in clients]
+        print(client_ids)
+        
+        cl_id = keycloak_admin.get_client_id("{client_name}")
+        print(f'Retrieving client_id for client "{client_name}", id: {cl_id}.')
+        secret = keycloak_admin.get_client_secrets(cl_id)["value"]
+        print(f'Successfully retrieved secret for client "{client_name}".')
+    except KeycloakPostError as e:
+        print(f"Could not retrieve secret for client '{client_name}': {e}")
+        return
+
+    # Write secret to file
+    try:
+        with open(secret_file, "w") as f:
+            f.write(secret)
+        print(f'Secret written to file: "{secret_file}"')
+    except OSError as ioe:
+        print(f'Error writing secret to file: {ioe}')
 
 register_client(
     KEYCLOAK_URL,
