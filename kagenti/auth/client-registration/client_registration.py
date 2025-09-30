@@ -1,15 +1,23 @@
+"""
+client_registration.py
+
+Registers a Keycloak client and stores its secret in a file.
+Idempotent:
+- Creates the client if it does not exist.
+- If the client already exists, reuses it.
+- Always retrieves and stores the client secret.
+"""
+
 import os
 from keycloak import KeycloakAdmin, KeycloakPostError
 
-KEYCLOAK_URL = os.environ.get('KEYCLOAK_URL')
-KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM')
-KEYCLOAK_ADMIN_USERNAME = os.environ.get('KEYCLOAK_ADMIN_USERNAME')
-KEYCLOAK_ADMIN_PASSWORD = os.environ.get('KEYCLOAK_ADMIN_PASSWORD')
-CLIENT_NAME = os.environ.get('CLIENT_NAME')
-CLIENT_ID = os.environ.get('CLIENT_ID')
-NAMESPACE = os.environ.get('NAMESPACE')
 
-secret_file = "secret.txt"
+def get_env_var(name: str) -> str:
+    """Fetch an environment variable or raise ValueError if missing."""
+    value = os.environ.get(name)
+    if not value:
+        raise ValueError(f"Missing required environment variable: {name}")
+    return value
 
 def register_client(
     keycloak_url: str,
@@ -18,26 +26,10 @@ def register_client(
     keycloak_admin_password: str,
     client_name: str,
     client_id: str,
-    namespace: str
+    namespace: str,
+    secret_file: str = "/shared/secret.txt",
 ):
-    # clientId = f'{namespace}/{client_name}'
-
-    if keycloak_url is None:
-        print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {client_id}.')
-        return
-    if keycloak_realm is None:
-        raise Exception('Expected environment variable "KEYCLOAK_REALM"')
-    if keycloak_admin_username is None:
-        raise Exception('Expected environment variable "KEYCLOAK_ADMIN_USERNAME"')
-    if keycloak_admin_password is None:
-        raise Exception('Expected environment variable "KEYCLOAK_ADMIN_PASSWORD"')
-    if client_name is None:
-        raise Exception('Expected environment variable "CLIENT_NAME"')
-    if client_id is None:
-        raise Exception('Expected environment variable "CLIENT_ID"')
-    if namespace is None:
-        raise Exception('Expected environment variable "NAMESPACE"')
-
+    print(f"Connecting to Keycloak server: {keycloak_url} (realm={keycloak_realm})")
     keycloak_admin = KeycloakAdmin(
         server_url=keycloak_url,
         username=keycloak_admin_username,
@@ -46,22 +38,26 @@ def register_client(
         user_realm_name='master'
     )
 
-    # Create client
-    try:
-        internal_client_id = keycloak_admin.create_client(
-            {
-                "name": client_name,
-                "clientId": client_id,
-                "standardFlowEnabled": True,
-                "directAccessGrantsEnabled": True,
-                "fullScopeAllowed": False,
-                "publicClient": False # Enable client authentication
-            }
-        )
+    # Ensure client exists
+    internal_client_id = keycloak_admin.get_client_id(client_name)
+    if internal_client_id:
+        print(f'Client "{client_name}" already exists with ID: {internal_client_id}')
+    else:
+        try:
+            internal_client_id = keycloak_admin.create_client(
+                {
+                    "name": client_name,
+                    "clientId": client_id,
+                    "standardFlowEnabled": True,
+                    "directAccessGrantsEnabled": True,
+                    "fullScopeAllowed": False,
+                    "publicClient": False # Enable client authentication
+                }
+            )
 
-        print(f'Created Keycloak client "{client_id}": {internal_client_id}')
-    except KeycloakPostError as e:
-        print(f'Could not create Keycloak client "{client_id}": {e}')
+            print(f'Created Keycloak client "{client_id}": {internal_client_id}')
+        except KeycloakPostError as e:
+            print(f'Could not create Keycloak client "{client_id}": {e}')
 
     # Always try to get the secret
     try:
@@ -82,11 +78,11 @@ def register_client(
         print(f'Error writing secret to file: {ioe}')
 
 register_client(
-    KEYCLOAK_URL,
-    KEYCLOAK_REALM,
-    KEYCLOAK_ADMIN_USERNAME,
-    KEYCLOAK_ADMIN_PASSWORD,
-    CLIENT_NAME,
-    CLIENT_ID,
-    NAMESPACE
+    keycloak_url=get_env_var("KEYCLOAK_URL"),
+    keycloak_realm=get_env_var("KEYCLOAK_REALM"),
+    keycloak_admin_username=get_env_var("KEYCLOAK_ADMIN_USERNAME"),
+    keycloak_admin_password=get_env_var("KEYCLOAK_ADMIN_PASSWORD"),
+    client_name=get_env_var("CLIENT_NAME"),
+    client_id=get_env_var("CLIENT_ID"),
+    namespace=get_env_var("NAMESPACE"),
 )
