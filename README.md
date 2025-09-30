@@ -43,6 +43,8 @@ In practice, the Authorization Pattern within the Agentic Platform enables:
 - Secure Delegation – enforcing token exchange to propagate identity across services without excessive permissions.
 - Continuous Verification – ensuring authentication and authorization at each step, preventing privilege escalation.
 
+More detailed overview of the identity concepts are covered in the [Kagenti Identity PDF document](./docs/2025-10.Kagenti-Identity.pdf).
+
 This end-to-end approach aligns agentic workflows with security best practice principles, making them secure, scalable, and eventually production-ready.
 
 ## Components

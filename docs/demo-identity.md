@@ -6,6 +6,7 @@ This document contains all considerations related to Identity in Agentic Platfor
 
 There are already several documents specific to identity:
 
+* [Kagenti Identity Overview](./2025-10.Kagenti-Identity.pdf)
 * [Client Registration](../kagenti/examples/identity/kagenti_client_registration/README.md)
 * [Token Exchange](../kagenti/examples/identity/token_exchange.md)
 
