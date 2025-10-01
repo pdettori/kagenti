@@ -58,10 +58,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 5. Install yq
-      - name: Install yq
-        uses: mikefarah/yq-action@v4 
-
       # This action automatically creates useful tags based on the Git event.
       # In this case, it will use the Git tag as the Docker image tag.
       - name: Extract Docker metadata for ${{ matrix.image_config.name }}
