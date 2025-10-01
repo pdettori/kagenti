@@ -55,7 +55,7 @@ def get_secret(
     keycloak_admin: KeycloakAdmin,
     internal_client_id: str,
     client_name: str,
-    secret_file: str = "secret.txt",
+    secret_file_path: str = "secret.txt",
 ) -> None:
     """
     Retrieve the secret for a Keycloak client and write it to a file.
