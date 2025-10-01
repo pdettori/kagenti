@@ -17,7 +17,7 @@ Here's a breakdown of the sections:
 - In [**Chat with the Weather Agent**](#chat-with-the-weather-agent), you'll interact with the agent and confirm it responds correctly using real-time weather data.
 
 > **Prerequisites:**
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](../demos.md#installation) section.
+> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
 
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
 
@@ -80,31 +80,31 @@ To verify that both the agent and tool are running:
    For the agent:
 
    ```console
-    installer$ kubectl logs -f deployment/weather-service -n <your-ns>
-    Defaulted container "weather-service" out of: weather-service, kagenti-client-registration (init)
-    INFO:     Started server process [18]
-    INFO:     Waiting for application startup.
-    INFO:     Application startup complete.
-    INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-    ```
+   installer$ kubectl logs -f deployment/weather-service -n <your-ns>
+   Defaulted container "weather-service" out of: weather-service, kagenti-client-registration (init)
+   INFO:     Started server process [18]
+   INFO:     Waiting for application startup.
+   INFO:     Application startup complete.
+   INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+   ```
 
-    For the tool:
-    ```console
-    installer$ kubectl logs -f deployment/weather-tool -n <your-ns>
-    Defaulted container "weather-tool" out of: weather-tool, kagenti-client-registration (init)
-    INFO:     Started server process [19]
-    INFO:     Waiting for application startup.
-    INFO:     Application startup complete.
-    INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-    ```
+   For the tool:
+   ```console
+   installer$ kubectl logs -f deployment/weather-tool -n <your-ns>
+   Defaulted container "weather-tool" out of: weather-tool, kagenti-client-registration (init)
+   INFO:     Started server process [19]
+   INFO:     Waiting for application startup.
+   INFO:     Application startup complete.
+   INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+   ```
 
-4. Once you see the logs indicating that both services are up and running, you're ready to proceed to [Authorize the Agent and the Tool](#authorize-the-agent-and-the-tool).
+4. Once you see the logs indicating that both services are up and running, you're ready to proceed to [Chat with the Weather Agent](#chat-with-the-weather-agent).
 
 ---
 
 ## Chat with the Weather Agent
 
-Once the deployment is complete and the Agent is authorized to access the Tool, you can run the demo:
+Once the deployment is complete, you can run the demo:
 
 1. Navigate to the **Agent Catalog** in the Kagenti UI.
 2. Select the same `<namespace>` used during the agent deployment.
@@ -118,8 +118,8 @@ Once the deployment is complete and the Agent is authorized to access the Tool, 
 5. You will see the *Agent Thinking...* message. Depending on the speed of your hosting environment, the agent will return a weather response. For example:
 
    ```console
-     The current weather in NY is mostly sunny with a temperature of 22.6 degrees Celsius (73.07 degrees Fahrenheit). There is a gentle breeze blowing at 6.8 km/h (4.2 mph) from the northwest. It's currently daytime, and the weather code indicates fair weather with no precipitation.
-    ```
+   The current weather in NY is mostly sunny with a temperature of 22.6 degrees Celsius (73.07 degrees Fahrenheit). There is a gentle breeze blowing at 6.8 km/h (4.2 mph) from the northwest. It's currently daytime, and the weather code indicates fair weather with no precipitation.
+   ```
 
 6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
@@ -127,32 +127,32 @@ If you encounter any errors, check the [Troubleshooting section](./demos.md#trou
 
 ## Cleanup
 
-To cleanup the agents and tools in the UI, go to the `Agent Catalog` and `Tool Catalog` 
-respectively and click the `Delete` button next to each. 
+To cleanup the agents and tools in the UI, go to the `Agent Catalog` and `Tool Catalog`
+respectively and click the `Delete` button next to each.
 
 You can also manually remove them by deleting their Custom Resources (CRs) from the cluster.
 
 ### Step 1: List Custom Resource Definitions (CRDs)
 
-```console
-    installer$ kubectl get crds | grep kagenti
-    components.kagenti.operator.dev             2025-07-23T23:11:59Z
-    platforms.kagenti.operator.dev              2025-07-23T23:11:59Z
-```
+   ```console
+   installer$ kubectl get crds | grep kagenti
+   components.kagenti.operator.dev             2025-07-23T23:11:59Z
+   platforms.kagenti.operator.dev              2025-07-23T23:11:59Z
+   ```
 
 ### Step 2: List deployed components in your namespace
 
-```console
-    installer$ kubectl get components.kagenti.operator.dev -n <your-ns>
-    NAME                  SUSPEND
-    weather-service       false
-    weather-tool          false
-```
+   ```console
+   installer$ kubectl get components.kagenti.operator.dev -n <your-ns>
+   NAME                  SUSPEND
+   weather-service       false
+   weather-tool          false
+   ```
 
 ### Step 3: Delete the Agent and the Tool
 
-```console
+   ```console
    installer$ kubectl delete components.kagenti.operator.dev weather-service weather-tool -n <your-ns>
-```
+   ```
 
 The Kagenti Operator will automatically clean up all related Kubernetes resources.
