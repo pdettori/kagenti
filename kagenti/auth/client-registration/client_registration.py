@@ -51,7 +51,7 @@ def register_client(
         raise
 
 
-def get_secret(
+def write_secret(
     keycloak_admin: KeycloakAdmin,
     internal_client_id: str,
     client_name: str,
@@ -68,9 +68,9 @@ def get_secret(
         return
 
     try:
-        with open(secret_file, "w") as f:
+        with open(secret_file_path, "w") as f:
             f.write(secret)
-        print(f'Secret written to file: "{secret_file}"')
+        print(f'Secret written to file: "{secret_file_path}"')
     except OSError as ioe:
         print(f"Error writing secret to file: {ioe}")
 
@@ -89,4 +89,4 @@ namespace = get_env_var("NAMESPACE")
 
 internal_client_id = register_client(keycloak_admin, client_name, client_id, namespace)
 print(f'Client id: "{internal_client_id}"')
-get_secret(keycloak_admin, internal_client_id, client_name, secret_file="/shared/secret.txt")
+write_secret(keycloak_admin, internal_client_id, client_name, secret_file="/shared/secret.txt")
