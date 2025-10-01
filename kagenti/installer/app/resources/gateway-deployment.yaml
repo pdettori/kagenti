@@ -133,6 +133,11 @@ spec:
         - name: config-volume
           configMap:
             name: mcp-gateway-config
+        - name: mcp-credentials
+          secret:
+            secretName: mcp-aggregated-credentials
+            defaultMode: 0400
+            optional: true  # broker can still work without credentials
       containers:
         - name: mcp-broker-router
           image: ghcr.io/kagenti/mcp-gateway:v0.1.2
@@ -150,6 +155,9 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /config
+            - name: mcp-credentials
+              mountPath: /etc/mcp-credentials
+              readOnly: true
           ports:
             - name: http
               containerPort: 8080
