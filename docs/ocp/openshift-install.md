@@ -2,7 +2,6 @@
 
 **This document is work in progress**
 
-
 ## Current limitations 
 
 These limitations will be addressed in successive PRs.
@@ -22,49 +21,46 @@ These limitations will be addressed in successive PRs.
 - git >= 2.48.0
 - Access to OpenShift cluster with admin authority (We tested with OpenShift 4.18.21)
 
-## Setup
+## Installing the Helm Chart
 
-Clone this project:
+To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift cluster. You might want to modify `charts/kagenti/values.yaml` to specify the namespaces where agents and tools should be deployed under `agentNamespaces:` and toggle components for installation under `components:`.
 
-```shell
-git clone https://github.com/kagenti/kagenti.git
-cd kagenti
-```
+### Installing OCI Chart Release Package
 
-Setup your helm secrets file:
+1. **Determine Latest Version:**
+   - Identify the [latest tagged version](https://github.com/kagenti/kagenti/tags) of the chart.
+   - Set this version in the `LATEST_TAG` environment variable.
 
-```shell
-cp charts/kagenti/.secrets_template.yaml charts/kagenti/.secrets.yaml
-```
+2. **Prepare Secrets:**
+   - Copy the [.secrets_template.yaml](https://github.com/kagenti/kagenti/blob/main/charts/kagenti/.secrets_template.yaml) to a local `.secrets.yaml` file.
+   - Edit the `.secrets.yaml` to provide the necessary keys as per the comments within the file.
 
-Edit the file `charts/kagenti/.secrets.yaml` to fill in the following:
+3. **Run Helm Installation:**
+   ```shell
+   # For example, if the latest tag is 0.0.4-alpha.18
+   LATEST_TAG=0.0.4-alpha.18
+   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG
+   ```
 
-```yaml
-githubUser: # Your public Github User ID
-githubToken: # Your personal GitHub Token
-openaiApiKey: # Required as Ollama not yet available
-slackBotToken: # not required until auth is enabled and slack demo agent is used
-adminSlackBotToken: # not required until auth is enabled and slack demo agent is used
-```
+### Installing from Repo
 
-## Install the helm chart
+1. **Clone Repository:**
+   ```shell
+   git clone https://github.com/kagenti/kagenti.git
+   cd kagenti
+   ```
 
-Make sure your `kubectl` or `oc` points to your OpenShift cluster. You may edit
-`charts/kagenti/values.yaml` to define the namespaces to enable for agents and tools
-deployment (under `agentNamespaces:`) and enable or disable components to install
-under `components:`.
+2. **Prepare Helm Secrets:**
+   - Copy and edit the secrets template:
+     ```shell
+     cp charts/kagenti/.secrets_template.yaml charts/kagenti/.secrets.yaml
+     ```
+   - Ensure the required keys are filled as per the comments in the file.
 
-Update the chart dependencies:
-
-```shell
-helm dependency update ./charts/kagenti/
-```
-
-Install the chart with the command:
-
-```shell
-helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml 
-```
+3. **Install the Chart:**
+   ```shell
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml
+   ```
 
 ## Access the UI
 
@@ -93,6 +89,68 @@ You should now be able to use the UI to:
 - List the tool 
 - Interact with the tool from the tool details page
 
+
+# 🚀 Running the Demo
+
+> **Note**
+> At this time, only the OpenAI API-backed agents have been tested: `a2a-content-extractor` and `a2a-currency-converter`.
+
+There are two ways to get the agent images for the demo: using pre-built images (recommended for a quick start) or building them from source.
+
+---
+
+## Option 1: Use Pre-built Images (Recommended)
+
+This is the fastest way to get started. The required images are already built and hosted on the GitHub Container Registry.
+
+1.  You can find all the necessary images here: **[kagenti/agent-examples Packages](https://github.com/orgs/kagenti/packages?repo_name=agent-examples)**
+2.  No image building or secret configuration is required. You can proceed directly to the **"Verifying in the UI"** section.
+
+---
+
+## Option 2: Build from Source
+
+Follow this path if you want to build the agent container images yourself.
+
+### Prerequisites
+
+* A user or organization account on **[quay.io](https://quay.io)**.
+* Namespaces created in your Kubernetes cluster where you will run agents and tools (e.g., `team1` and `team2`).
+
+### Steps
+
+1.  **Configure Quay.io**
+    * [Create a robot account](https://docs.redhat.com/en/documentation/red_hat_quay/3/html/user_guide/managing_robot_accounts) for your organization.
+    * Create empty repositories for the images you need to build (e.g., `a2a-content-extractor` and `a2a-currency-converter`).
+    * Grant your robot account **write access** to these new repositories.
+
+2.  **Create Kubernetes Image Pull Secret**
+    * Navigate to your robot account settings in the Quay.io UI.
+    * Select the **Kubernetes Secret** tab and copy the generated secret manifest.
+    * Apply the secret to each namespace where agents will run.
+      ```bash
+      # Save the secret to a file named quay-secret.yaml, then run:
+      kubectl apply -f quay-secret.yaml -n team1
+      kubectl apply -f quay-secret.yaml -n team2
+      ```
+
+3.  **Build and Push the Images**
+    * Follow the project's build instructions to build the agent images and push them to your Quay.io repositories.
+
+---
+
+## ✅ Verifying in the UI
+
+After completing either of the setup options above, you should be able to use the UI to:
+
+* **Agents**
+    1.  Import a new agent.
+    2.  List the imported agent.
+    3.  Interact with the agent from its details page.
+* **Tools**
+    1.  Import a new MCP tool.
+    2.  List the imported tool.
+    3.  Interact with the tool from its details page.
 
 
 
