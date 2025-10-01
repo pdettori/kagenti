@@ -84,6 +84,8 @@ jobs:
           chartVersion=$(echo ${{ github.ref_name }} | cut -c 2-)
           chartPackageName="kagenti-chart-${chartVersion}.tgz"
           cd ${{ env.CHARTS_PATH }}//kagenti
+          echo "Fetching Helm chart dependencies..."
+          helm dependency update
           yq e ".ui.tag = \"${{ github.ref_name }}\"" -i values.yaml
           helm package . --destination . --version ${chartVersion} --app-version ${chartVersion}
           helm push "./${chartPackageName}" oci://${{ env.REGISTRY }}/${{ env.REPO }}            
