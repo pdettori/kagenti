@@ -23,7 +23,7 @@ spec:
       serviceAccountName: kagenti-ui-service-account
       containers:
         - name: kagenti-ui-container
-          image: "{{ .Values.ui.image }}"
+          image: "{{ .Values.ui.image }}:{{ .Values.ui.tag }}"
           imagePullPolicy: IfNotPresent
           env:
             - name: UV_CACHE_DIR

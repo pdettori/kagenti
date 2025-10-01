@@ -8,6 +8,15 @@ on:
   # Allows also to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  REPO: kagenti/kagenti
+  CHARTS_PATH: ./charts
+
 jobs:
   build-and-push:
     # The type of runner that the job will run on
@@ -49,6 +58,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 5. Install yq
+      - name: Install yq
+        uses: mikefarah/yq-action@v4 
+
       # This action automatically creates useful tags based on the Git event.
       # In this case, it will use the Git tag as the Docker image tag.
       - name: Extract Docker metadata for ${{ matrix.image_config.name }}
@@ -69,3 +82,12 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Package and push kagenti chart
+        run: |
+          chartVersion=$(echo ${{ github.ref_name }} | cut -c 2-)
+          chartPackageName="kagenti-chart-${chartVersion}.tgz"
+          cd ${{ env.CHARTS_PATH }}//kagenti
+          yq e ".ui.tag = \"${{ github.ref_name }}\"" -i values.yaml
+          helm package . --destination . --version ${chartVersion} --app-version ${chartVersion}
+          helm push "./${chartPackageName}" oci://${{ env.REGISTRY }}/${{ env.REPO }}            
