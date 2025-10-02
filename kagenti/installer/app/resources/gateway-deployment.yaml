@@ -22,9 +22,15 @@ rules:
   - apiGroups: ["mcp.kagenti.com"]
     resources: ["mcpservers/status"]
     verbs: ["get", "update", "patch"]
+  - apiGroups: ["mcp.kagenti.com"]
+    resources: ["mcpvirtualservers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes/status"]
+    verbs: ["get", "update", "patch"]
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -33,6 +39,12 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["events"]
@@ -121,9 +133,14 @@ spec:
         - name: config-volume
           configMap:
             name: mcp-gateway-config
+        - name: mcp-credentials
+          secret:
+            secretName: mcp-aggregated-credentials
+            defaultMode: 0400
+            optional: true  # broker can still work without credentials
       containers:
         - name: mcp-broker-router
-          image: ghcr.io/kagenti/mcp-gateway:v0.1
+          image: ghcr.io/kagenti/mcp-gateway:v0.1.2
           imagePullPolicy: Always
           command:
             - ./mcp_gateway
@@ -131,9 +148,16 @@ spec:
             - --mcp-broker-public-address=0.0.0.0:8080
             - --mcp-router-address=0.0.0.0:50051
             - --log-level=-4  # info level
+          envFrom:
+            - secretRef:
+                name: mcp-aggregated-credentials
+                optional: true  # broker can still work without credentials
           volumeMounts:
             - name: config-volume
               mountPath: /config
+            - name: mcp-credentials
+              mountPath: /etc/mcp-credentials
+              readOnly: true
           ports:
             - name: http
               containerPort: 8080
@@ -161,6 +185,25 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-config
+  namespace: mcp-system
+  labels:
+    app: mcp-broker-router
+    component: config-api
+spec:
+  selector:
+    app: mcp-broker-router
+    component: broker-router
+  ports:
+    - name: http
+      port: 8181
+      targetPort: 8181
+      protocol: TCP
+  type: ClusterIP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -184,7 +227,7 @@ spec:
       serviceAccountName: mcp-controller
       containers:
         - name: mcp-controller
-          image: ghcr.io/kagenti/mcp-gateway:v0.1
+          image: ghcr.io/kagenti/mcp-gateway:v0.1.2
           imagePullPolicy: Always
           command:
             - ./mcp_gateway
