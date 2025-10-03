@@ -63,6 +63,7 @@ agentNamespaces:
 #  UI Configuration
 # ------------------------------------------------------------------
 ui:
+  configmap: kagenti-ui-config
   auth:
     enabled: false
   namespace: kagenti-system

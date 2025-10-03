@@ -94,7 +94,7 @@ spec:
     targetPort: proxy
   to:
     kind: Service
-    name: mcp-proxy
+    name: mcp-inspector
   wildcardPolicy: None
   tls:
     termination: edge

@@ -152,7 +152,14 @@ After completing either of the setup options above, you should be able to use th
     2.  List the imported tool.
     3.  Interact with the tool from its details page.
 
+## Accessing Keycloak
 
+You may access Keycloak from the Admin page. The initial credentials for Keycloak can be found
+running the command:
+
+```shell
+kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
+```
 
 
 
