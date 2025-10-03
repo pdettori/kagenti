@@ -90,6 +90,12 @@ spec:
                   name: "kagenti-ui-oauth-secret"
                   key: "SCOPE"
                   optional: true
+            - name: "MCP_PROXY_FULL_ADDRESS"
+              valueFrom:
+                 configMapKeyRef:
+                  name: "kagenti-ui-config"
+                  key: "MCP_PROXY_FULL_ADDRESS"
+                  optional: true      
           volumeMounts:
             - name: cache
               mountPath: /app/.cache
