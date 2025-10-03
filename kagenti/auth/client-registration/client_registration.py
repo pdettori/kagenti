@@ -11,6 +11,7 @@ Idempotent:
 import os
 from keycloak import KeycloakAdmin, KeycloakPostError
 
+
 def get_env_var(name: str) -> str:
     """Fetch an environment variable or raise ValueError if missing."""
     value = os.environ.get(name)
@@ -89,4 +90,9 @@ namespace = get_env_var("NAMESPACE")
 
 internal_client_id = register_client(keycloak_admin, client_name, client_id, namespace)
 print(f'Client id: "{internal_client_id}"')
-write_secret(keycloak_admin, internal_client_id, client_name, secret_file="/shared/secret.txt")
+write_secret(
+    keycloak_admin,
+    internal_client_id,
+    client_name,
+    secret_file_path="/shared/secret.txt",
+)
