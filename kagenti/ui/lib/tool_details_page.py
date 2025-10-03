@@ -79,6 +79,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     st.header(f"MCP Tool: {tool_k8s_name}")
 
     mcp_inspector_url = os.environ.get('MCP_INSPECTOR_URL', constants.MCP_INSPECTOR_URL)
+    mcp_proxy_url = os.environ.get('MCP_PROXY_FULL_ADDRESS', constants.MCP_PROXY_FULL_ADDRESS)
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api:
@@ -156,11 +157,11 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     st.link_button(
     "Connect with MCP Inspector",
     # TODO - transport should be a property of MCP server
-    url=f"{mcp_inspector_url}?serverUrl={mcp_server_url}&transport=streamable_http",
+    url=f"{mcp_inspector_url}?serverUrl={mcp_server_url}&transport=streamable_http&MCP_PROXY_FULL_ADDRESS={mcp_proxy_url}",
     help="Click to open the MCP Inspector in a new tab.",
     use_container_width=True,
     )
-    st.caption(f"Access MCP inspector: `{constants.MCP_INSPECTOR_URL}`")
+    st.caption(f"Access MCP inspector: `{mcp_inspector_url}`")
 
 
     st.subheader("MCP Server Interaction")
