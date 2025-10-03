@@ -44,6 +44,7 @@ KEYCLOAK_CONSOLE_URL_IN_CLUSTER = (
 TRACES_DASHBOARD_URL = "http://phoenix.localtest.me:8080"
 NETWORK_TRAFFIC_DASHBOARD_URL = "http://kiali.localtest.me:8080"
 MCP_INSPECTOR_URL = "http://mcp-inspector.localtest.me:8080"
+MCP_PROXY_FULL_ADDRESS = "http://mcp-proxy.localtest.me:8080"
 
 # --- Default Values for Import Forms ---
 DEFAULT_REPO_URL = "https://github.com/kagenti/agent-examples"
