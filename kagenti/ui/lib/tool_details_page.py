@@ -78,8 +78,10 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     """
     st.header(f"MCP Tool: {tool_k8s_name}")
 
-    mcp_inspector_url = os.environ.get('MCP_INSPECTOR_URL', constants.MCP_INSPECTOR_URL)
-    mcp_proxy_url = os.environ.get('MCP_PROXY_FULL_ADDRESS', constants.MCP_PROXY_FULL_ADDRESS)
+    mcp_inspector_url = os.environ.get("MCP_INSPECTOR_URL", constants.MCP_INSPECTOR_URL)
+    mcp_proxy_url = os.environ.get(
+        "MCP_PROXY_FULL_ADDRESS", constants.MCP_PROXY_FULL_ADDRESS
+    )
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api:
@@ -89,9 +91,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         return
 
     namespace = get_kubernetes_namespace()
-    tool_details_data = get_tool_details(
-        st, custom_obj_api, tool_k8s_name, namespace
-    )
+    tool_details_data = get_tool_details(st, custom_obj_api, tool_k8s_name, namespace)
 
     if not tool_details_data:
         st.warning(f"Could not load K8s details for tool '{tool_k8s_name}'.")
@@ -125,9 +125,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
         if running_in_cluster:
             base_host_port = f"{tool_service_name}.{namespace}.svc.cluster.local:{mcp_tool_service_port}"
         else:
-            base_host_port = (
-                f"{tool_service_name}.localtest.me:{mcp_tool_service_port}"
-            )
+            base_host_port = f"{tool_service_name}.localtest.me:{mcp_tool_service_port}"
 
         base_url_with_scheme = scheme + base_host_port
 
@@ -152,25 +150,26 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
             f"MCP Server URL for tool '{tool_k8s_name}' could not be determined. Cannot connect."
         )
         return
-    
+
     # setup MCP inspector URL
-    encoded_server_url = quote(mcp_server_url, safe='')
-    encoded_proxy_url =  quote(mcp_proxy_url, safe='')
-    console_url = (f"{mcp_inspector_url}?"
+    encoded_server_url = quote(mcp_server_url, safe="")
+    encoded_proxy_url = quote(mcp_proxy_url, safe="")
+    console_url = (
+        f"{mcp_inspector_url}?"
         f"serverUrl={encoded_server_url}&"
         f"transport=streamable_http&"
-        f"MCP_PROXY_FULL_ADDRESS={encoded_proxy_url}")
+        f"MCP_PROXY_FULL_ADDRESS={encoded_proxy_url}"
+    )
 
     st.subheader("MCP Inspector")
     st.link_button(
-    "Connect with MCP Inspector",
-    # TODO - transport should be a property of MCP server
-    url=console_url,
-    help="Click to open the MCP Inspector in a new tab.",
-    use_container_width=True,
+        "Connect with MCP Inspector",
+        # TODO - transport should be a property of MCP server
+        url=console_url,
+        help="Click to open the MCP Inspector in a new tab.",
+        use_container_width=True,
     )
     st.caption(f"Access MCP inspector: `{mcp_inspector_url}`")
-
 
     st.subheader("MCP Server Interaction")
     st.caption(f"Target MCP Server URL: `{mcp_server_url}`")
