@@ -62,7 +62,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
-    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-weight": "-1"
     "helm.sh/hook-delete-policy": hook-succeeded
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
@@ -94,23 +94,20 @@ spec:
                 echo "Route '$ROUTE_NAME' is admitted."
               }
 
-              # Wait for both routes
+              # Wait for route
               wait_for_route mcp-inspector {{ .Release.Namespace }}
-              wait_for_route mcp-proxy {{ .Release.Namespace }}
 
-              echo "Both routes are ready. Fetching hostnames..."
+              echo "Route is ready. Fetching hostnames..."
 
-              # Get hostnames from the routes
+              # Get hostnames from the route
               INSPECTOR_HOST=$(kubectl get route mcp-inspector -n {{ .Release.Namespace }} -o jsonpath='{.spec.host}')
-              PROXY_HOST=$(kubectl get route mcp-proxy -n {{ .Release.Namespace }} -o jsonpath='{.spec.host}')
 
-              if [ -z "$INSPECTOR_HOST" ] || [ -z "$PROXY_HOST" ]; then
-                echo "Error: Could not retrieve one or both hostnames."
+              if [ -z "$INSPECTOR_HOST" ]; then
+                echo "Error: Could not retrieve hostname."
                 exit 1
               fi
 
               echo "Inspector host: $INSPECTOR_HOST"
-              echo "Proxy host: $PROXY_HOST"
 
               # Create the ConfigMap using a heredoc and apply it
               echo "Creating/updating mcp-inspector-config ConfigMap..."
@@ -121,7 +118,6 @@ spec:
                 name: mcp-inspector-config
               data:
                 ALLOWED_ORIGINS: "https://${INSPECTOR_HOST}"
-                MCP_PROXY_FULL_ADDRESS: "https://${PROXY_HOST}"
               EOF
 
               echo "ConfigMap 'mcp-inspector-config' applied successfully."

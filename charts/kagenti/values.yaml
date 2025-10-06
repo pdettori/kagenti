@@ -7,33 +7,13 @@ openshift: true
 components:
   agentNamespaces:
     enabled: true
-  certManager:
-    enabled: true
-  ingressGateway:
-    enabled: false
-  mcpInspector:
-    enabled: true
-  istio:
-    enabled: true
-  kiali:
-    enabled: true  
-  keycloak:
-    enabled: true
   mcpGateway:
     enabled: true
-  metricsServer:
-    enabled: false
   platformOperator:
     enabled: true
-  otel:
-    enabled: true
-  registry:
-    enabled: false
-  spire:
-    enabled: false
-  tekton:
-    enabled: true
   ui:
+    enabled: true
+  istio:
     enabled: true  
 
 # Environment variables for secrets - they should be overriden by a .secrets.yaml file
@@ -63,44 +43,12 @@ agentNamespaces:
 #  UI Configuration
 # ------------------------------------------------------------------
 ui:
+  configmap: kagenti-ui-config
   auth:
     enabled: false
   namespace: kagenti-system
   image: ghcr.io/kagenti/kagenti/ui
-  tag: v0.0.4-alpha.17
-
-# ------------------------------------------------------------------
-#  Keycloak Configuration
-# ------------------------------------------------------------------
-keycloak:
-  namespace: keycloak
-  auth:
-    adminUser: keycloakadmin
-    adminPassword: your-secret-password
-
-# ------------------------------------------------------------------
-#  Istio Configuration
-# ------------------------------------------------------------------
-istio:
-  communityCharts:
-    enabled: false
-  namespace: "istio-system"
-  gatewayApiVersion: "v1.1.0"
-  cni:
-    profile: ambient
-    namespace: istio-cni
-  ztunnel:
-    namespace: istio-ztunnel  
-  base: {}
-  istiod: 
-    profile: ambient
-    namespace: '{{ .Values.istio.namespace | quote }}'
-
-# ------------------------------------------------------------------
-#  Cert Manager Configuration
-# ------------------------------------------------------------------
-certManager:
-  namespace: cert-manager-operator
+  tag: v0.1.0-alpha.1
 
 # ------------------------------------------------------------------
 #  Platform Operator Configuration
@@ -119,15 +67,10 @@ kagentiPlatformOperator:
           memory: 512Mi
 
 # ------------------------------------------------------------------
-#  Spire Configuration
-# ------------------------------------------------------------------
-spire:
-  namespace: zero-trust-workload-identity-manager
-
-# ------------------------------------------------------------------
 #  MCP Gateway Configuration
 # ------------------------------------------------------------------
 mcpGateway:
   namespaces:
     mcpSystem: mcp-system
     gatewaySystem: gateway-system
+    istioNamespace: istio-system

@@ -35,10 +35,16 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    - Copy the [.secrets_template.yaml](https://github.com/kagenti/kagenti/blob/main/charts/kagenti/.secrets_template.yaml) to a local `.secrets.yaml` file.
    - Edit the `.secrets.yaml` to provide the necessary keys as per the comments within the file.
 
-3. **Run Helm Installation:**
+3. **Kagenti Dependencies Helm Chart Installation:**
+   This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   # For example, if the latest tag is 0.0.4-alpha.18
-   LATEST_TAG=0.0.4-alpha.18
+   # For example, if the latest tag is 0.1.0-alpha.2
+   LATEST_TAG=0.1.0-alpha.2
+   helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
+   ```
+4.  **Kagenti Helm Chart Installation:**
+   This chart includes Kagenti software components and configurations.
+   ```shell
    helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG
    ```
 
@@ -57,7 +63,22 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
      ```
    - Ensure the required keys are filled as per the comments in the file.
 
-3. **Install the Chart:**
+3. **Update Helm Charts dependencies:**
+
+   These commands need to be run only the first time you clone 
+   the repository or when there are updates to the charts.
+
+   ```shell
+   helm dependency update ./charts/kagenti-deps/
+   helm dependency update ./charts/kagenti/
+   ```
+
+4. **Install Dependencies:**
+   ```shell
+   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace 
+   ```
+
+5. **Install the Kagenti Chart:**
    ```shell
    helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml
    ```
@@ -152,7 +173,14 @@ After completing either of the setup options above, you should be able to use th
     2.  List the imported tool.
     3.  Interact with the tool from its details page.
 
+## Accessing Keycloak
 
+You may access Keycloak from the Admin page. The initial credentials for Keycloak can be found
+running the command:
+
+```shell
+kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
+```
 
 
 

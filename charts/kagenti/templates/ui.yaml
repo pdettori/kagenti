@@ -66,6 +66,36 @@ spec:
                   name: "kagenti-ui-oauth-secret"
                   key: "SCOPE"
                   optional: true
+            - name: TRACES_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "TRACES_DASHBOARD_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: NETWORK_TRAFFIC_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "NETWORK_TRAFFIC_DASHBOARD_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: MCP_INSPECTOR_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MCP_INSPECTOR_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: MCP_PROXY_FULL_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MCP_PROXY_FULL_ADDRESS"
+                  optional: {{ (not .Values.openshift) }}      
+            - name: KEYCLOAK_CONSOLE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "KEYCLOAK_CONSOLE_URL"
+                  optional: {{ (not .Values.openshift) }}        
           volumeMounts:
             - name: cache
               mountPath: /app/.cache
