@@ -34,11 +34,6 @@ spec:
               configMapKeyRef:
                 name: mcp-inspector-config
                 key: ALLOWED_ORIGINS
-          - name: MCP_PROXY_FULL_ADDRESS
-            valueFrom:
-              configMapKeyRef:
-                name: mcp-inspector-config
-                key: MCP_PROXY_FULL_ADDRESS
           - name: HOST
             value: 0.0.0.0
 ---

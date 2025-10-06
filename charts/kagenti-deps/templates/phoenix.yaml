@@ -1,20 +1,4 @@
 {{- if .Values.components.otel.enabled }}
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: postgres
-  name: postgres
-spec:
-  ports:
-  - name: postgres
-    port: 5432
-    protocol: TCP
-    targetPort: 5432
-  selector:
-    app: postgres
-  type: ClusterIP
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -42,8 +26,24 @@ spec:
         command:
         - python
         env:
-        - name: PHOENIX_SQL_DATABASE_URL
-          value: postgresql://postgres:postgres123@postgres:5432/postgres
+        # - name: PHOENIX_SQL_DATABASE_URL
+        #   value: postgresql://testuser:thisisonly4testingNOT4prod@postgres:5432/postgres
+        - name: PHOENIX_POSTGRES_HOST
+          value: postgres
+        - name: PHOENIX_POSTGRES_PORT
+          value: "5432"
+        - name: PHOENIX_POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: otel-db-secret
+              key: username
+        - name: PHOENIX_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: otel-db-secret
+              key: password
+        - name: PHOENIX_POSTGRES_DB
+          value: postgres       
         - name: PHOENIX_WORKING_DIR
           value: /mnt/data
         - name: PHOENIX_PORT
@@ -69,64 +69,6 @@ spec:
       resources:
         requests:
           storage: 8Gi
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: postgres
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgres
-  serviceName: postgres
-  template:
-    metadata:
-      annotations:
-        prometheus.io/path: /metrics
-        prometheus.io/port: "9090"
-        prometheus.io/scrape: "true"
-      labels:
-        app: postgres
-    spec:
-      containers:
-      - env:
-        - name: POSTGRESQL_DATABASE
-          value: postgresdb
-        - name: POSTGRESQL_USERNAME
-          value: postgres
-        - name: POSTGRESQL_PASSWORD
-          value: postgres123
-        - name: POSTGRESQL_PGAUDIT_LOG
-          value: none
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        image: docker.io/bitnami/postgresql:12
-        imagePullPolicy: IfNotPresent
-        name: postgres
-        ports:
-        - containerPort: 5432
-        readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - exec pg_isready -U postgres -d postgresdb
-        volumeMounts:
-        - mountPath: /bitnami/postgresql
-          name: postgres-data
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-data
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

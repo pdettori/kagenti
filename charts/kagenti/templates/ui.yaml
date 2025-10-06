@@ -84,6 +84,12 @@ spec:
                   name: "{{ .Values.ui.configmap }}"
                   key: "MCP_INSPECTOR_URL"
                   optional: {{ (not .Values.openshift) }}
+            - name: MCP_PROXY_FULL_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MCP_PROXY_FULL_ADDRESS"
+                  optional: {{ (not .Values.openshift) }}      
             - name: KEYCLOAK_CONSOLE_URL
               valueFrom:
                 configMapKeyRef:

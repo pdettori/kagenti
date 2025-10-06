@@ -61,8 +61,8 @@ data:
 
     # --- Function Definition ---
     get_route_host() {
-        local TIMEOUT_SECONDS=600
-        local CHECK_INTERVAL_SECONDS=10
+        local TIMEOUT_SECONDS=5
+        local CHECK_INTERVAL_SECONDS=1
         local NAMESPACE="$1"
         local ROUTE_NAME="$2"
         local ELAPSED_TIME=0
@@ -70,16 +70,17 @@ data:
         echo "--> Waiting for route '$ROUTE_NAME' in namespace '$NAMESPACE'..." >&2
         while true; do
             local HOST
-            kubectl get route "$ROUTE_NAME" -n "$NAMESPACE"
             HOST=$(kubectl get route "$ROUTE_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)
             if [[ $? -eq 0 && ! -z "$HOST" ]]; then
                 echo "--> Route found. Host is: $HOST" >&2
                 printf "https://%s" "$HOST"
                 return 0
             fi
+            # if route not found it should mean component was not installed - return empty host
             if [[ $ELAPSED_TIME -ge $TIMEOUT_SECONDS ]]; then
-                echo "!! Error: Timed out after $TIMEOUT_SECONDS seconds." >&2
-                return 1
+                #echo "!! Error: Timed out after $TIMEOUT_SECONDS seconds." >&2
+                #return 1
+                printf ""
             fi
             sleep $CHECK_INTERVAL_SECONDS
             ELAPSED_TIME=$((ELAPSED_TIME + CHECK_INTERVAL_SECONDS))
@@ -98,10 +99,11 @@ data:
 
     # Define the list of routes to process.
     ROUTES_DATA=(
-      "kagenti-system,mcp-inspector,{{ .Values.components.mcpInspector.enabled }},MCP_INSPECTOR_URL"
-      "kagenti-system,phoenix,{{ .Values.components.otel.enabled }},TRACES_DASHBOARD_URL"
-      "istio-system,kiali,{{ .Values.components.kiali.enabled }},NETWORK_TRAFFIC_DASHBOARD_URL"
-      "keycloak,keycloak,{{ .Values.components.keycloak.enabled }},KEYCLOAK_CONSOLE_URL"
+      "kagenti-system,mcp-inspector,true,MCP_INSPECTOR_URL"
+      "kagenti-system,mcp-proxy,true,MCP_PROXY_FULL_ADDRESS"
+      "kagenti-system,phoenix,true,TRACES_DASHBOARD_URL"
+      "istio-system,kiali,true,NETWORK_TRAFFIC_DASHBOARD_URL"
+      "keycloak,keycloak,true,KEYCLOAK_CONSOLE_URL"
     )
     
     output_keys=()
