@@ -42,7 +42,7 @@ To deploy the Weather Agent:
    - Choose: `a2a/weather_service`
 8. Click **Build & Deploy New Agent** to deploy.
 
-**Note:** The `ollama` environmental variable set specifies `llama3.2:3b-instruct-fp16` as the default model. To download the model, run `ollama pull llama3.2:3b-instruct-fp16`. Please also ensure an Ollama server is running in a separate terminal via `ollama serve`. 
+**Note:** The `ollama` environmental variable set specifies `llama3.2:3b-instruct-fp16` as the default model. To download the model, run `ollama pull llama3.2:3b-instruct-fp16`. Please ensure an Ollama server is running in a separate terminal via `ollama serve`. 
 
 ---
 
