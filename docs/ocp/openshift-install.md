@@ -38,8 +38,8 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 3. **Kagenti Dependencies Helm Chart Installation:**
    This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   # For example, if the latest tag is 0.0.4-alpha.18
-   LATEST_TAG=0.0.4-alpha.18
+   # For example, if the latest tag is 0.1.0-alpha.2
+   LATEST_TAG=0.1.0-alpha.2
    helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
    ```
 4.  **Kagenti Helm Chart Installation:**
