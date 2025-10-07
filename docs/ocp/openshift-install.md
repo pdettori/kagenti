@@ -28,7 +28,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 ### Installing OCI Chart Release Package
 
 1. **Determine Latest Version:**
-   - Identify the [latest tagged version](https://github.com/kagenti/kagenti/tags) of the chart.
+   - Identify the [latest tagged version](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) of the chart.
    - Set this version in the `LATEST_TAG` environment variable.
 
 2. **Prepare Secrets:**
@@ -38,8 +38,8 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 3. **Kagenti Dependencies Helm Chart Installation:**
    This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   # For example, if the latest tag is 0.1.0-alpha.2
-   LATEST_TAG=0.1.0-alpha.2
+   # For example, if the latest tag is 0.1.0-alpha.3
+   LATEST_TAG=0.1.0-alpha.3
    helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
    ```
 4.  **Kagenti Helm Chart Installation:**

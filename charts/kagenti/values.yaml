@@ -24,6 +24,8 @@ secrets:
   openaiApiKey: ""
   slackBotToken: ""
   adminSlackBotToken: ""
+  quayUser: ""
+  quayToken: ""
 
 common:
   kubectlImage: "quay.io/kubestellar/kubectl:1.30.14"
