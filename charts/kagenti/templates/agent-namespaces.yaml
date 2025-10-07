@@ -63,6 +63,16 @@ stringData:
   bot-token: {{ $.Values.secrets.slackBotToken | quote }}
   admin-bot-token: {{ $.Values.secrets.adminSlackBotToken | quote }}
 ---
+# 5. Quay.io Docker Registry Secret (for pushing images)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: quay-registry-secret
+  namespace: {{ . }}
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ (printf "{\"auths\":{\"quay.io\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" $.Values.secrets.quayUser $.Values.secrets.quayToken (printf "%s:%s" $.Values.secrets.quayUser $.Values.secrets.quayToken | b64enc)) | b64enc }}
+---
 # ——————————————————————————————————————————————————————————————————————————————
 #  ConfigMap for Environment Variables in Namespace: {{ . }}
 # ——————————————————————————————————————————————————————————————————————————————
