@@ -158,6 +158,7 @@ def _construct_tool_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
+    pod_config = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -218,6 +219,19 @@ def _construct_tool_resource_body(
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
 
+    # Extract service ports from pod_config or use defaults
+    if pod_config and pod_config.get("service_ports"):
+        service_ports = pod_config["service_ports"]
+    else:
+        # Use default service ports
+        service_ports = [
+            {
+                "name": "http",
+                "port": constants.DEFAULT_IN_CLUSTER_PORT,
+                "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                "protocol": "TCP",
+            }
+        ]
     # Build the spec dictionary
     spec = {
         "description": description,
@@ -243,14 +257,7 @@ def _construct_tool_resource_body(
                         "protocol": "TCP",
                     },
                 ],
-                "servicePorts": [
-                    {
-                        "name": "http",
-                        "port": constants.DEFAULT_IN_CLUSTER_PORT,
-                        "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
-                        "protocol": "TCP",
-                    },
-                ],
+                "servicePorts": service_ports,
                 "resources": {
                     "limits": constants.DEFAULT_RESOURCE_LIMITS,
                     "requests": constants.DEFAULT_RESOURCE_REQUESTS,
@@ -394,6 +401,7 @@ def _construct_agent_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
+    pod_config = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -456,6 +464,20 @@ def _construct_agent_resource_body(
     final_env_vars.append(
         {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
     )
+
+      # Extract service ports from pod_config or use defaults
+    if pod_config and pod_config.get("service_ports"):
+        service_ports = pod_config["service_ports"]
+    else:
+        # Use default service ports
+        service_ports = [
+            {
+                "name": "http",
+                "port": constants.DEFAULT_IN_CLUSTER_PORT,
+                "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                "protocol": "TCP",
+            }
+        ]
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -492,14 +514,7 @@ def _construct_agent_resource_body(
                             "protocol": "TCP",
                         },
                     ],
-                    "servicePorts": [
-                        {
-                            "name": "http",
-                            "port": constants.DEFAULT_IN_CLUSTER_PORT,
-                            "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
-                            "protocol": "TCP",
-                        },
-                    ],
+                    "servicePorts": service_ports,
                     "resources": {
                         "limits": constants.DEFAULT_RESOURCE_LIMITS,
                         "requests": constants.DEFAULT_RESOURCE_REQUESTS,
@@ -598,7 +613,9 @@ def trigger_and_monitor_build(
     build_from_source: bool,
     description: str = "",
     registry_config: Optional[dict] = None,
+    pod_config = None, 
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
+
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -617,7 +634,7 @@ def trigger_and_monitor_build(
         framework (str): The framework to use for the resource.
         description (str): A description for the resource.
         additional_env_vars (Optional[List[Dict[str, Any]]]): Additional environment variables to include in the build.
-
+        pod_config: Pod configuration dictionary.
     Returns:
         bool: True if the build was successful, False otherwise.
     """
@@ -653,6 +670,7 @@ def trigger_and_monitor_build(
             build_from_source=True,
             registry_config=registry_config,
             additional_env_vars=additional_env_vars,
+            pod_config=pod_config,
         )
     elif resource_type.lower() == "tool":
         build_cr_body = _construct_tool_resource_body(
@@ -670,6 +688,7 @@ def trigger_and_monitor_build(
             build_from_source=True,
             registry_config=registry_config,
             additional_env_vars=additional_env_vars,
+            pod_config=pod_config,
         )
     if not build_cr_body:
         st_object.error(
@@ -861,6 +880,7 @@ def trigger_and_monitor_deployment_from_image(
     framework: str,
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
+     pod_config = None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -911,6 +931,7 @@ def trigger_and_monitor_deployment_from_image(
             framework=framework,
             description=description,
             build_from_source=False,
+            pod_config = pod_config,
             additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -927,6 +948,7 @@ def trigger_and_monitor_deployment_from_image(
             framework=framework,
             description=description,
             build_from_source=False,
+            pod_config = pod_config,
             additional_env_vars=additional_env_vars,
         )
     if not cr_body:
@@ -1497,6 +1519,8 @@ def render_import_form(
         )
         return
 
+    pod_config = render_k8s_pod_configuration(st_object, resource_type)
+    
     deployment_method = st_object.radio(
         "Deployment Method",
         ("Build from Source", "Deploy from Existing Image"),
@@ -1619,7 +1643,9 @@ def render_import_form(
                 build_from_source=True,
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
                 registry_config=registry_config,
+                pod_config = pod_config,
                 additional_env_vars=final_additional_envs,
+            
             )
 
     elif deployment_method == "Deploy from Existing Image":
@@ -1678,12 +1704,127 @@ def render_import_form(
                 protocol=selected_protocol,
                 framework=selected_framework,
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
+                pod_config = pod_config,
                 additional_env_vars=final_additional_envs,
             )
 
     st_object.markdown("---")
 
+def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]:
+    """
+    Renders UI form for configuring Kubernetes Pod settings for an Agent or Tool.
 
+    Args:
+        st_object (streamlit.elements.StreamlitElement): The Streamlit object to display messages.
+        resource_type (str): The type of the resource (e.g., Agent, Tool).
+    Returns:
+        dict: Configuration dictionary with dns_domain and service_ports
+        None: If user hasn't completed configuration
+    """
+    
+    st_object.header(f"{resource_type} Kubernetes Pod Configuration")
+
+    st_object.write(
+        f"Configure Kubernetes Pod settings for the {resource_type.lower()}."
+    )
+
+    service_ports_key = f"{resource_type.lower()}_service_ports"
+    if service_ports_key not in st.session_state:
+        st.session_state[service_ports_key] = [
+            {
+                "name": "http", 
+                "port": constants.DEFAULT_IN_CLUSTER_PORT, 
+                "targetPort":  constants.DEFAULT_IN_CLUSTER_PORT, 
+                "protocol": "TCP"}
+        ]
+
+    st_object.write("**Service Ports**")
+
+
+    service_ports = st.session_state[service_ports_key]     
+    if service_ports:
+        for i, port in enumerate(service_ports):
+            col1, col2, col3, col4, col5 = st_object.columns([2, 2, 2, 2, 1])
+            with col1:
+                port["name"] = st_object.text_input(
+                    "Port Name",
+                    value=port["name"],
+                    key=f"{resource_type.lower()}_port_name_{i}",
+                    placeholder="e.g., http",
+                    label_visibility="collapsed" if i > 0 else "visible",
+                )
+            with col2:
+                port["port"] = st_object.number_input(
+                    "Service Port",
+                    min_value=1,
+                    max_value=65535,
+                    value=port.get("port", 8080),
+                    key=f"{resource_type.lower()}_port_{i}",
+                    label_visibility="collapsed" if i > 0 else "visible",
+                )
+            with col3:
+                port["targetPort"] = st_object.number_input(
+                    "Target Port",
+                    min_value=1,
+                    max_value=65535,
+                    value=port.get("targetPort", 8080),
+                    key=f"{resource_type.lower()}_target_port_{i}",
+                    label_visibility="collapsed" if i > 0 else "visible",
+                )
+            with col4:
+                port["protocol"] = st_object.selectbox(
+                    "Protocol",
+                    options=["TCP", "UDP"],
+                    index=0 if port.get("protocol", "TCP") == "TCP" else 1,
+                    key=f"{resource_type.lower()}_protocol_{i}",
+                    label_visibility="collapsed" if i > 0 else "visible",
+                )
+            with col5:
+                if i == 0:
+                    st_object.write("")
+                    st_object.write("")
+                if st_object.button(
+                    "🗑️",
+                    key=f"{resource_type.lower()}_remove_port_{i}",
+                    help="Remove this service port",
+                ):
+                    remove_service_port(i, service_ports_key)
+                    st.rerun()
+    if st_object.button(
+        "✚ Add Service Port",
+        key=f"{resource_type.lower()}_add_service_port",
+        help="Add a new service port",
+    ):
+        add_service_port(service_ports_key)
+        st.rerun()  
+                
+    # Validate service ports
+    if service_ports:
+        port_names = [p["name"] for p in service_ports if p["name"]]
+        if len(port_names) != len(set(port_names)):
+            st_object.error("Duplicate port names found")
+            return None
+ 
+    st_object.markdown("---")
+
+    # use dict to return multiple config options in future
+    return {
+        "service_ports": service_ports,
+    }
+
+
+def add_service_port(service_ports_key):
+    st.session_state[service_ports_key].append(
+        {"name": "http", 
+         "port":  constants.DEFAULT_IN_CLUSTER_PORT, 
+         "targetPort":  constants.DEFAULT_IN_CLUSTER_PORT, 
+         "protocol": "TCP"})
+
+def remove_service_port(index, service_ports_key):
+    if 0 <= index < len(st.session_state[service_ports_key]):
+        st.session_state[service_ports_key].pop(index)
+
+ 
 def parse_image_url(url: str):
     """Parse an Image URL"""
     # Split off the tag
