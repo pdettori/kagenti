@@ -173,7 +173,7 @@ try:
             "protocolMapper": "oidc-audience-mapper",
             "consentRequired": False,
             "config": {
-                "included.client.audience": "spiffe://localtest.me/sa/slack-researcher",
+                "included.client.audience": slack_agent_client_id,
                 "introspection.token.claim": "true",
                 "userinfo.token.claim": "false",
                 "id.token.claim": "false",
