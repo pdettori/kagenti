@@ -1664,8 +1664,20 @@ def render_import_form(
             key=f"{resource_type.lower()}_docker_image",
         )
 
+        selected_protocol = default_protocol
+        if protocol_options:
+            current_protocol_index = (
+                protocol_options.index(default_protocol)
+                if default_protocol in protocol_options
+                else 0
+            )
+            selected_protocol = st_object.selectbox(
+                "Select protocol:",
+                options=protocol_options,
+                index=current_protocol_index,
+                key=f"selected_{resource_type.lower()}_protocol_option",
+            )
         selected_framework = default_framework
-        selected_protocol = ""
 
         if st_object.button(
             f"Deploy {resource_type} from Image",
