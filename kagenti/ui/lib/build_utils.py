@@ -34,6 +34,7 @@ from .kube import (
     get_custom_objects_api,
     get_core_v1_api,
     get_all_namespaces,
+    get_enabled_namespaces,
     get_secret_data,
     get_config_map_data,
     _handle_kube_api_exception,
@@ -158,7 +159,7 @@ def _construct_tool_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
-    pod_config = None,
+    pod_config=None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -401,7 +402,7 @@ def _construct_agent_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
-    pod_config = None,
+    pod_config=None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -465,7 +466,7 @@ def _construct_agent_resource_body(
         {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
     )
 
-      # Extract service ports from pod_config or use defaults
+    # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
         service_ports = pod_config["service_ports"]
     else:
@@ -613,9 +614,8 @@ def trigger_and_monitor_build(
     build_from_source: bool,
     description: str = "",
     registry_config: Optional[dict] = None,
-    pod_config = None, 
+    pod_config=None,
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
-
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -880,7 +880,7 @@ def trigger_and_monitor_deployment_from_image(
     framework: str,
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
-     pod_config = None,
+    pod_config=None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -931,7 +931,7 @@ def trigger_and_monitor_deployment_from_image(
             framework=framework,
             description=description,
             build_from_source=False,
-            pod_config = pod_config,
+            pod_config=pod_config,
             additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -948,7 +948,7 @@ def trigger_and_monitor_deployment_from_image(
             framework=framework,
             description=description,
             build_from_source=False,
-            pod_config = pod_config,
+            pod_config=pod_config,
             additional_env_vars=additional_env_vars,
         )
     if not cr_body:
@@ -1063,6 +1063,7 @@ def render_import_form(
     k8s_client_status_icon: Optional[str],
     example_subfolders: List[str] = None,
     protocol_options: Optional[List[str]] = None,
+    show_enabled_namespaces_only: bool = False,
 ):
     """
     Renders the common UI form for importing a new Agent or Tool.
@@ -1089,7 +1090,10 @@ def render_import_form(
     # --- Namespace Selector for Build/Deployment ---
     available_build_namespaces = ["default"]
     if k8s_api_client:
-        available_build_namespaces = get_all_namespaces(k8s_api_client)
+        if show_enabled_namespaces_only:
+            available_build_namespaces = get_enabled_namespaces(k8s_api_client)
+        else:
+            available_build_namespaces = get_all_namespaces(k8s_api_client)
         if not available_build_namespaces:
             available_build_namespaces = ["default"]
             st_object.caption(
@@ -1520,7 +1524,7 @@ def render_import_form(
         return
 
     pod_config = render_k8s_pod_configuration(st_object, resource_type)
-    
+
     deployment_method = st_object.radio(
         "Deployment Method",
         ("Build from Source", "Deploy from Existing Image"),
@@ -1643,9 +1647,8 @@ def render_import_form(
                 build_from_source=True,
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
                 registry_config=registry_config,
-                pod_config = pod_config,
+                pod_config=pod_config,
                 additional_env_vars=final_additional_envs,
-            
             )
 
     elif deployment_method == "Deploy from Existing Image":
@@ -1716,13 +1719,14 @@ def render_import_form(
                 protocol=selected_protocol,
                 framework=selected_framework,
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
-                pod_config = pod_config,
+                pod_config=pod_config,
                 additional_env_vars=final_additional_envs,
             )
 
     st_object.markdown("---")
 
-def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]:
+
+def render_k8s_pod_configuration(st_object, resource_type: str) -> Optional[dict]:
     """
     Renders UI form for configuring Kubernetes Pod settings for an Agent or Tool.
 
@@ -1733,7 +1737,7 @@ def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]
         dict: Configuration dictionary with dns_domain and service_ports
         None: If user hasn't completed configuration
     """
-    
+
     st_object.header(f"{resource_type} Kubernetes Pod Configuration")
 
     st_object.write(
@@ -1744,16 +1748,16 @@ def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]
     if service_ports_key not in st.session_state:
         st.session_state[service_ports_key] = [
             {
-                "name": "http", 
-                "port": constants.DEFAULT_IN_CLUSTER_PORT, 
-                "targetPort":  constants.DEFAULT_IN_CLUSTER_PORT, 
-                "protocol": "TCP"}
+                "name": "http",
+                "port": constants.DEFAULT_IN_CLUSTER_PORT,
+                "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+                "protocol": "TCP",
+            }
         ]
 
     st_object.write("**Service Ports**")
 
-
-    service_ports = st.session_state[service_ports_key]     
+    service_ports = st.session_state[service_ports_key]
     if service_ports:
         for i, port in enumerate(service_ports):
             col1, col2, col3, col4, col5 = st_object.columns([2, 2, 2, 2, 1])
@@ -1808,15 +1812,15 @@ def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]
         help="Add a new service port",
     ):
         add_service_port(service_ports_key)
-        st.rerun()  
-                
+        st.rerun()
+
     # Validate service ports
     if service_ports:
         port_names = [p["name"] for p in service_ports if p["name"]]
         if len(port_names) != len(set(port_names)):
             st_object.error("Duplicate port names found")
             return None
- 
+
     st_object.markdown("---")
 
     # use dict to return multiple config options in future
@@ -1826,17 +1830,23 @@ def render_k8s_pod_configuration(st_object, resource_type: str)-> Optional[dict]
 
 
 def add_service_port(service_ports_key):
+    """Add default service port under the given key."""
     st.session_state[service_ports_key].append(
-        {"name": "http", 
-         "port":  constants.DEFAULT_IN_CLUSTER_PORT, 
-         "targetPort":  constants.DEFAULT_IN_CLUSTER_PORT, 
-         "protocol": "TCP"})
+        {
+            "name": "http",
+            "port": constants.DEFAULT_IN_CLUSTER_PORT,
+            "targetPort": constants.DEFAULT_IN_CLUSTER_PORT,
+            "protocol": "TCP",
+        }
+    )
+
 
 def remove_service_port(index, service_ports_key):
+    """Remove a service port at the given index."""
     if 0 <= index < len(st.session_state[service_ports_key]):
         st.session_state[service_ports_key].pop(index)
 
- 
+
 def parse_image_url(url: str):
     """Parse an Image URL"""
     # Split off the tag

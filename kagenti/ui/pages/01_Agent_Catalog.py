@@ -36,6 +36,7 @@ custom_obj_api = get_custom_objects_api()  # Use the correct function name
 # Get the generic ApiClient (for listing namespaces - returned by the cached function)
 generic_api_client, _, _ = get_kube_api_client_cached()
 
+
 # Wrapper function to call delete_custom_resource with agent-specific parameters
 # pylint: disable=redefined-outer-name
 def delete_agent_resource(custom_obj_api, name, namespace):
@@ -50,8 +51,9 @@ def delete_agent_resource(custom_obj_api, name, namespace):
         version="v1alpha1",
         namespace=namespace,
         plural="components",
-        name=name
+        name=name,
     )
+
 
 render_resource_catalog(
     st_object=st,
@@ -63,4 +65,5 @@ render_resource_catalog(
     generic_api_client=generic_api_client,  # Pass the generic ApiClient
     session_state_key_selected_resource="selected_agent_name",
     delete_resource_func=delete_agent_resource,
+    show_enabled_namespaces_only=True,
 )

@@ -45,4 +45,5 @@ render_import_form(
     k8s_api_client=k8s_api_client,
     k8s_client_status_msg=k8s_client_msg,
     k8s_client_status_icon=k8s_client_icon,
+    show_enabled_namespaces_only=True,
 )

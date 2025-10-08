@@ -34,6 +34,9 @@ APP_KUBERNETES_IO_NAME = "app.kubernetes.io/name"
 RESOURCE_TYPE_AGENT = "agent"
 RESOURCE_TYPE_TOOL = "tool"
 
+ENABLED_NAMESPACE_LABEL_KEY = "kagenti-enabled"
+ENABLED_NAMESPACE_LABEL_VALUE = "true"
+
 # --- External Service URLs ---
 KEYCLOAK_CONSOLE_URL_OFF_CLUSTER = (
     "http://keycloak.localtest.me:8080/admin/master/console/"

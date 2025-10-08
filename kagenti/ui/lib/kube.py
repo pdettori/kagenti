@@ -29,6 +29,7 @@ from . import constants
 
 logger = logging.getLogger(__name__)
 
+
 # --- Kubernetes Configuration ---
 @st.cache_resource
 def get_kube_api_client_cached() -> (
@@ -119,6 +120,7 @@ def get_core_v1_api() -> Optional[kubernetes.client.CoreV1Api]:
 
 def get_all_namespaces(
     generic_api_client: Optional[kubernetes.client.ApiClient],
+    label_selector: Optional[str] = None,
 ) -> List[str]:
     """Lists all namespaces the current user has access to."""
     default_fallback = ["default"]  # Define fallback
@@ -130,7 +132,9 @@ def get_all_namespaces(
 
     v1_api_for_ns = kubernetes.client.CoreV1Api(generic_api_client)
     try:
-        namespaces_response = v1_api_for_ns.list_namespace(timeout_seconds=5)
+        namespaces_response = v1_api_for_ns.list_namespace(
+            label_selector=label_selector, timeout_seconds=5
+        )
         # Ensure metadata and name exist before trying to access
         names = [
             ns.metadata.name
@@ -156,6 +160,14 @@ def get_all_namespaces(
         logger.error(f"Unexpected error listing namespaces: {e}", exc_info=True)
         st.toast("Warning: Unexpected error listing namespaces.", icon="⚠️")
         return default_fallback
+
+
+def get_enabled_namespaces(
+    generic_api_client: Optional[kubernetes.client.ApiClient],
+) -> List[str]:
+    """Lists all enabled namespaces for listing or deploying agents/tools."""
+    selector = f"{constants.ENABLED_NAMESPACE_LABEL_KEY}={constants.ENABLED_NAMESPACE_LABEL_VALUE}"
+    return get_all_namespaces(generic_api_client, label_selector=selector)
 
 
 def get_secret_data(
@@ -259,7 +271,9 @@ def get_config_map_data(
             f"Unexpected error reading ConfigMap '{config_map_name}' in ns '{namespace}': {e}",
             exc_info=True,
         )
-        st.error("An unexpected error occurred while fetching the environments ConfigMap.")
+        st.error(
+            "An unexpected error occurred while fetching the environments ConfigMap."
+        )
         return None
 
 
@@ -285,7 +299,7 @@ def _handle_kube_api_exception(st_object, e, resource_name, action="fetching"):
         if hasattr(e, "body"):
             try:
                 st_object.code(e.body, language="json")
-            except: # pylint: disable=bare-except
+            except:  # pylint: disable=bare-except
                 st_object.text(f"Raw error body: {e.body}")
     else:
         st_object.error(f"An unexpected error occurred {action} {resource_name}: {e}")
@@ -508,7 +522,9 @@ def delete_custom_resource(
     try:
         logger.info(f"Deleting {plural}/{name} in ns '{namespace}'")
         # pylint: disable=line-too-long
-        logger.info(f"Delete parameters - group: {group}, version: {version}, namespace: {namespace}, plural: {plural}, name: {name}")
+        logger.info(
+            f"Delete parameters - group: {group}, version: {version}, namespace: {namespace}, plural: {plural}, name: {name}"
+        )
 
         # First, verify the resource exists before trying to delete
         try:
@@ -517,12 +533,14 @@ def delete_custom_resource(
                 version=version,
                 namespace=namespace,
                 plural=plural,
-                name=name
+                name=name,
             )
             logger.info(f"Resource {plural}/{name} exists, proceeding with deletion")
         except kubernetes.client.ApiException as e:
             if e.status == 404:
-                st_object.warning(f"Resource {plural}/{name} not found - it may have already been deleted.")
+                st_object.warning(
+                    f"Resource {plural}/{name} not found - it may have already been deleted."
+                )
                 logger.warning(f"Resource {plural}/{name} not found (404)")
                 return True  # Consider this success since the resource is gone
 
@@ -531,11 +549,7 @@ def delete_custom_resource(
 
         # Perform the deletion
         delete_response = custom_obj_api.delete_namespaced_custom_object(
-            group=group,
-            version=version,
-            namespace=namespace,
-            plural=plural,
-            name=name
+            group=group, version=version, namespace=namespace, plural=plural, name=name
         )
 
         logger.info(f"Delete API call completed for {plural}/{name}")
@@ -551,16 +565,22 @@ def delete_custom_resource(
                 version=version,
                 namespace=namespace,
                 plural=plural,
-                name=name
+                name=name,
             )
             # If we get here, the resource still exists
-            logger.warning(f"Resource {plural}/{name} still exists after deletion attempt")
-            st_object.warning(f"Deletion initiated but {plural}/{name} may still be terminating...")
+            logger.warning(
+                f"Resource {plural}/{name} still exists after deletion attempt"
+            )
+            st_object.warning(
+                f"Deletion initiated but {plural}/{name} may still be terminating..."
+            )
             return True  # Deletion was initiated even if not completed yet
 
         except kubernetes.client.ApiException as e:
             if e.status == 404:
-                logger.info(f"Successfully deleted {plural}/{name} in ns '{namespace}' - resource no longer exists")
+                logger.info(
+                    f"Successfully deleted {plural}/{name} in ns '{namespace}' - resource no longer exists"
+                )
                 return True
 
             logger.error(f"Unexpected error verifying deletion: {e}")
@@ -568,10 +588,10 @@ def delete_custom_resource(
 
     except kubernetes.client.ApiException as e:
         logger.error(f"Kubernetes API exception during deletion: {e}")
-        logger.error(f"Exception details - status: {e.status}, reason: {e.reason}, body: {e.body}")
-        _handle_kube_api_exception(
-            st_object, e, f"{plural}/{name}", action="deleting"
+        logger.error(
+            f"Exception details - status: {e.status}, reason: {e.reason}, body: {e.body}"
         )
+        _handle_kube_api_exception(st_object, e, f"{plural}/{name}", action="deleting")
         return False
 
     except Exception as e:
