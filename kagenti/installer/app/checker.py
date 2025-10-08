@@ -36,17 +36,21 @@ def check_dependencies(use_existing_cluster: bool = False):
     try:
         container_engine = ContainerEngine(config.CONTAINER_ENGINE)
     except ValueError:
-        console.log(f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]")
+        console.log(
+            f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
+        )
         raise typer.Exit(1)
-    
+
     # Filter out tools not needed for existing clusters
     required_tools = config.REQ_VERSIONS.copy()
     if use_existing_cluster:
         # Remove kind and docker requirements when using existing cluster
-        required_tools.pop('kind', None)
-        required_tools.pop('docker', None)
-        console.log("[yellow]Using existing cluster - skipping kind and docker checks.[/yellow]")
-    
+        required_tools.pop("kind", None)
+        required_tools.pop("docker", None)
+        console.log(
+            "[yellow]Using existing cluster - skipping kind and docker checks.[/yellow]"
+        )
+
     for tool, versions in required_tools.items():
         if tool == "docker" and tool != container_engine.value:
             continue

@@ -26,6 +26,7 @@ import typer
 
 console = Console()
 
+
 def get_latest_tagged_version(github_repo, fallback_version) -> str:
     """Fetches the latest version tag of the component from GitHub releases.
 
@@ -39,21 +40,24 @@ def get_latest_tagged_version(github_repo, fallback_version) -> str:
     try:
         result = subprocess.run(
             [
-                "git", "ls-remote", "--tags", "--sort=-version:refname",
+                "git",
+                "ls-remote",
+                "--tags",
+                "--sort=-version:refname",
                 github_repo,
             ],
             capture_output=True,
             text=True,
             check=True,
-            timeout=30
+            timeout=30,
         )
 
-        lines = result.stdout.strip().split('\n')
+        lines = result.stdout.strip().split("\n")
         for line in lines:
-            if line and 'refs/tags/' in line:
+            if line and "refs/tags/" in line:
                 # Extract tag name
-                tag = line.split('refs/tags/')[-1]
-                if '^{}' not in tag:  # Exclude annotated tags
+                tag = line.split("refs/tags/")[-1]
+                if "^{}" not in tag:  # Exclude annotated tags
                     return tag
 
         console.log(
@@ -156,7 +160,9 @@ def secret_exists(v1_api: client.CoreV1Api, name: str, namespace: str) -> bool:
         raise typer.Exit(1)
 
 
-def create_or_update_secret(v1_api: client.CoreV1Api, namespace: str, secret_body: client.V1Secret):
+def create_or_update_secret(
+    v1_api: client.CoreV1Api, namespace: str, secret_body: client.V1Secret
+):
     """Create or update a Kubernetes secret in a given namespace."""
     secret_name = secret_body.metadata.name
     try:
@@ -167,7 +173,9 @@ def create_or_update_secret(v1_api: client.CoreV1Api, namespace: str, secret_bod
     except client.ApiException as e:
         # Secret already exists - patch it
         if e.status == 409:
-            v1_api.patch_namespaced_secret(name=secret_name, namespace=namespace, body=secret_body)
+            v1_api.patch_namespaced_secret(
+                name=secret_name, namespace=namespace, body=secret_body
+            )
             console.log(
                 f"[bold green]✓[/bold green] Secret '{secret_name}' patch in '{namespace}' [bold green]done[/bold green]."
             )

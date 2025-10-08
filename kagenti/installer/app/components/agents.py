@@ -59,9 +59,11 @@ def install(**kwargs):
                 "user": github_user,
                 "token": github_token,
             },
-            type="Opaque"
+            type="Opaque",
         )
-        create_or_update_secret(v1_api=v1_api, namespace=ns, secret_body=github_token_secret)
+        create_or_update_secret(
+            v1_api=v1_api, namespace=ns, secret_body=github_token_secret
+        )
 
         # The docker-registry secret is used to pull images from private repos
         github_auth = f"{github_user}:{github_token}"
@@ -70,7 +72,9 @@ def install(**kwargs):
                 "ghcr.io": {
                     "username": github_user,
                     "password": github_token,
-                    "auth": base64.b64encode(github_auth.encode("utf-8")).decode("utf-8")
+                    "auth": base64.b64encode(github_auth.encode("utf-8")).decode(
+                        "utf-8"
+                    ),
                 }
             }
         }
@@ -83,7 +87,7 @@ def install(**kwargs):
                     json.dumps(docker_config).encode("utf-8")
                 ).decode("utf-8")
             },
-            type="kubernetes.io/dockerconfigjson"
+            type="kubernetes.io/dockerconfigjson",
         )
         create_or_update_secret(v1_api=v1_api, namespace=ns, secret_body=ghcr_secret)
 
@@ -94,7 +98,7 @@ def install(**kwargs):
             string_data={
                 "apikey": openai_api_key,
             },
-            type="Opaque"
+            type="Opaque",
         )
         create_or_update_secret(v1_api=v1_api, namespace=ns, secret_body=openai_secret)
 
@@ -106,17 +110,14 @@ def install(**kwargs):
                 "bot-token": slack_bot_token,
                 "admin-bot-token": admin_slack_bot_token,
             },
-            type="Opaque"
+            type="Opaque",
         )
         create_or_update_secret(v1_api=v1_api, namespace=ns, secret_body=slack_secret)
 
         # if user operating system is linux, do some special config to enable ollama
         if platform.system() == "Linux":
             run_command(
-                [
-                    "sh",
-                    "app/linux/ollama-config.sh"
-                ],
+                ["sh", "app/linux/ollama-config.sh"],
                 "Customizing ollama environment for Linux",
             )
 

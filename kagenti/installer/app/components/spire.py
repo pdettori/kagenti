@@ -67,12 +67,22 @@ def install(**kwargs):
     )
     # Setup Tornjak backend route
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-tornjak-api-route.yaml")],
+        [
+            "kubectl",
+            "apply",
+            "-f",
+            str(config.RESOURCES_DIR / "spire-tornjak-api-route.yaml"),
+        ],
         "Applying Spire Tornjak api route",
     )
     # Setup Tornjak frontend route
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "spire-tornjak-ui-route.yaml")],
+        [
+            "kubectl",
+            "apply",
+            "-f",
+            str(config.RESOURCES_DIR / "spire-tornjak-ui-route.yaml"),
+        ],
         "Applying Spire Tornjak UI route",
     )
     # Add SPIRE namespace to shared gateway access

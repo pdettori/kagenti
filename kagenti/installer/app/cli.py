@@ -34,7 +34,7 @@ from .components import (
     ui,
     metrics_server,
     inspector,
-    cert_manager
+    cert_manager,
 )
 from .config import InstallableComponent
 from .utils import console
@@ -132,16 +132,24 @@ def main(
         should_install_registry = InstallableComponent.REGISTRY not in skip_install
         using_kind_cluster = False
         if not use_existing_cluster:
-            using_kind_cluster = cluster.create_kind_cluster(install_registry=should_install_registry, silent=silent)
-           
+            using_kind_cluster = cluster.create_kind_cluster(
+                install_registry=should_install_registry, silent=silent
+            )
+
         # If create_kind_cluster returns None/False, we're not using a kind cluster
         using_kind_cluster = bool(using_kind_cluster)
-        cluster.check_kube_connection(install_registry=should_install_registry, use_existing_cluster=use_existing_cluster, using_kind_cluster=using_kind_cluster)
+        cluster.check_kube_connection(
+            install_registry=should_install_registry,
+            use_existing_cluster=use_existing_cluster,
+            using_kind_cluster=using_kind_cluster,
+        )
 
         if preload_images and not use_existing_cluster:
             cluster.preload_images_in_kind(config.PRELOADABLE_IMAGES)
         elif preload_images and use_existing_cluster:
-            console.print("[yellow]Warning: --preload-images flag is only supported with kind clusters. Skipping image preloading.[/yellow]\n")
+            console.print(
+                "[yellow]Warning: --preload-images flag is only supported with kind clusters. Skipping image preloading.[/yellow]\n"
+            )
 
         if InstallableComponent.AGENTS not in skip_install:
             cluster.check_and_create_agent_namespaces(silent=silent)
@@ -171,22 +179,37 @@ def main(
 
         deploy_component(InstallableComponent.REGISTRY, skip_install, **install_params)
         deploy_component(InstallableComponent.TEKTON, skip_install, **install_params)
-        deploy_component(InstallableComponent.CERT_MANAGER, skip_install, **install_params)
+        deploy_component(
+            InstallableComponent.CERT_MANAGER, skip_install, **install_params
+        )
         deploy_component(InstallableComponent.OPERATOR, skip_install, **install_params)
         deploy_component(InstallableComponent.ISTIO, skip_install, **install_params)
-        deploy_component(InstallableComponent.METRICS_SERVER, skip_install, **install_params)
-
+        deploy_component(
+            InstallableComponent.METRICS_SERVER, skip_install, **install_params
+        )
 
         # Components that depend on Istio
         if InstallableComponent.ISTIO not in skip_install:
-            deploy_component(InstallableComponent.GATEWAY, skip_install, **install_params)
-            deploy_component(InstallableComponent.ADDONS, skip_install, **install_params)
-            deploy_component(InstallableComponent.KEYCLOAK, skip_install, **install_params)
+            deploy_component(
+                InstallableComponent.GATEWAY, skip_install, **install_params
+            )
+            deploy_component(
+                InstallableComponent.ADDONS, skip_install, **install_params
+            )
+            deploy_component(
+                InstallableComponent.KEYCLOAK, skip_install, **install_params
+            )
             deploy_component(InstallableComponent.SPIRE, skip_install, **install_params)
-            deploy_component(InstallableComponent.MCP_GATEWAY, skip_install, **install_params)
-            deploy_component(InstallableComponent.AGENTS, skip_install, **install_params)
+            deploy_component(
+                InstallableComponent.MCP_GATEWAY, skip_install, **install_params
+            )
+            deploy_component(
+                InstallableComponent.AGENTS, skip_install, **install_params
+            )
             deploy_component(InstallableComponent.UI, skip_install, **install_params)
-            deploy_component(InstallableComponent.INSPECTOR, skip_install, **install_params)
+            deploy_component(
+                InstallableComponent.INSPECTOR, skip_install, **install_params
+            )
         else:
             console.print(
                 "[yellow]Skipping components because Istio installation was skipped.[/yellow]"

@@ -16,6 +16,7 @@
 from .. import config
 from ..utils import run_command
 
+
 def install(**kwargs):
     """Installs Prometheus, Kiali, Phoenix, and the OpenTelemetry Collector."""
     # Prometheus

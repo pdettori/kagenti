@@ -47,14 +47,23 @@ def install(**kwargs):
             container_engine = ContainerEngine(config.CONTAINER_ENGINE)
 
             subprocess.run(
-                [container_engine.value, "exec", container, "sh", "-c",
-                 f"echo {registry_ip} registry.cr-system.svc.cluster.local >> /etc/hosts"])
+                [
+                    container_engine.value,
+                    "exec",
+                    container,
+                    "sh",
+                    "-c",
+                    f"echo {registry_ip} registry.cr-system.svc.cluster.local >> /etc/hosts",
+                ]
+            )
 
             console.log(
                 "[bold green]✓[/bold green] Registry DNS configured in Kind container."
             )
         except ValueError as e:
-            console.log(f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]")
+            console.log(
+                f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
+            )
             raise typer.Exit(1)
 
         except Exception as e:

@@ -38,7 +38,7 @@ def install(**kwargs):
     run_command(
         [
             "kubectl",
-            "replace", # Use replace --force to ensure the job gets replaced
+            "replace",  # Use replace --force to ensure the job gets replaced
             "--force",
             "-f",
             str(config.RESOURCES_DIR / "ui-oauth-secret.yaml"),
@@ -51,7 +51,8 @@ def install(**kwargs):
             "wait",
             "--for=condition=complete",
             "job/kagenti-ui-oauth-job",
-            "-n", "kagenti-system",
+            "-n",
+            "kagenti-system",
             "--timeout=300s",
         ],
         "Waiting for auth secret job to complete",
@@ -74,9 +75,11 @@ def install(**kwargs):
                     image_name = container["image"].split(":")[0]
                     updated_tag = get_latest_tagged_version(
                         github_repo=config.UI_GIT_REPO,
-                        fallback_version=config.UI_FALLBACK_VERSION
+                        fallback_version=config.UI_FALLBACK_VERSION,
                     )
-                    console.log(f"  Using image tag {updated_tag} for Kagenti UI deployment")
+                    console.log(
+                        f"  Using image tag {updated_tag} for Kagenti UI deployment"
+                    )
                     container["image"] = f"{image_name}:{updated_tag}"
     with tempfile.NamedTemporaryFile("w", delete=True, suffix=".yaml") as tmp_file:
         yaml.safe_dump_all(ui_yamls, tmp_file)

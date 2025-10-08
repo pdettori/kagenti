@@ -23,8 +23,8 @@ def install(**kwargs):
     # Operator version strips v from tag
     operator_version = get_latest_tagged_version(
         github_repo=config.OPERATOR_GIT_REPO,
-        fallback_version=config.OPERATOR_FALLBACK_VERSION
-    ).lstrip('v')
+        fallback_version=config.OPERATOR_FALLBACK_VERSION,
+    ).lstrip("v")
     print(f"Using Platform Operator version: {operator_version}")
 
     run_command(
@@ -40,7 +40,7 @@ def install(**kwargs):
             "--version",
             operator_version,
             "--set",
-            "controllerManager.container.image.tag="+operator_version
+            "controllerManager.container.image.tag=" + operator_version,
         ],
         "Installing the Platform Operator",
     )
