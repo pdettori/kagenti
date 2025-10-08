@@ -1,5 +1,5 @@
 # Global settings
-openshift: true
+openshift: false
 
 # ------------------------------------------------------------------
 #  Control Panel: Enable or disable components here
@@ -81,4 +81,3 @@ mcpGateway:
   namespaces:
     mcpSystem: mcp-system
     gatewaySystem: gateway-system
-    
