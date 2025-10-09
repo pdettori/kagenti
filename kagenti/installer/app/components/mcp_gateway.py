@@ -18,7 +18,6 @@ from ..utils import run_command
 
 
 def install(**kwargs):
-
     """Install K8s Gateway CRDs."""
     # This command installs K8s Gateway CRDs
     run_command(
@@ -34,10 +33,14 @@ def install(**kwargs):
     """Create MCPGateway namespaces."""
     # This command creates namespaces for MCP gateway components
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-namespaces.yaml")],
+        [
+            "kubectl",
+            "apply",
+            "-f",
+            str(config.RESOURCES_DIR / "gateway-namespaces.yaml"),
+        ],
         "Creating MCPGateway namespaces",
     )
-
 
     """Create Gateway listeners."""
     # This command installs listeners on the Gateway
@@ -63,13 +66,18 @@ def install(**kwargs):
     """Deploy MCPGateway Broker, Router, and Controller."""
     # This command installs MCPGateway components
     run_command(
-        ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-deployment.yaml")],
+        [
+            "kubectl",
+            "apply",
+            "-f",
+            str(config.RESOURCES_DIR / "gateway-deployment.yaml"),
+        ],
         "Deploying MCPGateway Broker, Router, and Controller",
     )
 
-    #"""Init MCPServer CR."""
+    # """Init MCPServer CR."""
     # This command creates an empty MCPServer resource
-    #run_command(
+    # run_command(
     #    ["kubectl", "apply", "-f", str(config.RESOURCES_DIR / "gateway-mcpserver.yaml")],
     #    "Initing MCPServer CR",
-    #)
+    # )

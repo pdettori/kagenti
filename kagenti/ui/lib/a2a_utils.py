@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 # Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
 logging.basicConfig(level=logging.INFO)
 
+
 async def _fetch_agent_card_with_resolver(
     st_object,
     httpx_client: httpx.AsyncClient,
@@ -378,9 +379,13 @@ async def run_agent_chat_stream_a2a(
             if TOKEN_STRING in st.session_state:
                 if ACCESS_TOKEN_STRING in st.session_state[TOKEN_STRING]:
                     bearer_token = st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING]
-                    http_kwargs = {"headers": {"Authorization": f"Bearer {bearer_token}"}}
+                    http_kwargs = {
+                        "headers": {"Authorization": f"Bearer {bearer_token}"}
+                    }
 
-            stream_response_iterator = client.send_message_streaming(streaming_request, http_kwargs=http_kwargs)
+            stream_response_iterator = client.send_message_streaming(
+                streaming_request, http_kwargs=http_kwargs
+            )
 
             async for chunk in stream_response_iterator:
                 chunk_text, is_final = _process_a2a_stream_chunk(

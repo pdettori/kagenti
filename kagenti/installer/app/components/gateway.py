@@ -18,6 +18,7 @@ from ..utils import run_command, wait_for_deployment
 
 # TODO - configure namespace(s) where this should be deployed - currently is in default
 
+
 def install(**kwargs):
     """Installs the Istio ingress and egress gateways."""
     run_command(
@@ -52,4 +53,6 @@ def install(**kwargs):
             "Waiting for waypoint gateway rollout",
         )
     else:
-        print("Failed to find the 'waypoint' deployment within the expected time frame.")
+        print(
+            "Failed to find the 'waypoint' deployment within the expected time frame."
+        )

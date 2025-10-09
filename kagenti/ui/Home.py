@@ -28,12 +28,13 @@ logger = logging.getLogger(__name__)
 # Basic config should ideally be called once at app startup (e.g. in Home.py or main script)
 logging.basicConfig(level=logging.INFO)
 
+
 def render_login():
     """
     Render the login page.
     """
 
-    ENABLE_AUTH = os.environ.get('ENABLE_AUTH')
+    ENABLE_AUTH = os.environ.get("ENABLE_AUTH")
     if ENABLE_AUTH_STRING not in st.session_state:
         if ENABLE_AUTH.lower() == "true":
             logger.info("Authentication is enabled")
@@ -54,12 +55,12 @@ def render_login():
         # TOKEN_ENDPOINT="http://localhost:8080/realms/master/protocol/openid-connect/token"
         # REDIRECT_URI="http://localhost:8502/oauth2/callback"
         # SCOPE="openid profile email"
-        CLIENT_ID = os.environ.get('CLIENT_ID', 'kagenti')
-        CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-        AUTH_ENDPOINT = os.environ.get('AUTH_ENDPOINT')
-        TOKEN_ENDPOINT = os.environ.get('TOKEN_ENDPOINT')
-        REDIRECT_URI = os.environ.get('REDIRECT_URI')
-        SCOPE = os.environ.get('SCOPE', 'openid profile email')
+        CLIENT_ID = os.environ.get("CLIENT_ID", "kagenti")
+        CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
+        AUTH_ENDPOINT = os.environ.get("AUTH_ENDPOINT")
+        TOKEN_ENDPOINT = os.environ.get("TOKEN_ENDPOINT")
+        REDIRECT_URI = os.environ.get("REDIRECT_URI")
+        SCOPE = os.environ.get("SCOPE", "openid profile email")
 
         if CLIENT_SECRET is None:
             error_message = "Expected CLIENT_SECRET env var but none exists."
@@ -78,12 +79,17 @@ def render_login():
             logging.error(error_message)
             st.error("Expected REDIRECT_URI env var but none exists.")
 
-        oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTH_ENDPOINT, TOKEN_ENDPOINT)
+        oauth2 = OAuth2Component(
+            CLIENT_ID, CLIENT_SECRET, AUTH_ENDPOINT, TOKEN_ENDPOINT
+        )
 
         # Check if token exists in session state
         if TOKEN_STRING in st.session_state:
             # User is not logged in
-            decoded = jwt.decode(st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING], options={"verify_signature": False})
+            decoded = jwt.decode(
+                st.session_state[TOKEN_STRING][ACCESS_TOKEN_STRING],
+                options={"verify_signature": False},
+            )
             username = decoded.get("preferred_username")
             st.info(f"Welcome, {username}!")
 
@@ -99,6 +105,7 @@ def render_login():
                 st.session_state.token = result.get(TOKEN_STRING)
 
                 st.rerun()
+
 
 # --- Page Configuration ---
 st.set_page_config(

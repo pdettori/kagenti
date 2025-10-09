@@ -26,8 +26,12 @@ from lib import constants  # For URLs
 
 check_auth()
 
-traces_dashboard_url = os.environ.get('TRACES_DASHBOARD_URL', constants.TRACES_DASHBOARD_URL)
-network_traffic_dashboard_url = os.environ.get('NETWORK_TRAFFIC_DASHBOARD_URL', constants.NETWORK_TRAFFIC_DASHBOARD_URL)
+traces_dashboard_url = os.environ.get(
+    "TRACES_DASHBOARD_URL", constants.TRACES_DASHBOARD_URL
+)
+network_traffic_dashboard_url = os.environ.get(
+    "NETWORK_TRAFFIC_DASHBOARD_URL", constants.NETWORK_TRAFFIC_DASHBOARD_URL
+)
 
 # --- Main Page Content ---
 st.header("🔭 Observability Dashboard")
@@ -55,9 +59,7 @@ st.link_button(
     help="Click to open the network traffic and service mesh visualization dashboard in a new tab.",
     use_container_width=True,
 )
-st.caption(
-    f"Visualize service interactions at: `{network_traffic_dashboard_url}`"
-)
+st.caption(f"Visualize service interactions at: `{network_traffic_dashboard_url}`")
 
 st.markdown("---")
 st.info(

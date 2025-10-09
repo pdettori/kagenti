@@ -159,7 +159,7 @@ def _construct_tool_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
-    pod_config=None,
+    pod_config: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -402,7 +402,7 @@ def _construct_agent_resource_body(
     registry_config: Optional[dict] = None,
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
-    pod_config=None,
+    pod_config: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -614,7 +614,7 @@ def trigger_and_monitor_build(
     build_from_source: bool,
     description: str = "",
     registry_config: Optional[dict] = None,
-    pod_config=None,
+    pod_config: Optional[dict] = None,
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
 ):
     """
@@ -880,7 +880,7 @@ def trigger_and_monitor_deployment_from_image(
     framework: str,
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
-    pod_config=None,
+    pod_config: Optional[dict] = None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
