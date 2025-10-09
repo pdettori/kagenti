@@ -1569,6 +1569,7 @@ def render_import_form(
             )
         selected_framework = default_framework
         final_source_subfolder_path = ""
+        manual_resource_name = ""
         if source_url and branch_or_tag:
             st_object.markdown("---")
             st_object.subheader("Specify Source Subfolder")
@@ -1600,24 +1601,38 @@ def render_import_form(
             if manual_subfolder_input:
                 final_source_subfolder_path = manual_subfolder_input
 
+            # If no subfolder is specified, require a manual resource name
+            if not final_source_subfolder_path:
+                manual_resource_name = st_object.text_input(
+                    f"{resource_type} Name",
+                    value="",
+                    placeholder=f"Enter a name for your {resource_type.lower()} (required when no subfolder is specified)",
+                    key=f"manual_{resource_type.lower()}_resource_name",
+                )
+
         if st_object.button(
             f"Build & Deploy New {resource_type}",
             key=f"build_new_{resource_type.lower()}_btn",
         ):
-            resource_name_suggestion = get_resource_name_from_path(
-                final_source_subfolder_path
-            )
+            # Determine resource name: derived from subfolder or manually entered
+            if final_source_subfolder_path:
+                resource_name_suggestion = get_resource_name_from_path(
+                    final_source_subfolder_path
+                )
+            else:
+                resource_name_suggestion = manual_resource_name
+
+            # Validation: require either subfolder (with name derived) or manual name
             if not all(
                 [
                     source_url,
                     branch_or_tag,
-                    final_source_subfolder_path,
                     resource_name_suggestion,
                     build_namespace_to_use,
                 ]
             ):
                 st_object.warning(
-                    "Please provide all source details, subfolder path, and select a build namespace."
+                    "Please provide all source details, and either a subfolder or a resource name, and select a build namespace."
                 )
                 return
 
