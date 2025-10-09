@@ -22,10 +22,7 @@ from lib.build_utils import render_import_form
 from lib.kube import get_kube_api_client_cached
 
 # --- Define Tool-Specific Settings for the Import Form ---
-TOOL_EXAMPLE_SUBFOLDERS = [
-    "mcp/weather_tool",
-    "mcp/slack_tool"
-]
+TOOL_EXAMPLE_SUBFOLDERS = ["mcp/weather_tool", "mcp/slack_tool"]
 TOOL_PROTOCOL_OPTIONS = ["streamable_http", "sse"]
 
 check_auth()
@@ -42,10 +39,11 @@ render_import_form(
     default_framework="Python",
     k8s_api_client=k8s_api_client,
     k8s_client_status_msg=k8s_client_msg,
-    k8s_client_status_icon=k8s_client_icon
+    k8s_client_status_icon=k8s_client_icon,
+    show_enabled_namespaces_only=True,
 )
 
 st.markdown("---")
-#st.warning(
+# st.warning(
 #    "**Note:** The build process for 'Tools' currently uses the same 'Component' CRD mechanism."
-#)
+# )

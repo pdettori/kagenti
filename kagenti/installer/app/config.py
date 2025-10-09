@@ -28,19 +28,21 @@ OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
 KEYCLOAK_URL = "http://keycloak.localtest.me:8080/realms/master"
 
+
 # --- Container Engine Options ---
 class ContainerEngine(str, Enum):
     PODMAN = "podman"
     DOCKER = "docker"
 
-CONTAINER_ENGINE =  "docker"
+
+CONTAINER_ENGINE = "docker"
 
 # --- Dependency Version Requirements ---
 # Defines the minimum (inclusive) and maximum (exclusive) required versions for tools.
 REQ_VERSIONS = {
     "kind": {"min": "0.20.0", "max": "0.99.0"},
     "docker": {"min": "5.0.0", "max": "29.0.0"},
-    "podman": {"min":"5.0.0", "max":"5.6.0"},
+    "podman": {"min": "5.0.0", "max": "5.6.0"},
     "kubectl": {"min": "1.29.0", "max": "1.35.0"},
     "helm": {"min": "3.14.0", "max": "3.19.0"},
     "git": {"min": "2.30.0", "max": "3.0.0"},
@@ -67,6 +69,7 @@ OPERATOR_GIT_REPO = "https://github.com/kagenti/kagenti-operator.git"
 UI_FALLBACK_VERSION = "v0.0.4-alpha.13"
 UI_GIT_REPO = "https://github.com/kagenti/kagenti.git"
 
+
 # --- Enum for Skippable Components ---
 class InstallableComponent(str, Enum):
     """Enumeration of all components that can be installed or skipped."""
@@ -82,6 +85,11 @@ class InstallableComponent(str, Enum):
     MCP_GATEWAY = "mcp_gateway"
     KEYCLOAK = "keycloak"
     AGENTS = "agents"
-    METRICS_SERVER= "metrics_server"
+    METRICS_SERVER = "metrics_server"
     INSPECTOR = "inspector"
     CERT_MANAGER = "cert_manager"
+
+
+## Kubernetes Labels and Selectors
+ENABLED_NAMESPACE_LABEL_KEY = "kagenti-enabled"
+ENABLED_NAMESPACE_LABEL_VALUE = "true"

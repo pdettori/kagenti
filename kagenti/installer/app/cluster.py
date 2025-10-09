@@ -56,15 +56,21 @@ def kind_cluster_running():
         )
         return f"{config.CLUSTER_NAME}-control-plane" in result.stdout.split()
     except ValueError as e:
-        console.log(f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py [/bold red]")
+        console.log(
+            f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py [/bold red]"
+        )
         raise typer.Exit(1)
     except subprocess.CalledProcessError as e:
-        console.log(f"[bold red]✗ Failed to run {config.CONTAINER_ENGINE} ps.[/bold red]")
+        console.log(
+            f"[bold red]✗ Failed to run {config.CONTAINER_ENGINE} ps.[/bold red]"
+        )
         console.log(f"[red]{e.stderr.strip()}[/red]")
         raise typer.Exit(1)
 
 
-def check_kube_connection(install_registry: bool, use_existing_cluster: bool, using_kind_cluster: bool):
+def check_kube_connection(
+    install_registry: bool, use_existing_cluster: bool, using_kind_cluster: bool
+):
     """Sets up the Kubernetes cluster - either creates a kind cluster or uses existing cluster."""
     # Check if KUBECONFIG is set or if a cluster is accessible from the default kubeconfig location ~/.kube/config
     kubeconfig_path = os.getenv("KUBECONFIG") or os.path.expanduser("~/.kube/config")
@@ -76,7 +82,9 @@ def check_kube_connection(install_registry: bool, use_existing_cluster: bool, us
 
     # Ask for confirmation so we don't add to an existing cluster by mistake
     if not use_existing_cluster and not using_kind_cluster:
-        console.print(f"[yellow]Found Kubernetes cluster configuration in KUBECONFIG: {kubeconfig_path}[/yellow]")
+        console.print(
+            f"[yellow]Found Kubernetes cluster configuration in KUBECONFIG: {kubeconfig_path}[/yellow]"
+        )
         if not Confirm.ask(
             "[bold yellow]?[/bold yellow] Do you want to proceed with this Kubernetes cluster?",
             default=True,
@@ -96,7 +104,7 @@ def check_kube_connection(install_registry: bool, use_existing_cluster: bool, us
     except Exception as e:
         console.log(
             f"[bold red]✗ Failed to connect to existing Kubernetes cluster: {e}[/bold red]"
-            )
+        )
         raise typer.Exit(1)
     console.print()
 
@@ -196,7 +204,9 @@ def preload_images_in_kind(images: list[str]):
     try:
         container_engine = config.ContainerEngine(config.CONTAINER_ENGINE)
     except ValueError as e:
-        console.log(f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py[/bold red]")
+        console.log(
+            f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py[/bold red]"
+        )
         raise typer.Exit(1)
 
     for image in images:
@@ -247,6 +257,17 @@ def check_and_create_agent_namespaces(silent: bool):
                 run_command(
                     ["kubectl", "create", "namespace", ns], f"Creating namespace '{ns}'"
                 )
+                run_command(
+                    [
+                        "kubectl",
+                        "wait",
+                        "--for=jsonpath={.status.phase}=Active",
+                        f"namespace/{ns}",
+                        "--timeout=60s",
+                    ],
+                    f"Waiting for namespace '{ns}' to become active",
+                )
+                existing_namespaces.add(ns)
         else:
             console.print(
                 "[bold red]Cannot proceed without agent namespaces. Exiting.[/bold red]"
@@ -256,4 +277,19 @@ def check_and_create_agent_namespaces(silent: bool):
         console.log(
             "[bold green]✓ All required agent namespaces already exist.[/bold green]"
         )
+
+    for ns in agent_namespaces:
+        if ns in existing_namespaces:
+            run_command(
+                [
+                    "kubectl",
+                    "label",
+                    "namespace",
+                    ns,
+                    f"{config.ENABLED_NAMESPACE_LABEL_KEY}={config.ENABLED_NAMESPACE_LABEL_VALUE}",
+                    "--overwrite",
+                ],
+                f"Labeling namespace '{ns}' as enabled for agents/tools",
+            )
+
     console.print()
