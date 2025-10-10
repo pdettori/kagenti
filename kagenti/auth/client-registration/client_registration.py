@@ -12,6 +12,7 @@ import os
 import jwt
 from keycloak import KeycloakAdmin, KeycloakPostError
 
+
 def get_env_var(name: str) -> str:
     """
     Fetch an environment variable or raise ValueError if missing.
@@ -20,6 +21,7 @@ def get_env_var(name: str) -> str:
     if not value:
         raise ValueError(f"Missing required environment variable: {name}")
     return value
+
 
 def write_client_secret(
     keycloak_admin: KeycloakAdmin,
@@ -46,12 +48,9 @@ def write_client_secret(
     except OSError as ioe:
         print(f"Error writing secret to file: {ioe}")
 
+
 # TODO: refactor this function so kagenti-client-registration image can use it
-def register_client(
-    keycloak_admin: KeycloakAdmin,
-    client_id: str,
-    client_payload
-):
+def register_client(keycloak_admin: KeycloakAdmin, client_id: str, client_payload):
     """
     Ensure a Keycloak client exists.
     Returns the internal client ID.
@@ -64,16 +63,13 @@ def register_client(
     # Create client
     internal_client_id = None
     try:
-        internal_client_id = keycloak_admin.create_client(
-            client_payload
-        )
+        internal_client_id = keycloak_admin.create_client(client_payload)
 
         print(f'Created Keycloak client "{client_id}": {internal_client_id}')
         return internal_client_id
     except KeycloakPostError as e:
         print(f'Could not create client "{client_id}": {e}')
         raise
-
 
 
 # Read SVID JWT from file to get client ID
@@ -88,22 +84,22 @@ except Exception as e:
     print(f"An error occurred: {e}")
 
 if content is None or content.strip() == "":
-    raise Exception(f'No content read from SVID JWT.')
+    raise Exception(f"No content read from SVID JWT.")
 
 decoded = jwt.decode(content, options={"verify_signature": False})
-if 'sub' not in decoded:
+if "sub" not in decoded:
     raise Exception('SVID JWT does not contain a "sub" claim.')
-client_id = decoded['sub']
-
+client_id = decoded["sub"]
 
 
 # The Keycloak URL is handled differently from the other env vars because unlike the others, it's intended to be optional
-try:    
+try:
     KEYCLOAK_URL = get_env_var("KEYCLOAK_URL")
 except:
-    print(f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {client_id}.')
+    print(
+        f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {client_id}.'
+    )
     exit()
-
 
 
 keycloak_admin = KeycloakAdmin(
@@ -126,10 +122,12 @@ internal_client_id = register_client(
         "directAccessGrantsEnabled": True,
         "fullScopeAllowed": False,
         "publicClient": False,  # Enable client authentication
-    }
+    },
 )
 
-print(f'Writing secret for client ID: "{client_id}", internal client ID: "{internal_client_id}"')
+print(
+    f'Writing secret for client ID: "{client_id}", internal client ID: "{internal_client_id}"'
+)
 write_client_secret(
     keycloak_admin,
     internal_client_id,
