@@ -31,6 +31,8 @@ def write_client_secret(
     Retrieve the secret for a Keycloak client and write it to a file.
     """
     try:
+        # There will be a value field if client authentication is enabled
+        # client authentication is enabled if "publicClient" is False
         secret = keycloak_admin.get_client_secrets(internal_client_id)["value"]
         print(f'Successfully retrieved secret for client "{client_name}".')
     except KeycloakPostError as e:
@@ -123,7 +125,7 @@ internal_client_id = register_client(
         "standardFlowEnabled": True,
         "directAccessGrantsEnabled": True,
         "fullScopeAllowed": False,
-        "publicClient": True # Disable client authentication
+        "publicClient": False,  # Enable client authentication
     }
 )
 
