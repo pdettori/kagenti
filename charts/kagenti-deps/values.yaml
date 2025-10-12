@@ -78,8 +78,7 @@ istio:
     selector: istio-ingressgateway
     namespace: istio-system
 
-sail-operator:
-  namespace: sail-operator
+sail-operator: {}
 # istio-base: {}
 #
 # istio-istiod:
@@ -89,7 +88,7 @@ sail-operator:
 #   profile: ambient
 
 httpGateway:
-  name: 
+  name: http
   namespace: "kagenti-system"
   
 
