@@ -32,12 +32,11 @@ components:
   certManager:
     enabled: true  
   gatewayApi:  
-    enabled: true
+    enabled: false
   ingressGateway:
     enabled: false 
   toolhive:
     enabled: true
-
 
 common:
   kubectlImage: "quay.io/kubestellar/kubectl:1.30.14"
@@ -74,9 +73,6 @@ istio:
   istiod: 
     profile: ambient
     namespace: '{{ .Values.istio.namespace | quote }}'
-  ingressGateway:
-    selector: istio-ingressgateway
-    namespace: istio-system
 
 sail-operator: {}
 # istio-base: {}
@@ -98,6 +94,7 @@ httpGateway:
 certManager:
   namespace: cert-manager-operator
 
+# added since subchart uses alias for routes which cannot have camel-case
 cert-manager:
   installCRDs: true
   namespace: cert-manager-operator
