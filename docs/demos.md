@@ -11,13 +11,13 @@ Check the details for running various demos.
 
 - Simplest Demo - [Weather Service](./demo-weather-agent.md)
 - Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent/README.md)
+- Github issue demo
 
 ## Installation
 
 For installing on OpenShift, please refer to [these installation instructions](./ocp/openshift-install.md).
 
 **Note: OpenShift support is currently a work in progress. Be sure to review the limitations detailed in the instructions.**
-
 
 ### Prerequisites
 
