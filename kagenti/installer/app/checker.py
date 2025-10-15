@@ -65,7 +65,7 @@ def check_dependencies(use_existing_cluster: bool = False):
                     f"[bold red]✗ {tool}[/bold red] is not installed or not in PATH."
                 )
                 all_ok = False
-            elif not (min_ver <= version < max_ver):
+            elif not (min_ver <= version <= max_ver):
                 console.log(
                     f"[bold red]✗ {tool}[/bold red] version [bold yellow]{version}[/bold yellow] not in range ({min_ver} - {max_ver})."
                 )
