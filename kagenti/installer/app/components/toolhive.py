@@ -17,6 +17,7 @@ import re
 from .. import config
 from ..utils import run_command
 
+
 def install(**kwargs):
     """Installs the Toolhive Operator using its Helm charts."""
 
@@ -26,7 +27,7 @@ def install(**kwargs):
             "upgrade",
             "--install",
             "toolhive-operator-crds",
-            "oci://ghcr.io/stacklok/toolhive/toolhive-operator-crds"
+            "oci://ghcr.io/stacklok/toolhive/toolhive-operator-crds",
         ],
         "Installing the Toolhive Operator CRDs",
     )
@@ -37,8 +38,9 @@ def install(**kwargs):
             "--install",
             "toolhive-operator",
             "oci://ghcr.io/stacklok/toolhive/toolhive-operator",
-            "--namespace", "kagenti-system",
-            "--create-namespace"
+            "--namespace",
+            "kagenti-system",
+            "--create-namespace",
         ],
         "Installing the Toolhive Operator",
     )
