@@ -88,7 +88,7 @@ class InstallableComponent(str, Enum):
     METRICS_SERVER = "metrics_server"
     INSPECTOR = "inspector"
     CERT_MANAGER = "cert_manager"
-
+    TOOLHIVE = "toolhive"
 
 ## Kubernetes Labels and Selectors
 ENABLED_NAMESPACE_LABEL_KEY = "kagenti-enabled"
