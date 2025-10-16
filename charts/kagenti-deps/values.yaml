@@ -31,6 +31,8 @@ components:
     enabled: false
   ingressGateway:
     enabled: false 
+  toolhive:
+    enabled: true
 
 
 common:
