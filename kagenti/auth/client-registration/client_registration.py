@@ -90,9 +90,10 @@ namespace = get_env_var("NAMESPACE")
 
 internal_client_id = register_client(keycloak_admin, client_name, client_id, namespace)
 print(f'Client id: "{internal_client_id}"')
+secret_file_path = get_env_var("SECRET_FILE_PATH")
 write_secret(
     keycloak_admin,
     internal_client_id,
     client_name,
-    secret_file_path=os.environ.get("SECRET_FILE_PATH", "/shared/secret.txt"),
+    secret_file_path=secret_file_path,
 )
