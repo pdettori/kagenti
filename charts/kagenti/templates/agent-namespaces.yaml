@@ -12,6 +12,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ . }}
+  labels:
     istio-discovery: enabled
     istio.io/dataplane-mode: ambient
     kagenti-enabled: "true"
