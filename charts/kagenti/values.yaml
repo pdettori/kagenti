@@ -55,7 +55,7 @@ ui:
 # ------------------------------------------------------------------
 #  Platform Operator Configuration
 # ------------------------------------------------------------------
-kagentiPlatformOperator:
+kagenti-platform-operator-chart:
   controllerManager:
     container:
       args:
