@@ -71,8 +71,6 @@ kagenti-platform-operator-chart:
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration
 # ------------------------------------------------------------------
-mcpGateway:
-  namespaces:
-    mcpSystem: mcp-system
-    gatewaySystem: gateway-system
-    istioNamespace: istio-system
+mcp-gateway:
+  envoyFilter:
+    namespace: istio-system
