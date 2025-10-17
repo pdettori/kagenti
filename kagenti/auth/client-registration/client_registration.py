@@ -95,6 +95,7 @@ def get_client_id() -> str:
         raise Exception('SVID JWT does not contain a "sub" claim.')
     return decoded["sub"]
 
+
 client_id = get_client_id()
 
 # The Keycloak URL is handled differently from the other env vars because unlike the others, it's intended to be optional
