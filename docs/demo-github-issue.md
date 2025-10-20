@@ -43,7 +43,7 @@ To deploy the Github Issue Agent:
 1. In Container Registry Configuration, select the default value then, for **Protocol** set `a2a`.
 1. Under [**Specify Source Subfolder**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#specify-source-subfolder):
    - Click `Select from examples`
-   - Choose: `a2a/github_issue_agent`
+   - Choose: `a2a/git_issue_agent`
 1. Click **Build & Deploy New Agent** to deploy.
 
 **Note:** For the `ollama` environmental make sure to use most up-to-date version and run `ollama pull ibm/granite4:latest`. Please ensure an Ollama server is running in a separate terminal via `ollama serve`.
