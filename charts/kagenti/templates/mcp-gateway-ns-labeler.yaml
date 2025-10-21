@@ -70,7 +70,6 @@ spec:
         - "label"
         - "namespace"
         - "{{ .Values.mcpGateway.namespaces.mcpSystem }}"
-        - "istio.io/dataplane-mode=ambient" 
         - "istio-discovery=enabled" 
         - "--overwrite"  
 {{- end }}  
