@@ -11,13 +11,13 @@ Check the details for running various demos.
 
 - Simplest Demo - [Weather Service](./demo-weather-agent.md)
 - Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent/README.md)
+- Github issue demo
 
 ## Installation
 
 For installing on OpenShift, please refer to [these installation instructions](./ocp/openshift-install.md).
 
 **Note: OpenShift support is currently a work in progress. Be sure to review the limitations detailed in the instructions.**
-
 
 ### Prerequisites
 
@@ -215,6 +215,12 @@ Restart the following:
 kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
 ```
+### Blank UI page on macOS after installation
+On macOS, if **Privacy and Content Restrictions** are enabled (under  
+System Settings → Screen Time → Content & Privacy Restrictions),  
+then after the Kagenti installation completes, opening the UI may display a blank loading page.
+
+To fix, disable these restrictions and restart the UI.
 
 ### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
 
