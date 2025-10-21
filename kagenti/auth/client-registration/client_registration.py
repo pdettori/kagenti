@@ -134,11 +134,12 @@ internal_client_id = register_client(
 print(
     f'Writing secret for client ID: "{client_id}", internal client ID: "{internal_client_id}"'
 )
+secret_file_path = get_env_var("SECRET_FILE_PATH")
 write_client_secret(
     keycloak_admin,
     internal_client_id,
     client_name,
-    secret_file_path="/shared/secret.txt",
+    secret_file_path=secret_file_path,
 )
 
 print("Client registration complete.")
