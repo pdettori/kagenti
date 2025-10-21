@@ -166,7 +166,7 @@ export NAMESPACE=<namespace>
 Now run the configuration script:
 
 ```console
-python set_up_demo.py
+python set_up_slack_demo.py
 ```
 
 For more information about the configuration script check the [detailed README.md](../../kagenti/auth/auth_demo/README.md) file.
