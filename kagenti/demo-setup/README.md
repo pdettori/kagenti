@@ -30,7 +30,7 @@ Before running the setup script, ensure:
    ```
 4. **Install dependencies for auth setup:**
    ```bash
-   cd /kagenti/demo-setup/
+   cd kagenti/demo-setup/
    source ./install.sh
    ```
 5. **For Slack demo**: Set `SLACK_BOT_TOKEN` and `ADMIN_SLACK_BOT_TOKEN` in `.env` before installing Kagenti
