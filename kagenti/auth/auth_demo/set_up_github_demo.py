@@ -214,7 +214,9 @@ except Exception as e:
 
 # Add github-partial-access and github-full-access client scopes to the agent client
 try:
-    internal_github_agent_client_id = keycloak_admin.get_client_id(github_agent_client_id)
+    internal_github_agent_client_id = keycloak_admin.get_client_id(
+        github_agent_client_id
+    )
     keycloak_admin.add_client_optional_client_scope(
         internal_github_agent_client_id, partial_client_scope_id, {}
     )
