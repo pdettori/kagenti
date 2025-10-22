@@ -13,6 +13,7 @@ This demo illustrates how Kagenti agent can access public tool.
 Here's a breakdown of the sections:
 
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`git_issue_agent`](https://github.com/kagenti/agent-examples/tree/main/a2a/git_issue_agent).
+- In [**Import New Tool**](#import-new-tool), you'll build and deploy the ['github_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/github_tool). 
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
 - In [**Chat with the Github Issue Agent**](#chat-with-the-github-issue-agent), you'll interact with the agent and confirm it responds correctly using Github issue data from selected repository.
 
@@ -33,9 +34,12 @@ To deploy the Github Issue Agent:
    - `ollama` or `openai`
 1. Next select `Import .env File` button, then provide:
    - Github Repository URL: `https://github.com/kagenti/agent-examples/`
-   - Path to .env file: `a2a/git_issue_agent/.env.template`
-   - Press "Import", this will populate env. variables for this agent.
-1. In the newly created variable `GITHUB_TOKEN`, provide the personal Github access token value, as discussed above.
+   - Path to .env file: `a2a/git_issue_agent/.env.kagenti`
+   - Press "Import", this will populate environment variables for this agent.
+1. Additionally, if you are using `openai` environment, again under `Import.env File`:
+   - Github Repository URL: `https://github.com/kagenti/agent-examples/`
+   - Path to .env file: `a2a/git_issue_agent/.env.openai`
+   - Press "Import". 
 1. In the **Deployment Method** select `Build from Source` and then in **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
@@ -46,7 +50,65 @@ To deploy the Github Issue Agent:
    - Choose: `a2a/git_issue_agent`
 1. Click **Build & Deploy New Agent** to deploy.
 
-**Note:** For the `ollama` environmental make sure to use most up-to-date version and run `ollama pull ibm/granite4:latest`. Please ensure an Ollama server is running in a separate terminal via `ollama serve`.
+**Note:** For the `ollama` environment make sure to use most up-to-date version and run `ollama pull ibm/granite4:latest`. Please ensure an Ollama server is running in a separate terminal via `ollama serve`.
+
+---
+
+## Import New Tool
+
+To deploy the tool:
+
+1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
+1. Select the same `<namespace>` as used for the agent.
+1. In the **Select Environment Variable Sets** section, select `Import .env File` button, then provide:
+   - Github Repository URL: `https://github.com/kagenti/agent-examples/`
+   - Path to .env file: `mcp/github_tool/.env.template`
+   - Populate the `INIT_AUTH_HEADER`, `UPSTREAM_HEADER_TO_USE_IF_IN_AUDIENCE`, and `UPSTREAM_HEADER_TO_USE_IF_NOT_IN_AUDIENCE` with `Bearer <GITHUB_PAT>`. For the first two, use a PAT that has more permissions, and for the last, you may use a PAT with fewer permissions. 
+   - Press "Import", this will populate environment variables for this agent.
+1. Use the same source repository:
+   <https://github.com/kagenti/agent-examples>
+1. Choose the `main` branch or your preferred branch.
+1. Set **Select Protocol** to `streamable-http`.
+1. Under **Specify Source Subfolder**:
+   - Select: `mcp/git_issue_agent`
+1. Click **Build & Deploy New Tool** button.
+
+---
+
+## Configure Keycloak
+
+Now that the agent and tool have been deployed, the Keycloak Administrator must configure the policies to give the UI delegated access to the tool. We have automated these steps in a script.
+
+### Set up Python environment
+
+```console
+cd kagenti/auth/auth_demo/
+python -m venv venv
+```
+
+To run the Keycloak configuration script, you must have Python Keycloak library installed.
+
+```console
+pip install -r requirements.txt
+```
+
+Define environment variables for accessing Keycloak:
+
+```console
+export KEYCLOAK_URL="http://keycloak.localtest.me:8080"
+export KEYCLOAK_REALM=master
+export KEYCLOAK_ADMIN_USERNAME=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin
+export NAMESPACE=<namespace>
+```
+
+Now run the configuration script:
+
+```console
+python set_up_github_issue_demo.py
+```
+
+For more information about the configuration script check the [detailed README.md](../../kagenti/auth/auth_demo/README.md) file.
 
 ---
 
