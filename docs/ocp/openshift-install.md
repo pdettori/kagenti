@@ -8,11 +8,7 @@ These limitations will be addressed in successive PRs.
 
 - UI Auth and token management is disabled
 - Only [quay.io](https://quay.io) registry has been tested in build from source
-- Istio Ambient and network observability has not been tested and is not enabled by default
-- URLs for Kiali, Phoenix and Keycloak are not working in UI
 - Ollama models not tested - OpenAI key required for now
-- MCP inspector integration in tools details page is not enabled yet
-- MCP Gateway integration has not been tested yet
 
 ## Requirements 
 
@@ -38,8 +34,9 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 3. **Kagenti Dependencies Helm Chart Installation:**
    This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   # For example, if the latest tag is 0.1.0-alpha.3
-   LATEST_TAG=0.1.0-alpha.3
+   # if you have git installed you may determine the latest tag with the command:
+   LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
+
    helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
    ```
 4.  **Kagenti Helm Chart Installation:**
@@ -85,12 +82,22 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
 ## Access the UI
 
-After the chart installs, you may access the UI following the instructions in the notes; the URL to UI can be found 
-running this command:
+After the chart is installed, follow the instructions in the release notes to access the UI. To print the UI URL, run:
 
 ```shell
-echo https://$(kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].host}')
+echo "https://$(kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].host}')"
 ```
+
+If your OpenShift cluster uses self-signed route certificates, open that URL in your browser and accept the certificate.
+
+You also need to retrieve and open the MCP Inspector proxy address so the MCP Inspector can establish a trusted connection to the MCP server and avoid failing silently. Print the proxy URL with:
+
+```shell
+echo "https://$(kubectl get route mcp-proxy -n kagenti-system -o jsonpath='{.status.ingress[0].host}')"
+```
+
+Open the printed address in your browser and accept the certificate. It is normal to see a `Cannot GET /` message — this indicates the proxy is reachable but not serving an HTML page; you can safely close the tab.
+
 
 ## Running the demo
 
