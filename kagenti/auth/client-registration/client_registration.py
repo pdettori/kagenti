@@ -133,7 +133,7 @@ internal_client_id = register_client(
 
 try:
     secret_file_path = get_env_var("SECRET_FILE_PATH")
-except:
+except ValueError:
     secret_file_path = "/shared/secret.txt"
 print(
     f'Writing secret for client ID: "{client_id}" (internal client ID: "{internal_client_id}") to file: "{secret_file_path}"'
