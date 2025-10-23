@@ -4,7 +4,7 @@ This document provides detailed steps for running the **Github Issue Agent** pro
 
 In this demo, we will use the Kagenti UI to import and deploy the **Github Issue Agent**.
 
-During deployment, we'll configure the **A2A protocol** for managing agent calls to the LLM and the publicly accessible Github tool. To access Github, users must provide their [personal Github access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic). Make sure this token allows reading issues from the Github repository.
+During deployment, we'll configure the **A2A protocol** for managing agent calls to the LLM and the publicly accessible Github tool. 
 
 Once deployed, we will query the agent using a natural language prompt. The agent will then invoke the public Github tool and return the responses related to issues.
 
@@ -14,6 +14,7 @@ Here's a breakdown of the sections:
 
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`git_issue_agent`](https://github.com/kagenti/agent-examples/tree/main/a2a/git_issue_agent).
 - In [**Import New Tool**](#import-new-tool), you'll build and deploy the ['github_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/github_tool). 
+- In [**Configure Keycloak**](#configure-keycloak), you'll configure Keycloak to provide access tokens with proper permissions to each component. 
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
 - In [**Chat with the Github Issue Agent**](#chat-with-the-github-issue-agent), you'll interact with the agent and confirm it responds correctly using Github issue data from selected repository.
 
@@ -21,6 +22,20 @@ Here's a breakdown of the sections:
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
 
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
+
+#### Required Github PAT Tokens
+
+In this demo, the Github MCP Server will require two Github Personal Access tokens with different permissions. You may follow [these instructions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) to create such tokens. 
+
+We will refer to the two tokens as `<PUBLIC_ACCESS_PAT>` and `<PRIVILEGED_ACCESS_PAT>`. The `<PRIVILEGED_ACCESS_PAT>` will be used upon initialization of the MCP Server as well as whenever a request with `github-full-access` scope is received. Otherwise, the `<PUBLIC_ACCESS_PAT>` will be used.  
+
+> **Note on required access**
+> To demonstrate finer-grained authorization, each of the tokens may have different scopes. This demo has been tested where:
+> - `<PUBLIC_ACCESS_PAT>` only `Public repositories` access
+> - `<PRIVILEGED_ACCESS_PAT>` has `All repositories` access
+> This way, a user with full access can access issue information on all repositories, and a user with partial access can see information only related to public repositories. 
+
+We will use the PATs when we deploy the MCP Server. 
 
 ---
 
@@ -63,7 +78,8 @@ To deploy the tool:
 1. In the **Select Environment Variable Sets** section, select `Import .env File` button, then provide:
    - Github Repository URL: `https://github.com/kagenti/agent-examples/`
    - Path to .env file: `mcp/github_tool/.env.template`
-   - Populate the `INIT_AUTH_HEADER`, `UPSTREAM_HEADER_TO_USE_IF_IN_AUDIENCE`, and `UPSTREAM_HEADER_TO_USE_IF_NOT_IN_AUDIENCE` with `Bearer <GITHUB_PAT>`. For the first two, use a PAT that has more permissions, and for the last, you may use a PAT with fewer permissions. 
+   - Populate the `INIT_AUTH_HEADER` and `UPSTREAM_HEADER_TO_USE_IF_IN_AUDIENCE` with `Bearer <PRIVILEGED_ACCESS_PAT>`, substituting for the `<PRIVILEGED_ACCESS_PAT>` you generated earlier with fewer permissions. 
+   - Populate the `UPSTREAM_HEADER_TO_USE_IF_NOT_IN_AUDIENCE` with `Bearer <PUBLIC_ACCESS_PAT>`, substituting for the `<PUBLIC_ACCESS_PAT>` you generated earlier with fewer permissions. 
    - Press "Import", this will populate environment variables for this agent.
 1. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
