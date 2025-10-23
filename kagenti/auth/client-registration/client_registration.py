@@ -103,7 +103,7 @@ try:
     KEYCLOAK_URL = get_env_var("KEYCLOAK_URL")
 except:
     print(
-        f'Expected environment variable "KEYCLOAK_URL". Skipping client registration of {client_id}.'
+        f'Expected environment variable "KEYCLOAK_URL" missing. Skipping client registration of {client_id}.'
     )
     exit()
 
@@ -131,10 +131,13 @@ internal_client_id = register_client(
     },
 )
 
+try:
+    secret_file_path = get_env_var("SECRET_FILE_PATH")
+except ValueError:
+    secret_file_path = "/shared/secret.txt"
 print(
-    f'Writing secret for client ID: "{client_id}", internal client ID: "{internal_client_id}"'
+    f'Writing secret for client ID: "{client_id}" (internal client ID: "{internal_client_id}") to file: "{secret_file_path}"'
 )
-secret_file_path = get_env_var("SECRET_FILE_PATH")
 write_client_secret(
     keycloak_admin,
     internal_client_id,
