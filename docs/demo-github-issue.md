@@ -4,7 +4,7 @@ This document provides detailed steps for running the **Github Issue Agent** pro
 
 In this demo, we will use the Kagenti UI to import and deploy the **Github Issue Agent**.
 
-During deployment, we'll configure the **A2A protocol** for managing agent calls to the LLM and the publicly accessible Github tool. 
+During deployment, we'll configure the **A2A protocol** for managing agent calls to the LLM and the publicly accessible GitHub tool. 
 
 Once deployed, we will query the agent using a natural language prompt. The agent will then invoke the public Github tool and return the responses related to issues.
 
