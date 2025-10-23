@@ -86,7 +86,7 @@ To deploy the tool:
 1. Choose the `main` branch or your preferred branch.
 1. Set **Select Protocol** to `streamable-http`.
 1. Under **Specify Source Subfolder**:
-   - Select: `mcp/git_issue_agent`
+   - Select: `mcp/github_tool`
 1. Click **Build & Deploy New Tool** button.
 
 ---
