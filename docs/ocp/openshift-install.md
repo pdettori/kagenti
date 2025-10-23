@@ -32,10 +32,16 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    - Edit the `.secrets.yaml` to provide the necessary keys as per the comments within the file.
 
 3. **Kagenti Dependencies Helm Chart Installation:**
+   - If you have git installed you may determine the latest tag with the command:
+      ```shell
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
+      ``` 
+      if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
+
+
    This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   # if you have git installed you may determine the latest tag with the command:
-   LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
+   
 
    helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
    ```
@@ -76,6 +82,21 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    ```
 
 5. **Install the Kagenti Chart:**
+ 
+   - Open [kagenti-platform-operator-char](https://github.com/kagenti/kagenti-operator/pkgs/container/kagenti-operator%2Fkagenti-platform-operator-chart) to find the latest available version (e.g., 0.2.0-alpha.12).
+   - Open charts/kagenti/Chart.yaml and set the version field for kagenti-platform-operator-chart to match the latest tag.
+   - If you updated the version tag, run the following command to update the chart dependencies:
+     ```shell
+      helm dependency update ./charts/kagenti/
+      ```
+   - Determine the latest tag with the command:
+      ```shell
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
+      ```
+      if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
+
+   Install the kagenti chart as follows:
+
    ```shell
    helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml
    ```
