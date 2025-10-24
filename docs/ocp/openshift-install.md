@@ -221,7 +221,6 @@ This occurs because OVNKubernetes' default "shared gateway mode" causes
 health probe traffic from the kubelet to bypass the host network stack. This 
 prevents the Ztunnel proxy from intercepting the traffic and incorrectly fails the probes.
 
-
 To inspect the Network Type you can run the command:
 
 ```shell
