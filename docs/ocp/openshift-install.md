@@ -83,7 +83,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
 5. **Install the Kagenti Chart:**
  
-   - Open [kagenti-platform-operator-char](https://github.com/kagenti/kagenti-operator/pkgs/container/kagenti-operator%2Fkagenti-platform-operator-chart) to find the latest available version (e.g., 0.2.0-alpha.12).
+   - Open [kagenti-platform-operator-chart](https://github.com/kagenti/kagenti-operator/pkgs/container/kagenti-operator%2Fkagenti-platform-operator-chart) to find the latest available version (e.g., 0.2.0-alpha.12).
    - Open charts/kagenti/Chart.yaml and set the version field for kagenti-platform-operator-chart to match the latest tag.
    - If you updated the version tag, run the following command to update the chart dependencies:
      ```shell
