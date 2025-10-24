@@ -217,7 +217,7 @@ kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: 
 This is a specific [issue](https://github.com/kagenti/kagenti/issues/329) for 
 OpenShift with Network Type `OVNKubernetes`. 
 
-Cause: This occurs because OVNKubernetes' default "shared gateway mode" causes 
+This occurs because OVNKubernetes' default "shared gateway mode" causes 
 health probe traffic from the kubelet to bypass the host network stack. This 
 prevents the Ztunnel proxy from intercepting the traffic and incorrectly fails the probes.
 
