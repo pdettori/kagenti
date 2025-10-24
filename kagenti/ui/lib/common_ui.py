@@ -360,51 +360,29 @@ def display_environment_variables(st_object, env_vars: dict) -> None:
         if env_vars.get("configmap"):
             st_object.markdown("#### From ConfigMaps")
             for env in env_vars["configmap"]:
-                if "valueFrom" in env:
-                    ref = env["valueFrom"]
-                    if "configMapKeyRef" in ref:
-                        cm_ref = ref["configMapKeyRef"]
-                        st_object.markdown(
-                            f"- **{env['name']}**: ConfigMap `{cm_ref['name']}`, key `{cm_ref['key']}`"
-                        )
-                    elif "configMapRef" in ref:
-                        cm_ref = ref["configMapRef"]
-                        st_object.markdown(f"- **{env['name']}**")
+                st_object.markdown(
+                    f"- **{env['name']}**: ConfigMap `{env['source_name']}`, key `{env['source_key']}`"
+                )
 
         # Secret references
         if env_vars.get("secret"):
             st_object.markdown("#### From Secrets")
             for env in env_vars["secret"]:
-                if "valueFrom" in env:
-                    ref = env["valueFrom"]
-                    if "secretKeyRef" in ref:
-                        secret_ref = ref["secretKeyRef"]
-                        st_object.markdown(
-                            f"- **{env['name']}**: Secret `{secret_ref['name']}`, key `{secret_ref['key']}` 🔒"
-                        )
-                    elif "secretRef" in ref:
-                        secret_ref = ref["secretRef"]
-                        st_object.markdown(f"- **{env['name']}** 🔒")
+                st_object.markdown(
+                    f"- **{env['name']}**: Secret `{env['source_name']}`, key `{env['source_key']}` 🔒"
+                )
 
         # Field references
         if env_vars.get("fieldref"):
             st_object.markdown("#### From Field References")
             for env in env_vars["fieldref"]:
-                if "valueFrom" in env:
-                    ref = env["valueFrom"]["fieldRef"]
-                    st_object.markdown(
-                        f"- **{env['name']}**: Field `{ref['fieldPath']}`"
-                    )
+                st_object.markdown(f"- **{env['name']}**: Field `{env['field_path']}`")
 
         # Resource field references
         if env_vars.get("resourcefield"):
             st_object.markdown("#### From Resource Field References")
             for env in env_vars["resourcefield"]:
-                if "valueFrom" in env:
-                    ref = env["valueFrom"]["resourceFieldRef"]
-                    st_object.markdown(
-                        f"- **{env['name']}**: Resource `{ref['resource']}`"
-                    )
+                st_object.markdown(f"- **{env['name']}**: Resource `{env['resource']}`")
 
 
 def check_auth():
