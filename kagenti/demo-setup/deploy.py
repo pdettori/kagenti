@@ -5,7 +5,7 @@ This script automates the deployment of Kagenti demo agents and tools.
 It's designed to be run after a fresh Kagenti installation.
 
 Usage:
-    python setup_demo.py [options]
+    python deploy.py [options]
 
 Options:
     --demo {weather,slack,all}  Which demo to setup (default: all)
@@ -231,6 +231,7 @@ def run_auth_demo_setup(namespace: str, script_dir: Path) -> bool:
                 ],
                 check=False,
                 capture_output=True,
+                env=env,
             )
             if result.returncode != 0:
                 # Fall back to regular python
