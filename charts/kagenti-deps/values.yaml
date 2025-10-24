@@ -1,10 +1,6 @@
 # Global settings
 openshift: true
 
-tags:
-  kubernetes: false
-  openshift: true
-
 # ------------------------------------------------------------------
 #  Control Panel: Enable or disable components here
 # ------------------------------------------------------------------
@@ -88,29 +84,14 @@ istio:
     profile: ambient
     namespace: '{{ .Values.istio.namespace | quote }}'
 
-sail-operator: {}
-# istio-base: {}
-#
-# istio-istiod:
-#   profile: ambient
-#
-# istio-cni:
-#   profile: ambient
-
 httpGateway:
   name: http
   namespace: "kagenti-system"
   
-
 # ------------------------------------------------------------------
 #  Cert Manager Configuration
 # ------------------------------------------------------------------
 certManager:
-  namespace: cert-manager-operator
-
-# added since subchart uses alias for routes which cannot have camel-case
-cert-manager:
-  installCRDs: true
   namespace: cert-manager-operator
 
 # ------------------------------------------------------------------

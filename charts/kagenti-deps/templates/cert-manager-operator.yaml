@@ -1,13 +1,10 @@
-{{- if .Values.components.certManager.enabled }}
+{{- if and .Values.components.certManager.enabled .Values.openshift }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.certManager.namespace }}
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
-{{- end }}
-
-{{- if and .Values.components.certManager.enabled .Values.openshift }}
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
