@@ -118,7 +118,6 @@ echo "https://$(kubectl get route mcp-proxy -n kagenti-system -o jsonpath='{.sta
 
 Open the printed address in your browser and accept the certificate. It is normal to see a `Cannot GET /` message — this indicates the proxy is reachable but not serving an HTML page; you can safely close the tab.
 
-
 ## Running the demo
 
 At this time, only the OpenAI API-backed agents have been tested (`a2a-content-extractor` and `a2a-currency-converter`).
