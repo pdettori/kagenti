@@ -15,6 +15,7 @@ Here is a trick:
 * then press import file
 
 If you can see the successfully imported value, you are all set!
+> **💡 New to Kagenti?** This guide is designed for **Agent Developers**. If you're unsure about your role or want to understand the broader ecosystem, check out our **[Personas and Roles Documentation](../PERSONAS_AND_ROLES.md#11-ai-agent-developers)** first.
 
 ### Deploying from Source
 
