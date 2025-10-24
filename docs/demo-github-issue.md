@@ -81,6 +81,7 @@ To deploy the tool:
    - Populate the `INIT_AUTH_HEADER` and `UPSTREAM_HEADER_TO_USE_IF_IN_AUDIENCE` with `Bearer <PRIVILEGED_ACCESS_PAT>`, substituting for the `<PRIVILEGED_ACCESS_PAT>` you generated earlier with fewer permissions. 
    - Populate the `UPSTREAM_HEADER_TO_USE_IF_NOT_IN_AUDIENCE` with `Bearer <PUBLIC_ACCESS_PAT>`, substituting for the `<PUBLIC_ACCESS_PAT>` you generated earlier with fewer permissions. 
    - Press "Import", this will populate environment variables for this agent.
+1. Under `Tool Kubernetes Pod Configuration` set `Target Port` to `9090`. 
 1. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
 1. Choose the `main` branch or your preferred branch.
