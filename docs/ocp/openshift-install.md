@@ -210,5 +210,31 @@ running the command:
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
 ```
 
+## Troubleshooting
 
+### Readiness checks fail for pods in namespaces with istio ambient enabled 
+
+This is a specific [issue](https://github.com/kagenti/kagenti/issues/329) for 
+OpenShift with Network Type `OVNKubernetes`. 
+
+Cause: This occurs because OVNKubernetes' default "shared gateway mode" causes 
+health probe traffic from the kubelet to bypass the host network stack. This 
+prevents the Ztunnel proxy from intercepting the traffic and incorrectly fails the probes.
+
+
+To inspect the Network Type you can run the command:
+
+```shell
+kubectl describe network.config/cluster
+```
+
+**Workaround**
+
+To fix this, you must set `routingViaHost: true` in your gatewayConfig when 
+deploying ambient mode. This forces OVNKubernetes to use "local gateway mode," 
+which correctly routes traffic through the host and allows the probes to function properly.
+
+```shell
+kubectl patch network.operator.openshift.io cluster --type=merge -p '{"spec":{"defaultNetwork":{"ovnKubernetesConfig":{"gatewayConfig":{"routingViaHost":true}}}}}'
+```
 
