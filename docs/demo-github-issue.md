@@ -49,12 +49,10 @@ To deploy the GitHub Issue Agent:
    - `ollama` or `openai`
 1. Next select `Import .env File` button, then provide:
    - GitHub Repository URL: `https://github.com/kagenti/agent-examples/`
-   - Path to .env file: `a2a/git_issue_agent/.env.kagenti`
+   - Path to .env file: 
+     - If you are using `ollama`, use `a2a/git_issue_agent/.env.ollama`
+     - If you are using `openai`, use `a2a/git_issue_agent/.env.openai`
    - Press "Import", this will populate environment variables for this agent.
-1. Additionally, if you are using `openai` environment, again under `Import.env File`:
-   - GitHub Repository URL: `https://github.com/kagenti/agent-examples/`
-   - Path to .env file: `a2a/git_issue_agent/.env.openai`
-   - Press "Import". 
 1. In the **Deployment Method** select `Build from Source` and then in **Agent Source Repository URL** field, use the default:
    <https://github.com/kagenti/agent-examples>
    Or use a custom repository accessible using the GitHub ID specified in your `.env` file.
