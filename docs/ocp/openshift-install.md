@@ -41,7 +41,6 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
    This chart includes all the OpenShift software components required by Kagenti.
    ```shell
-   
 
    helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
    ```
