@@ -486,7 +486,7 @@ def _find_pods_for_resource(core_v1_api, resource_name, namespace):
             continue
 
     error_message = (
-        f"No pods found with labels app.kubernetes.io/name={resource_name} "
+        f"No pods found with label app.kubernetes.io/name={resource_name} "
         f"or app={resource_name} in namespace {namespace}"
     )
     return None, error_message
