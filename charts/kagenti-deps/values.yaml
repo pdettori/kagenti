@@ -87,7 +87,6 @@ istio:
 httpGateway:
   name: http
   namespace: "kagenti-system"
-  
 # ------------------------------------------------------------------
 #  Cert Manager Configuration
 # ------------------------------------------------------------------
