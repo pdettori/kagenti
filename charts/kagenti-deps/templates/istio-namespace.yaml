@@ -24,7 +24,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.istio.cni.namespace }}
+  name: "{{ .Values.istio.cni.namespace }}"
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
     istio-discovery: enabled
