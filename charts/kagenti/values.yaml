@@ -81,4 +81,3 @@ mcpGateway:
   namespaces:
     mcpSystem: mcp-system
     gatewaySystem: gateway-system
-    
