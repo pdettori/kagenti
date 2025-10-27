@@ -319,7 +319,7 @@ def _process_a2a_stream_chunk(
                         # As a last-resort fallback, use a forgiving regex. This
                         # should rarely be needed, but keeps behavior robust if
                         # model_dump_json returned something non-standard.
-                        m = re.search(r'"text"\s*:\s*"([^\"]*)"', dumped)
+                        m = re.search(r'"text"\s*:\s*"((?:[^\\"]|\\.)*)"', dumped)
                         if m:
                             texts.append(m.group(1))
         return " ".join(t for t in texts if t)
@@ -386,14 +386,16 @@ def _process_a2a_stream_chunk(
                 if hasattr(p, "text"):
                     full_response_content_chunk += p.text
                     log_message += f" | Text: '{p.text[:50]}...'"
-                elif hasattr(p, "data"):
-                    data_str = str(p.data)
-                    full_response_content_chunk += data_str
-                    kind = getattr(p, "kind", "unknown")
-                    log_message += f" | Data: (type: {kind}, {len(data_str)} bytes)"
-            if event.lastChunk:
-                log_message += " (Last Chunk)"
-
+                else:
+                    try:
+                        data = p.data
+                    except Exception:
+                        data = None
+                    if data is not None:
+                        data_str = str(data)
+                        full_response_content_chunk += data_str
+                        kind = getattr(p, "kind", "unknown")
+                        log_message += f" | Data: (type: {kind}, {len(data_str)} bytes)"
         else:
             log_message = f"❓ Unknown A2A Event Type: {type(event)}"
             # Avoid a very long single-line message; pass the dump as a parameter
