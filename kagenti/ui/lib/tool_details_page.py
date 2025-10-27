@@ -166,7 +166,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
     console_url = (
         f"{mcp_inspector_url}?"
         f"serverUrl={encoded_server_url}&"
-        f"transport=streamable_http&"
+        f"transport=streamable-http&"
         f"MCP_PROXY_FULL_ADDRESS={encoded_proxy_url}"
     )
 
