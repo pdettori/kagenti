@@ -17,15 +17,6 @@ spec:
     httpEnabled: true
     httpPort: 8080
   instances: 1
-  ports:
-    - name: http
-      containerPort: 8080
-    - name: startup
-      containerPort: 9000 
-    - name: readiness
-      containerPort: 9000
-    - name: liveness
-      containerPort: 9000
   networkPolicy:
     enabled: true
   update:
