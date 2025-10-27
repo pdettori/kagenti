@@ -20,6 +20,7 @@ Utilities for handling [A2A](https://github.com/a2aproject/A2A) protocol.
 import logging
 import os
 import re
+import json
 from uuid import uuid4
 from typing import Any, Tuple
 import streamlit as st
@@ -264,6 +265,20 @@ def _process_a2a_stream_chunk(
     # or be plain objects with a .text attribute. Return concatenated text.
     def _extract_text_from_parts(parts) -> str:
         texts = []
+
+        # Recursive collector defined once to avoid defining functions inside
+        # the loop (which triggers pylint W0640: cell-var-from-loop).
+        def _collect_texts(obj):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if k == "text" and isinstance(v, str):
+                        texts.append(v)
+                    else:
+                        _collect_texts(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    _collect_texts(item)
+
         if not parts:
             return ""
         for p in parts:
@@ -294,9 +309,19 @@ def _process_a2a_stream_chunk(
                 except Exception:
                     dumped = None
                 if dumped:
-                    m = re.search(r'"text"\s*:\s*"([^\"]+)"', dumped)
-                    if m:
-                        texts.append(m.group(1))
+                    # Prefer proper JSON parsing over regex to correctly handle
+                    # escaped characters (e.g. escaped quotes). model_dump_json
+                    # returns a JSON string, so json.loads() should succeed.
+                    try:
+                        parsed = json.loads(dumped)
+                        _collect_texts(parsed)
+                    except Exception:
+                        # As a last-resort fallback, use a forgiving regex. This
+                        # should rarely be needed, but keeps behavior robust if
+                        # model_dump_json returned something non-standard.
+                        m = re.search(r'"text"\s*:\s*"([^\"]*)"', dumped)
+                        if m:
+                            texts.append(m.group(1))
         return " ".join(t for t in texts if t)
 
     if isinstance(chunk_data.root, SendStreamingMessageSuccessResponse):
