@@ -1584,10 +1584,10 @@ def render_import_form(
         )
 
         env_raw_url = st_object.text_input(
-            "Github repository raw url containing the .env file:",
+            "GitHub repository raw url containing the .env file:",
             placeholder="https://raw.githubusercontent.com/username/repository/path-to/.env",
             key=f"{resource_type.lower()}_repo_url",
-            help="Enter the Github raw URL to the repository containing the .env file",
+            help="Enter the GitHub raw URL to the repository containing the .env file",
         )
 
         import_col1, import_col2, _import_col3 = st_object.columns([1, 1, 2])
@@ -1600,6 +1600,7 @@ def render_import_form(
                 try:
                     with st_object.spinner("Fetching .env file from repository ..."):
                         response = requests.get(env_raw_url, timeout=20)
+                        response.raise_for_status()
                         env_content = response.text
                         imported_vars = parse_env_file(env_content, st_object)
                         if imported_vars:
