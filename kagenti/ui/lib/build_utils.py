@@ -1674,10 +1674,13 @@ def render_import_form(
         invalid_custom_env_vars = []
 
         for env_var in custom_env_vars:
+            filtered_env_var = {
+                k: v for k, v in env_var.items() if k in ("name", "value", "valueFrom")
+            }
             if _is_valid_env_entry(env_var):
-                valid_custom_env_vars.append(env_var)
+                valid_custom_env_vars.append(filtered_env_var)
             else:
-                invalid_custom_env_vars.append(env_var)
+                invalid_custom_env_vars.append(filtered_env_var)
 
         if invalid_custom_env_vars:
             st_object.warning(
@@ -1713,12 +1716,23 @@ def render_import_form(
 
             # Sometimes structured JSON may be stored under 'value' as a dict
             if isinstance(env_var.get("value"), dict):
-                final_additional_envs.append({"name": name, **env_var["value"]})
+                # Only allow known keys to be included for manifest predictability
+                allowed_keys = ["valueFrom", "configMapKeyRef", "secretKeyRef"]
+                env_entry = {"name": name}
+                for key in allowed_keys:
+                    if key in env_var["value"]:
+                        env_entry[key] = env_var["value"][key]
+                final_additional_envs.append(env_entry)
                 continue
 
             # Plain string value (helper ensured non-empty)
             val = env_var.get("value")
-            final_additional_envs.append({"name": name, "value": val.strip()})
+            if isinstance(val, str):
+                final_additional_envs.append({"name": name, "value": val.strip()})
+            else:
+                logger.warning(
+                    f"Skipping env var '{name}' with non-string value: {val!r}"
+                )
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api or not core_v1_api:
