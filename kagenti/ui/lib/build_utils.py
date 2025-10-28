@@ -92,53 +92,81 @@ def parse_env_file(content: str, st_object=None):  # pylint: disable=too-many-br
 
         # Attempt JSON parse only when value looks like JSON
         if value and (value.startswith("{") or value.startswith("[")):
-            try:
-                parsed = json.loads(value)
-                if isinstance(parsed, dict):
-                    if "value" in parsed or "valueFrom" in parsed:
-                        env_entry = {"name": name, **parsed}
-                    elif "secretKeyRef" in parsed or "configMapKeyRef" in parsed:
-                        env_entry = {"name": name, "valueFrom": parsed}
-                    else:
-                        if st_object:
-                            st_object.warning(
-                                f"⚠️ Line {line_num}: JSON parsed but has unrecognized keys; kept as string for '{name}'"
-                            )
-                        else:
-                            logger.warning(
-                                "Line %s: JSON parsed but has unrecognized keys; kept as string for '%s'",
-                                line_num,
-                                name,
-                            )
-                        env_entry = {"name": name, "value": value}
-                else:
-                    if st_object:
-                        st_object.warning(
-                            f"⚠️ Line {line_num}: JSON parsed to non-object; kept as string for '{name}'"
-                        )
-                    else:
-                        logger.warning(
-                            "Line %s: JSON parsed to non-object; kept as string for '%s'",
-                            line_num,
-                            name,
-                        )
-                    env_entry = {"name": name, "value": value}
-            except json.JSONDecodeError:
-                if st_object:
-                    st_object.warning(
-                        f"⚠️ Line {line_num}: Invalid JSON; kept as string: {raw_line}"
-                    )
-                else:
-                    logger.warning(
-                        "Line %s: Invalid JSON; kept as string: %s", line_num, raw_line
-                    )
-                env_entry = {"name": name, "value": value}
+            env_entry = _parse_json_value(value, name, line_num, st_object)
         else:
             env_entry = {"name": name, "value": value}
 
         env_vars.append(env_entry)
 
     return env_vars
+
+
+def _parse_json_value(value: str, name: str, line_num: int, st_object=None) -> dict:
+    """Parse a JSON-looking value from an .env entry into an env dict.
+
+    This centralizes the JSON parsing and logging/warning behavior to keep
+    parse_env_file smaller and easier to read.
+    """
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, dict):
+            if "value" in parsed or "valueFrom" in parsed:
+                return {"name": name, **parsed}
+            if "secretKeyRef" in parsed or "configMapKeyRef" in parsed:
+                return {"name": name, "valueFrom": parsed}
+            # Unrecognized dict shape; keep as string but warn
+            if st_object:
+                st_object.warning(
+                    f"⚠️ Line {line_num}: JSON parsed but has unrecognized keys; kept as string for '{name}'"
+                )
+            else:
+                logger.warning(
+                    "Line %s: JSON parsed but has unrecognized keys; kept as string for '%s'",
+                    line_num,
+                    name,
+                )
+            return {"name": name, "value": value}
+
+        # Non-dict JSON (list, string etc) -> keep as string but warn
+        if st_object:
+            st_object.warning(
+                f"⚠️ Line {line_num}: JSON parsed to non-object; kept as string for '{name}'"
+            )
+        else:
+            logger.warning(
+                "Line %s: JSON parsed to non-object; kept as string for '%s'",
+                line_num,
+                name,
+            )
+        return {"name": name, "value": value}
+    except json.JSONDecodeError:
+        if st_object:
+            st_object.warning(
+                f"⚠️ Line {line_num}: Invalid JSON; kept as string: {value}"
+            )
+        else:
+            logger.warning("Line %s: Invalid JSON; kept as string: %s", line_num, value)
+        return {"name": name, "value": value}
+
+
+def _is_valid_env_entry(env_var: dict) -> bool:
+    """Return True when an env var dict has a valid name and value/structured data.
+
+    Valid when:
+    - name exists and is non-empty after stripping, and
+    - either contains a structured reference (valueFrom or dict-valued 'value')
+      or contains a non-empty string 'value'.
+    """
+    if not isinstance(env_var, dict):
+        return False
+    name = (env_var.get("name") or "").strip()
+    if not name:
+        return False
+    has_structured = "valueFrom" in env_var or isinstance(env_var.get("value"), dict)
+    has_plain = (
+        isinstance(env_var.get("value"), str) and env_var.get("value", "").strip()
+    )
+    return bool(has_structured or has_plain)
 
 
 # Pipeline mode constants
@@ -1646,17 +1674,7 @@ def render_import_form(
         invalid_custom_env_vars = []
 
         for env_var in custom_env_vars:
-            name = (env_var.get("name") or "").strip()
-            # Consider structured entries valid when they contain valueFrom or a dict value
-            has_structured = "valueFrom" in env_var or isinstance(
-                env_var.get("value"), dict
-            )
-            has_plain = (
-                isinstance(env_var.get("value"), str)
-                and env_var.get("value", "").strip()
-            )
-
-            if name and (has_structured or has_plain):
+            if _is_valid_env_entry(env_var):
                 valid_custom_env_vars.append(env_var)
             else:
                 invalid_custom_env_vars.append(env_var)
@@ -1680,9 +1698,11 @@ def render_import_form(
 
     if custom_env_vars:
         for env_var in custom_env_vars:
-            name = (env_var.get("name") or "").strip()
-            if not name:
+            # Skip invalid entries centrally
+            if not _is_valid_env_entry(env_var):
                 continue
+
+            name = (env_var.get("name") or "").strip()
 
             # Structured env var (valueFrom)
             if "valueFrom" in env_var and isinstance(env_var.get("valueFrom"), dict):
@@ -1696,10 +1716,9 @@ def render_import_form(
                 final_additional_envs.append({"name": name, **env_var["value"]})
                 continue
 
-            # Plain string value
+            # Plain string value (helper ensured non-empty)
             val = env_var.get("value")
-            if isinstance(val, str) and val.strip():
-                final_additional_envs.append({"name": name, "value": val.strip()})
+            final_additional_envs.append({"name": name, "value": val.strip()})
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api or not core_v1_api:
