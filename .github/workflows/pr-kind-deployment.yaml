@@ -3,6 +3,11 @@ name: PR Kind Deployment Test
 on:
   pull_request_target:
     branches: [main]
+    paths:
+      - 'kagenti/**'
+      - 'deployments/ui/**'
+      - '.github/**'
+      - 'charts/**'
 
 jobs:
   deploy-on-kind:
