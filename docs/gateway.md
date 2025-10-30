@@ -4,7 +4,7 @@
 unless the user has explicitly opted out of it, such as via `--skip-install mcp_gateway`. This document describes how
 
 - A MCP server can be registered with the Gateway
-- An agent connect to tools via the Gateway
+- An agent connects to tools via the Gateway
 
 ## Weather Agent / Tools (no auth)
 
@@ -35,7 +35,7 @@ mcp-controller-666f8cf9bf-dcpbc      1/1     Running   0          30h
 ### Register Weather MCP Server
 
 The Weather Service Tool can be installed using the Kagenti UI [as usual](./demo-weather-agent.md#import-new-tool). Once it is
-installed, to register it with the Gateway, create a [`HTTPRoute`](https://gateway-api.sigs.k8s.io/api-types/httproute/):
+installed, to register it with the Gateway, create an [`HTTPRoute`](https://gateway-api.sigs.k8s.io/api-types/httproute/):
 
 ```
 echo 'apiVersion: gateway.networking.k8s.io/v1
@@ -61,7 +61,7 @@ spec:
       port: 8000' | kubectl apply -f -
 ```
 
-and then create a `MCPServer` Custom Resource:
+and then create an `MCPServer` Custom Resource:
 
 ```
 echo 'apiVersion: mcp.kagenti.com/v1alpha1
