@@ -3,7 +3,7 @@
 [MCP Gateway](https://github.com/kagenti/mcp-gateway) components are installed as part of the Kagenti installation process
 unless the user has explicitly opted out of it, such as via `--skip-install mcp_gateway`. This document describes how
 
-- A MCP server can be registered with the Gateway
+- An MCP server can be registered with the Gateway
 - An agent connects to tools via the Gateway
 
 ## Weather Agent / Tools (no auth)
