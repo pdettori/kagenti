@@ -1,0 +1,31 @@
+kagenti:
+  enabled: true
+  namespace: kagenti
+  image:
+    tag: "dev"
+
+istio:
+  enabled: true
+  namespace: istio-system
+  base: {}
+  istiod: {}
+  cni:
+    profile: ambient
+  ztunnel: {}  
+
+kiali:
+  enabled: true
+
+
+gateway-api:
+  enabled: true  
+
+certManager:
+  enabled: true
+  namespace: cert-manager
+
+
+registries:
+ghcr:
+  username: ""  # inject in CI or via local env
+  password: ""

@@ -1,0 +1,90 @@
+installables:
+  - id: istio-base
+    type: helm
+    name: base
+    release: istio-base
+    repository: "https://istio-release.storage.googleapis.com/charts"
+    chartVersion: "1.27.3"
+    condition: istio.enabled
+    namespace: istio.namespace
+    valuesPath: istio.base
+
+  - id: gateway-api
+    type: kubectl-apply
+    url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml"
+    condition: gateway-api.enabled
+    applyMethod: kubectl-apply
+
+  - id: istiod
+    type: helm
+    name: istiod
+    release: istiod
+    repository: "https://istio-release.storage.googleapis.com/charts"
+    chartVersion: "1.27.3"
+    condition: istio.enabled
+    namespace: istio.namespace
+    valuesPath: istio.istiod 
+
+  - id: istio-cni
+    type: helm
+    name: cni
+    release: istio-cni
+    repository: "https://istio-release.storage.googleapis.com/charts"
+    chartVersion: "1.27.3"
+    condition: istio.enabled
+    namespace: istio.namespace
+    valuesPath: istio.cni
+
+  - id: istio-ztunnel
+    type: helm
+    name: ztunnel
+    release: ztunnel
+    repository: "https://istio-release.storage.googleapis.com/charts"
+    chartVersion: "1.27.3"
+    condition: istio.enabled
+    namespace: istio.namespace
+    valuesPath: istio.ztunnel
+
+  - id: prometheus
+    type: kubectl-apply
+    url: https://raw.githubusercontent.com/istio/istio/release-1.27/samples/addons/prometheus.yaml
+    condition: kiali.enabled
+    applyMethod: kubectl-apply
+
+  - id: kiali
+    type: kubectl-apply
+    url: https://raw.githubusercontent.com/istio/istio/release-1.27/samples/addons/kiali.yaml
+    condition: kiali.enabled
+    applyMethod: kubectl-apply
+
+  - id: kiali-route
+    type: kubectl-apply
+    url: file:///templates/kiali-route.yaml
+    condition: kiali.enabled
+    applyMethod: kubectl-apply
+
+  - id: label-istio-system
+    type: kubectl-label
+    namespace: istio.namespace      
+    labels:
+      shared-gateway-access: true
+    condition: kiali.enabled 
+    override: true       
+   
+  - id: cert-manager
+    type: kubectl-apply
+    url: https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+    condition: certManager.enabled
+    namespace: certManager.namespace
+    applyMethod: kubectl-apply
+    injectNamespace: false
+
+  # - id: kagenti
+  #   type: helm
+  #   name: charts/kagenti
+  #   release: kagenti
+  #   repository: ""
+  #   chartVersion: ""
+  #   condition: components.kagenti.enabled
+  #   namespace: components.kagenti.namespace
+  #   valuesPath: components.kagenti
