@@ -22,7 +22,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # Adjust if directory structure changes
 ENV_FILE = SCRIPT_DIR / ".env"
 RESOURCES_DIR = SCRIPT_DIR / "resources"
-DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost.me")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localtest.me")
 
 # --- Cluster & Operator Configuration ---
 CLUSTER_NAME = "agent-platform"
