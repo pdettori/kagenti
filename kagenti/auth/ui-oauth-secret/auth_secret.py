@@ -39,7 +39,7 @@ if KEYCLOAK_URL is None:
     )
     exit()  # KEYCLOAK_URL is optional so do not raise an error
 # Domain for off-cluster endpoints
-DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localhost.me")
+DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localtest.me")
 
 
 # TODO: use the function from kagenti/ui/lib/kube.py
