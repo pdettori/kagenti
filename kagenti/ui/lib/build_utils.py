@@ -285,6 +285,7 @@ def _construct_tool_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -345,6 +346,10 @@ def _construct_tool_resource_body(
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
 
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
+    )
+
     # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
         service_ports = pod_config["service_ports"]
@@ -375,6 +380,7 @@ def _construct_tool_resource_body(
                     "imageTag": image_tag,
                     "imageRegistry": image_registry_prefix,
                     "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
+                    "imagePullSecrets": pull_secrets if pull_secrets else [],
                 },
                 "containerPorts": [
                     {
@@ -528,6 +534,7 @@ def _construct_agent_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -591,6 +598,10 @@ def _construct_agent_resource_body(
         {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
     )
 
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
+    )
+
     # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
         service_ports = pod_config["service_ports"]
@@ -632,6 +643,7 @@ def _construct_agent_resource_body(
                         "imageTag": image_tag,
                         "imageRegistry": image_registry_prefix,
                         "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
+                        "imagePullSecrets": pull_secrets if pull_secrets else [],
                     },
                     "containerPorts": [
                         {
@@ -720,6 +732,30 @@ def _construct_agent_resource_body(
         }
 
     return body
+
+
+def _get_image_pull_secrets(build_from_source, registry_config, image_pull_secret):
+    """
+    Determine imagePullSecrets based on deployment method.
+
+    Args:
+        build_from_source: Boolean indicating if building from source
+        registry_config: Registry configuration dict (used when build_from_source=True)
+        image_pull_secret: Secret name for existing images (used when build_from_source=False)
+
+    Returns:
+        List of imagePullSecret dicts or empty list
+    """
+    if build_from_source:
+        # Use registry_config for source builds
+        if registry_config and registry_config.get("requires_auth"):
+            return [{"name": registry_config["credentials_secret"]}]
+    else:
+        # Use image_pull_secret for existing image deployments
+        if image_pull_secret:
+            return [{"name": image_pull_secret}]
+
+    return []
 
 
 # pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
@@ -1006,6 +1042,7 @@ def trigger_and_monitor_deployment_from_image(
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -1057,6 +1094,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -1074,6 +1112,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     if not cr_body:
@@ -1871,7 +1910,11 @@ def render_import_form(
             "Docker Image (e.g., myrepo/myimage:tag)",
             key=f"{resource_type.lower()}_docker_image",
         )
-
+        repo_secret_name = st_object.text_input(
+            "Image Pull Secret Name (optional, leave empty for public images)",
+            key=f"{resource_type.lower()}_repo_secret",
+            help="Name of the Kubernetes secret containing credentials for private Docker registries",
+        )
         selected_protocol = default_protocol
         if protocol_options:
             current_protocol_index = (
@@ -1926,6 +1969,7 @@ def render_import_form(
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
                 pod_config=pod_config,
                 additional_env_vars=final_additional_envs,
+                image_pull_secret=repo_secret_name if repo_secret_name else None,
             )
 
     st_object.markdown("---")
