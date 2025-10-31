@@ -2097,19 +2097,33 @@ def remove_service_port(index, service_ports_key):
 
 
 def parse_image_url(url: str):
-    """Parse an Image URL"""
-    # Split off the tag
-    if ":" not in url:
-        raise ValueError("URL must contain a tag (e.g., :latest)")
+    """Parse an Image URL
 
-    base, tag = url.rsplit(":", 1)
-    parts = base.strip("/").split("/")
+    Supports two formats:
+    1. Full format: repo/path:tag (e.g., 'myrepo/my_app:v1.0')
+    2. Local format: image_name or image_name:tag (e.g., 'my_app' or 'my_app:latest')
+    """
+    # Split off the tag if present
+    if ":" in url:
+        base, tag = url.rsplit(":", 1)
+    else:
+        base = url
+        tag = "latest"  # Default tag if none specified
 
-    if len(parts) < 2:
-        raise ValueError("URL must contain at least a repo and image name")
+    # Remove leading/trailing slashes
+    base = base.strip("/")
 
-    image_name = parts[-1]
-    repo = "/".join(parts[:-1])
+    # Split into parts
+    parts = base.split("/")
+
+    # Handle local image (no repo path)
+    if len(parts) == 1:
+        repo = None  # or "" or "local" depending on your preference
+        image_name = parts[0]
+    else:
+        # Full format with repo
+        image_name = parts[-1]
+        repo = "/".join(parts[:-1])
 
     return repo, image_name, tag
 
