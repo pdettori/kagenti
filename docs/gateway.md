@@ -1,16 +1,16 @@
 # MCP Gateway instructions
 
-MCP Gateway components are installed as part of the Kagenti installation process
-unless the user has explicitly opted out of it. This document describes how
+[MCP Gateway](https://github.com/kagenti/mcp-gateway) components are installed as part of the Kagenti installation process
+unless the user has explicitly opted out of it, such as via `--skip-install mcp_gateway`. This document describes how
 
-- A MCP server can be registered with the Gateway
-- An agent connect to tools via the Gateway 
+- An MCP server can be registered with the Gateway
+- An agent connects to tools via the Gateway
 
 ## Weather Agent / Tools (no auth)
 
 First, we are going to use the **Weather Agent** and **Weather Tool** as an
 example where there is no auth. Then we will use **Slack Agent** and **Slack
-Tools** to show how MCP servers with auth enabled.
+Tools** to show MCP servers with auth enabled.
 
 ### Check MCP Gateway
 
@@ -34,8 +34,8 @@ mcp-controller-666f8cf9bf-dcpbc      1/1     Running   0          30h
 
 ### Register Weather MCP Server
 
-The Weather Service Tool can be installed using the Kagenti UI as usual. Once it is
-installed, to register it with the Gateway, create a HTTPRoute:
+The Weather Service Tool can be installed using the Kagenti UI [as usual](./demo-weather-agent.md#import-new-tool). Once it is
+installed, to register it with the Gateway, create an [`HTTPRoute`](https://gateway-api.sigs.k8s.io/api-types/httproute/):
 
 ```
 echo 'apiVersion: gateway.networking.k8s.io/v1
@@ -61,7 +61,7 @@ spec:
       port: 8000' | kubectl apply -f -
 ```
 
-and then create a MCPServer Custom Resource:
+and then create an `MCPServer` Custom Resource:
 
 ```
 echo 'apiVersion: mcp.kagenti.com/v1alpha1
@@ -71,7 +71,7 @@ metadata:
   namespace: default
 spec:
   toolPrefix: weather_
-  
+
   # Reference all three test MCP servers via their HTTPRoutes
   targetRef:
     group: gateway.networking.k8s.io
@@ -90,10 +90,12 @@ However, we need to define a new environment variable so the Agent can access
 various tools managed by the Gateway. Namely, we need to set `MCP_URL` to
 `http://mcp-gateway-istio.gateway-system.svc.cluster.local:8080/mcp`.
 
+The `weather-service` deployment can be edited manually or patched via a command like `kubectl set env deployment/weather-service -n default MCP_URL="http://mcp-gateway-istio.gateway-system.svc.cluster.local:8080/mcp"`, with the namespace adjusted as appropriate.
+
 Once the Gateway implementation has stabilized, `MCP_URL` can be set to this
 value by default, so we do not need to set this environment variable for every
 agent. To check if the weather service is working, simply use the chatbot
-exposed by the Weather Service Agent to query for weather information.
+exposed by the Weather Service Agent to query for weather information. Instructions for chatting with the agent can be referred to [here](./demo-weather-agent.md#chat-with-the-weather-agent).
 
 ### Limitations
 
@@ -188,7 +190,7 @@ spec:
   toolPrefix: slack_
   credentialRef:
     key: token
-    name: slack-server-access-token 
+    name: slack-server-access-token
   targetRef:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
