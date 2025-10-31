@@ -40,7 +40,7 @@ ENABLED_NAMESPACE_LABEL_KEY = "kagenti-enabled"
 ENABLED_NAMESPACE_LABEL_VALUE = "true"
 
 # --- Domain configuration ---
-DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost.me")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localtest.me")
 
 # --- External Service URLs ---
 KEYCLOAK_CONSOLE_URL_OFF_CLUSTER = (
