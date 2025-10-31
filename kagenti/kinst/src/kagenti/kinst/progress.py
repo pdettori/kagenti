@@ -112,8 +112,16 @@ class Step:
             self.task.result = "ok"
         else:
             self.task.status = Status.FAILED
-            # short result message
-            self.task.result = str(exc_type.__name__)
+            # short result message: include exception type and message so the
+            # progress table shows the real error (not just the exception class).
+            try:
+                msg = str(exc) if exc is not None else ""
+            except Exception:
+                msg = ""
+            if msg:
+                self.task.result = f"{exc_type.__name__}: {msg}"
+            else:
+                self.task.result = str(exc_type.__name__)
 
         if self.manager._live:
             self.manager._live.update(self.manager._render())
