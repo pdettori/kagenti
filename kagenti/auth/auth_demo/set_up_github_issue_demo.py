@@ -8,7 +8,7 @@ KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM")
 KEYCLOAK_ADMIN_USERNAME = os.environ.get("KEYCLOAK_ADMIN_USERNAME")
 KEYCLOAK_ADMIN_PASSWORD = os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
 NAMESPACE = os.environ.get("NAMESPACE")
-DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localhost.me")
+DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localtest.me")
 
 if KEYCLOAK_URL is None:
     raise Exception('Expected environment variable "KEYCLOAK_URL"')
