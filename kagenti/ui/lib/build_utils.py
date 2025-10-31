@@ -1904,16 +1904,16 @@ def render_import_form(
         # *** The Kagenti installer will only copy the necessary configuration (like ConfigMaps and Secrets) for those specific
         #     namespaces.
         st_object.write(
-            f"Provide Docker image details to deploy a new {resource_type.lower()}."
+            f"Provide container image details to deploy a new {resource_type.lower()}."
         )
         docker_image_url = st_object.text_input(
-            "Docker Image (e.g., myrepo/myimage:tag)",
+            "Container Image (e.g., myrepo/myimage:tag)",
             key=f"{resource_type.lower()}_docker_image",
         )
         repo_secret_name = st_object.text_input(
             "Image Pull Secret Name (optional, leave empty for public images)",
             key=f"{resource_type.lower()}_repo_secret",
-            help="Name of the Kubernetes secret containing credentials for private Docker registries",
+            help="Name of the Kubernetes secret containing credentials for private container registries",
         )
         selected_protocol = default_protocol
         if protocol_options:
