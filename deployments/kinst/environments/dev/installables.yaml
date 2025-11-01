@@ -1,4 +1,16 @@
 installables:
+  - id: create-kind-cluster
+    type: task
+    command: scripts/create-kind-cluster.py
+    applyArgs:
+      - --install-registry
+      - --preload
+      - --yes
+    condition: kind.enabled
+    deleteArgs:
+      - --delete
+      - --yes
+
   - id: container-registry
     type: kubectl-apply
     url: file:///templates/container-registry.yaml
@@ -88,6 +100,8 @@ installables:
     condition: kagenti-deps.enabled
     namespace: kagenti-deps.namespace
     valuesPath: kagenti-deps
+
+
 
 # in kagenti-deps
   # - id: http-gateway

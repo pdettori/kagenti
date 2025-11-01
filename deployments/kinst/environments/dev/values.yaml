@@ -30,6 +30,11 @@ kagenti-deps:
       enabled: true
 
 
+kind:
+  enabled: true
+  clusterName: kagenti
+
+
 
 
 # otel:
