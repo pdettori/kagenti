@@ -10,7 +10,7 @@ Kagenti UI allows importing custom environment files. You need to provide the re
 Here is a trick:
 
 * find the raw file location, e.g.: `https://raw.githubusercontent.com/maia-iyer/agent-examples/refs/heads/git_example_changes/a2a/git_issue_agent/.env.ollama`
-* in the **GitHub Repository URL** specify:`https://raw.githubusercontent.com/maia-iyer/agent-examples/refs/heads/git_example_changes/`
+* in the **GitHub Repository URL** specify: `https://raw.githubusercontent.com/maia-iyer/agent-examples/refs/heads/git_example_changes/`
 * in the **Path to .env file** specify: `a2a/git_issue_agent/.env.ollama`
 * then press import file
 
