@@ -143,8 +143,6 @@ From the UI, you can:
 
 For step-by-step instructions for importing and running agents and tools, see the [collection of agent demos](#demo-list).
 
-- [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
-
 ## Importing Your Own Agent to Kagenti
 
 See the document: [Importing Your Own Agent to Kagenti](new-agent.md)
