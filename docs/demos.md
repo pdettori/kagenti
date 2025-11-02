@@ -141,7 +141,7 @@ From the UI, you can:
 
 ## Detailed Instructions for Running the Weather Demo
 
-For step-by-step instructions for importing and running agents and tools, see
+For step-by-step instructions for importing and running agents and tools, see the [collection of agent demos](#demo-list).
 
 - [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
 
