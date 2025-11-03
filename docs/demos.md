@@ -343,7 +343,7 @@ kubectl delete -n keycloak -f app/resources/keycloak.yaml
 kubectl apply -n keycloak -f app/resources/keycloak.yaml
 kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
-uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
+uv run kagenti-installer --skip-install registry --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
 ```
 
