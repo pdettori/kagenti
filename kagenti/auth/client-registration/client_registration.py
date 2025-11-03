@@ -128,6 +128,9 @@ internal_client_id = register_client(
         "directAccessGrantsEnabled": True,
         "fullScopeAllowed": False,
         "publicClient": False,  # Enable client authentication
+        "attributes": {
+            "standard.token.exchange.enabled": "true",  # Enable token exchange
+        },
     },
 )
 
