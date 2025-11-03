@@ -229,10 +229,9 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.keycloak.httpRoute.rules }}
-    -
-      {{- with .matches }} 
-      matches:
-        {{- toYaml . | nindent 8 }}
+    - {{- with .matches }}
+        matches:
+          {{- toYaml . | nindent 12 }}
       {{- end }}
       {{- with .filters }}
       filters:
