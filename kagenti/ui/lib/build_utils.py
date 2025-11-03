@@ -267,7 +267,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         return ""
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals, disable=too-many-branches
 def _construct_tool_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -336,6 +336,9 @@ def _construct_tool_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -363,6 +366,7 @@ def _construct_tool_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     # Build the spec dictionary
     spec = {
         "description": description,
@@ -375,13 +379,12 @@ def _construct_tool_resource_body(
             "namespace": build_namespace,
             "deployAfterBuild": True,
             "kubernetes": {
-                "imageSpec": {
-                    "image": image_name,
-                    "imageTag": image_tag,
-                    "imageRegistry": image_registry_prefix,
-                    "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                    "imagePullSecrets": pull_secrets if pull_secrets else [],
-                },
+                "imageSpec": _build_image_spec(
+                    image_name=image_name,
+                    image_tag=image_tag,
+                    image_registry_prefix=image_registry_prefix,
+                    pull_secrets=pull_secrets,
+                ),
                 "containerPorts": [
                     {
                         "name": "http",
@@ -493,6 +496,49 @@ def _construct_tool_resource_body(
     return body
 
 
+def _build_image_spec(
+    image_name: str,
+    image_tag: str,
+    image_registry_prefix: Optional[str],
+    image_pull_policy: str = constants.DEFAULT_IMAGE_POLICY,
+    pull_secrets: Optional[str] = None,
+) -> dict:
+    """
+    Build imageSpec dictionary based on registry configuration.
+
+    Handles both external registry images and local images without registry prefix.
+    For local images (no registry), sets imagePullPolicy to "Never" to prevent
+    pull attempts.
+
+    Args:
+        image_name: Name of the container image
+        image_tag: Image tag (e.g., 'latest', 'v1.0')
+        image_registry_prefix: Registry prefix (e.g., 'quay.io/myorg') or None/empty for local
+        image_pull_policy: Pull policy for external registries (default from constants)
+        pull_secrets: Secrets to use when pulling image from remote private repository
+
+    Returns:
+        dict: imageSpec configuration for Kubernetes deployment
+    """
+    image_spec = {
+        "image": image_name,
+        "imageTag": image_tag,
+        "imagePullSecrets": pull_secrets if pull_secrets else [],
+    }
+
+    # Only include imageRegistry if it has a value
+    # Local images (None or empty string) should not have imageRegistry field
+    if image_registry_prefix:
+        image_spec["imageRegistry"] = image_registry_prefix
+        image_spec["imagePullPolicy"] = image_pull_policy
+    else:
+        # Local image - never pull from registry
+        # Used for images pre-loaded into kind/minikube
+        image_spec["imagePullPolicy"] = "Never"
+
+    return image_spec
+
+
 def is_valid_image_url(url: str) -> bool:
     """Is URL valid?"""
     pattern = re.compile(r"^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$")
@@ -517,6 +563,7 @@ def extract_image_name(url):
     return None
 
 
+# pylint: disable=too-many-branches
 def _construct_agent_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -585,6 +632,9 @@ def _construct_agent_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -615,6 +665,7 @@ def _construct_agent_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -638,13 +689,12 @@ def _construct_agent_resource_body(
                 "namespace": build_namespace,
                 "deployAfterBuild": True,
                 "kubernetes": {
-                    "imageSpec": {
-                        "image": image_name,
-                        "imageTag": image_tag,
-                        "imageRegistry": image_registry_prefix,
-                        "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                        "imagePullSecrets": pull_secrets if pull_secrets else [],
-                    },
+                    "imageSpec": _build_image_spec(
+                        image_name=image_name,
+                        image_tag=image_tag,
+                        image_registry_prefix=image_registry_prefix,
+                        pull_secrets=pull_secrets,
+                    ),
                     "containerPorts": [
                         {
                             "name": "http",
