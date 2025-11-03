@@ -2,11 +2,9 @@
 openshift: true
 
 # ------------------------------------------------------------------
-#  Control Panel: Enable or disable components here
+#   Enable or disable components here
 # ------------------------------------------------------------------
 components:
-  agentNamespaces:
-    enabled: true
   mcpInspector:
     enabled: true
   istio:
@@ -19,10 +17,10 @@ components:
     enabled: false
   otel:
     enabled: true
-  registry:
+  containerRegistry:
     enabled: false
   spire:
-    enabled: false
+    enabled: true
   tekton:
     enabled: true
   certManager:
@@ -100,9 +98,9 @@ spire:
   namespace: zero-trust-workload-identity-manager
 
 
-registry:
+containerRegistry:
   namespace: cr-system
-  name: registry
+  name: container-registry
   replicaCount: 1
   image:
     repository: ghcr.io/distribution/distribution
