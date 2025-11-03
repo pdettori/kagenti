@@ -32,7 +32,7 @@ spec:
         - name: OTEL_TRACES_EXPORTER
           value: {{ .Values.containerRegistry.env.otelTracesExporter | default "none" | quote }}
         - name: REGISTRY_LOG_LEVEL
-          value: {{ .Values.containerRegistry.env.containerRegistryLogLevel | default "info" | quote }}
+          value: {{ .Values.containerRegistry.env.logLevel | default "info" | quote }}
         {{- if .Values.containerRegistry.resources }}
         resources:
           {{- toYaml .Values.containerRegistry.resources | nindent 10 }}

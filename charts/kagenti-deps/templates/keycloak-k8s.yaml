@@ -229,7 +229,8 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.keycloak.httpRoute.rules }}
-    - {{- with .matches }}  
+    -
+      {{- with .matches }} 
       matches:
         {{- toYaml . | nindent 8 }}
       {{- end }}
