@@ -19,6 +19,24 @@ spec:
         namespaces:
           from: All
 ---
+{{- if .Values.openshift }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mcp-gateway
+  namespace: "{{ .Values.mcpGateway.namespaces.gatewaySystem }}"
+spec:
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  port:
+    targetPort: mcp
+  to:
+    kind: Service
+    name: mcp-gateway-istio
+    weight: 100
+  wildcardPolicy: None
+{{- else if .Values.openshift }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -40,21 +58,5 @@ spec:
       backendRefs:
         - name: mcp-broker
           port: 8080
----          
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: mcp-gateway
-  namespace: "{{ .Values.mcpGateway.namespaces.gatewaySystem }}"
-spec:
-  tls:
-    insecureEdgeTerminationPolicy: Redirect
-    termination: edge
-  port:
-    targetPort: mcp
-  to:
-    kind: Service
-    name: mcp-gateway-istio
-    weight: 100
-  wildcardPolicy: None
+{{- end }}         
 {{- end }}
