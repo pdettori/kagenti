@@ -16,11 +16,11 @@ spec:
   replicas: {{ .Values.containerRegistry.replicaCount | default 1 }}
   selector:
     matchLabels:
-      app: {{ .Values.containerRegistry.name | default "registry" }}
+      app: {{ .Values.containerRegistry.name | default "container-registry" }}
   template:
     metadata:
       labels:
-        app: {{ .Values.containerRegistry.name | default "registry" }}
+        app: {{ .Values.containerRegistry.name | default "container-registry" }}
     spec:
       containers:
       - name: registry
@@ -48,7 +48,7 @@ spec:
   - port: {{ .Values.containerRegistry.service.port | default 5000 }}
     targetPort: {{ .Values.containerRegistry.service.port | default 5000 }}
   selector:
-    app: {{ .Values.containerRegistry.name | default "registry" }}
+    app: {{ .Values.containerRegistry.name | default "container-registry" }}
 
 {{- end }}
 
