@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from .. import config
-from ..utils import console, os, run_command
+from ..utils import console, run_command
 
 
 def install(**kwargs):
