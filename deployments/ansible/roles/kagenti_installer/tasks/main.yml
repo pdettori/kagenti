@@ -1,96 +1,63 @@
 ---
 # Main installer tasks
 
-# Pre-flight checks: ensure the configured Python interpreter exists and can
-# import required Python modules (yaml, kubernetes). This fails fast with a
-# helpful message if the controller environment is not ready.
-- name: Debug chosen ansible_python_interpreter
-  debug:
-    msg: "ansible_python_interpreter={{ ansible_python_interpreter | default('undefined') }}"
+# Pre-flight: Python interpreter checks — ensure the configured interpreter exists and can import required modules
+- name: "Pre-flight: Python interpreter checks"
+  block:
+    - name: Debug chosen ansible_python_interpreter
+      debug:
+        msg: "ansible_python_interpreter={{ ansible_python_interpreter | default('undefined') }}"
 
-- name: Stat configured ansible_python_interpreter
-  stat:
-    path: "{{ ansible_python_interpreter }}"
-  register: interp_stat
-  failed_when: false
-  changed_when: false
+    - name: Stat configured ansible_python_interpreter
+      stat:
+        path: "{{ ansible_python_interpreter }}"
+      register: interp_stat
+      failed_when: false
+      changed_when: false
 
-- name: Fail if configured ansible_python_interpreter is missing
-  fail:
-    msg: |
-      The configured ansible_python_interpreter '{{ ansible_python_interpreter }}' was not found on the controller.
-      Provide a valid python path via the environment variable ANSIBLE_PYTHON_INTERPRETER
-      or pass an extra-var: -e "ansible_python_interpreter=/full/path/to/python".
-      Alternatively, activate the project's venv and run the playbook from there.
-  when: not (interp_stat.stat.exists | default(false))
+    - name: Fail if configured ansible_python_interpreter is missing
+      fail:
+        msg: |
+          The configured ansible_python_interpreter '{{ ansible_python_interpreter }}' was not found on the controller.
+          Provide a valid python path via the environment variable ANSIBLE_PYTHON_INTERPRETER
+          or pass an extra-var: -e "ansible_python_interpreter=/full/path/to/python".
+          Alternatively, activate the project's venv and run the playbook from there.
+      when: not (interp_stat.stat.exists | default(false))
 
-- name: Verify Python can import required modules (yaml, kubernetes)
-  command: "{{ ansible_python_interpreter }} -c \"import yaml, kubernetes; print('OK')\""
-  register: py_imports
-  failed_when: py_imports.rc != 0
-  changed_when: false
+    - name: Verify Python can import required modules (yaml, kubernetes)
+      command: "{{ ansible_python_interpreter }} -c \"import yaml, kubernetes; print('OK')\""
+      register: py_imports
+      failed_when: py_imports.rc != 0
+      changed_when: false
 
-# Determine secret file: prefer extra-var `secret_values_file`, fallback to values.yaml `secrets.file`
-- name: Resolve secret_values_file (prefer extra-var)
-  set_fact:
-    secret_values_file: "{{ secret_values_file | default(secrets.file | default('')) }}"
+# Manage secret values file: prefer the explicitly provided path; if relative, resolve against playbook_dir
+- name: Manage secret_values_file
+  block:
+    - name: Resolve secret_values_file (prefer extra-var)
+      set_fact:
+        secret_values_file: "{{ secret_values_file | default(secrets.file | default('')) }}"
 
-# Resolve secret file path: if it's not absolute, prefix with playbook_dir
-- name: Resolve secret_values_file path
-  set_fact:
-    secret_values_file_resolved: ""
-  when: secret_values_file is defined and secret_values_file | length > 0
+    - name: Resolve secret_values_file path (use provided path as-is or relative to playbook_dir)
+      set_fact:
+        secret_values_file_resolved: "{{ secret_values_file if (secret_values_file is search('^/')) else (playbook_dir + '/' + secret_values_file) }}"
+      when: secret_values_file is defined and secret_values_file | length > 0
 
-- name: Build candidate paths for secret_values_file
-  set_fact:
-    secret_candidate_1: "{{ secret_values_file if (secret_values_file is search('^/')) else (playbook_dir + '/' + secret_values_file) }}"
-    secret_candidate_2: "{{ secret_values_file }}"
-    secret_candidate_3: "{{ playbook_dir + '/' + (secret_values_file | basename) }}"
-  when: secret_values_file is defined and secret_values_file | length > 0
+    - name: Stat resolved secret_values_file
+      stat:
+        path: "{{ secret_values_file_resolved }}"
+      register: secret_values_stat
+      when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
 
-- name: Stat candidate 1 for secret_values_file
-  stat:
-    path: "{{ secret_candidate_1 }}"
-  register: secret_stat_1
-  when: secret_candidate_1 is defined and secret_candidate_1 | length > 0
+    - name: Fail if resolved secret values file is missing
+      fail:
+        msg: "Secret values file '{{ secret_values_file_resolved }}' not found. Provide an absolute path or a path relative to the playbook directory."
+      when: not (secret_values_stat.stat.exists | default(false)) and (secret_values_file_resolved is defined and secret_values_file_resolved | length > 0)
 
-- name: Use candidate 1 if exists
-  set_fact:
-    secret_values_file_resolved: "{{ secret_candidate_1 }}"
-  when: secret_stat_1.stat.exists | default(false)
-
-- name: Stat candidate 2 for secret_values_file
-  stat:
-    path: "{{ secret_candidate_2 }}"
-  register: secret_stat_2
-  when: (secret_values_file_resolved | default('')) == '' and secret_candidate_2 is defined and secret_candidate_2 | length > 0
-
-- name: Use candidate 2 if exists
-  set_fact:
-    secret_values_file_resolved: "{{ secret_candidate_2 }}"
-  when: secret_stat_2.stat.exists | default(false)
-
-- name: Stat candidate 3 for secret_values_file
-  stat:
-    path: "{{ secret_candidate_3 }}"
-  register: secret_stat_3
-  when: (secret_values_file_resolved | default('')) == '' and secret_candidate_3 is defined and secret_candidate_3 | length > 0
-
-- name: Use candidate 3 if exists
-  set_fact:
-    secret_values_file_resolved: "{{ secret_candidate_3 }}"
-  when: secret_stat_3.stat.exists | default(false)
-
-- name: Fail if no secret file candidate found
-  fail:
-    msg: "Secret values file '{{ secret_values_file }}' not found in any candidate locations (tried: {{ secret_candidate_1 }}, {{ secret_candidate_2 }}, {{ secret_candidate_3 }}). Provide an absolute path or a path relative to the playbook directory."
-  when: (secret_values_file_resolved | default('')) == ''
-
-- name: Load secret values file if provided
-  include_vars:
-    file: "{{ secret_values_file_resolved }}"
-    name: secret_values
-  when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
+    - name: Load secret values file if provided
+      include_vars:
+        file: "{{ secret_values_file_resolved }}"
+        name: secret_values
+      when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
 
 - name: Determine components list
   set_fact:
@@ -341,7 +308,7 @@
     kubeconfig: ""
     release_namespace: "{{ (components['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
     state: present
-    create_namespace: false
+    create_namespace: true
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
     values: >-
