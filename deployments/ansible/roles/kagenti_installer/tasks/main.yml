@@ -1,0 +1,353 @@
+---
+# Main installer tasks
+
+# Pre-flight checks: ensure the configured Python interpreter exists and can
+# import required Python modules (yaml, kubernetes). This fails fast with a
+# helpful message if the controller environment is not ready.
+- name: Debug chosen ansible_python_interpreter
+  debug:
+    msg: "ansible_python_interpreter={{ ansible_python_interpreter | default('undefined') }}"
+
+- name: Stat configured ansible_python_interpreter
+  stat:
+    path: "{{ ansible_python_interpreter }}"
+  register: interp_stat
+  failed_when: false
+  changed_when: false
+
+- name: Fail if configured ansible_python_interpreter is missing
+  fail:
+    msg: |
+      The configured ansible_python_interpreter '{{ ansible_python_interpreter }}' was not found on the controller.
+      Provide a valid python path via the environment variable ANSIBLE_PYTHON_INTERPRETER
+      or pass an extra-var: -e "ansible_python_interpreter=/full/path/to/python".
+      Alternatively, activate the project's venv and run the playbook from there.
+  when: not (interp_stat.stat.exists | default(false))
+
+- name: Verify Python can import required modules (yaml, kubernetes)
+  command: "{{ ansible_python_interpreter }} -c \"import yaml, kubernetes; print('OK')\""
+  register: py_imports
+  failed_when: py_imports.rc != 0
+  changed_when: false
+
+# Determine secret file: prefer extra-var `secret_values_file`, fallback to values.yaml `secrets.file`
+- name: Resolve secret_values_file (prefer extra-var)
+  set_fact:
+    secret_values_file: "{{ secret_values_file | default(secrets.file | default('')) }}"
+
+# Resolve secret file path: if it's not absolute, prefix with playbook_dir
+- name: Resolve secret_values_file path
+  set_fact:
+    secret_values_file_resolved: ""
+  when: secret_values_file is defined and secret_values_file | length > 0
+
+- name: Build candidate paths for secret_values_file
+  set_fact:
+    secret_candidate_1: "{{ secret_values_file if (secret_values_file is search('^/')) else (playbook_dir + '/' + secret_values_file) }}"
+    secret_candidate_2: "{{ secret_values_file }}"
+    secret_candidate_3: "{{ playbook_dir + '/' + (secret_values_file | basename) }}"
+  when: secret_values_file is defined and secret_values_file | length > 0
+
+- name: Stat candidate 1 for secret_values_file
+  stat:
+    path: "{{ secret_candidate_1 }}"
+  register: secret_stat_1
+  when: secret_candidate_1 is defined and secret_candidate_1 | length > 0
+
+- name: Use candidate 1 if exists
+  set_fact:
+    secret_values_file_resolved: "{{ secret_candidate_1 }}"
+  when: secret_stat_1.stat.exists | default(false)
+
+- name: Stat candidate 2 for secret_values_file
+  stat:
+    path: "{{ secret_candidate_2 }}"
+  register: secret_stat_2
+  when: (secret_values_file_resolved | default('')) == '' and secret_candidate_2 is defined and secret_candidate_2 | length > 0
+
+- name: Use candidate 2 if exists
+  set_fact:
+    secret_values_file_resolved: "{{ secret_candidate_2 }}"
+  when: secret_stat_2.stat.exists | default(false)
+
+- name: Stat candidate 3 for secret_values_file
+  stat:
+    path: "{{ secret_candidate_3 }}"
+  register: secret_stat_3
+  when: (secret_values_file_resolved | default('')) == '' and secret_candidate_3 is defined and secret_candidate_3 | length > 0
+
+- name: Use candidate 3 if exists
+  set_fact:
+    secret_values_file_resolved: "{{ secret_candidate_3 }}"
+  when: secret_stat_3.stat.exists | default(false)
+
+- name: Fail if no secret file candidate found
+  fail:
+    msg: "Secret values file '{{ secret_values_file }}' not found in any candidate locations (tried: {{ secret_candidate_1 }}, {{ secret_candidate_2 }}, {{ secret_candidate_3 }}). Provide an absolute path or a path relative to the playbook directory."
+  when: (secret_values_file_resolved | default('')) == ''
+
+- name: Load secret values file if provided
+  include_vars:
+    file: "{{ secret_values_file_resolved }}"
+    name: secret_values
+  when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
+
+- name: Determine components list
+  set_fact:
+    components: "{{ components | default({}) }}"
+
+- name: Check kubectl API resources to detect OpenShift
+  command: kubectl api-resources
+  register: kubectl_api
+  failed_when: false
+  changed_when: false
+
+- name: Set enable_openshift fact based on kubectl output
+  set_fact:
+    enable_openshift: "{{ 'openshift.io' in (kubectl_api.stdout | default('')) }}"
+
+- name: Check kubectl connectivity (client)
+  command: kubectl version --client
+  register: kubectl_client
+  failed_when: false
+  changed_when: false
+
+- name: Ensure cluster connectivity or create kind cluster when requested
+  block:
+    - name: Check for existing kind clusters
+      command: kind get clusters
+      register: kind_clusters
+      failed_when: false
+      changed_when: false
+
+    - name: Create kind cluster if missing
+      command: >-
+        kind create cluster --name {{ kind_cluster_name }} --config {{ (kind_container_registry_enabled | default(true)) | ternary(kind_config_registry, kind_config) }}
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: kind_cluster_name not in (kind_clusters.stdout | default(''))
+  when: kubectl_api.rc != 0 and create_kind_cluster | default(false)
+
+- name: Preload images into kind cluster when requested
+  when: kind_images_preload | default(false)
+  block:
+    - name: Read preload images file
+      set_fact:
+        preload_images: "{{ lookup('file', preload_images_file) | splitlines() | map('trim') | reject('equalto','') | reject('match','^#') | list }}"
+
+    - name: Load images into kind
+      command: kind load docker-image {{ item }} --name {{ kind_cluster_name }}
+      loop: "{{ preload_images }}"
+      register: kind_load_results
+      failed_when: false
+
+- name: Install Istio (helm charts) when enabled
+  block:
+    - name: Add Istio helm repo
+      command: helm repo add istio https://istio-release.storage.googleapis.com/charts
+      changed_when: false
+
+    - name: Update helm repos
+      command: helm repo update
+      changed_when: false
+
+    - name: Add istio helm repo (if missing)
+      command: helm repo add istio https://istio-release.storage.googleapis.com/charts
+      changed_when: false
+
+    - name: Update helm repos
+      command: helm repo update
+      changed_when: false
+
+    - name: Install istio-base
+      kubernetes.core.helm:
+        release_name: istio-base
+        chart_ref: "istio/base"
+        release_namespace: istio-system
+        create_namespace: true
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+
+    - name: Install istiod (helm CLI)
+      command: >-
+        helm upgrade --install istiod istio/istiod
+        --namespace istio-system --create-namespace
+        --wait --timeout {{ helm_wait_timeout }}s
+        --set profile=ambient
+      register: istiod_install
+      failed_when: istiod_install.rc != 0
+    - name: Install istio-cni (helm CLI)
+      command: >-
+        helm upgrade --install istio-cni istio/cni
+        --namespace istio-system
+        --wait --timeout {{ helm_wait_timeout }}s
+      register: istio_cni_install
+      failed_when: istio_cni_install.rc != 0
+
+    - name: Install ztunnel (helm CLI)
+      command: >-
+        helm upgrade --install ztunnel istio/ztunnel
+        --namespace istio-system
+      register: ztunnel_install
+      failed_when: ztunnel_install.rc != 0
+
+    - name: Label istio-system namespace to allow shared gateway access
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: istio-system
+        definition:
+          metadata:
+            labels:
+              shared-gateway-access: "true"
+        merge_type: strategic-merge
+  when: components.istio.enabled | default(false)
+
+- name: Install Kiali and Prometheus addons for Istio when kiali enabled
+  block:
+    - name: Download prometheus addon manifest
+      get_url:
+        url: https://raw.githubusercontent.com/istio/istio/release-1.27/samples/addons/prometheus.yaml
+        dest: /tmp/istio-prometheus.yaml
+
+    - name: Apply prometheus manifest
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/istio-prometheus.yaml
+
+    - name: Download kiali addon manifest
+      get_url:
+        url: https://raw.githubusercontent.com/istio/istio/release-1.27/samples/addons/kiali.yaml
+        dest: /tmp/istio-kiali.yaml
+
+    - name: Apply kiali manifest
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/istio-kiali.yaml
+  when: (components['kagenti-deps'].values.components.kiali.enabled | default(false))
+
+- name: Install cert-manager manifest when enabled
+  block:
+    - name: Download cert-manager manifest
+      get_url:
+        url: https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+        dest: /tmp/cert-manager.yaml
+
+    - name: Apply cert-manager manifest
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/cert-manager.yaml
+  when: components['cert-manager'].enabled | default(false)
+
+- name: Install SPIRE charts when enabled
+  block:
+    - name: Install spire-crds via helm
+      kubernetes.core.helm:
+        release_name: spire-crds
+        chart_ref: spire-crds
+        chart_repo_url: https://spiffe.github.io/helm-charts-hardened/
+        kubeconfig: ""
+        release_namespace: spire-mgmt
+        create_namespace: true
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+
+    - name: Install spire
+      kubernetes.core.helm:
+        release_name: spire
+        chart_ref: spire
+        chart_repo_url: https://spiffe.github.io/helm-charts-hardened/
+        kubeconfig: ""
+        release_namespace: spire-mgmt
+        create_namespace: false
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+        # Use inline values from deployments/ansible/values.yaml under components.spire.values
+        # Access using bracket/subscript notation to avoid resolving the dict 'values' as a method
+        values: "{{ (components['spire'] | default({}))['values'] | default({}) }}"
+  when: components.spire.enabled | default(false)
+
+- name: Ensure Gateway API CRDs are installed when gateway-api enabled
+  block:
+    - name: Check for gateway CRD
+      command: kubectl get crd gateways.gateway.networking.k8s.io
+      register: gateway_crd_check
+      failed_when: false
+      changed_when: false
+
+    - name: Download gateway-api standard install manifest
+      get_url:
+        url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+        dest: /tmp/gateway-api-standard-install.yaml
+      when: gateway_crd_check.rc != 0
+
+    - name: Apply gateway-api manifest
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/gateway-api-standard-install.yaml
+      when: gateway_crd_check.rc != 0
+  when: components['gateway-api'].enabled | default(false)
+
+- name: Compute latest kagenti UI tag from git if kagenti is enabled
+  block:
+    - name: Lookup latest tag from remote git
+      shell: |
+        git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//'
+      register: kagenti_latest_tag_cmd
+      changed_when: false
+
+    - name: Set kagenti_latest_tag fact
+      set_fact:
+        kagenti_latest_tag: "{{ kagenti_latest_tag_cmd.stdout }}"
+  when: components.kagenti.enabled | default(false)
+
+- name: Ensure namespace(s) exist for enabled components
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ item.value.namespace | default('kagenti-system') }}"
+  loop: "{{ components | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: item.value.enabled | default(false)
+
+- name: Run helm dependency update for local charts when requested
+  command: helm dependency update "{{ item.value.chart | default('') }}"
+  args:
+    chdir: "{{ playbook_dir }}"
+  when: item.value.chart is defined and (item.value.dependency_update | default(true)) and (item.value.chart is search('^\.|^/') or item.value.chart is search('^../')) and (item.value.enabled | default(false))
+  loop: "{{ components | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Install/upgrade Helm chart for enabled components
+  kubernetes.core.helm:
+    release_name: "{{ item.value.release_name | default(item.key) }}"
+    chart_ref: "{{ item.value.chart }}"
+    chart_repo_url: "{{ item.value.repo_url | default(omit) }}"
+    kubeconfig: ""
+    release_namespace: "{{ item.value.namespace | default('kagenti-system') }}"
+    state: present
+    create_namespace: false
+    wait: false
+    timeout: "{{ helm_wait_timeout }}s"
+    # Merge in the enable_openshift flag so charts which condition on .Values.openshift
+    # don't render OpenShift-specific resources when running on non-OpenShift clusters.
+    values: >-
+      {{ ({'openshift': enable_openshift} | combine(item.value['values'] | default({}), recursive=True))
+         | combine(secret_values | default({}), recursive=True) }}
+    values_files: "{{ (global_value_files | default([])) + (item.value['values_files'] | default([])) }}"
+  loop: "{{ components | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: (item.value.enabled | default(false)) and (item.value.chart is defined) and not (item.value.chart is search('\.ya?ml$'))
+
+  # Note: Additional special-case pre/post steps (Istio, cert-manager, gateway CRDs)
+  # are handled in later tasks.
+

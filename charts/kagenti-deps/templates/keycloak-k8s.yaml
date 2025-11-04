@@ -221,7 +221,7 @@ metadata:
 spec:
   parentRefs:
     {{- with .Values.keycloak.httpRoute.parentRefs }}
-      {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with .Values.keycloak.httpRoute.hostnames }}
   hostnames:
@@ -234,12 +234,12 @@ spec:
           {{- toYaml . | nindent 12 }}
       {{- end }}
       {{- with .filters }}
-      filters:
-        {{- toYaml . | nindent 8 }}
+        filters:
+          {{- toYaml . | nindent 12 }}
       {{- end }}
-      backendRefs:
-        - name: keycloak
-          port: 8080 
-          weight: 1
+        backendRefs:
+          - name: keycloak
+            port: 8080 
+            weight: 1
     {{- end }}
 {{- end}}
