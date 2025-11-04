@@ -263,7 +263,7 @@
         release_namespace: spire-mgmt
         create_namespace: false
         state: present
-        wait: true
+        wait: false
         timeout: "{{ helm_wait_timeout }}s"
         # Use inline values from deployments/ansible/values.yaml under components.spire.values
         # Access using bracket/subscript notation to avoid resolving the dict 'values' as a method
@@ -325,29 +325,40 @@
   loop: "{{ components | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
-
-- name: Install/upgrade Helm chart for enabled components
+ 
+ 
+- name: Install/upgrade Kagenti-deps chart when enabled
   kubernetes.core.helm:
-    release_name: "{{ item.value.release_name | default(item.key) }}"
-    chart_ref: "{{ item.value.chart }}"
-    chart_repo_url: "{{ item.value.repo_url | default(omit) }}"
+    release_name: "{{ (components['kagenti-deps'] | default({})).get('release_name', 'kagenti-deps') }}"
+    chart_ref: "{{ (components['kagenti-deps'] | default({})).get('chart') }}"
+    chart_repo_url: "{{ (components['kagenti-deps'] | default({})).get('repo_url', omit) }}"
     kubeconfig: ""
-    release_namespace: "{{ item.value.namespace | default('kagenti-system') }}"
+    release_namespace: "{{ (components['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
     state: present
     create_namespace: false
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
-    # Merge in the enable_openshift flag so charts which condition on .Values.openshift
-    # don't render OpenShift-specific resources when running on non-OpenShift clusters.
     values: >-
-      {{ ({'openshift': enable_openshift} | combine(item.value['values'] | default({}), recursive=True))
+      {{ ({'openshift': enable_openshift} | combine(((components['kagenti-deps'] | default({})).get('values') ) | default({}), recursive=True))
          | combine(secret_values | default({}), recursive=True) }}
-    values_files: "{{ (global_value_files | default([])) + (item.value['values_files'] | default([])) }}"
-  loop: "{{ components | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
-  when: (item.value.enabled | default(false)) and (item.value.chart is defined) and not (item.value.chart is search('\.ya?ml$'))
+    values_files: "{{ (global_value_files | default([]) | list) + (((components['kagenti-deps'] | default({}))['values_files'] | default([])) | list) }}"
+  when: (components['kagenti-deps'] | default({})).get('enabled', false) | bool and ((components['kagenti-deps'] | default({})).get('chart') is defined) and not ((components['kagenti-deps'] | default({})).get('chart') is search('\\.ya?ml$'))
 
-  # Note: Additional special-case pre/post steps (Istio, cert-manager, gateway CRDs)
-  # are handled in later tasks.
+- name: Install/upgrade Kagenti chart when enabled
+  kubernetes.core.helm:
+    release_name: "{{ (components['kagenti'] | default({})).get('release_name', 'kagenti') }}"
+    chart_ref: "{{ (components['kagenti'] | default({})).get('chart') }}"
+    chart_repo_url: "{{ (components['kagenti'] | default({})).get('repo_url', omit) }}"
+    kubeconfig: ""
+    release_namespace: "{{ (components['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
+    state: present
+    create_namespace: false
+    wait: false
+    timeout: "{{ helm_wait_timeout }}s"
+    values: >-
+      {{ ({'openshift': enable_openshift} | combine(((components['kagenti'] | default({})).get('values')) | default({}), recursive=True))
+         | combine(secret_values | default({}), recursive=True) }}
+    values_files: "{{ (global_value_files | default([]) | list) + (((components['kagenti'] | default({}))['values_files'] | default([])) | list) }}"
+  when: (components['kagenti'] | default({})).get('enabled', false) | bool and ((components['kagenti'] | default({})).get('chart') is defined) and not ((components['kagenti'] | default({})).get('chart') is search('\\.ya?ml$'))
+
 

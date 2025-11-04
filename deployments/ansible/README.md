@@ -22,9 +22,13 @@ Quick start
 3. Run the playbook locally:
 
    export ANSIBLE_PYTHON_INTERPRETER=$(which python)
-   
+
    ansible-playbook -i localhost, -c local installer-playbook.yml -e "secret_values_file=secret_values.yaml"
 
 Notes
 - Adjust chart paths in `values.yaml` to point to your charts (they are relative to this directory by default).
 - You can override any `values.yaml` entries by passing extra-vars.
+- Reccomended: install helm diff
+  ```
+  helm plugin install https://github.com/databus23/helm-diff
+  ```
