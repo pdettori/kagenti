@@ -536,8 +536,7 @@ def _build_image_spec(
         else:
             image_spec["imagePullPolicy"] = image_pull_policy
     else:
-        # Local image - never pull from registry
-        # Used for images pre-loaded into kind/minikube
+        # Used for images pre-loaded into kind
         image_spec["imagePullPolicy"] = "IfNotPresent"
 
     return image_spec

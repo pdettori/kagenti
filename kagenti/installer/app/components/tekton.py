@@ -46,7 +46,6 @@ def install(**kwargs):
         )
         return
 
-    """Installs buildpacks phases for Tekton."""
     buildpacks_url = f"https://raw.githubusercontent.com/tektoncd/catalog/main/task/buildpacks-phases/{config.BUILDPACKS_VERSION}/buildpacks-phases.yaml"
 
     agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
