@@ -136,6 +136,7 @@ internal_client_id = register_client(
         "attributes": {
             "standard.token.exchange.enabled": "true",  # Enable token exchange
         },
+     },   
 )
 
 try:
