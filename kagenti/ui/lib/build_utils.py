@@ -267,7 +267,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         return ""
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals, disable=too-many-branches
 def _construct_tool_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -285,6 +285,7 @@ def _construct_tool_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -335,6 +336,9 @@ def _construct_tool_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -344,6 +348,10 @@ def _construct_tool_resource_body(
         final_env_vars.extend(additional_env_vars)
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
+
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
+    )
 
     # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
@@ -358,6 +366,7 @@ def _construct_tool_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     # Build the spec dictionary
     spec = {
         "description": description,
@@ -370,12 +379,12 @@ def _construct_tool_resource_body(
             "namespace": build_namespace,
             "deployAfterBuild": True,
             "kubernetes": {
-                "imageSpec": {
-                    "image": image_name,
-                    "imageTag": image_tag,
-                    "imageRegistry": image_registry_prefix,
-                    "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                },
+                "imageSpec": _build_image_spec(
+                    image_name=image_name,
+                    image_tag=image_tag,
+                    image_registry_prefix=image_registry_prefix,
+                    pull_secrets=pull_secrets,
+                ),
                 "containerPorts": [
                     {
                         "name": "http",
@@ -487,6 +496,49 @@ def _construct_tool_resource_body(
     return body
 
 
+def _build_image_spec(
+    image_name: str,
+    image_tag: str,
+    image_registry_prefix: Optional[str],
+    image_pull_policy: str = constants.DEFAULT_IMAGE_POLICY,
+    pull_secrets: Optional[str] = None,
+) -> dict:
+    """
+    Build imageSpec dictionary based on registry configuration.
+
+    Handles both external registry images and local images without registry prefix.
+    For local images (no registry), sets imagePullPolicy to "Never" to prevent
+    pull attempts.
+
+    Args:
+        image_name: Name of the container image
+        image_tag: Image tag (e.g., 'latest', 'v1.0')
+        image_registry_prefix: Registry prefix (e.g., 'quay.io/myorg') or None/empty for local
+        image_pull_policy: Pull policy for external registries (default from constants)
+        pull_secrets: Secrets to use when pulling image from remote private repository
+
+    Returns:
+        dict: imageSpec configuration for Kubernetes deployment
+    """
+    image_spec = {
+        "image": image_name,
+        "imageTag": image_tag,
+        "imagePullSecrets": pull_secrets if pull_secrets else [],
+    }
+
+    # Only include imageRegistry if it has a value
+    # Local images (None or empty string) should not have imageRegistry field
+    if image_registry_prefix:
+        image_spec["imageRegistry"] = image_registry_prefix
+        image_spec["imagePullPolicy"] = image_pull_policy
+    else:
+        # Local image - never pull from registry
+        # Used for images pre-loaded into kind/minikube
+        image_spec["imagePullPolicy"] = "Never"
+
+    return image_spec
+
+
 def is_valid_image_url(url: str) -> bool:
     """Is URL valid?"""
     pattern = re.compile(r"^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$")
@@ -511,6 +563,7 @@ def extract_image_name(url):
     return None
 
 
+# pylint: disable=too-many-branches
 def _construct_agent_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -528,6 +581,7 @@ def _construct_agent_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -578,6 +632,9 @@ def _construct_agent_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -589,6 +646,10 @@ def _construct_agent_resource_body(
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
     final_env_vars.append(
         {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
+    )
+
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
     )
 
     # Extract service ports from pod_config or use defaults
@@ -604,6 +665,7 @@ def _construct_agent_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -627,12 +689,12 @@ def _construct_agent_resource_body(
                 "namespace": build_namespace,
                 "deployAfterBuild": True,
                 "kubernetes": {
-                    "imageSpec": {
-                        "image": image_name,
-                        "imageTag": image_tag,
-                        "imageRegistry": image_registry_prefix,
-                        "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                    },
+                    "imageSpec": _build_image_spec(
+                        image_name=image_name,
+                        image_tag=image_tag,
+                        image_registry_prefix=image_registry_prefix,
+                        pull_secrets=pull_secrets,
+                    ),
                     "containerPorts": [
                         {
                             "name": "http",
@@ -720,6 +782,30 @@ def _construct_agent_resource_body(
         }
 
     return body
+
+
+def _get_image_pull_secrets(build_from_source, registry_config, image_pull_secret):
+    """
+    Determine imagePullSecrets based on deployment method.
+
+    Args:
+        build_from_source: Boolean indicating if building from source
+        registry_config: Registry configuration dict (used when build_from_source=True)
+        image_pull_secret: Secret name for existing images (used when build_from_source=False)
+
+    Returns:
+        List of imagePullSecret dicts or empty list
+    """
+    if build_from_source:
+        # Use registry_config for source builds
+        if registry_config and registry_config.get("requires_auth"):
+            return [{"name": registry_config["credentials_secret"]}]
+    else:
+        # Use image_pull_secret for existing image deployments
+        if image_pull_secret:
+            return [{"name": image_pull_secret}]
+
+    return []
 
 
 # pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
@@ -1006,6 +1092,7 @@ def trigger_and_monitor_deployment_from_image(
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -1057,6 +1144,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -1074,6 +1162,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     if not cr_body:
@@ -1865,13 +1954,17 @@ def render_import_form(
         # *** The Kagenti installer will only copy the necessary configuration (like ConfigMaps and Secrets) for those specific
         #     namespaces.
         st_object.write(
-            f"Provide Docker image details to deploy a new {resource_type.lower()}."
+            f"Provide container image details to deploy a new {resource_type.lower()}."
         )
         docker_image_url = st_object.text_input(
-            "Docker Image (e.g., myrepo/myimage:tag)",
+            "Container Image (e.g., myrepo/myimage:tag)",
             key=f"{resource_type.lower()}_docker_image",
         )
-
+        repo_secret_name = st_object.text_input(
+            "Image Pull Secret Name (optional, leave empty for public images)",
+            key=f"{resource_type.lower()}_repo_secret",
+            help="Name of the Kubernetes secret containing credentials for private container registries",
+        )
         selected_protocol = default_protocol
         if protocol_options:
             current_protocol_index = (
@@ -1926,6 +2019,7 @@ def render_import_form(
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
                 pod_config=pod_config,
                 additional_env_vars=final_additional_envs,
+                image_pull_secret=repo_secret_name if repo_secret_name else None,
             )
 
     st_object.markdown("---")
@@ -2053,19 +2147,33 @@ def remove_service_port(index, service_ports_key):
 
 
 def parse_image_url(url: str):
-    """Parse an Image URL"""
-    # Split off the tag
-    if ":" not in url:
-        raise ValueError("URL must contain a tag (e.g., :latest)")
+    """Parse an Image URL
 
-    base, tag = url.rsplit(":", 1)
-    parts = base.strip("/").split("/")
+    Supports two formats:
+    1. Full format: repo/path:tag (e.g., 'myrepo/my_app:v1.0')
+    2. Local format: image_name or image_name:tag (e.g., 'my_app' or 'my_app:latest')
+    """
+    # Split off the tag if present
+    if ":" in url:
+        base, tag = url.rsplit(":", 1)
+    else:
+        base = url
+        tag = "latest"  # Default tag if none specified
 
-    if len(parts) < 2:
-        raise ValueError("URL must contain at least a repo and image name")
+    # Remove leading/trailing slashes
+    base = base.strip("/")
 
-    image_name = parts[-1]
-    repo = "/".join(parts[:-1])
+    # Split into parts
+    parts = base.split("/")
+
+    # Handle local image (no repo path)
+    if len(parts) == 1:
+        repo = None  # or "" or "local" depending on your preference
+        image_name = parts[0]
+    else:
+        # Full format with repo
+        image_name = parts[-1]
+        repo = "/".join(parts[:-1])
 
     return repo, image_name, tag
 

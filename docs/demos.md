@@ -141,9 +141,7 @@ From the UI, you can:
 
 ## Detailed Instructions for Running the Weather Demo
 
-For step-by-step instructions for importing and running agents and tools, see
-
-- [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
+For step-by-step instructions for importing and running agents and tools, see the [collection of agent demos](#demo-list).
 
 ## Importing Your Own Agent to Kagenti
 
@@ -345,7 +343,7 @@ kubectl delete -n keycloak -f app/resources/keycloak.yaml
 kubectl apply -n keycloak -f app/resources/keycloak.yaml
 kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
-uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
+uv run kagenti-installer --skip-install registry --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
 ```
 

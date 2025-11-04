@@ -1,4 +1,4 @@
-{{- if and .Values.components.keycloak.enabled }}
+{{- if and (or .Values.components.keycloak.enabled .Values.components.istio.enabled .Values.components.kiali.enabled) .Values.openshift }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:

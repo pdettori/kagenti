@@ -59,7 +59,7 @@ DEFAULT_REPO_URL = "https://github.com/kagenti/agent-examples"
 DEFAULT_REPO_BRANCH = "main"
 DEFAULT_IMAGE_TAG = "v0.0.1"
 DEFAULT_IMAGE_POLICY = "Always"
-
+NEVER_IMAGE_POLICY = "Never"
 # --- Kubernetes Secret for Git User ---
 GIT_USER_SECRET_NAME = "github-token-secret"
 GIT_USER_SECRET_KEY = "user"
