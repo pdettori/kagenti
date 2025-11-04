@@ -530,11 +530,15 @@ def _build_image_spec(
     # Local images (None or empty string) should not have imageRegistry field
     if image_registry_prefix:
         image_spec["imageRegistry"] = image_registry_prefix
-        image_spec["imagePullPolicy"] = image_pull_policy
+        # Local cluster registry - never pull (image is already there)
+        if image_registry_prefix == "registry.cr-system.svc.cluster.local:5000":
+            image_spec["imagePullPolicy"] = "IfNotPresent"
+        else:
+            image_spec["imagePullPolicy"] = image_pull_policy
     else:
         # Local image - never pull from registry
         # Used for images pre-loaded into kind/minikube
-        image_spec["imagePullPolicy"] = "Never"
+        image_spec["imagePullPolicy"] = "IfNotPresent"
 
     return image_spec
 
