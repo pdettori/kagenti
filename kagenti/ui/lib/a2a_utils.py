@@ -488,6 +488,16 @@ async def run_agent_chat_stream_a2a(
         log_container.error(err_msg)
         return err_msg
 
+    if (
+        not effective_agent_card.capabilities
+        or not effective_agent_card.capabilities.streaming
+    ):
+        err_msg = "Agent does not support streaming. Kagenti does not currently support non-streaming A2A agents"
+        st_object.error(err_msg)
+        append_to_log_history(session_key_prefix, f"❌ {err_msg}")
+        log_container.error(err_msg)
+        return err_msg
+
     async with httpx.AsyncClient() as httpx_client:
         try:
             client = A2AClient(httpx_client=httpx_client, url=agent_url)
