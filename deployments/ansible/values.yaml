@@ -145,7 +145,7 @@ components:
 create_kind_cluster: true
 kind_cluster_name: kagenti
 kind_container_registry_enabled: true
-kind_images_preload: false
+kind_images_preload: true
 
 # Paths to configs in the deployments/scripts directory (relative to playbook_dir)
 kind_config: "../scripts/kind-config.yaml"

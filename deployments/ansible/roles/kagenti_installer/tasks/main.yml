@@ -129,11 +129,21 @@
   when: kubectl_api.rc != 0 and create_kind_cluster | default(false)
 
 - name: Preload images into kind cluster when requested
-  when: kind_images_preload | default(false)
+  when: (kind_images_preload | default(false)) and not (enable_openshift | default(false))
   block:
+    - name: Stat preload images file
+      stat:
+        path: "{{ preload_images_file }}"
+      register: preload_images_stat
+
+    - name: Fail if preload images file is missing
+      fail:
+        msg: "Preload images file '{{ preload_images_file }}' not found"
+      when: not preload_images_stat.stat.exists | default(false)
+
     - name: Read preload images file
       set_fact:
-        preload_images: "{{ lookup('file', preload_images_file) | splitlines() | map('trim') | reject('equalto','') | reject('match','^#') | list }}"
+        preload_images: "{{ (lookup('file', preload_images_file).split('\n') | map('trim') | reject('equalto','') | reject('match','^#')) | list }}"
 
     - name: Load images into kind
       command: kind load docker-image {{ item }} --name {{ kind_cluster_name }}
@@ -202,7 +212,7 @@
             labels:
               shared-gateway-access: "true"
         merge_type: strategic-merge
-  when: components.istio.enabled | default(false)
+  when: (components.istio.enabled | default(false)) and not (enable_openshift | default(false))
 
 - name: Install Kiali and Prometheus addons for Istio when kiali enabled
   block:
@@ -225,7 +235,7 @@
       kubernetes.core.k8s:
         state: present
         src: /tmp/istio-kiali.yaml
-  when: (components['kagenti-deps'].values.components.kiali.enabled | default(false))
+  when: (components['kagenti-deps'].values.components.kiali.enabled | default(false)) and not (enable_openshift | default(false))
 
 - name: Install cert-manager manifest when enabled
   block:
@@ -238,7 +248,7 @@
       kubernetes.core.k8s:
         state: present
         src: /tmp/cert-manager.yaml
-  when: components['cert-manager'].enabled | default(false)
+  when: (components['cert-manager'].enabled | default(false)) and not (enable_openshift | default(false))
 
 - name: Install SPIRE charts when enabled
   block:
@@ -268,7 +278,7 @@
         # Use inline values from deployments/ansible/values.yaml under components.spire.values
         # Access using bracket/subscript notation to avoid resolving the dict 'values' as a method
         values: "{{ (components['spire'] | default({}))['values'] | default({}) }}"
-  when: components.spire.enabled | default(false)
+  when: (components.spire.enabled | default(false)) and not (enable_openshift | default(false))
 
 - name: Ensure Gateway API CRDs are installed when gateway-api enabled
   block:
@@ -304,31 +314,24 @@
         kagenti_latest_tag: "{{ kagenti_latest_tag_cmd.stdout }}"
   when: components.kagenti.enabled | default(false)
 
-- name: Ensure namespace(s) exist for enabled components
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ item.value.namespace | default('kagenti-system') }}"
-  loop: "{{ components | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
-  when: item.value.enabled | default(false)
+# - name: Ensure namespace(s) exist for enabled components
+#   kubernetes.core.k8s:
+#     state: present
+#     definition:
+#       apiVersion: v1
+#       kind: Namespace
+#       metadata:
+#         name: "{{ item.value.namespace | default('kagenti-system') }}"
+#   loop: "{{ components | dict2items }}"
+#   loop_control:
+#     label: "{{ item.key }}"
+#   when: item.value.enabled | default(false)
  
 - name: Run helm dependency update for kagenti-deps when chart is local and dependency_update requested
   command: helm dependency update "{{ (components['kagenti-deps'] | default({})).get('chart','') }}"
   args:
     chdir: "{{ playbook_dir }}"
   when: (components['kagenti-deps'] | default({})).get('chart') is defined and ((components['kagenti-deps'] | default({})).get('dependency_update', true) | bool) and ((components['kagenti-deps'] | default({})).get('chart') is search('^\.|^/') or (components['kagenti-deps'] | default({})).get('chart') is search('^../')) and ((components['kagenti-deps'] | default({})).get('enabled', false) | bool)
-
-- name: Run helm dependency update for kagenti when chart is local and dependency_update requested
-  command: helm dependency update "{{ (components['kagenti'] | default({})).get('chart','') }}"
-  args:
-    chdir: "{{ playbook_dir }}"
-  when: (components['kagenti'] | default({})).get('chart') is defined and ((components['kagenti'] | default({})).get('dependency_update', true) | bool) and ((components['kagenti'] | default({})).get('chart') is search('^\.|^/') or (components['kagenti'] | default({})).get('chart') is search('^../')) and ((components['kagenti'] | default({})).get('enabled', false) | bool)
- 
  
 - name: Install/upgrade Kagenti-deps chart when enabled
   kubernetes.core.helm:
@@ -342,11 +345,18 @@
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
     values: >-
-      {{ ({'openshift': enable_openshift} | combine(((components['kagenti-deps'] | default({})).get('values') ) | default({}), recursive=True))
-         | combine(secret_values | default({}), recursive=True) }}
+      {{ (((components['kagenti-deps'] | default({})).get('values') ) | default({}))
+        | combine(secret_values | default({}), recursive=True)
+        | combine({'openshift': enable_openshift}, recursive=True) }}
     values_files: "{{ (global_value_files | default([]) | list) + (((components['kagenti-deps'] | default({}))['values_files'] | default([])) | list) }}"
   when: (components['kagenti-deps'] | default({})).get('enabled', false) | bool and ((components['kagenti-deps'] | default({})).get('chart') is defined) and not ((components['kagenti-deps'] | default({})).get('chart') is search('\\.ya?ml$'))
 
+- name: Run helm dependency update for kagenti when chart is local and dependency_update requested
+  command: helm dependency update "{{ (components['kagenti'] | default({})).get('chart','') }}"
+  args:
+    chdir: "{{ playbook_dir }}"
+  when: (components['kagenti'] | default({})).get('chart') is defined and ((components['kagenti'] | default({})).get('dependency_update', true) | bool) and ((components['kagenti'] | default({})).get('chart') is search('^\.|^/') or (components['kagenti'] | default({})).get('chart') is search('^../')) and ((components['kagenti'] | default({})).get('enabled', false) | bool)
+ 
 - name: Install/upgrade Kagenti chart when enabled
   kubernetes.core.helm:
     release_name: "{{ (components['kagenti'] | default({})).get('release_name', 'kagenti') }}"
@@ -359,8 +369,9 @@
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
     values: >-
-      {{ ({'openshift': enable_openshift} | combine(((components['kagenti'] | default({})).get('values')) | default({}), recursive=True))
-         | combine(secret_values | default({}), recursive=True) }}
+      {{ (((components['kagenti'] | default({})).get('values')) | default({}))
+        | combine(secret_values | default({}), recursive=True)
+        | combine({'openshift': enable_openshift}, recursive=True) }}
     values_files: "{{ (global_value_files | default([]) | list) + (((components['kagenti'] | default({}))['values_files'] | default([])) | list) }}"
   when: (components['kagenti'] | default({})).get('enabled', false) | bool and ((components['kagenti'] | default({})).get('chart') is defined) and not ((components['kagenti'] | default({})).get('chart') is search('\\.ya?ml$'))
 
