@@ -316,15 +316,18 @@
   loop_control:
     label: "{{ item.key }}"
   when: item.value.enabled | default(false)
-
-- name: Run helm dependency update for local charts when requested
-  command: helm dependency update "{{ item.value.chart | default('') }}"
+ 
+- name: Run helm dependency update for kagenti-deps when chart is local and dependency_update requested
+  command: helm dependency update "{{ (components['kagenti-deps'] | default({})).get('chart','') }}"
   args:
     chdir: "{{ playbook_dir }}"
-  when: item.value.chart is defined and (item.value.dependency_update | default(true)) and (item.value.chart is search('^\.|^/') or item.value.chart is search('^../')) and (item.value.enabled | default(false))
-  loop: "{{ components | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
+  when: (components['kagenti-deps'] | default({})).get('chart') is defined and ((components['kagenti-deps'] | default({})).get('dependency_update', true) | bool) and ((components['kagenti-deps'] | default({})).get('chart') is search('^\.|^/') or (components['kagenti-deps'] | default({})).get('chart') is search('^../')) and ((components['kagenti-deps'] | default({})).get('enabled', false) | bool)
+
+- name: Run helm dependency update for kagenti when chart is local and dependency_update requested
+  command: helm dependency update "{{ (components['kagenti'] | default({})).get('chart','') }}"
+  args:
+    chdir: "{{ playbook_dir }}"
+  when: (components['kagenti'] | default({})).get('chart') is defined and ((components['kagenti'] | default({})).get('dependency_update', true) | bool) and ((components['kagenti'] | default({})).get('chart') is search('^\.|^/') or (components['kagenti'] | default({})).get('chart') is search('^../')) and ((components['kagenti'] | default({})).get('enabled', false) | bool)
  
  
 - name: Install/upgrade Kagenti-deps chart when enabled
