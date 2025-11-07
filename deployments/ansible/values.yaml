@@ -166,14 +166,13 @@ charts:
 
 create_kind_cluster: true
 kind_cluster_name: kagenti
-#kind_container_registry_enabled: true
 kind_images_preload: true
 # docker or podman
 container_engine: docker
 
 # Paths to configs in the deployments/scripts directory (relative to playbook_dir)
-kind_config: "../scripts/kind-config.yaml"
-kind_config_registry: "../scripts/kind-config-registry.yaml"
-preload_images_file: "../scripts/preload-images.txt"
+kind_config: "./kind/kind-config.yaml"
+kind_config_registry: "./kind/kind-config-registry.yaml"
+preload_images_file: "./kind/preload-images.txt"
 
 

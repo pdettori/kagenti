@@ -13,7 +13,7 @@
     # back to the repository's .venv-ansible if present (relative to the
     # playbook directory). You can also pass this via -e when running the
     # playbook, e.g. -e "ansible_python_interpreter=/path/to/python".
-    ansible_python_interpreter: "{{ lookup('env','ANSIBLE_PYTHON_INTERPRETER') | default(playbook_dir + '/../../.venv-ansible/bin/python', true) }}"
+    ansible_python_interpreter: "{{ lookup('env','ANSIBLE_PYTHON_INTERPRETER') | default(playbook_dir + '/../../.venv/bin/python', true) }}"
 
     # Optional path to a secret values YAML file. If provided, it will be loaded
     # and merged into chart values for deployments. Can be passed via -e

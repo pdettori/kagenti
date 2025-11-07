@@ -9,6 +9,26 @@ Key features
 - Support secret values via an external `.secret_values.yaml` file or environment variables.
 - Use `kubernetes.core.helm` to install/upgrade Helm releases and `kubernetes.core.k8s` to manage k8s objects.
 
+Using uv:
+
+```
+uv run ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e "secret_values_file=.secret_values.yaml kind_images_preload=false"
+```
+
+Notes on overriding variables from the CLI
+- Passing extra-vars via `-e` should override values loaded from `values.yaml`. However, some shells or wrapper scripts (for example the `uv` wrapper) may alter quoting/escaping which can change how the CLI arguments are parsed.
+- If an override doesn't seem to take effect, try the JSON/YAML explicit form which is unambiguous to Ansible, for example:
+
+```
+# JSON-style explicit extra-vars
+uv run ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e '{"secret_values_file": ".secret_values.yaml", "kind_images_preload": false}'
+
+# Or without the 'uv' wrapper for a quick test
+ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e '{"secret_values_file": ".secret_values.yaml", "kind_images_preload": false}'
+```
+
+Also: run the playbook with the `--tags debug_vars` option (or omit tags) to show the debug output added to the role which prints resolved variable values. This helps confirm whether the extra-var was received by Ansible.
+
 Quick start
 1. Install the required collection:
 

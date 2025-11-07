@@ -1,14 +1,12 @@
 # 
 # setup
 #
-- name: pre-flight checks  
-  ansible.builtin.import_tasks: 01_preflight_checks.yaml
 
 - name: setup vars 
-  ansible.builtin.import_tasks: 02_setup_vars.yaml
+  ansible.builtin.import_tasks: 01_setup_vars.yaml
 
 - name: setup cluster
-  ansible.builtin.import_tasks: 03_setup_cluster.yaml
+  ansible.builtin.import_tasks: 02_setup_cluster.yaml
 
 # 
 #  Install Istio
@@ -204,7 +202,7 @@
 #  Setup DNS for registry in kind
 #
 - name: setup kind registry dns
-  ansible.builtin.import_tasks: 04_setup_kind_registry_dns.yaml
+  ansible.builtin.import_tasks: 03_setup_kind_registry_dns.yaml
 
 #
 #  Install kagenti

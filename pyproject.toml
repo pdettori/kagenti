@@ -1,0 +1,16 @@
+[project]
+name = "kagenti-project"
+version = "0.1.0"
+description = "Monorepo for Kagenti code and Ansible deployments"
+requires-python = ">=3.10"
+
+# List ALL required Python packages for both Ansible and the Kagenti code
+dependencies = [
+    # Ansible dependencies
+    "ansible-core",
+    "ansible", 
+    
+    # Dependencies Ansible collections or Python code
+    "kubernetes>=34.*", 
+    "PyYAML>=6.0.3",
+]
