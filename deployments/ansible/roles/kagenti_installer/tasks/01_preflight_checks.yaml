@@ -1,0 +1,28 @@
+# Pre-flight: Python interpreter checks — ensure the configured interpreter exists and can import required modules
+- name: "Pre-flight: Python interpreter checks"
+  block:
+    - name: Debug chosen ansible_python_interpreter
+      debug:
+        msg: "ansible_python_interpreter={{ ansible_python_interpreter | default('undefined') }}"
+
+    - name: Stat configured ansible_python_interpreter
+      stat:
+        path: "{{ ansible_python_interpreter }}"
+      register: interp_stat
+      failed_when: false
+      changed_when: false
+
+    - name: Fail if configured ansible_python_interpreter is missing
+      fail:
+        msg: |
+          The configured ansible_python_interpreter '{{ ansible_python_interpreter }}' was not found on the controller.
+          Provide a valid python path via the environment variable ANSIBLE_PYTHON_INTERPRETER
+          or pass an extra-var: -e "ansible_python_interpreter=/full/path/to/python".
+          Alternatively, activate the project's venv and run the playbook from there.
+      when: not (interp_stat.stat.exists | default(false))
+
+    - name: Verify Python can import required modules (yaml, kubernetes)
+      command: "{{ ansible_python_interpreter }} -c \"import yaml, kubernetes; print('OK')\""
+      register: py_imports
+      failed_when: py_imports.rc != 0
+      changed_when: false

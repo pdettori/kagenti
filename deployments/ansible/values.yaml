@@ -1,38 +1,44 @@
-# Example values file for the Ansible installer.
-# Use this single file to enable/disable components and provide per-chart values.
-# Adjust chart paths to point at local charts or helm charts available to the cluster.
+# Kagenti installation configuration
 
-components:
-  # Example component: kagenti main chart
-  kagenti:
-    enabled: true
-    # chart: path to a local chart or chart reference (e.g. repo/chartname)
-    chart: "../../charts/kagenti"
-    release_name: "kagenti"
-    namespace: "kagenti-system"
-    # values that will be passed to the helm chart. This can be any valid
-    # nested dict matching the chart's values.yaml keys.
-    values:
-      image:
-        tag: "latest"
-      service:
-        type: "ClusterIP"
+#################################################################### 
+# Secrets and value files
+####################################################################
+secrets:
+  # if provided, this filename will be loaded by the role (example: .secret_values.yaml)
+  file: ".secret_values.yaml"
 
-  # Example component: gateway-api or other chart in repo
-  gateway-api:
-    enabled: true
-    # chart: "../../charts/gateway-api"
-    # release_name: "gateway-api"
-    # namespace: "kagenti-system"
-    # values: {}
+values_files: {}
 
-  # Infrastructure and dependency components mirrored from installer.sh
+#################################################################### 
+# Kubectl templates
+####################################################################
+gatewayApi:
+  enabled: true
+  version: v1.4.0
+
+certManager:
+  enabled: true
+  version: v1.17.2
+
+tekton:
+  enabled: true
+  version: v0.66.0  
+
+kiali:
+  enabled: true
+  version: release-1.28  
+
+charts:
+  #################################################################### 
+  # kagenti-deps 
+  ####################################################################
   kagenti-deps:
     enabled: true
     chart: "../../charts/kagenti-deps"
     release_name: "kagenti-deps"
     namespace: "kagenti-system"
-    # Many flags in the original script are passed via --set to this chart.
+    dependency_update: true
+    # values for the helm chart overriding the chart's values.yaml file
     values:
       openshift: false
       components:
@@ -62,30 +68,43 @@ components:
           enabled: true
         toolhive:
           enabled: true
+      # components settings    
+      containerRegistry:
+        namespace: cr-system
+        name: registry  
 
+  #################################################################### 
+  # kagenti 
+  ####################################################################        
+  kagenti:
+    enabled: true
+    # chart: path to a local chart or chart reference (e.g. repo/chartname)
+    chart: "../../charts/kagenti"
+    release_name: "kagenti"
+    namespace: "kagenti-system"
+    dependency_update: true
+    # values for the helm chart overriding the chart's values.yaml file
+    values: {}
+
+  #################################################################### 
+  # istio 
+  ####################################################################    
   istio:
     enabled: true
-    # we will install Istio using the upstream charts (repo added during tasks)
-    chart: "istio/base"
-    release_name: "istio-base"
-    namespace: "istio-system"
+    namespace: istio-system
+    version: 1.28.0
     values: {}
 
-  cert-manager:
-    enabled: true
-    chart: "https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml"
-    release_name: "cert-manager"
-    namespace: "cert-manager"
-    values: {}
-
+  #################################################################### 
+  # spire
+  ####################################################################    
   spire:
     enabled: true
-    chart: "spire"
-    release_name: "spire"
-    namespace: "spire-mgmt"
-    repo_url: "https://spiffe.github.io/helm-charts-hardened/"
-    # Inline spire chart values copied from deployments/scripts/spire-helm-values.yaml
-    # These values will be passed directly to the helm task from this file
+    namespace: spire-mgmt
+    version: 0.27.0
+    crd:
+      version: 0.5.0
+     # we will install Istio using the upstream charts (repo added during tasks)
     values:
       global:
         openshift: false
@@ -141,11 +160,16 @@ components:
             cpu: 100m
             memory: 512Mi
 
-# Cluster management options (kind)
+#################################################################### 
+# Dev cluster setup (Kind)
+####################################################################
+
 create_kind_cluster: true
 kind_cluster_name: kagenti
-kind_container_registry_enabled: true
+#kind_container_registry_enabled: true
 kind_images_preload: true
+# docker or podman
+container_engine: docker
 
 # Paths to configs in the deployments/scripts directory (relative to playbook_dir)
 kind_config: "../scripts/kind-config.yaml"
@@ -153,15 +177,3 @@ kind_config_registry: "../scripts/kind-config-registry.yaml"
 preload_images_file: "../scripts/preload-images.txt"
 
 
-# Optionally provide a list of extra helm value files to pass to all releases
-# or leave empty. Paths are relative to the playbook directory unless absolute.
-global_value_files: []
-
-# Secrets handling: either provide secrets via environment variables (see README)
-# or set secret_values_file when running the playbook (e.g. -e "secret_values_file=secret_values.yaml").
-# If secret_values_file is used, values in that file will be merged into each
-# component's values (top-level keys are merged).
-
-secrets:
-  # if provided, this filename will be loaded by the role (example: secret_values.yaml)
-  file: "secret_values.yaml"

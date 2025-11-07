@@ -1,0 +1,32 @@
+# Manage secret values file: prefer the explicitly provided path; if relative, resolve against playbook_dir
+- name: Manage secret_values_file
+  block:
+    - name: Resolve secret_values_file (prefer extra-var)
+      set_fact:
+        secret_values_file: "{{ secret_values_file | default(secrets.file | default('')) }}"
+
+    - name: Resolve secret_values_file path (use provided path as-is or relative to playbook_dir)
+      set_fact:
+        secret_values_file_resolved: "{{ secret_values_file if (secret_values_file is search('^/')) else (playbook_dir + '/' + secret_values_file) }}"
+      when: secret_values_file is defined and secret_values_file | length > 0
+
+    - name: Stat resolved secret_values_file
+      stat:
+        path: "{{ secret_values_file_resolved }}"
+      register: secret_values_stat
+      when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
+
+    - name: Fail if resolved secret values file is missing
+      fail:
+        msg: "Secret values file '{{ secret_values_file_resolved }}' not found. Provide an absolute path or a path relative to the playbook directory."
+      when: not (secret_values_stat.stat.exists | default(false)) and (secret_values_file_resolved is defined and secret_values_file_resolved | length > 0)
+
+    - name: Load secret values file if provided
+      include_vars:
+        file: "{{ secret_values_file_resolved }}"
+        name: secret_values
+      when: secret_values_file_resolved is defined and secret_values_file_resolved | length > 0
+
+- name: Determine list of items to install
+  set_fact:
+    charts: "{{ charts | default({}) }}"

@@ -13,9 +13,11 @@ kind: Namespace
 metadata:
   name: {{ . }}
   labels:
+    kagenti-enabled: "true"
     istio-discovery: enabled
     istio.io/dataplane-mode: ambient
-    kagenti-enabled: "true"
+    istio.io/use-waypoint: waypoint
+    shared-gateway-access: "true"
 ---
 # ——————————————————————————————————————————————————————————————————————————————
 #  Secrets for Namespace: {{ . }}

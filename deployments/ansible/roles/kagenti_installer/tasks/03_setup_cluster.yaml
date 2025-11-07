@@ -1,0 +1,54 @@
+- name: Check kubectl API resources to detect OpenShift
+  command: kubectl api-resources
+  register: kubectl_api
+  failed_when: false
+  changed_when: false
+
+- name: Set enable_openshift fact based on kubectl output
+  set_fact:
+    enable_openshift: "{{ 'openshift.io' in (kubectl_api.stdout | default('')) }}"
+
+- name: Check kubectl connectivity (client)
+  command: kubectl version --client
+  register: kubectl_client
+  failed_when: false
+  changed_when: false
+
+- name: Ensure cluster connectivity or create kind cluster when requested
+  block:
+    - name: Check for existing kind clusters
+      command: kind get clusters
+      register: kind_clusters
+      failed_when: false
+      changed_when: false
+
+    - name: Create kind cluster if missing
+      command: >-
+        kind create cluster --name {{ kind_cluster_name }} --config {{ (kind_container_registry_enabled | default(true)) | ternary(kind_config_registry, kind_config) }}
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: kind_cluster_name not in (kind_clusters.stdout | default(''))
+  when: kubectl_api.rc != 0 and create_kind_cluster | default(false)
+
+- name: Preload images into kind cluster when requested
+  when: (kind_images_preload | default(false)) and not (enable_openshift | default(false))
+  block:
+    - name: Stat preload images file
+      stat:
+        path: "{{ preload_images_file }}"
+      register: preload_images_stat
+
+    - name: Fail if preload images file is missing
+      fail:
+        msg: "Preload images file '{{ preload_images_file }}' not found"
+      when: not preload_images_stat.stat.exists | default(false)
+
+    - name: Read preload images file
+      set_fact:
+        preload_images: "{{ (lookup('file', preload_images_file).split('\n') | map('trim') | reject('equalto','') | reject('match','^#')) | list }}"
+
+    - name: Load images into kind
+      command: kind load docker-image {{ item }} --name {{ kind_cluster_name }}
+      loop: "{{ preload_images }}"
+      register: kind_load_results
+      failed_when: false

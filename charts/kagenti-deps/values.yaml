@@ -100,7 +100,7 @@ spire:
 
 containerRegistry:
   namespace: cr-system
-  name: container-registry
+  name: registry
   replicaCount: 1
   image:
     repository: ghcr.io/distribution/distribution
