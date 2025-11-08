@@ -78,6 +78,21 @@
   when: (charts.istio.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
+#  Cert manager
+#
+- name: Install cert manager and wait for start 
+  block:
+  - name: Install cert-manager 
+    kubernetes.core.k8s:
+      state: present
+      src: "https://github.com/cert-manager/cert-manager/releases/download/{{certManager.version}}/cert-manager.yaml"
+
+  - name: Wait for cert manager webhook to start
+    command: >-
+      kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=60s
+  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))          
+
+#
 #  Kiali and Prometheus
 #
 - name: Install Kiali and Prometheus istio addons for k8s cluster
@@ -92,15 +107,6 @@
         state: present
         src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/kiali.yaml"
   when: (kiali.enabled | default(false)) and not (enable_openshift | default(false))
-
-#
-#  Cert manager
-#
-- name: Install cert-manager 
-  kubernetes.core.k8s:
-    state: present
-    src: "https://github.com/cert-manager/cert-manager/releases/download/{{certManager.version}}/cert-manager.yaml"
-  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
 #  Tekton
@@ -183,10 +189,11 @@
     release_namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
     state: present
     create_namespace: true
-    wait: false
+    wait: true
     timeout: "{{ helm_wait_timeout }}s"
     values: >-
       {{ (((charts['kagenti-deps'] | default({})).get('values') ) | default({}))
+        | combine((global_values_merged | default({})), recursive=True)
         | combine((((secret_values.get('charts', {}) | default({})).get('kagenti-deps', {}) ).get('values', {})) , recursive=True)
         | combine((secret_values.get('global', {}) | default({})), recursive=True)
         | combine({'openshift': enable_openshift}, recursive=True) }}
@@ -194,6 +201,20 @@
       {{ (global_value_files | default([]) | list) +
         (((charts['kagenti-deps'] | default({}))['values_files'] | default([])) | list)
       }}
+  when:
+    - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
+    - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+- name: Label kagenti-system namespace for shared gateway access
+  kubernetes.core.k8s:
+      api_version: v1
+      kind: Namespace
+      name: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+      definition:
+        metadata:
+          labels:
+            shared-gateway-access: "true"
+      merge_type: strategic-merge
   when:
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
@@ -240,10 +261,11 @@
     release_namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
     state: present
     create_namespace: false
-    wait: false
+    wait: true
     timeout: "{{ helm_wait_timeout }}s"
     values: >-
       {{ (((charts['kagenti'] | default({})).get('values')) | default({}))
+        | combine((global_values_merged | default({})), recursive=True)
         | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
         | combine((secret_values.get('global', {}) | default({})), recursive=True)
         | combine({'openshift': enable_openshift}, recursive=True) }}

@@ -12,7 +12,7 @@ Key features
 Using uv:
 
 ```
-uv run ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e "secret_values_file=.secret_values.yaml kind_images_preload=false"
+uv run ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e '{"secret_values_file":"../envs/.secret_values.yaml","global_value_files":["../envs/dev_values.yaml"],"kind_images_preload":false}'
 ```
 
 Notes on overriding variables from the CLI
@@ -52,3 +52,6 @@ Notes
   ```
   helm plugin install https://github.com/databus23/helm-diff
   ```
+
+
+  uv run ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e '{"global_value_files":["../envs/dev_values.yaml"],"kind_images_preload":false}'

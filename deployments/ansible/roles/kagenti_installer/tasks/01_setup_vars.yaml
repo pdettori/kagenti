@@ -30,3 +30,55 @@
 - name: Determine list of items to install
   set_fact:
     charts: "{{ charts | default({}) }}"
+
+# Resolve any global_value_files entries (allow absolute paths or paths relative to playbook_dir)
+- name: Normalize and resolve global_value_files
+  block:
+    - name: Build resolved paths for global_value_files
+      set_fact:
+        global_value_files_resolved: "{{ (global_value_files_resolved | default([])) + [ (item if (item is search('^/')) else (playbook_dir + '/' + item) ) ] }}"
+      loop: "{{ global_value_files | default([]) | list }}"
+      when: global_value_files is defined and global_value_files | length > 0
+
+    - name: Stat resolved global value files
+      stat:
+        path: "{{ item }}"
+      loop: "{{ global_value_files_resolved | default([]) | list }}"
+      register: global_value_file_stats
+      when: global_value_files_resolved is defined and global_value_files_resolved | length > 0
+
+    - name: Fail if any global value file is missing
+      fail:
+        msg: "Global value file '{{ item.stat.path }}' not found. Provide an absolute path or a path relative to the playbook directory."
+      loop: "{{ global_value_file_stats.results }}"
+      when: not (item.stat.exists | default(false))
+
+    - name: Expose resolved global_value_files for downstream tasks
+      set_fact:
+        global_value_files: "{{ global_value_files_resolved }}"
+      when: global_value_files_resolved is defined
+
+    - name: Merge global value files into a single dict
+      set_fact:
+        global_values_merged: "{{ (global_values_merged | default({})) | combine( (lookup('file', item) | from_yaml ), recursive=True) }}"
+      loop: "{{ global_value_files_resolved | default([]) | list }}"
+      when: global_value_files_resolved is defined and global_value_files_resolved | length > 0
+
+    - name: Merge global values into top-level playbook vars so they affect task 'when' conditions
+      set_fact:
+        charts: "{{ (charts | default({})) | combine((global_values_merged.get('charts', {}) | default({})), recursive=True) }}"
+        gatewayApi: "{{ (gatewayApi | default({})) | combine((global_values_merged.get('gatewayApi', {}) | default({})), recursive=True) }}"
+        certManager: "{{ (certManager | default({})) | combine((global_values_merged.get('certManager', {}) | default({})), recursive=True) }}"
+        tekton: "{{ (tekton | default({})) | combine((global_values_merged.get('tekton', {}) | default({})), recursive=True) }}"
+        kiali: "{{ (kiali | default({})) | combine((global_values_merged.get('kiali', {}) | default({})), recursive=True) }}"
+        create_kind_cluster: "{{ global_values_merged.get('create_kind_cluster', create_kind_cluster | default(true)) }}"
+        kind_cluster_name: "{{ global_values_merged.get('kind_cluster_name', kind_cluster_name | default('kagenti')) }}"
+        kind_images_preload: "{{ global_values_merged.get('kind_images_preload', kind_images_preload | default(false)) }}"
+        container_engine: "{{ global_values_merged.get('container_engine', container_engine | default('docker')) }}"
+        kind_config: "{{ global_values_merged.get('kind_config', kind_config | default('./kind/kind-config.yaml')) }}"
+        kind_config_registry: "{{ global_values_merged.get('kind_config_registry', kind_config_registry | default('./kind/kind-config-registry.yaml')) }}"
+        preload_images_file: "{{ global_values_merged.get('preload_images_file', preload_images_file | default('./kind/preload-images.txt')) }}"
+        secrets: "{{ (secrets | default({})) | combine((global_values_merged.get('secrets', {}) | default({})), recursive=True) }}"
+      when: global_values_merged is defined
+
+  when: global_value_files is defined

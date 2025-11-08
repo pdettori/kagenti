@@ -52,7 +52,6 @@ keycloak:
     annotations: {}
     parentRefs:
     - name: http
-      sectionName: http
       namespace: kagenti-system
     hostnames:
       - "keycloak.localtest.me"
@@ -61,7 +60,7 @@ keycloak:
     - matches:
       - path:
           type: PathPrefix
-          value: /headers
+          value: /
 
 
 # ------------------------------------------------------------------
