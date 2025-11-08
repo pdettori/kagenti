@@ -35,16 +35,18 @@ charts:
   kagenti:
     enabled: true
     values:
-     openshift: false
-     components:
+      openshift: false
+      components:
         agentNamespaces:
           enabled: true
         platformOperator:
           enabled: true
         ui:
           enabled: true
-          auth:
-            enabled: true  
+      # configs    
+      ui:      
+        auth:
+          enabled: true  
 
   #################################################################### 
   # istio  - required for the ingress gateway
