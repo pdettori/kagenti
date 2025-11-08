@@ -52,6 +52,7 @@ ui:
   image: ghcr.io/kagenti/kagenti/ui
   tag: v0.1.0-alpha.7
   hostname: kagenti-ui.localtest.me
+  url: http://kagenti-ui.localtest.me:8080
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -68,6 +69,8 @@ keycloak:
   adminSecretName: keycloak-initial-admin
   adminUsernameKey: username
   adminPasswordKey: password
+  url: http://keycloak.keycloak:8080
+  publicUrl: http://keycloak.localtest.me:8080
 
 # ------------------------------------------------------------------
 #  Platform Operator Configuration

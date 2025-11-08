@@ -207,6 +207,19 @@ spec:
       targetPort: 5432
   type: ClusterIP
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-initial-admin  
+  namespace: {{ .Values.keycloak.namespace }}  
+  labels:
+    app: keycloak
+    app.kubernetes.io/instance: keycloak
+data:
+  password: YWRtaW4=
+  username: YWRtaW4=
+type: kubernetes.io/basic-auth  
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
