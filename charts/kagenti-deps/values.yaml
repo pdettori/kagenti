@@ -1,6 +1,8 @@
 # Global settings
 openshift: true
 
+domain: localtest.me
+
 # ------------------------------------------------------------------
 #   Enable or disable components here
 # ------------------------------------------------------------------
@@ -114,3 +116,11 @@ containerRegistry:
   env:
     otelTracesExporter: "none"
     logLevel: "info"
+
+# ------------------------------------------------------------------
+#  Metrics Server Configuration
+# ------------------------------------------------------------------
+
+metricsServer:
+  insecure: true
+  namespace: kube-system

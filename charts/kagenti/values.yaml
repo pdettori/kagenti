@@ -53,6 +53,11 @@ ui:
   tag: v0.1.0-alpha.7
   hostname: kagenti-ui.localtest.me
   url: http://kagenti-ui.localtest.me:8080
+  # When true, mount the in-cluster serviceaccount CA into UI pods and
+  # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
+  # Defaults to false because the serviceaccount CA is for the API server
+  # and will usually not validate external OpenShift route certificates.
+  useServiceAccountCA: false
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -96,6 +101,8 @@ mcp-gateway:
   fullnameOverride: mcp
   envoyFilter:
     namespace: istio-system
+  image:  
+    tag: v0.2
 # main chart configs    
 mcpGateway:
   namespaces:

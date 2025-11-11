@@ -12,6 +12,8 @@ kind: OperatorGroup
 metadata:
   name: zero-trust-workload-identity-manager
   namespace: {{ .Values.spire.namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
     upgradeStrategy: Default
     targetNamespaces:
@@ -22,6 +24,7 @@ kind: Subscription
 metadata:
   labels:
     operators.coreos.com/openshift-zero-trust-workload-identity-manager.zero-trust-workl: ''
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: openshift-zero-trust-workload-identity-manager
   namespace: {{ .Values.spire.namespace }}
 spec:

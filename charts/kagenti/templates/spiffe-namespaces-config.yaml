@@ -1,11 +1,14 @@
 {{- if and  .Values.agentNamespaces  .Values.spire.enabled }}
-{{- range .Values.agentNamespaces }}
+{{- $root := . }}
+{{- range $root.Values.agentNamespaces }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: spiffe-helper-config
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 data:
   helper.conf: |
     agent_address = "/spiffe-workload-api/spire-agent.sock"

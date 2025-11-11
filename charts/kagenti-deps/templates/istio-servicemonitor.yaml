@@ -6,6 +6,7 @@ metadata:
   namespace: "{{ .Values.istio.ztunnel.namespace }}"
   labels:
     app: ztunnel
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   selector:
     app: ztunnel
@@ -20,7 +21,8 @@ metadata:
   name: ztunnel-servicemonitor
   namespace: "{{ .Values.istio.ztunnel.namespace }}"
   labels:
-    release: prometheus   
+    release: prometheus
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:

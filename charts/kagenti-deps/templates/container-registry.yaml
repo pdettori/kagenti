@@ -12,6 +12,8 @@ kind: Deployment
 metadata:
   name: {{ .Values.containerRegistry.name | default "registry" }}
   namespace: {{ .Values.containerRegistry.namespace | default "cr-system" }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.containerRegistry.replicaCount | default 1 }}
   selector:
@@ -43,6 +45,8 @@ kind: Service
 metadata:
   name: {{ .Values.containerRegistry.name | default "registry" }}
   namespace: {{ .Values.containerRegistry.namespace | default "cr-system" }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   ports:
   - port: {{ .Values.containerRegistry.service.port | default 5000 }}

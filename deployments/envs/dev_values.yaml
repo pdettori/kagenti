@@ -1,42 +1,70 @@
-# Kagenti installation configuration
+# Kagenti dev installation configuration
+
 
 #################################################################### 
-# Kubectl templates
+# kagenti-deps 
 ####################################################################
 gatewayApi:
-  enabled: false
- 
-kiali:
-  enabled: false
+  enabled: true
 
+certManager:
+  enabled: true  
+
+tekton:
+  enabled: true 
+
+kiali:
+  enabled: true  
 
 charts:
   #################################################################### 
   # kagenti-deps 
   ####################################################################
   kagenti-deps:
+    enabled: true
     values:
       openshift: false
       components:
+        keycloak:
+          enabled: true
+        otel:
+          enabled: true
         mcpInspector:
           enabled: true
         metricsServer:
           enabled: true
+        containerRegistry:
+          enabled: true
         ingressGateway:
           enabled: true
         toolhive:
-          enabled: true
-
+          enabled: true 
 
   #################################################################### 
   # kagenti 
   ####################################################################        
   kagenti:
     enabled: true
-    values: {}
+    values:
+      openshift: false
+      components:
+        agentNamespaces:
+          enabled: true
+        platformOperator:
+          enabled: true
+        ui:
+          enabled: true
+        mcpGateway:
+          enabled: true
+        istio:
+          enabled: false    
+      # configs    
+      ui:      
+        auth:
+          enabled: true  
 
   #################################################################### 
-  # istio 
+  # istio  - required for the ingress gateway
   ####################################################################    
   istio:
     enabled: true
@@ -45,9 +73,9 @@ charts:
   # spire
   ####################################################################    
   spire:
-    enabled: true
+    enabled: true   
  
-kind_images_preload: true
+kind_images_preload: false
 # docker or podman
 container_engine: docker
 

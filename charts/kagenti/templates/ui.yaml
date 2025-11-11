@@ -4,12 +4,16 @@ kind: ServiceAccount
 metadata:
   name: kagenti-ui-service-account
   namespace: "{{ .Values.ui.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kagenti-ui
   namespace: "{{ .Values.ui.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -68,12 +72,14 @@ spec:
               value: "/app/.cache/uv"
             - name: "ENABLE_AUTH"
               value: "{{- .Values.ui.auth.enabled }}"
+            {{- if .Values.ui.useServiceAccountCA }}
             - name: "SSL_CERT_FILE"
               valueFrom:
                 secretKeyRef:
                   name: "kagenti-ui-oauth-secret"
                   key: "SSL_CERT_FILE"
                   optional: {{ or (not .Values.openshift) (not .Values.ui.auth.enabled) }}
+            {{- end }}
             - name: "CLIENT_ID"
               valueFrom:
                 secretKeyRef:
@@ -165,6 +171,8 @@ kind: Service
 metadata:
   name: kagenti-ui
   namespace: "{{ .Values.ui.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   selector:
     app: kagenti-ui
@@ -179,6 +187,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: kagenti-ui-role
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["namespaces"]
@@ -198,6 +208,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: kagenti-ui-binding
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -212,10 +224,12 @@ subjects:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  annotations:
-    openshift.io/host.generated: "true"
   name: kagenti-ui
   namespace: "{{ .Values.ui.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    openshift.io/host.generated: "true"
 spec:
   path: /
   port:
@@ -236,6 +250,7 @@ metadata:
   namespace: "{{ .Values.ui.namespace }}"
   labels:
     app: kagenti-ui
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   parentRefs:
     - name: http

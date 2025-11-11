@@ -103,7 +103,7 @@ charts:
   istio:
     enabled: false
     namespace: istio-system
-    version: 1.28.0
+    version: 1.26.0
     values: {}
 
   #################################################################### 

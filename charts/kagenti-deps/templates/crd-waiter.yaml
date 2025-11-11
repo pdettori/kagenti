@@ -4,6 +4,8 @@ kind: ServiceAccount
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-sa
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
     "helm.sh/hook-weight": "-5"
@@ -13,6 +15,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-role
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
     "helm.sh/hook-weight": "-5"
@@ -26,6 +30,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-binding
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
     "helm.sh/hook-weight": "-5"
@@ -44,6 +50,8 @@ kind: Job
 metadata:
   name: {{ .Release.Name }}-crd-waiter
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "-4"

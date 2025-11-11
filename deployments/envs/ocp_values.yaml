@@ -1,16 +1,5 @@
-# Kagenti minimal installation configuration with Auth enabled
-
-#################################################################### 
-# kagenti-deps 
-####################################################################
-gatewayApi:
-  enabled: true
-
-certManager:
-  enabled: true  
-
-tekton:
-  enabled: true 
+# Kagenti minimal installation configuration
+# Auth is enabled in this config
 
 charts:
   #################################################################### 
@@ -19,14 +8,28 @@ charts:
   kagenti-deps:
     enabled: true
     values:
-      openshift: false
+      openshift: true
       components:
-        ingressGateway:
+        mcpInspector:
           enabled: true
-        containerRegistry:
+        istio:
           enabled: true
+        kiali:
+          enabled: true  
         keycloak:
-          enabled: true      
+          enabled: true
+        otel:
+          enabled: true
+        spire:
+          enabled: true
+        tekton:
+          enabled: true
+        certManager:
+          enabled: true  
+        gatewayApi:  
+          enabled: true
+        toolhive:
+          enabled: true
 
   #################################################################### 
   # kagenti 
@@ -42,20 +45,15 @@ charts:
           enabled: true
         ui:
           enabled: true
+        mcpGateway:
+          enabled: true
+        istio:
+          enabled: false    
       # configs    
       ui:      
         auth:
           enabled: true  
 
-  #################################################################### 
-  # istio  - required for the ingress gateway
-  ####################################################################    
-  istio:
-    enabled: true
- 
-kind_images_preload: false
-# docker or podman
-container_engine: docker
 
 
 
