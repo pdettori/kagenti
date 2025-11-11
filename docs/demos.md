@@ -9,6 +9,7 @@ Detailed overview of the identity concepts are covered in the [Kagenti Identity 
 
 Check the details for running various demos.
 
+- Interactive online demo at KubeCon NA 2025: [Tutorial: Build-a-Bot Workshop: Enabling Trusted Agents With SPIRE + MCP](https://red.ht/3WL5Loc)
 - Simplest Demo - [Weather Service](./demo-weather-agent.md)
 - Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent.md)
 - Github Issue Demo - [Github Issue Agent](./demo-github-issue.md) ([demo recording](https://youtu.be/5SpTwERN2jU))
