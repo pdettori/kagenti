@@ -27,7 +27,7 @@ charts:
         certManager:
           enabled: true  
         gatewayApi:  
-          enabled: true
+          enabled: false
         toolhive:
           enabled: true
 

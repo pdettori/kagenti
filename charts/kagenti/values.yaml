@@ -53,11 +53,6 @@ ui:
   tag: v0.1.0-alpha.7
   hostname: kagenti-ui.localtest.me
   url: http://kagenti-ui.localtest.me:8080
-  # When true, mount the in-cluster serviceaccount CA into UI pods and
-  # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
-  # Defaults to false because the serviceaccount CA is for the API server
-  # and will usually not validate external OpenShift route certificates.
-  useServiceAccountCA: false
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -65,6 +60,11 @@ ui:
 uiOAuthSecret:
   image: ghcr.io/kagenti/kagenti/ui-oauth-secret
   tag: latest
+  # When true, mount the in-cluster serviceaccount CA into UI pods and
+  # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
+  # Defaults to false because the serviceaccount CA is for the API server
+  # and will usually not validate external OpenShift route certificates.
+  useServiceAccountCA: true
 
 # ------------------------------------------------------------------
 #  Keycloak Configuration
