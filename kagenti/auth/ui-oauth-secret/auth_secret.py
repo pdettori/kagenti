@@ -152,21 +152,36 @@ def read_keycloak_credentials(
         raise KubernetesResourceError(error_msg) from e
 
 
-def configure_ssl_verification(ssl_cert_file: Optional[str]) -> Union[str, bool]:
+def configure_ssl_verification(ssl_cert_file: Optional[str]) -> Optional[str]:
     """Configure SSL verification based on certificate file availability.
+
+    Behaviour:
+    - If an explicit SSL_CERT_FILE path is provided and exists, return that path.
+    - Otherwise return None, which indicates to callers that the default
+      system CA bundle (requests/certifi) should be used.
+
+    Returning None avoids incorrectly defaulting to the Kubernetes
+    serviceaccount CA (which is for the API server) when verifying
+    external TLS endpoints such as OpenShift routes.
 
     Args:
         ssl_cert_file: Path to SSL certificate file
 
     Returns:
-        Path to cert file if available and exists, False otherwise
+        Path to cert file if available and exists, otherwise None
     """
-    if ssl_cert_file and os.path.exists(ssl_cert_file):
-        logger.info(f"Using SSL certificate file: {ssl_cert_file}")
-        return ssl_cert_file
-    else:
-        logger.warning("SSL verification disabled - using self-signed certificates")
-        return False
+    if ssl_cert_file:
+        if os.path.exists(ssl_cert_file):
+            logger.info(f"Using SSL certificate file: {ssl_cert_file}")
+            return ssl_cert_file
+        else:
+            logger.warning(
+                f"Provided SSL_CERT_FILE '{ssl_cert_file}' does not exist; falling back to system CA bundle"
+            )
+
+    # No explicit certificate provided or file missing: use system CA bundle
+    logger.info("No SSL_CERT_FILE provided - using system CA bundle for verification")
+    return None
 
 
 def register_client(
@@ -365,17 +380,21 @@ def main() -> None:
                     f"Using separate URLs - Internal (token): {keycloak_url}, External (auth): {keycloak_public_url}"
                 )
 
-        # Configure SSL verification
+        # Configure SSL verification. If configure_ssl_verification returns None
+        # we want KeycloakAdmin/requests to use the default system CA bundle
+        # (i.e. the certifi bundle used by requests). If a path is returned,
+        # pass it through to requests so that a custom CA bundle will be used.
         verify_ssl = configure_ssl_verification(ssl_cert_file)
 
-        # Initialize Keycloak admin client
+        # Initialize Keycloak admin client. If verify_ssl is None then let
+        # the Keycloak client use the default verification behaviour (True).
         keycloak_admin = KeycloakAdmin(
             server_url=keycloak_url,
             username=keycloak_admin_username,
             password=keycloak_admin_password,
             realm_name=keycloak_realm,
             user_realm_name=DEFAULT_KEYCLOAK_REALM,
-            verify=verify_ssl,
+            verify=(verify_ssl if verify_ssl is not None else True),
         )
 
         # Register client
@@ -426,6 +445,9 @@ def main() -> None:
         logger.info(f"  REDIRECT_URI: {redirect_uri}")
 
         # Prepare secret data
+        # For the created secret expose the cert path if an explicit file was
+        # configured; otherwise set an empty value so downstream consumers
+        # know to use the system CA bundle.
         secret_data = {
             "ENABLE_AUTH": "true",
             "CLIENT_SECRET": client_secret,
@@ -434,7 +456,7 @@ def main() -> None:
             "TOKEN_ENDPOINT": token_endpoint,
             "REDIRECT_URI": redirect_uri,
             "SCOPE": OAUTH_SCOPE,
-            "SSL_CERT_FILE": SERVICE_ACCOUNT_CA_PATH,
+            "SSL_CERT_FILE": verify_ssl if verify_ssl is not None else "",
         }
 
         # Create or update Kubernetes secret
