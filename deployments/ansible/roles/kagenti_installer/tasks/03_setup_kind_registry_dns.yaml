@@ -1,0 +1,30 @@
+- name: Setup Registry DNS
+  block: 
+  - name: Get registry name and namespace
+    set_fact:
+      registryName: "{{ (charts['kagenti-deps'] | default({})).get('values', {}).get('containerRegistry', {}).get('name', 'registry') }}"
+      registryNamespace:  "{{ (charts['kagenti-deps'] | default({})).get('values', {}).get('containerRegistry', {}).get('namespace', 'cr-system') }}"
+
+  - name: Get Container Registry service details
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Service
+      name: "{{ registryName }}"
+      namespace: "{{ registryNamespace }}"
+    register: service_info
+
+  - name: Extract the ClusterIP
+    set_fact:
+      cluster_ip: "{{ service_info.resources[0].spec.clusterIP }}"
+
+  - name: Add internal registry DNS entry to control plane container's /etc/hosts
+    ansible.builtin.shell:
+      # Use '>>' to append the new entry to the /etc/hosts file inside the container
+      cmd: >
+        {{ container_engine }} exec 
+        {{ kind_cluster_name }}-control-plane 
+        sh -c "echo '{{ cluster_ip }} {{ registryName }}.{{ registryNamespace }}.svc.cluster.local' >> /etc/hosts"    
+  when: >
+    (create_kind_cluster | default(false)) 
+    and not (enable_openshift | default(false)) 
+    and (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('containerRegistry', {}).get('enabled', false)

@@ -4,6 +4,8 @@ kind: OperatorGroup
 metadata:
   name: keycloak-operatorgroup
   namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   targetNamespaces:
     - {{ .Values.keycloak.namespace }}
@@ -15,6 +17,7 @@ metadata:
   namespace: {{ .Values.keycloak.namespace }}
   labels:
     operators.coreos.com/servicemeshoperator3.openshift-operators: ""
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   channel: stable-v26.2
   installPlanApproval: Automatic

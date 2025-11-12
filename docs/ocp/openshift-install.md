@@ -14,7 +14,35 @@ These limitations will be addressed in successive PRs.
 - helm >= v3.18.0
 - kubectl >= v1.32.1 or oc >= 4.16.0
 - git >= 2.48.0
-- Access to OpenShift cluster with admin authority (We tested with OpenShift 4.18.21)
+- Access to OpenShift cluster with admin authority (We tested with OpenShift 4.18 and 4.19)
+
+## Check Cluster Network Type and Configure for OVN in Ambient Mode
+
+When enabling Istio Ambient mode on OpenShift clusters, readiness probes may fail for pods in namespaces with Ambient enabled if the cluster uses the OVNKubernetes network type.
+This behavior is documented in this [issue](https://github.com/kagenti/kagenti/issues/329).
+
+### Why This Happens
+`OVNKubernetes` defaults to shared gateway mode, which routes kubelet health probe traffic outside the host network stack. As a result, the Ztunnel proxy cannot intercept the probes, causing them to fail incorrectly.
+
+**Verify Network Type**
+To confirm your cluster’s network type, run:
+
+```shell
+kubectl describe network.config/cluster
+```
+
+Look for Network Type: OVNKubernetes in the output.
+
+**Required Configuration**
+If your cluster uses OVNKubernetes, you must enable local gateway mode by setting `routingViaHost: true`. This ensures traffic flows through the host network stack, allowing Ztunnel to handle probes correctly.
+
+Apply the configuration with:
+
+```shell
+kubectl patch network.operator.openshift.io cluster --type=merge -p '{"spec":{"defaultNetwork":{"ovnKubernetesConfig":{"gatewayConfig":{"routingViaHost":true}}}}}'
+```
+
+**Important**: This configuration is a temporary workaround and should only be used until OpenShift provides native support for Istio Ambient mode. Future releases are expected to eliminate the need for this manual adjustment.
 
 ## Installing the Helm Chart
 
@@ -99,71 +127,26 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG}
    ```
 
+## Using the new ansible-based installer
+
+You may also use the new ansible based installer to install the helm charts. 
+
+1. Copy example secrets file: `deployments/envs/secret_values.yaml.example` to `deployments/envs/.secret_values.yaml` and fill in the values in that file.
+
+2. Run the installer as:
+
+```bash
+deployments/ansible/run-install.sh --env ocp
+```
+
+Check [here](../../deployments/ansible/README.md) for more details on the new installer.
+
+
 ## Authentication Configuration
 
-Kagenti UI now supports Keycloak authentication by default.
+Kagenti UI now supports Keycloak authentication by default. The `kagenti` helm chart creates automatically the required  
+`kagenti-ui-oauth-secret`in the `kagenti-system` namespace required by the UI.
 
-### Prerequisites
-
-**IMPORTANT**: Before accessing the UI, you must create a Kubernetes secret named `kagenti-ui-oauth-secret` in the `kagenti-system` namespace with the following keys:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: kagenti-ui-oauth-secret
-  namespace: kagenti-system
-type: Opaque
-stringData:
-  ENABLE_AUTH: "true"
-  CLIENT_ID: "kagenti"
-  CLIENT_SECRET: "<your-keycloak-client-secret>"
-  AUTH_ENDPOINT: "https://<keycloak-route>/realms/master/protocol/openid-connect/auth"
-  TOKEN_ENDPOINT: "https://<keycloak-route>/realms/master/protocol/openid-connect/token"
-  REDIRECT_URI: "https://<ui-route>/oauth2/callback"
-  SCOPE: "openid profile email"
-  SSL_CERT_FILE: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-```
-
-Replace the placeholders:
-
-**1. Get Keycloak client secret:**
-
-First, find the Keycloak admin username and password in the `keycloak` namespace.
-
-Then, log in to the Keycloak admin console:
-1. Navigate to the Keycloak route URL
-2. Log in with admin credentials
-3. Go to **Clients** in the left sidebar
-4. Click on the `kagenti` client
-5. Go to the **Credentials** tab
-6. Copy the **Client Secret** value
-
-**2. Get route hostnames:**
-```shell
-# Get Keycloak route
-KEYCLOAK_ROUTE=$(oc get route keycloak -n keycloak -o jsonpath='{.spec.host}')
-
-# Get UI route  
-UI_ROUTE=$(oc get route kagenti-ui -n kagenti-system -o jsonpath='{.spec.host}')
-
-echo "Keycloak route: $KEYCLOAK_ROUTE"
-echo "UI route: $UI_ROUTE"
-```
-
-**3. Update the secret:**
-
-Replace in the YAML above:
-- `<your-keycloak-client-secret>`: The client secret from Keycloak (step 1)
-- `<keycloak-route>`: Value of `$KEYCLOAK_ROUTE`
-- `<ui-route>`: Value of `$UI_ROUTE`
-
-### Authentication Features
-
-- **Keycloak Integration**: Uses the deployed Keycloak instance for authentication
-- **Automatic Token Management**: Handles token refresh and session management
-- **User Session Management**: Supports login/logout functionality
-- **SSL Certificate Handling**: Automatically handles OpenShift self-signed certificates
 
 ## Access the UI
 
@@ -288,30 +271,4 @@ running the command:
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
 ```
 
-## Troubleshooting
-
-### Readiness checks fail for pods in namespaces with istio ambient enabled 
-
-This is a specific [issue](https://github.com/kagenti/kagenti/issues/329) for 
-OpenShift with Network Type `OVNKubernetes`. 
-
-This occurs because OVNKubernetes' default "shared gateway mode" causes 
-health probe traffic from the kubelet to bypass the host network stack. This 
-prevents the Ztunnel proxy from intercepting the traffic and incorrectly fails the probes.
-
-To inspect the Network Type you can run the command:
-
-```shell
-kubectl describe network.config/cluster
-```
-
-**Workaround**
-
-To fix this, you must set `routingViaHost: true` in your gatewayConfig when 
-deploying ambient mode. This forces OVNKubernetes to use "local gateway mode," 
-which correctly routes traffic through the host and allows the probes to function properly.
-
-```shell
-kubectl patch network.operator.openshift.io cluster --type=merge -p '{"spec":{"defaultNetwork":{"ovnKubernetesConfig":{"gatewayConfig":{"routingViaHost":true}}}}}'
-```
 

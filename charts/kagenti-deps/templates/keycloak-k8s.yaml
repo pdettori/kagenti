@@ -5,6 +5,7 @@ metadata:
   name: keycloak
   namespace: {{ .Values.keycloak.namespace }}
   labels:
+  {{- include "kagenti.labels" . | nindent 4 }}  
     app: keycloak
 spec:
   ports:
@@ -20,6 +21,7 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
     app: keycloak
   name: keycloak-discovery
   namespace: {{ .Values.keycloak.namespace }}
@@ -36,6 +38,7 @@ kind: StatefulSet
 metadata:
   name: keycloak
   labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
     app: keycloak
   namespace: {{ .Values.keycloak.namespace }}  
 spec:
@@ -100,7 +103,7 @@ spec:
             - name: "KC_DB_USERNAME"
               value: "keycloak"
             - name: KC_DB_URL_PROPERTIES
-              value: ?sslmode=disable
+              value: "?sslmode=disable"
             - name: KC_DB_POOL_INITIAL_SIZE
               value: "5"
             - name: KC_DB_POOL_MIN_SIZE
@@ -143,9 +146,10 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  labels:
-    app: postgres
   namespace: {{ .Values.keycloak.namespace }}  
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+    app: postgres
 spec:
   replicas: 1
   selector:
@@ -195,6 +199,7 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
     app: postgres
   namespace: {{ .Values.keycloak.namespace }}  
   name: postgres
@@ -206,6 +211,20 @@ spec:
       port: 5432
       targetPort: 5432
   type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-initial-admin  
+  namespace: {{ .Values.keycloak.namespace }}  
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+    app: keycloak
+    app.kubernetes.io/instance: keycloak
+data:
+  password: YWRtaW4=
+  username: YWRtaW4=
+type: kubernetes.io/basic-auth  
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -221,7 +240,7 @@ metadata:
 spec:
   parentRefs:
     {{- with .Values.keycloak.httpRoute.parentRefs }}
-      {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with .Values.keycloak.httpRoute.hostnames }}
   hostnames:
@@ -234,12 +253,12 @@ spec:
           {{- toYaml . | nindent 12 }}
       {{- end }}
       {{- with .filters }}
-      filters:
-        {{- toYaml . | nindent 8 }}
+        filters:
+          {{- toYaml . | nindent 12 }}
       {{- end }}
-      backendRefs:
-        - name: keycloak
-          port: 8080 
-          weight: 1
+        backendRefs:
+          - name: keycloak
+            port: 8080 
+            weight: 1
     {{- end }}
 {{- end}}

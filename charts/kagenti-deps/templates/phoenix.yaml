@@ -3,6 +3,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: phoenix
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   serviceName: phoenix
   replicas: 1
@@ -71,11 +74,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: phoenix
+  namespace: {{ .Release.Namespace }}
   labels:
     app: phoenix
     app.kubernetes.io/instance: phoenix
     app.kubernetes.io/name: phoenix
-  name: phoenix
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   ports:
   - appProtocol: http
@@ -101,9 +106,12 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  annotations:
-    openshift.io/host.generated: "true"
   name: phoenix
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    openshift.io/host.generated: "true"  
 spec:
   path: /
   port:

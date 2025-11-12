@@ -1,6 +1,8 @@
 # Global settings
 openshift: true
 
+domain: localtest.me
+
 # ------------------------------------------------------------------
 #   Enable or disable components here
 # ------------------------------------------------------------------
@@ -52,7 +54,6 @@ keycloak:
     annotations: {}
     parentRefs:
     - name: http
-      sectionName: http
       namespace: kagenti-system
     hostnames:
       - "keycloak.localtest.me"
@@ -61,7 +62,7 @@ keycloak:
     - matches:
       - path:
           type: PathPrefix
-          value: /headers
+          value: /
 
 
 # ------------------------------------------------------------------
@@ -100,7 +101,7 @@ spire:
 
 containerRegistry:
   namespace: cr-system
-  name: container-registry
+  name: registry
   replicaCount: 1
   image:
     repository: ghcr.io/distribution/distribution
@@ -115,3 +116,11 @@ containerRegistry:
   env:
     otelTracesExporter: "none"
     logLevel: "info"
+
+# ------------------------------------------------------------------
+#  Metrics Server Configuration
+# ------------------------------------------------------------------
+
+metricsServer:
+  insecure: true
+  namespace: kube-system

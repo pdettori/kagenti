@@ -1,0 +1,63 @@
+# Kagenti minimal installation configuration
+# Auth is enabled in this config
+
+charts:
+  #################################################################### 
+  # kagenti-deps 
+  ####################################################################
+  kagenti-deps:
+    enabled: true
+    values:
+      openshift: true
+      components:
+        mcpInspector:
+          enabled: true
+        istio:
+          enabled: true
+        kiali:
+          enabled: true  
+        keycloak:
+          enabled: true
+        otel:
+          enabled: true
+        spire:
+          enabled: true
+        tekton:
+          enabled: true
+        certManager:
+          enabled: true  
+        gatewayApi:  
+          enabled: false
+        toolhive:
+          enabled: true
+
+  #################################################################### 
+  # kagenti 
+  ####################################################################        
+  kagenti:
+    enabled: true
+    values:
+      openshift: false
+      components:
+        agentNamespaces:
+          enabled: true
+        platformOperator:
+          enabled: true
+        ui:
+          enabled: true
+        mcpGateway:
+          enabled: true
+        istio:
+          enabled: false    
+      # configs    
+      ui:      
+        auth:
+          enabled: true
+      uiOAuthSecret:
+        # for a OCP with self-signed certs for routes it should be true.
+        # for a OCP with CA-signed certs for routes it should be false.
+        useServiceAccountCA: true    
+
+
+
+

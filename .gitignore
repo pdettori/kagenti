@@ -166,5 +166,6 @@ cython_debug/
 .vscode
 
 .secrets.yaml
+.secret_values.yaml
 
 *.tgz

@@ -3,6 +3,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: kiali-monitoring-rbac
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "-1"
@@ -21,6 +23,8 @@ kind: Kiali
 metadata:
   name: kiali-user-workload-monitoring
   namespace: "{{ .Values.istio.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "1"
@@ -44,6 +48,8 @@ kind: ConfigMap
 metadata:
   name: cluster-monitoring-config
   namespace: openshift-monitoring
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "-1"

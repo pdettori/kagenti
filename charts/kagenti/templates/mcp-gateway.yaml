@@ -9,6 +9,7 @@ metadata:
   labels:
     gateway-type: mcpgateway
     istio: ingressgateway
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   gatewayClassName: istio
   listeners:
@@ -25,6 +26,8 @@ kind: Route
 metadata:
   name: mcp-gateway
   namespace: "{{ .Values.mcpGateway.namespaces.gatewaySystem }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   tls:
     insecureEdgeTerminationPolicy: Redirect
@@ -40,8 +43,10 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: "{{ .Values.mcpGateway.namespaces.mcpSystem }}"
+  namespace: "{{ .Values.mcpGateway.namespaces.gatewaySystem }}"
   name: mcp-route
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "1"

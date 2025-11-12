@@ -8,8 +8,9 @@ kind: ServiceAccount
 metadata:
   labels:
     k8s-app: metrics-server
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: metrics-server
-  namespace: kube-system
+  namespace: {{ .Values.metricsServer.namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -19,6 +20,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-view: "true"
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: system:aggregated-metrics-reader
 rules:
 - apiGroups:
@@ -34,9 +36,10 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: system:metrics-server
   labels:
     k8s-app: metrics-server
-  name: system:metrics-server
+    {{- include "kagenti.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - ""
@@ -57,10 +60,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  name: metrics-server-auth-reader
+  namespace: {{ .Values.metricsServer.namespace }}
   labels:
     k8s-app: metrics-server
-  name: metrics-server-auth-reader
-  namespace: kube-system
+    {{- include "kagenti.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -68,14 +72,15 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: metrics-server
-  namespace: kube-system
+  namespace: {{ .Values.metricsServer.namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: metrics-server:system:auth-delegator
   labels:
     k8s-app: metrics-server
-  name: metrics-server:system:auth-delegator
+    {{- include "kagenti.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -83,14 +88,15 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: metrics-server
-  namespace: kube-system
+  namespace: {{ .Values.metricsServer.namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: system:metrics-server
   labels:
     k8s-app: metrics-server
-  name: system:metrics-server
+    {{- include "kagenti.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -98,15 +104,16 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: metrics-server
-  namespace: kube-system
+  namespace: {{ .Values.metricsServer.namespace }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  name: metrics-server
+  namespace: {{ .Values.metricsServer.namespace }}
   labels:
     k8s-app: metrics-server
-  name: metrics-server
-  namespace: kube-system
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   ports:
   - appProtocol: https
@@ -120,10 +127,11 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: metrics-server
+  namespace: {{ .Values.metricsServer.namespace }}
   labels:
     k8s-app: metrics-server
-  name: metrics-server
-  namespace: kube-system
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
@@ -143,6 +151,9 @@ spec:
         - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
         - --kubelet-use-node-status-port
         - --metric-resolution=15s
+        {{- if .Values.metricsServer.insecure }}
+        - --kubelet-insecure-tls
+        {{- end }}
         image: registry.k8s.io/metrics-server/metrics-server:v0.8.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -193,16 +204,17 @@ spec:
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
+  name: v1beta1.metrics.k8s.io
   labels:
     k8s-app: metrics-server
-  name: v1beta1.metrics.k8s.io
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   group: metrics.k8s.io
   groupPriorityMinimum: 100
   insecureSkipTLSVerify: true
   service:
     name: metrics-server
-    namespace: kube-system
+    namespace: {{ .Values.metricsServer.namespace }}
   version: v1beta1
   versionPriority: 100
 {{- end }}

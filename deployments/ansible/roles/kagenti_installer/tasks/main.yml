@@ -1,0 +1,292 @@
+# 
+# setup
+#
+
+- name: setup vars 
+  ansible.builtin.import_tasks: 01_setup_vars.yaml
+
+- name: setup cluster
+  ansible.builtin.import_tasks: 02_setup_cluster.yaml
+
+# 
+#  Install Istio
+#
+- name: Install Istio helm charts for Kubernetes cluster
+  block:
+    - name: Install istio-base
+      kubernetes.core.helm:
+        release_name: istio-base
+        chart_ref: "base"
+        chart_repo_url: https://istio-release.storage.googleapis.com/charts/
+        chart_version: "{{charts.istio.version}}"
+        release_namespace: "{{ charts.istio.namespace }}"
+        create_namespace: true
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+
+    - name: Install istiod
+      kubernetes.core.helm:
+        release_name: istiod
+        chart_ref: "istiod"
+        chart_repo_url: https://istio-release.storage.googleapis.com/charts/
+        chart_version: "{{charts.istio.version}}"
+        release_namespace: "{{ charts.istio.namespace }}"
+        create_namespace: false
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+        values:
+          profile: ambient
+
+    - name: Install istio-cni
+      kubernetes.core.helm:
+        release_name: istio-cni
+        chart_ref: "cni"
+        chart_repo_url: https://istio-release.storage.googleapis.com/charts/
+        chart_version: "{{charts.istio.version}}"
+        release_namespace: "{{ charts.istio.namespace }}"
+        create_namespace: false
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+        values:
+          profile: ambient      
+
+    - name: Install ztunnel
+      kubernetes.core.helm:
+        release_name: ztunnel
+        chart_ref: "ztunnel"
+        chart_repo_url: https://istio-release.storage.googleapis.com/charts/
+        chart_version: "{{charts.istio.version}}"
+        release_namespace: "{{ charts.istio.namespace }}"
+        create_namespace: false
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"   
+
+    - name: Label istio namespace to allow shared gateway access
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: "{{ charts.istio.namespace }}"
+        definition:
+          metadata:
+            labels:
+              shared-gateway-access: "true"
+        merge_type: strategic-merge
+  when: (charts.istio.enabled | default(false)) and not (enable_openshift | default(false))
+
+#
+#  Cert manager
+#
+- name: Install cert manager and wait for start 
+  block:
+  - name: Install cert-manager 
+    kubernetes.core.k8s:
+      state: present
+      src: "https://github.com/cert-manager/cert-manager/releases/download/{{certManager.version}}/cert-manager.yaml"
+
+  - name: Wait for cert manager webhook to start
+    command: >-
+      kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=60s
+  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))          
+
+#
+#  Kiali and Prometheus
+#
+- name: Install Kiali and Prometheus istio addons for k8s cluster
+  block:
+    - name: Apply prometheus manifest
+      kubernetes.core.k8s:
+        state: present
+        src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/prometheus.yaml"
+
+    - name: Apply kiali manifest
+      kubernetes.core.k8s:
+        state: present
+        src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/kiali.yaml"
+  when: (kiali.enabled | default(false)) and not (enable_openshift | default(false))
+
+#
+#  Tekton
+#
+- name: Install tekton
+  kubernetes.core.k8s:
+    state: present
+    src: "https://storage.googleapis.com/tekton-releases/pipeline/previous/{{tekton.version}}/release.yaml"
+  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
+
+#
+#  Spire
+#
+- name: Install SPIRE 
+  block:
+    - name: Install spire-crds via helm
+      kubernetes.core.helm:
+        release_name: spire-crds
+        chart_ref: spire-crds
+        chart_repo_url: https://spiffe.github.io/helm-charts-hardened/
+        chart_version: "{{charts.spire.crd.version}}"
+        release_namespace: "{{ charts.spire.namespace }}"
+        create_namespace: true
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+
+    - name: Install spire
+      kubernetes.core.helm:
+        release_name: spire
+        chart_ref: spire
+        chart_repo_url: https://spiffe.github.io/helm-charts-hardened/
+        chart_version: "{{charts.spire.version}}"
+        release_namespace: "{{ charts.spire.namespace }}"
+        create_namespace: true
+        state: present
+        wait: false
+        timeout: "{{ helm_wait_timeout }}s"
+        values: "{{ (charts['spire'] | default({}))['values'] | default({}) }}"
+  when: (charts.spire.enabled | default(false)) and not (enable_openshift | default(false))
+
+#
+#  Gateway API
+#
+- name: Install Gateway API
+  block:
+    - name: Check for gateway CRD
+      command: kubectl get crd gateways.gateway.networking.k8s.io
+      register: gateway_crd_check
+      failed_when: false
+      changed_when: false
+
+    - name: Apply gateway-api manifest
+      kubernetes.core.k8s:
+        state: present
+        src: "https://github.com/kubernetes-sigs/gateway-api/releases/download/{{gatewayApi.version}}/standard-install.yaml"
+      when: gateway_crd_check.rc != 0
+  when: gatewayApi.enabled | default(false)
+
+# Define reusable regex for detecting local chart paths (starts with './', '/', or '../')
+- name: Define local chart path regex
+  set_fact:
+    local_chart_path_regex: '^\\.|^/|^../'
+
+#
+#  kagenti-deps
+#
+- name: Run helm dependency update for kagenti-deps when chart is local
+  command: helm dependency update "{{ (charts['kagenti-deps'] | default({})).get('chart','') }}"
+  args:
+    chdir: "{{ playbook_dir }}"
+  when:
+    - (charts['kagenti-deps'] | default({})).get('chart') is defined
+    - (charts['kagenti-deps'] | default({})).get('dependency_update', true) | bool
+    - (charts['kagenti-deps'] | default({})).get('chart') is search(local_chart_path_regex)
+    - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
+ 
+- name: Install/upgrade kagenti-deps chart
+  kubernetes.core.helm:
+    release_name: "{{ (charts['kagenti-deps'] | default({})).get('release_name', 'kagenti-deps') }}"
+    chart_ref: "{{ (charts['kagenti-deps'] | default({})).get('chart') }}"
+    chart_repo_url: "{{ (charts['kagenti-deps'] | default({})).get('repo_url', omit) }}"
+    release_namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+    state: present
+    create_namespace: true
+    wait: true
+    timeout: "{{ helm_wait_timeout }}s"
+    values: >-
+      {{ (((charts['kagenti-deps'] | default({})).get('values') ) | default({}))
+        | combine((global_values_merged | default({})), recursive=True)
+        | combine((((secret_values.get('charts', {}) | default({})).get('kagenti-deps', {}) ).get('values', {})) , recursive=True)
+        | combine((secret_values.get('global', {}) | default({})), recursive=True)
+        | combine({'openshift': enable_openshift}, recursive=True) }}
+    values_files: >
+      {{ (global_value_files | default([]) | list) +
+        (((charts['kagenti-deps'] | default({}))['values_files'] | default([])) | list)
+      }}
+  when:
+    - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
+    - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+- name: Label kagenti-system namespace for shared gateway access
+  kubernetes.core.k8s:
+      api_version: v1
+      kind: Namespace
+      name: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+      definition:
+        metadata:
+          labels:
+            shared-gateway-access: "true"
+      merge_type: strategic-merge
+  when:
+    - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
+    - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+#
+#  Setup DNS for registry in kind
+#
+- name: setup kind registry dns
+  ansible.builtin.import_tasks: 03_setup_kind_registry_dns.yaml
+
+#
+#  Install kagenti
+#
+- name: Compute latest kagenti tag 
+  block:
+    - name: Lookup latest tag from remote git
+      shell: |
+        git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//'
+      register: kagenti_latest_tag_cmd
+      changed_when: false
+
+    - name: Set kagenti_latest_tag fact
+      set_fact:
+        kagenti_latest_tag: "{{ kagenti_latest_tag_cmd.stdout }}"
+  when: charts.kagenti.enabled | default(false)
+
+- name: Run helm dependency update for kagenti when chart is local and dependency_update requested
+  command: helm dependency update "{{ (charts['kagenti'] | default({})).get('chart','') }}"
+  args:
+    chdir: "{{ playbook_dir }}"
+  when:
+    - (charts['kagenti'] | default({})).get('chart') is defined
+    - (charts['kagenti'] | default({})).get('dependency_update', true) | bool
+    - (charts['kagenti'] | default({})).get('chart') is search(local_chart_path_regex)
+    - (charts['kagenti'] | default({})).get('enabled', false) | bool
+
+- name: Install/upgrade Kagenti chart and print instructions
+  block:
+  - name: Install/upgrade Kagenti chart
+    kubernetes.core.helm:
+      release_name: "{{ (charts['kagenti'] | default({})).get('release_name', 'kagenti') }}"
+      chart_ref: "{{ (charts['kagenti'] | default({})).get('chart') }}"
+      chart_repo_url: "{{ (charts['kagenti'] | default({})).get('repo_url', omit) }}"
+      kubeconfig: ""
+      release_namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
+      state: present
+      create_namespace: false
+      wait: true
+      timeout: "{{ helm_wait_timeout }}s"
+      values: >-
+        {{ (((charts['kagenti'] | default({})).get('values')) | default({}))
+          | combine((global_values_merged | default({})), recursive=True)
+          | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
+          | combine((secret_values.get('global', {}) | default({})), recursive=True)
+          | combine({'openshift': enable_openshift}, recursive=True) }}
+      values_files: >
+        {{ (global_value_files | default([]) | list) +
+          (((charts['kagenti'] | default({}))['values_files'] | default([])) | list)
+        }}
+
+  - name: Ensure kagenti-ui-oauth-secret-job is deleted
+    kubernetes.core.k8s:
+      state: absent
+      api_version: batch/v1
+      kind: Job
+      name: kagenti-ui-oauth-secret-job
+      namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"      
+  
+  when:
+  - (charts['kagenti'] | default({})).get('enabled', false) | bool
+  - (charts['kagenti'] | default({})).get('chart') is defined
+

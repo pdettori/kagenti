@@ -3,6 +3,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: http
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     networking.istio.io/service-type: ClusterIP
 spec:
@@ -25,6 +27,7 @@ metadata:
     gateway.istio.io/managed: istio.io-gateway-controller
     gateway.networking.k8s.io/gateway-name: http
     istio.io/dataplane-mode: none
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: http-istio-np
 spec:
   ports:

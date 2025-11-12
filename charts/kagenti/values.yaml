@@ -51,6 +51,8 @@ ui:
   namespace: kagenti-system
   image: ghcr.io/kagenti/kagenti/ui
   tag: v0.1.0-alpha.7
+  hostname: kagenti-ui.localtest.me
+  url: http://kagenti-ui.localtest.me:8080
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -58,6 +60,11 @@ ui:
 uiOAuthSecret:
   image: ghcr.io/kagenti/kagenti/ui-oauth-secret
   tag: latest
+  # When true, mount the in-cluster serviceaccount CA 
+  # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
+  # When false, the serviceaccount CA is only for the API server
+  # and will usually not validate external OpenShift route certificates.
+  useServiceAccountCA: false
 
 # ------------------------------------------------------------------
 #  Keycloak Configuration
@@ -67,6 +74,8 @@ keycloak:
   adminSecretName: keycloak-initial-admin
   adminUsernameKey: username
   adminPasswordKey: password
+  url: http://keycloak.keycloak:8080
+  publicUrl: http://keycloak.localtest.me:8080
 
 # ------------------------------------------------------------------
 #  Platform Operator Configuration
@@ -92,8 +101,16 @@ mcp-gateway:
   fullnameOverride: mcp
   envoyFilter:
     namespace: istio-system
+  image:
+    tag: v0.2
 # main chart configs    
 mcpGateway:
   namespaces:
     mcpSystem: mcp-system
     gatewaySystem: gateway-system
+
+# ------------------------------------------------------------------
+#  Spiffe/Spire configs
+# ------------------------------------------------------------------
+spire:
+  enabled: true
