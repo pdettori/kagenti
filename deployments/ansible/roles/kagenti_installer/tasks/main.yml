@@ -252,30 +252,39 @@
       (charts['kagenti'] | default({})).get('chart') is search('^../')
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
 
-- name: Install/upgrade Kagenti chart
-  kubernetes.core.helm:
-    release_name: "{{ (charts['kagenti'] | default({})).get('release_name', 'kagenti') }}"
-    chart_ref: "{{ (charts['kagenti'] | default({})).get('chart') }}"
-    chart_repo_url: "{{ (charts['kagenti'] | default({})).get('repo_url', omit) }}"
-    kubeconfig: ""
-    release_namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
-    state: present
-    create_namespace: false
-    wait: true
-    timeout: "{{ helm_wait_timeout }}s"
-    values: >-
-      {{ (((charts['kagenti'] | default({})).get('values')) | default({}))
-        | combine((global_values_merged | default({})), recursive=True)
-        | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
-        | combine((secret_values.get('global', {}) | default({})), recursive=True)
-        | combine({'openshift': enable_openshift}, recursive=True) }}
-    values_files: >
-      {{ (global_value_files | default([]) | list) +
-        (((charts['kagenti'] | default({}))['values_files'] | default([])) | list)
-      }}
+- name: Install/upgrade Kagenti chart and print instructions
+  block:
+  - name: Install/upgrade Kagenti chart
+    kubernetes.core.helm:
+      release_name: "{{ (charts['kagenti'] | default({})).get('release_name', 'kagenti') }}"
+      chart_ref: "{{ (charts['kagenti'] | default({})).get('chart') }}"
+      chart_repo_url: "{{ (charts['kagenti'] | default({})).get('repo_url', omit) }}"
+      kubeconfig: ""
+      release_namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
+      state: present
+      create_namespace: false
+      wait: true
+      timeout: "{{ helm_wait_timeout }}s"
+      values: >-
+        {{ (((charts['kagenti'] | default({})).get('values')) | default({}))
+          | combine((global_values_merged | default({})), recursive=True)
+          | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
+          | combine((secret_values.get('global', {}) | default({})), recursive=True)
+          | combine({'openshift': enable_openshift}, recursive=True) }}
+      values_files: >
+        {{ (global_value_files | default([]) | list) +
+          (((charts['kagenti'] | default({}))['values_files'] | default([])) | list)
+        }}
+
+  - name: Ensure kagenti-ui-oauth-secret-job is deleted
+    kubernetes.core.k8s:
+      state: absent
+      api_version: batch/v1
+      kind: Job
+      name: kagenti-ui-oauth-secret-job
+      namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"      
+  
   when:
   - (charts['kagenti'] | default({})).get('enabled', false) | bool
   - (charts['kagenti'] | default({})).get('chart') is defined
-
-
 

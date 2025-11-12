@@ -80,6 +80,22 @@ Using `--silent` flag removes the interactive install mode.
 uv run kagenti-installer --silent
 ```
 
+#### New Ansible-based installer
+
+The new installer relies mainly on helm charts and is 
+going to replace `kagenti-installer`. 
+
+1. Copy example secrets file: `deployments/envs/secret_values.yaml.example` to `deployments/envs/.secret_values.yaml` and fill in the values in that file.
+
+2. Run the installer as:
+
+```bash
+deployments/ansible/run-install.sh --env dev
+```
+
+Check [here](../deployments/ansible/README.md) for more details on the new installer.
+
+
 ### Using an Existing Kubernetes Cluster
 
 If you already have a Kubernetes cluster configured and want to skip the kind cluster creation, you can use the `--use-existing-cluster` flag:

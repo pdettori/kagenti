@@ -34,7 +34,8 @@ spec:
         - -c
         - |
           echo "Waiting for OAuth secret to be created..."
-          MAX_ATTEMPTS=60
+          # it may take time as if keycloak was just instaled it takes some time to be available
+          MAX_ATTEMPTS=120
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -72,7 +73,7 @@ spec:
               value: "/app/.cache/uv"
             - name: "ENABLE_AUTH"
               value: "{{- .Values.ui.auth.enabled }}"
-            {{- if .Values.ui.useServiceAccountCA }}
+            {{- if .Values.uiOAuthSecret.useServiceAccountCA }}
             - name: "SSL_CERT_FILE"
               valueFrom:
                 secretKeyRef:
