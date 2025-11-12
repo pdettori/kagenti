@@ -243,7 +243,7 @@ fi
 
 # print helm release notes at the end
 if command -v helm >/dev/null 2>&1; then
-  printf '\\n=== Helm release notes for 'kagenti' (namespace: kagenti-system) ==="
+  printf "\n=== Helm release notes for 'kagenti' (namespace: kagenti-system) ===\n"
   if ! helm get notes -n kagenti-system kagenti; then
     echo "WARNING: failed to fetch helm release notes for 'kagenti' in namespace 'kagenti-system'" >&2
   fi
