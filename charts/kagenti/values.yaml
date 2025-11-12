@@ -101,7 +101,7 @@ mcp-gateway:
   fullnameOverride: mcp
   envoyFilter:
     namespace: istio-system
-  image:  
+  image:
     tag: v0.2
 # main chart configs    
 mcpGateway:

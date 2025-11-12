@@ -166,6 +166,11 @@
       when: gateway_crd_check.rc != 0
   when: gatewayApi.enabled | default(false)
 
+# Define reusable regex for detecting local chart paths (starts with './', '/', or '../')
+- name: Define local chart path regex
+  set_fact:
+    local_chart_path_regex: '^\\.|^/|^../'
+
 #
 #  kagenti-deps
 #
@@ -176,9 +181,7 @@
   when:
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
     - (charts['kagenti-deps'] | default({})).get('dependency_update', true) | bool
-    #  Check if 'chart' path starts with '.', '/', or '../' (i.e., local)
-    - (charts['kagenti-deps'] | default({})).get('chart') is search('^\.|^/') or 
-      (charts['kagenti-deps'] | default({})).get('chart') is search('^../')
+    - (charts['kagenti-deps'] | default({})).get('chart') is search(local_chart_path_regex)
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
  
 - name: Install/upgrade kagenti-deps chart
@@ -248,8 +251,7 @@
   when:
     - (charts['kagenti'] | default({})).get('chart') is defined
     - (charts['kagenti'] | default({})).get('dependency_update', true) | bool
-    - (charts['kagenti'] | default({})).get('chart') is search('^\.|^/') or 
-      (charts['kagenti'] | default({})).get('chart') is search('^../')
+    - (charts['kagenti'] | default({})).get('chart') is search(local_chart_path_regex)
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
 
 - name: Install/upgrade Kagenti chart and print instructions

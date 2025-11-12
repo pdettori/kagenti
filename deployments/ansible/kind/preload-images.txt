@@ -1,4 +1,5 @@
 arizephoenix/phoenix:version-8.32.1
+curlimages/curl
 docker.io/istio/install-cni:1.26.0-distroless
 docker.io/istio/pilot:1.26.0-distroless
 docker.io/istio/proxyv2:1.26.0-distroless

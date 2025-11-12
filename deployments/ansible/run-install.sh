@@ -210,7 +210,25 @@ if [[ ${#ANSIBLE_ADDITIONAL_ARGS[@]} -gt 0 ]]; then
   ANSIBLE_CMD+=( "${ANSIBLE_ADDITIONAL_ARGS[@]}" )
 fi
 
-echo "Running: ${ANSIBLE_CMD[*]}"
+# Prepare a redacted display copy of the command to avoid leaking secret
+# file paths (e.g. secret values file) into logs. We still execute the full
+# command below, but only show a redacted version here.
+DISPLAY_CMD=("${ANSIBLE_CMD[@]}")
+if [[ -n "${secret_resolved:-}" ]]; then
+  for i in "${!DISPLAY_CMD[@]}"; do
+    # redact any argument that contains the resolved secret path
+    if [[ "${DISPLAY_CMD[$i]}" == *"$secret_resolved"* ]]; then
+      DISPLAY_CMD[$i]="<REDACTED_SECRET_FILE>"
+      continue
+    fi
+    # also redact any argument that looks like a secret filename
+    if [[ "${DISPLAY_CMD[$i]}" == *".secret"* || "${DISPLAY_CMD[$i]}" == *"secret_values"* || "${DISPLAY_CMD[$i]}" == *"secret"* ]]; then
+      DISPLAY_CMD[$i]="<REDACTED_SECRET_FILE>"
+    fi
+  done
+fi
+
+echo "Running: ${DISPLAY_CMD[*]}"
 
 # Run the ansible-playbook command and capture its exit status so we can
 # perform follow-up actions (like printing Helm release notes) after it
@@ -225,7 +243,7 @@ fi
 
 # print helm release notes at the end
 if command -v helm >/dev/null 2>&1; then
-  echo "\n=== Helm release notes for 'kagenti' (namespace: kagenti-system) ==="
+  printf '\\n=== Helm release notes for 'kagenti' (namespace: kagenti-system) ==="
   if ! helm get notes -n kagenti-system kagenti; then
     echo "WARNING: failed to fetch helm release notes for 'kagenti' in namespace 'kagenti-system'" >&2
   fi

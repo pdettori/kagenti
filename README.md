@@ -58,6 +58,21 @@ These demos are built on the following core technologies:
 - Tool-side communication via [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 - Agent-side communication via [A2A](https://google.github.io/A2A)
 
+## Prerequisites
+
+For running the local demos (and the `preload-file` Makefile target) you should have the following tools installed and available in your PATH:
+
+- `kubectl` — used to query the cluster for pods and images.
+- `jq` — used to parse and filter JSON output from `kubectl`.
+
+On macOS you can install them with Homebrew, for example:
+
+```
+brew install kubectl jq
+```
+
+If these tools are missing, the `preload-file` target will now fail with a clear message explaining which tool is absent and how to install it.
+
 ---
 
 ### Try our demo

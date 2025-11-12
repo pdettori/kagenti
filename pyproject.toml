@@ -11,6 +11,6 @@ dependencies = [
     "ansible", 
     
     # Dependencies Ansible collections or Python code
-    "kubernetes>=34.*", 
+    "kubernetes>=34", 
     "PyYAML>=6.0.3",
 ]
