@@ -6,6 +6,12 @@
         secret_values_file: "{{ secret_values_file | default(secrets.file | default('')) }}"
 
     - name: Resolve secret_values_file path (use provided path as-is or relative to playbook_dir)
+      # Note: the test below uses a regex that detects Unix-style absolute paths (leading '/').
+      # On Windows a path like 'C:\\path\\to\\file' or a UNC path ('\\\\server\\share')
+      # would not match '^/' and would be treated as relative. If cross-platform support is
+      # required, update the regex to also detect Windows drive-letter (e.g. '^[A-Za-z]:') and
+      # UNC ('^\\\\') formats or prefer using a plugin/filter that wraps Python's
+      # os.path.isabs to avoid regex complexity.
       set_fact:
         secret_values_file_resolved: "{{ secret_values_file if (secret_values_file is search('^/')) else (playbook_dir + '/' + secret_values_file) }}"
       when: secret_values_file is defined and secret_values_file | length > 0
@@ -35,6 +41,11 @@
 - name: Normalize and resolve global_value_files
   block:
     - name: Build resolved paths for global_value_files
+      # Note: this uses a Unix-style absolute-path check (leading '/'). On Windows,
+      # paths such as 'C:\\...' or UNC paths ('\\\\server\\share') will not match
+      # and will be treated as relative. If you need Windows support, extend the regex to
+      # detect drive letters or UNC paths, or use a path-aware filter (e.g. Python's
+      # os.path.isabs via a custom filter) to reliably detect absolute paths across OSes.
       set_fact:
         global_value_files_resolved: "{{ (global_value_files_resolved | default([])) + [ (item if (item is search('^/')) else (playbook_dir + '/' + item) ) ] }}"
       loop: "{{ global_value_files | default([]) | list }}"

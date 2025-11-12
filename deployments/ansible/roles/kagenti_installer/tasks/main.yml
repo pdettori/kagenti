@@ -11,7 +11,7 @@
 # 
 #  Install Istio
 #
-- name: Install Istio helm charts for k8s cluster
+- name: Install Istio helm charts for Kubernetes cluster
   block:
     - name: Install istio-base
       kubernetes.core.helm:

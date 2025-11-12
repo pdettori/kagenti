@@ -62,7 +62,7 @@ uiOAuthSecret:
   tag: latest
   # When true, mount the in-cluster serviceaccount CA 
   # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
-  # When false, uses serviceaccount CA is for the API server
+  # When false, the serviceaccount CA is only for the API server
   # and will usually not validate external OpenShift route certificates.
   useServiceAccountCA: false
 

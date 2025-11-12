@@ -104,7 +104,7 @@ spec:
 
             # If no hostname in HTTPRoute, construct from domain
             if [ -z "$INSPECTOR_HOST" ]; then
-              INSPECTOR_HOST="mcp-inspector.{{ .Values.domain | default "localtest.me" }}"
+              INSPECTOR_HOST="mcp-inspector.{{ .Values.domain }}"
             fi
             {{- end }}
 
