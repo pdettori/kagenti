@@ -55,7 +55,7 @@ charts:
         ui:
           enabled: true
         mcpGateway:
-          enabled: true
+          enabled: false
         istio:
           enabled: false    
       # configs    
