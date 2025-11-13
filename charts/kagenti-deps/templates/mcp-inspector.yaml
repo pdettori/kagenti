@@ -131,7 +131,7 @@ spec:
             echo "ConfigMap 'mcp-inspector-config' applied successfully."  
       containers:
         - name: mcp-inspector
-          image: "{{ .Values.mcpInspector.image }}:{{ .Values.mcpInspector.tag  }}"
+          image: "{{ .Values.mcpInspector.image }}:{{ .Values.mcpInspector.tag }}"
           ports:
             - containerPort: 6274
             - containerPort: 6277
