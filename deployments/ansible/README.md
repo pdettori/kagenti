@@ -163,7 +163,7 @@ The wrapper prefers to run `uv run ansible-playbook` when `uv` is available (so 
 
 ## Using override files
 
-Override files must be passed with relative path to project root. The layout of variables should be the same as
+Override files must be passed with a path relative to the directory from which you invoke the script (your current working directory). The layout of variables should be the same as
 in the value files. For example, to disable the use of service account CA for OCP, create a file
 `.values_override.yaml` with this content:
 
