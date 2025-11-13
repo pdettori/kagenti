@@ -14,7 +14,7 @@ spec:
   gatewayClassName: istio
   listeners:
     - name: mcp # going to the Broker, and no hostname field
-      hostname:  "{{ .Values.mcpGateway.hostname }}"
+      hostname: "{{ .Values.mcpGateway.hostname }}"
       port: 8080
       protocol: HTTP
       allowedRoutes:
