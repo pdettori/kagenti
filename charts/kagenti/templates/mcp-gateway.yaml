@@ -89,6 +89,6 @@ spec:
     kind: Service
     name: mcp-gateway-istio
     weight: 100
-  wildcardPolicy: None          
+  wildcardPolicy: None
 {{- end }}         
 {{- end }}
