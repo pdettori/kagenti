@@ -153,7 +153,7 @@ deployments/ansible/run-install.sh --env ocp
 
 Check [here](../../deployments/ansible/README.md) for more details on the new installer.
 
-To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
+To override existing environments, you may create a [customized override file](../../deployments/ansible/README.md#using-override-files).
 
 
 ## Authentication Configuration
