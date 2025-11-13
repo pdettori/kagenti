@@ -129,7 +129,7 @@ spec:
             echo "ConfigMap 'mcp-inspector-config' applied successfully."  
       containers:
         - name: mcp-inspector
-          image: ghcr.io/modelcontextprotocol/inspector:0.16.8
+          image: "{{ .Values.mcpInspector.image }}:{{ .Values.mcpInspector.tag  }}"
           ports:
             - containerPort: 6274
             - containerPort: 6277

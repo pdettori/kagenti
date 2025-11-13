@@ -229,6 +229,22 @@
   ansible.builtin.import_tasks: 03_setup_kind_registry_dns.yaml
 
 #
+#  MCP Gateway
+#
+- name: Install/upgrade mcp-gateway chart
+  kubernetes.core.helm:
+    release_name: mcp-gateway
+    chart_ref: oci://ghcr.io/kagenti/charts/mcp-gateway
+    chart_version: "{{ charts.mcpGateway.version }}"
+    release_namespace: "{{ charts.mcpGateway.namespace }}"
+    create_namespace: true
+    state: present
+    wait: false
+    timeout: "{{ helm_wait_timeout }}s"
+    values: "{{ (charts['mcpGateway'] | default({}))['values'] | default({}) }}"
+  when: charts.mcpGateway.enabled | default(false) 
+
+#
 #  Install kagenti
 #
 - name: Compute latest kagenti tag 

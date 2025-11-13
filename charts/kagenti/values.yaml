@@ -96,18 +96,12 @@ kagenti-platform-operator-chart:
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration
 # ------------------------------------------------------------------
-# subchart configs
-mcp-gateway:
-  fullnameOverride: mcp
-  envoyFilter:
-    namespace: istio-system
-  image:
-    tag: v0.2
-# main chart configs    
 mcpGateway:
   namespaces:
     mcpSystem: mcp-system
     gatewaySystem: gateway-system
+  # TODO - unerstand why only this specific value works  
+  hostname: 'mcp.127-0-0-1.sslip.io'  
 
 # ------------------------------------------------------------------
 #  Spiffe/Spire configs
