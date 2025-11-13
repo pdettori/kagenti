@@ -76,8 +76,8 @@ spec:
             - -c
           args:
             - |
-              # kubectl label namespace "{{ .Values.mcpGateway.namespaces.mcpSystem }}" \
-              #   istio-discovery=enabled istio.io/dataplane-mode=ambient --overwrite && \
+              kubectl label namespace "{{ .Values.mcpGateway.namespaces.mcpSystem }}" \
+                istio-discovery=enabled istio.io/dataplane-mode=ambient --overwrite && \
               kubectl label namespace "{{ .Release.Namespace }}" \
                 istio-discovery=enabled istio.io/dataplane-mode=ambient shared-gateway-access="true" --overwrite
 {{- end }}  

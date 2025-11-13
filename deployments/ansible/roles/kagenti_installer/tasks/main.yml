@@ -241,8 +241,13 @@
     state: present
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
-    values: "{{ (charts['mcpGateway'] | default({}))['values'] | default({}) }}"
-  when: charts.mcpGateway.enabled | default(false) 
+    values: >-
+         {{ (((charts['mcpGateway'] | default({})).get('values')) | default({}))
+          | combine((global_values_merged | default({})), recursive=True)
+          | combine((((secret_values.get('charts', {}) | default({})).get('mcpGateway', {}) ).get('values', {})) , recursive=True)
+          | combine((secret_values.get('global', {}) | default({})), recursive=True)
+          | combine({'openshift': enable_openshift}, recursive=True) }}
+  when: charts.mcpGateway.enabled | default(false)
 
 #
 #  Install kagenti

@@ -74,13 +74,15 @@ charts:
         name: registry  
 
   #################################################################### 
-  # mcp-gateway 
+  # mcp-gateway chart
   ####################################################################        
   mcpGateway:
     enabled: false
     namespace: mcp-system
     version: 0.4.0
-    values: {}
+    values:
+      image:
+        tag: v0.4
 
   #################################################################### 
   # kagenti 
@@ -97,6 +99,7 @@ charts:
       components:
         agentNamespaces:
           enabled: true
+        # additional artifacts required by MCP gateway     
         mcpGateway:
           enabled: false
         platformOperator:

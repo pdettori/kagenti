@@ -35,10 +35,6 @@ metadata:
   name: mcp-route
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
-  annotations:
-    "helm.sh/hook": post-install, post-upgrade
-    "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   parentRefs:
     - name: mcp-gateway

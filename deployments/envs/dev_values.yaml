@@ -54,6 +54,7 @@ charts:
           enabled: true
         ui:
           enabled: true
+        # additional artifacts required by MCP gateway     
         mcpGateway:
           enabled: true
       # configs    
