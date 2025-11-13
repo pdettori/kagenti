@@ -74,7 +74,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 4. **Install MCP Gateway Chart:**
 
    ```shell
-   helm install mcp-gateway oci://ghcr.io/kagenti/charts/mcp-gateway --create-namespace --namespace mcp-system
+   helm install mcp-gateway oci://ghcr.io/kagenti/charts/mcp-gateway --create-namespace --namespace mcp-system --version $LATEST_TAG
    ```
 
 5.  **Kagenti Helm Chart Installation:**
