@@ -45,7 +45,7 @@ python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
   - Default: `"demo"`
 
 - **`KAGENTI_KEYCLOAK_CLIENT_NAME`** - OAuth client name to create
-  - Default: `"kagenti-agent-oauth-secret"`
+  - Default: `"kagenti-keycloak-client"`
 
 ### Keycloak Admin Credentials
 
