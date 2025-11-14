@@ -367,7 +367,7 @@ def create_secrets(**kwargs):
 
     # Optionally update the 'environments' ConfigMap in each namespace with Keycloak info
     update_envs = parse_bool(get_optional_env("UPDATE_ENV_CONFIGMAPS", "false"))
-    print(f"UPD_ENVS >>>>>>>> {update_envs}")
+    typer.echo(f"Update environments ConfigMaps: {update_envs}")
     if update_envs:
         # Compute admin credentials to write into ConfigMaps
         admin_username, admin_password = get_keycloak_admin_credentials(v1_api)
