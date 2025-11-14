@@ -94,7 +94,7 @@ def read_keycloak_credentials(
 def configure_ssl_verification(ssl_cert_file: Optional[str]) -> Optional[str]:
     """Configure SSL verification based on certificate file availability.
 
-    Behaviour:
+    Behavior:
     - If an explicit SSL_CERT_FILE path is provided and exists, return that path.
     - Otherwise return None, which indicates to callers that the default
       system CA bundle (requests/certifi) should be used.
