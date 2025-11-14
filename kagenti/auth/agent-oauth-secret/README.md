@@ -146,7 +146,7 @@ spec:
         image: kagenti/agent-oauth-secret:latest
         env:
         - name: AGENT_NAMESPACES
-          value: "team1 team2"
+          value: "team1,team2"
         - name: KEYCLOAK_BASE_URL
           value: "http://keycloak.keycloak.svc.cluster.local:8080"
         - name: KEYCLOAK_NAMESPACE
