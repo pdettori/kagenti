@@ -29,6 +29,7 @@ DEFAULT_KEYCLOAK_NAMESPACE = "keycloak"
 DEFAULT_ADMIN_SECRET_NAME = "keycloak-initial-admin"
 DEFAULT_ADMIN_USERNAME_KEY = "username"
 DEFAULT_ADMIN_PASSWORD_KEY = "password"
+DEFAULT_SPIFFE_PREFIX = "spiffe://localtest.me/sa"
 
 
 def get_optional_env(key: str, default: Optional[str] = None) -> Optional[str]:
@@ -119,6 +120,65 @@ def configure_ssl_verification(ssl_cert_file: Optional[str]) -> Optional[str]:
     return None
 
 
+def parse_bool(value: Optional[str]) -> bool:
+    """Parse common truthy strings to boolean.
+
+    Accepts: '1', 'true', 'yes', 'on' (case-insensitive) as True.
+    Anything else (including None) is False.
+    """
+    if not value:
+        return False
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+def get_keycloak_admin_credentials(
+    v1_api: Optional[client.CoreV1Api] = None,
+) -> Tuple[str, str]:
+    """Compute Keycloak admin username/password the same way `setup_keycloak` did.
+
+    Tries environment variables first (`KEYCLOAK_ADMIN_USERNAME`, `KEYCLOAK_ADMIN_PASSWORD`).
+    If missing and `v1_api` is provided, tries to read the secret from Kubernetes.
+    Falls back to ('admin', 'admin').
+    """
+    admin_username = get_optional_env("KEYCLOAK_ADMIN_USERNAME")
+    admin_password = get_optional_env("KEYCLOAK_ADMIN_PASSWORD")
+
+    if (not admin_username or not admin_password) and v1_api:
+        keycloak_namespace = get_optional_env(
+            "KEYCLOAK_NAMESPACE", DEFAULT_KEYCLOAK_NAMESPACE
+        )
+        admin_secret_name = get_optional_env(
+            "KEYCLOAK_ADMIN_SECRET_NAME", DEFAULT_ADMIN_SECRET_NAME
+        )
+        admin_username_key = get_optional_env(
+            "KEYCLOAK_ADMIN_USERNAME_KEY", DEFAULT_ADMIN_USERNAME_KEY
+        )
+        admin_password_key = get_optional_env(
+            "KEYCLOAK_ADMIN_PASSWORD_KEY", DEFAULT_ADMIN_PASSWORD_KEY
+        )
+
+        try:
+            admin_username, admin_password = read_keycloak_credentials(
+                v1_api,
+                admin_secret_name,
+                keycloak_namespace,
+                admin_username_key,
+                admin_password_key,
+            )
+        except Exception:
+            typer.secho(
+                "Failed to read credentials from secret, falling back to defaults",
+                fg="yellow",
+            )
+            admin_username = admin_username or "admin"
+            admin_password = admin_password or "admin"
+    else:
+        admin_username = admin_username or "admin"
+        admin_password = admin_password or "admin"
+
+    return admin_username, admin_password
+
+
 class KeycloakSetup:
     def __init__(self, server_url, admin_username, admin_password, realm_name):
         self.server_url = server_url
@@ -201,9 +261,9 @@ class KeycloakSetup:
         except KeycloakPostError:
             print(f'User "{username}" already exists')
 
-    def create_client(self, app_name):
+    def create_client(self, app_name, spiffe_prefix):
         try:
-            client_name = f"spiffe://localtest.me/sa/{app_name}"
+            client_name = f"{spiffe_prefix}/{app_name}"
             client_id = self.keycloak_admin.create_client(
                 {
                     "clientId": client_name,
@@ -240,6 +300,7 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     - `KEYCLOAK_ADMIN_SECRET_NAME` (default: "keycloak-initial-admin") - secret containing credentials
     - `KEYCLOAK_ADMIN_USERNAME_KEY` (default: "username") - key in secret for username
     - `KEYCLOAK_ADMIN_PASSWORD_KEY` (default: "password") - key in secret for password
+    - `SPIFFE_PREFIX` (default: "spiffe://localtest.me/sa") - SPIFFE ID prefix for client names
 
     Args:
         v1_api: Optional Kubernetes CoreV1Api client for reading secrets
@@ -247,46 +308,12 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     base_url = get_optional_env(
         "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
     )
-    admin_username = get_optional_env("KEYCLOAK_ADMIN_USERNAME")
-    admin_password = get_optional_env("KEYCLOAK_ADMIN_PASSWORD")
     demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
     ssl_cert_file = get_optional_env("SSL_CERT_FILE")
+    spiffe_prefix = get_optional_env("SPIFFE_PREFIX", DEFAULT_SPIFFE_PREFIX)
 
-    # If credentials not provided via env vars, try reading from Kubernetes secret
-    if (not admin_username or not admin_password) and v1_api:
-        keycloak_namespace = get_optional_env(
-            "KEYCLOAK_NAMESPACE", DEFAULT_KEYCLOAK_NAMESPACE
-        )
-        admin_secret_name = get_optional_env(
-            "KEYCLOAK_ADMIN_SECRET_NAME", DEFAULT_ADMIN_SECRET_NAME
-        )
-        admin_username_key = get_optional_env(
-            "KEYCLOAK_ADMIN_USERNAME_KEY", DEFAULT_ADMIN_USERNAME_KEY
-        )
-        admin_password_key = get_optional_env(
-            "KEYCLOAK_ADMIN_PASSWORD_KEY", DEFAULT_ADMIN_PASSWORD_KEY
-        )
-
-        try:
-            admin_username, admin_password = read_keycloak_credentials(
-                v1_api,
-                admin_secret_name,
-                keycloak_namespace,
-                admin_username_key,
-                admin_password_key,
-            )
-        except Exception as e:
-            typer.secho(
-                f"Failed to read credentials from secret, falling back to defaults: {e}",
-                fg="yellow",
-            )
-            # Fallback to defaults if secret reading fails
-            admin_username = admin_username or "admin"
-            admin_password = admin_password or "admin"
-    else:
-        # Use defaults if not provided and no v1_api to read from secrets
-        admin_username = admin_username or "admin"
-        admin_password = admin_password or "admin"
+    # Compute admin credentials consistently using helper
+    admin_username, admin_password = get_keycloak_admin_credentials(v1_api)
 
     # Configure SSL verification
     verify_ssl = configure_ssl_verification(ssl_cert_file)
@@ -303,7 +330,9 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     kagenti_keycloak_client_name = get_optional_env(
         "KAGENTI_KEYCLOAK_CLIENT_NAME", "kagenti-keycloak-client"
     )
-    kagenti_keycloak_client_id = setup.create_client(kagenti_keycloak_client_name)
+    kagenti_keycloak_client_id = setup.create_client(
+        kagenti_keycloak_client_name, spiffe_prefix
+    )
 
     return setup.get_client_secret(kagenti_keycloak_client_id)
 
@@ -335,6 +364,28 @@ def create_secrets(**kwargs):
 
     # Setup Keycloak demo realm, user, and agent client (pass v1_api for secret reading)
     kagenti_keycloak_client_secret = setup_keycloak(v1_api)
+
+    # Optionally update the 'environments' ConfigMap in each namespace with Keycloak info
+    update_envs = parse_bool(get_optional_env("UPDATE_ENV_CONFIGMAPS", "false"))
+    print(f"UPD_ENVS >>>>>>>> {update_envs}")
+    if update_envs:
+        # Compute admin credentials to write into ConfigMaps
+        admin_username, admin_password = get_keycloak_admin_credentials(v1_api)
+        # Compute base URL and demo realm the same way setup_keycloak does
+        base_url = get_optional_env(
+            "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
+        )
+        demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
+        try:
+            update_environments_configmaps(
+                v1_api,
+                admin_username,
+                admin_password,
+                base_url,
+                demo_realm_name,
+            )
+        except Exception as e:
+            typer.secho(f"Failed to update 'environments' ConfigMaps: {e}", fg="yellow")
 
     # Distribute client secret to agent namespaces
     namespaces_str = os.getenv("AGENT_NAMESPACES", "")
@@ -373,6 +424,81 @@ def create_secrets(**kwargs):
                     err=True,
                 )
                 raise
+
+
+def update_environments_configmaps(
+    v1_api: client.CoreV1Api,
+    admin_username: str,
+    admin_password: str,
+    base_url: str,
+    realm_name: str,
+    timeout: int = 120,
+    interval: int = 5,
+) -> None:
+    """Wait for and update the `environments` ConfigMap in each agent namespace.
+
+    Writes the following keys into the ConfigMap `data`:
+      - KEYCLOAK_URL
+      - KEYCLOAK_REALM
+      - KEYCLOAK_ADMIN_USERNAME
+      - KEYCLOAK_ADMIN_PASSWORD
+
+    The function will wait up to `timeout` seconds for the ConfigMap to exist in
+    each namespace, polling every `interval` seconds.
+    """
+    namespaces_str = os.getenv("AGENT_NAMESPACES", "")
+    if not namespaces_str:
+        typer.echo("No AGENT_NAMESPACES set; skipping ConfigMap updates")
+        return
+
+    agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
+    cm_name = "environments"
+
+    for ns in agent_namespaces:
+        typer.echo(
+            f"Waiting for ConfigMap '{cm_name}' in namespace '{ns}' (timeout {timeout}s)..."
+        )
+        start_time = time.monotonic()
+        cm = None
+        while time.monotonic() - start_time < timeout:
+            try:
+                cm = v1_api.read_namespaced_config_map(cm_name, ns)
+                break
+            except ApiException as e:
+                if getattr(e, "status", None) == 404:
+                    time.sleep(interval)
+                    continue
+                else:
+                    raise
+
+        if cm is None:
+            typer.secho(
+                f"ConfigMap '{cm_name}' not found in namespace '{ns}' after {timeout}s; skipping",
+                fg="yellow",
+            )
+            continue
+
+        patch_body = {
+            "data": {
+                "KEYCLOAK_URL": base_url,
+                "KEYCLOAK_REALM": realm_name,
+                "KEYCLOAK_ADMIN_USERNAME": admin_username,
+                "KEYCLOAK_ADMIN_PASSWORD": admin_password,
+            }
+        }
+
+        try:
+            v1_api.patch_namespaced_config_map(cm_name, ns, patch_body)
+            typer.echo(
+                f"Patched ConfigMap '{cm_name}' in namespace '{ns}' with Keycloak settings"
+            )
+        except ApiException as e:
+            typer.secho(
+                f"Failed to patch ConfigMap '{cm_name}' in '{ns}': {e}",
+                fg="red",
+                err=True,
+            )
+            raise
 
 
 def main() -> None:

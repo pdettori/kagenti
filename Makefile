@@ -2,6 +2,25 @@
 lint:
 	cd kagenti/ui; uv run pylint Home.py pages/*.py lib/*.py
 
+# Define variables
+AGENT_OAUTH_SECRET_IMAGE := agent-oauth-secret
+AGENT_OAUTH_SECRET_DIR := kagenti/auth/agent-oauth-secret
+KIND_CLUSTER_NAME := kagenti
+# Generate unique tag using git commit hash (short) or timestamp if not in git repo
+AGENT_OAUTH_SECRET_TAG := $(shell git rev-parse --short HEAD 2>/dev/null | xargs -I {} sh -c 'echo "{}-$$(date +%s)"' || date +%s)
+
+# Build and load agent-oauth-secret image into kind cluster for testing
+.PHONY: build-load-agent-oauth-secret
+build-load-agent-oauth-secret:
+	@echo "Building $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) image..."
+	docker build -t $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) $(AGENT_OAUTH_SECRET_DIR) --load
+	@echo "Loading $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) image into kind cluster $(KIND_CLUSTER_NAME)..."
+	kind load docker-image $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) --name $(KIND_CLUSTER_NAME)
+	@echo "✓ $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) image built and loaded successfully"
+	@echo ""
+	@echo "To use this image, update your deployment with:"
+	@echo "  image: $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG)"
+
 # Define the path for the output file
 PRELOAD_FILE := deployments/ansible/kind/preload-images.txt
 

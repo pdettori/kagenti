@@ -1,4 +1,4 @@
-# Keycloak Client Setup Tool
+# Agent OAuth Secret 
 
 This tool automates the setup of Keycloak realms, users, and OAuth clients for the Kagenti platform. It creates or updates Keycloak client secrets in multiple Kubernetes namespaces for agent authentication.
 
@@ -16,10 +16,10 @@ This tool automates the setup of Keycloak realms, users, and OAuth clients for t
 
 ```bash
 # As a Python module
-python -m kagenti.auth.keycloak_client.keycloak_client
+python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 
 # Or directly
-python kagenti/auth/keycloak-client/keycloak_client.py
+python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
 ### Prerequisites
@@ -45,7 +45,7 @@ python kagenti/auth/keycloak-client/keycloak_client.py
   - Default: `"demo"`
 
 - **`KAGENTI_KEYCLOAK_CLIENT_NAME`** - OAuth client name to create
-  - Default: `"kagenti-keycloak-client"`
+  - Default: `"kagenti-agent-oauth-secret"`
 
 ### Keycloak Admin Credentials
 
@@ -89,7 +89,7 @@ If `KEYCLOAK_ADMIN_USERNAME` and `KEYCLOAK_ADMIN_PASSWORD` are not provided, the
 # Minimal configuration - uses all defaults
 export AGENT_NAMESPACES="demo-agent,langgraph-agent"
 
-python -m kagenti.auth.keycloak_client.keycloak_client
+python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 ```
 
 ### Example 2: Custom Keycloak instance with explicit credentials
@@ -107,7 +107,7 @@ export KAGENTI_KEYCLOAK_CLIENT_NAME="kagenti-prod-client"
 # Target namespaces
 export AGENT_NAMESPACES="prod-agent-1,prod-agent-2"
 
-python -m kagenti.auth.keycloak_client.keycloak_client
+python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 ```
 
 ### Example 3: Production with secret-based credentials and custom CA
@@ -124,7 +124,7 @@ export SSL_CERT_FILE="/etc/ssl/certs/company-ca.crt"
 # Target namespaces
 export AGENT_NAMESPACES="agent-prod,agent-staging"
 
-python -m kagenti.auth.keycloak_client.keycloak_client
+python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 ```
 
 ### Example 4: In-cluster job (Kubernetes Job/CronJob)
@@ -143,10 +143,10 @@ spec:
       serviceAccountName: keycloak-setup-sa
       containers:
       - name: setup
-        image: kagenti/keycloak-client:latest
+        image: kagenti/agent-oauth-secret:latest
         env:
         - name: AGENT_NAMESPACES
-          value: "demo,langgraph,crewai"
+          value: "team1 team2"
         - name: KEYCLOAK_BASE_URL
           value: "http://keycloak.keycloak.svc.cluster.local:8080"
         - name: KEYCLOAK_NAMESPACE
@@ -178,7 +178,7 @@ spec:
 
 5. **Distributes secrets to namespaces**
    - For each namespace in `AGENT_NAMESPACES`:
-     - Creates secret `kagenti-keycloak-client-secret` if it doesn't exist
+     - Creates secret `kagenti-agent-oauth-secret-secret` if it doesn't exist
      - Patches existing secret with new client secret value
    - Uses `stringData` field (no manual base64 encoding required)
 
@@ -190,10 +190,10 @@ The tool creates/updates a secret in each target namespace with the following st
 apiVersion: v1
 kind: Secret
 metadata:
-  name: kagenti-keycloak-client-secret
+  name: kagenti-agent-oauth-secret-secret
 type: Opaque
 stringData:
-  client-secret: "<keycloak-client-secret-value>"
+  client-secret: "<agent-oauth-secret-secret-value>"
 ```
 
 ## Client Configuration
@@ -257,14 +257,14 @@ export AGENT_NAMESPACES="test-ns"
 export KEYCLOAK_BASE_URL="http://localhost:8080"
 
 # Run the tool
-python -m kagenti.auth.keycloak_client.keycloak_client
+python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 ```
 
 ### Running tests
 
 ```bash
 # TODO: Add unit tests for credential reading and secret management
-pytest kagenti/auth/keycloak-client/
+pytest kagenti/auth/agent-oauth-secret/
 ```
 
 ## Related Tools
