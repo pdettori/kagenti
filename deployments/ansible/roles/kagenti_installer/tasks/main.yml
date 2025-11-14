@@ -313,7 +313,7 @@
       api_version: batch/v1
       kind: Job
       name:  kagenti-agent-oauth-secret-job
-      namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"          
+      namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
   
   when:
   - (charts['kagenti'] | default({})).get('enabled', false) | bool

@@ -178,7 +178,7 @@ spec:
 
 5. **Distributes secrets to namespaces**
    - For each namespace in `AGENT_NAMESPACES`:
-     - Creates secret `kagenti-agent-oauth-secret-secret` if it doesn't exist
+     - Creates secret `kagenti-keycloak-client-secret` if it doesn't exist
      - Patches existing secret with new client secret value
    - Uses `stringData` field (no manual base64 encoding required)
 
@@ -190,7 +190,7 @@ The tool creates/updates a secret in each target namespace with the following st
 apiVersion: v1
 kind: Secret
 metadata:
-  name: kagenti-agent-oauth-secret-secret
+  name: kagenti-keycloak-client-secret
 type: Opaque
 stringData:
   client-secret: "<keycloak-client-secret-value>"
