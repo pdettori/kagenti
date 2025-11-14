@@ -241,7 +241,7 @@
     state: present
     wait: false
     timeout: "{{ helm_wait_timeout }}s"
-   values: >-
+    values: >-
          {{ (((charts['mcpGateway'] | default({})).get('values')) | default({}))
           | combine((global_values_merged | default({})), recursive=True)
           | combine((((secret_values.get('charts', {}) | default({})).get('mcpGateway', {}) ).get('values', {})) , recursive=True)
