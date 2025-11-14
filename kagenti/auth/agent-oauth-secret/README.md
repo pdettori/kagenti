@@ -193,7 +193,7 @@ metadata:
   name: kagenti-agent-oauth-secret-secret
 type: Opaque
 stringData:
-  client-secret: "<agent-oauth-secret-secret-value>"
+  client-secret: "<keycloak-client-secret-value>"
 ```
 
 ## Client Configuration
