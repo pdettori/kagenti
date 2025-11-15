@@ -131,6 +131,21 @@ def parse_bool(value: Optional[str]) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+def get_keycloak_env_config() -> Tuple[str, str, Optional[str], str]:
+    """Read common Keycloak environment configuration values.
+
+    Returns a tuple: (base_url, demo_realm_name, ssl_cert_file, spiffe_prefix)
+    """
+    base_url = get_optional_env(
+        "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
+    )
+    demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
+    ssl_cert_file = get_optional_env("SSL_CERT_FILE")
+    spiffe_prefix = get_optional_env("SPIFFE_PREFIX", DEFAULT_SPIFFE_PREFIX)
+
+    return base_url, demo_realm_name, ssl_cert_file, spiffe_prefix
+
+
 def get_keycloak_admin_credentials(
     v1_api: Optional[client.CoreV1Api] = None,
 ) -> Tuple[str, str]:
@@ -323,12 +338,7 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     Args:
         v1_api: Optional Kubernetes CoreV1Api client for reading secrets
     """
-    base_url = get_optional_env(
-        "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
-    )
-    demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
-    ssl_cert_file = get_optional_env("SSL_CERT_FILE")
-    spiffe_prefix = get_optional_env("SPIFFE_PREFIX", DEFAULT_SPIFFE_PREFIX)
+    base_url, demo_realm_name, ssl_cert_file, spiffe_prefix = get_keycloak_env_config()
 
     # Compute admin credentials consistently using helper
     admin_username, admin_password = get_keycloak_admin_credentials(v1_api)
@@ -404,11 +414,8 @@ def create_secrets(**kwargs):
     if update_envs:
         # Compute admin credentials to write into ConfigMaps
         admin_username, admin_password = get_keycloak_admin_credentials(v1_api)
-        # Compute base URL and demo realm the same way setup_keycloak does
-        base_url = get_optional_env(
-            "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
-        )
-        demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
+        # Reuse shared env config to ensure consistency with setup_keycloak
+        base_url, demo_realm_name, _, _ = get_keycloak_env_config()
         try:
             update_environments_configmaps(
                 v1_api,
