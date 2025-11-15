@@ -133,7 +133,7 @@ export SSL_CERT_FILE="/etc/ssl/certs/company-ca.crt"
 # Target namespaces
 export AGENT_NAMESPACES="agent-prod,agent-staging"
 
-python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
+python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
 ### Example 4: In-cluster job (Kubernetes Job/CronJob)
