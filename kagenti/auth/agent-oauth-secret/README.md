@@ -169,7 +169,7 @@ spec:
 
 4. **Provisions Keycloak resources**
    - Creates realm (if it doesn't exist)
-   - Creates test user: `test-user` with password `test-password`
+   - Creates test user: `test-user` (only if `KEYCLOAK_TEST_USER_PASSWORD` environment variable is set; password is taken from this variable)
    - Creates/retrieves OAuth client with SPIFFE ID format
    - Retrieves client secret
 
