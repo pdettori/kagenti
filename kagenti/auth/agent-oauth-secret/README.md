@@ -83,7 +83,7 @@ If `KEYCLOAK_ADMIN_USERNAME` and `KEYCLOAK_ADMIN_PASSWORD` are not provided, the
 These environment variables control the creation of a test user in the Keycloak realm. This is useful for development, testing, or CI environments.
 
 - **`CREATE_KEYCLOAK_TEST_USER`** - If set to `"true"`, the tool will create a test user in the Keycloak realm.
-  - Default: Not set (test user is not created)
+  - Default: true (test user is created)
 
 - **`KEYCLOAK_TEST_USER_NAME`** - Username for the test user.
   - Default: `"test-user"`
