@@ -349,7 +349,9 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     setup = KeycloakSetup(base_url, admin_username, admin_password, demo_realm_name)
     # Pass verify parameter to KeycloakAdmin (will be used in connect method)
     setup.verify_ssl = verify_ssl if verify_ssl is not None else True
-    setup.connect()
+    if not setup.connect():
+        typer.secho("Failed to connect to Keycloak", fg="red", err=True)
+        raise typer.Exit(1)
     setup.create_realm()
 
     # Optionally create a demo/test user. Controlled by env var
