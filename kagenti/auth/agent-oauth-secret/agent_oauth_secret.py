@@ -250,7 +250,19 @@ class KeycloakSetup:
         except Exception as e:
             print(f'Unexpected error creating realm "{self.realm_name}": {e}')
 
-    def create_user(self, username):
+    def create_user(self, username, password: Optional[str] = None):
+        """Create a Keycloak user with the provided password.
+
+        If `password` is None or empty the function will skip creation and
+        emit a warning. This avoids hardcoding default passwords in source.
+        """
+        if not password:
+            typer.secho(
+                f"Skipping creation of user '{username}': no password provided",
+                fg="yellow",
+            )
+            return
+
         try:
             self.keycloak_admin.create_user(
                 {
@@ -260,7 +272,7 @@ class KeycloakSetup:
                     "email": f"{username}@test.com",
                     "emailVerified": True,
                     "enabled": True,
-                    "credentials": [{"value": "test-password", "type": "password"}],
+                    "credentials": [{"value": password, "type": "password"}],
                 }
             )
             print(f'Created user "{username}"')
@@ -330,8 +342,23 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
     setup.connect()
     setup.create_realm()
 
-    test_user_name = "test-user"
-    setup.create_user(test_user_name)
+    # Optionally create a demo/test user. Controlled by env var
+    # `CREATE_KEYCLOAK_TEST_USER` (defaults to true for backwards compatibility).
+    create_test_user = parse_bool(get_optional_env("CREATE_KEYCLOAK_TEST_USER", "true"))
+    if create_test_user:
+        test_user_name = get_optional_env("KEYCLOAK_TEST_USER_NAME", "test-user")
+        test_user_password = get_optional_env("KEYCLOAK_TEST_USER_PASSWORD")
+        if not test_user_password:
+            typer.secho(
+                "Environment variable KEYCLOAK_TEST_USER_PASSWORD not set; skipping test user creation",
+                fg="yellow",
+            )
+        else:
+            setup.create_user(test_user_name, test_user_password)
+    else:
+        typer.echo(
+            "Skipping creation of Keycloak test user (CREATE_KEYCLOAK_TEST_USER=false)"
+        )
 
     kagenti_keycloak_client_name = get_optional_env(
         "KAGENTI_KEYCLOAK_CLIENT_NAME", "kagenti-keycloak-client"
