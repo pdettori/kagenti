@@ -243,7 +243,7 @@ class KeycloakSetup:
             print(f'Created realm "{self.realm_name}"')
         except KeycloakPostError as e:
             # Keycloak returns 409 if the realm already exists
-            if hasattr(e, 'response_code') and e.response_code == 409:
+            if hasattr(e, "response_code") and e.response_code == 409:
                 print(f'Realm "{self.realm_name}" already exists')
             else:
                 print(f'Failed to create realm "{self.realm_name}": {e}')
