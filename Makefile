@@ -32,7 +32,6 @@ endif
 DOCKER_BUILD_FLAGS :=
 ifeq ($(DOCKER_IS_PODMAN),true)
   DOCKER_BUILD_FLAGS := --load
-  @echo "Info: Podman backend detected. Using --load flag for build."
 endif
 
 # --- End Logic ---
@@ -41,6 +40,9 @@ endif
 .PHONY: build-load-agent-oauth-secret
 build-load-agent-oauth-secret:
 	@echo "Building $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) image..."
+	@if [ "$(DOCKER_IS_PODMAN)" = "true" ]; then \
+		echo "Info: Podman backend detected. Using --load flag for build."; \
+	fi
 	# $(DOCKER_BUILD_FLAGS) will be '--load' for podman and empty for docker
 	docker build -t $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) $(AGENT_OAUTH_SECRET_DIR) $(DOCKER_BUILD_FLAGS)
 	@echo "Loading $(AGENT_OAUTH_SECRET_IMAGE):$(AGENT_OAUTH_SECRET_TAG) image into kind cluster $(KIND_CLUSTER_NAME)..."

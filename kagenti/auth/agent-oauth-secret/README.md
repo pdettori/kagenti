@@ -98,7 +98,8 @@ These environment variables control the creation of a test user in the Keycloak 
 # Minimal configuration - uses all defaults
 export AGENT_NAMESPACES="demo-agent,langgraph-agent"
 
-python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
+# Run the script directly by path (directory name contains a hyphen)
+python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
 ### Example 2: Custom Keycloak instance with explicit credentials
@@ -116,7 +117,8 @@ export KAGENTI_KEYCLOAK_CLIENT_NAME="kagenti-prod-client"
 # Target namespaces
 export AGENT_NAMESPACES="prod-agent-1,prod-agent-2"
 
-python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
+# Run the script directly by path (directory name contains a hyphen)
+python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
 ### Example 3: Production with secret-based credentials and custom CA
@@ -266,7 +268,8 @@ export AGENT_NAMESPACES="test-ns"
 export KEYCLOAK_BASE_URL="http://localhost:8080"
 
 # Run the tool
-python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
+# Run the script directly by path (directory name contains a hyphen)
+python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
 ### Running tests

@@ -216,7 +216,7 @@ class KeycloakSetup:
         Returns:
             bool: True if the connection was successful, False otherwise.
         """
-        print("Attempting to connect to Keycloak...")
+        typer.echo("Attempting to connect to Keycloak...")
         start_time = time.monotonic()
 
         while time.monotonic() - start_time < timeout:
@@ -235,18 +235,18 @@ class KeycloakSetup:
                 # If it succeeds, the server is ready.
                 self.keycloak_admin.get_server_info()
 
-                print("✅ Successfully connected and authenticated with Keycloak.")
+                typer.echo("✅ Successfully connected and authenticated with Keycloak.")
                 return True
 
             except KeycloakPostError as e:
                 elapsed_time = int(time.monotonic() - start_time)
-                print(
+                typer.echo(
                     f"⏳ Connection failed ({type(e).__name__}). "
                     f"Retrying in {interval}s... ({elapsed_time}s/{timeout}s elapsed)"
                 )
                 time.sleep(interval)
 
-        print(f"❌ Failed to connect to Keycloak after {timeout} seconds.")
+        typer.echo(f"❌ Failed to connect to Keycloak after {timeout} seconds.")
         self.keycloak_admin = None  # Ensure no unusable client object is stored
         return False
 
@@ -255,15 +255,15 @@ class KeycloakSetup:
             self.keycloak_admin.create_realm(
                 payload={"realm": self.realm_name, "enabled": True}, skip_exists=False
             )
-            print(f'Created realm "{self.realm_name}"')
+            typer.echo(f'Created realm "{self.realm_name}"')
         except KeycloakPostError as e:
             # Keycloak returns 409 if the realm already exists
             if hasattr(e, "response_code") and e.response_code == 409:
-                print(f'Realm "{self.realm_name}" already exists')
+                typer.echo(f'Realm "{self.realm_name}" already exists')
             else:
-                print(f'Failed to create realm "{self.realm_name}": {e}')
+                typer.echo(f'Failed to create realm "{self.realm_name}": {e}')
         except Exception as e:
-            print(f'Unexpected error creating realm "{self.realm_name}": {e}')
+            typer.echo(f'Unexpected error creating realm "{self.realm_name}": {e}')
 
     def create_user(self, username, password: Optional[str] = None):
         """Create a Keycloak user with the provided password.
@@ -290,9 +290,9 @@ class KeycloakSetup:
                     "credentials": [{"value": password, "type": "password"}],
                 }
             )
-            print(f'Created user "{username}"')
+            typer.echo(f'Created user "{username}"')
         except KeycloakPostError:
-            print(f'User "{username}" already exists')
+            typer.echo(f'User "{username}" already exists')
 
     def create_client(self, app_name, spiffe_prefix):
         try:
@@ -306,12 +306,14 @@ class KeycloakSetup:
                     "enabled": True,
                 }
             )
-            print(f'Created client "{client_name}"')
+            typer.echo(f'Created client "{client_name}"')
             return client_id
         except KeycloakPostError:
-            print(f'Client "{client_name}" already exists. Retrieving its ID.')
+            typer.echo(f'Client "{client_name}" already exists. Retrieving its ID.')
             client_id = self.keycloak_admin.get_client_id(client_id=client_name)
-            print(f'Successfully retrieved ID for existing client "{client_name}".')
+            typer.echo(
+                f'Successfully retrieved ID for existing client "{client_name}".'
+            )
             return client_id
 
     def get_client_secret(self, client_id):
