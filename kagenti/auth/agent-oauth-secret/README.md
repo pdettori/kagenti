@@ -15,10 +15,7 @@ This tool automates the setup of Keycloak realms, users, and OAuth clients for t
 ### Running the tool
 
 ```bash
-# As a Python module
-python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
-
-# Or directly
+# Run directly
 python kagenti/auth/agent-oauth-secret/agent_oauth_secret.py
 ```
 
