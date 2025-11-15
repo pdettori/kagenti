@@ -89,7 +89,7 @@ These environment variables control the creation of a test user in the Keycloak 
   - Default: `"test-user"`
 
 - **`KEYCLOAK_TEST_USER_PASSWORD`** - Password for the test user.
-  - Default: `"test-password"`
+  - Default: Not set (required if CREATE_KEYCLOAK_TEST_USER is true)
 ## Configuration Examples
 
 ### Example 1: Local development with defaults
