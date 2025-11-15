@@ -396,6 +396,7 @@ def create_secrets(**kwargs):
     # Distribute client secret to agent namespaces
     namespaces_str = os.getenv("AGENT_NAMESPACES", "")
     if not namespaces_str:
+        typer.echo("No AGENT_NAMESPACES set; skipping secret distribution")
         return
 
     agent_namespaces = [ns.strip() for ns in namespaces_str.split(",") if ns.strip()]
