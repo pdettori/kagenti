@@ -78,6 +78,18 @@ If `KEYCLOAK_ADMIN_USERNAME` and `KEYCLOAK_ADMIN_PASSWORD` are not provided, the
   - Optional. If not set or file doesn't exist, the system's default CA bundle will be used
   - Useful for self-signed certificates or internal CAs
 
+### Test User Configuration (Optional)
+
+These environment variables control the creation of a test user in the Keycloak realm. This is useful for development, testing, or CI environments.
+
+- **`CREATE_KEYCLOAK_TEST_USER`** - If set to `"true"`, the tool will create a test user in the Keycloak realm.
+  - Default: Not set (test user is not created)
+
+- **`KEYCLOAK_TEST_USER_NAME`** - Username for the test user.
+  - Default: `"test-user"`
+
+- **`KEYCLOAK_TEST_USER_PASSWORD`** - Password for the test user.
+  - Default: `"test-password"`
 ## Configuration Examples
 
 ### Example 1: Local development with defaults
