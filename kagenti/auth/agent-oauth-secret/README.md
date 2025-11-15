@@ -263,7 +263,6 @@ python -m kagenti.auth.agent_oauth_secret.agent_oauth_secret
 ### Running tests
 
 ```bash
-# TODO: Add unit tests for credential reading and secret management
 pytest kagenti/auth/agent-oauth-secret/
 ```
 
