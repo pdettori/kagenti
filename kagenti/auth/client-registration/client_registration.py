@@ -98,15 +98,24 @@ def get_client_id() -> str:
 
 client_id = get_client_id()
 
-# The Keycloak URL is handled differently from the other env vars because unlike the others, it's intended to be optional
 try:
     KEYCLOAK_URL = get_env_var("KEYCLOAK_URL")
-except:
-    print(
-        f'Expected environment variable "KEYCLOAK_URL" missing. Skipping client registration of {client_id}.'
+    KEYCLOAK_ENABLE_TOKEN_EXCHANGE = (
+        get_env_var("KEYCLOAK_ENABLE_TOKEN_EXCHANGE").lower() == "true"
     )
+    KEYCLOAK_REGISTER_CLIENT = get_env_var("KEYCLOAK_REGISTER_CLIENT").lower() == "true"
+except ValueError as e:
+    print(
+        f"Expected environment variable missing. Skipping client registration of {client_id}."
+    )
+    print(e)
     exit()
 
+if not KEYCLOAK_REGISTER_CLIENT:
+    print(
+        f"Client registration (KEYCLOAK_KEYCLOAK_CLIENT=false) disabled. Skipping registration of {client_id}."
+    )
+    exit()
 
 keycloak_admin = KeycloakAdmin(
     server_url=KEYCLOAK_URL,
@@ -134,7 +143,7 @@ internal_client_id = register_client(
         # Security considerations: Ensure only trusted clients have this capability, restrict scopes and permissions as needed,
         # and audit usage to prevent privilege escalation or unauthorized access.
         "attributes": {
-            "standard.token.exchange.enabled": "true",  # Enable token exchange
+            "standard.token.exchange.enabled": KEYCLOAK_ENABLE_TOKEN_EXCHANGE,  # Enable token exchange
         },
     },
 )
