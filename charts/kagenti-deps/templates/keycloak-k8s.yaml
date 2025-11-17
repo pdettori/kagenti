@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: keycloak
+  name: keycloak-service
   namespace: {{ .Values.keycloak.namespace }}
   labels:
   {{- include "kagenti.labels" . | nindent 4 }}  
@@ -257,7 +257,7 @@ spec:
           {{- toYaml . | nindent 12 }}
       {{- end }}
         backendRefs:
-          - name: keycloak
+          - name: keycloak-service
             port: 8080 
             weight: 1
     {{- end }}
