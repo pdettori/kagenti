@@ -131,7 +131,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
-  labels:
     app: phoenix
 spec:
   parentRefs:
