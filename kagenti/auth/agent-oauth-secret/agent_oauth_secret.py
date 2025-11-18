@@ -111,7 +111,7 @@ def configure_ssl_verification(ssl_cert_file: Optional[str]) -> Optional[str]:
             return ssl_cert_file
         else:
             typer.secho(
-                f"Provided SSL_CERT_FILE '{ssl_cert_file}' does not exist; falling back to system CA bundle",
+                f"Provided SSL_CERT_FILE '{ssl_cert_file}' does not exist. Falling back to system CA bundle. Verify the path or remove SSL_CERT_FILE to use system defaults.",
                 fg="yellow",
             )
 
