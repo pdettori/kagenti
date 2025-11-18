@@ -78,14 +78,6 @@ DEFAULT_ENV_VARS = [
         "name": "KEYCLOAK_URL",
         "value": "http://keycloak.keycloak.svc.cluster.local:8080",
     },
-    # {
-    #     "name": "KEYCLOAK_ENABLE_TOKEN_EXCHANGE",
-    #     "value": os.getenv("KEYCLOAK_ENABLE_TOKEN_EXCHANGE", "true"),
-    # },
-    # {
-    #     "name": "KEYCLOAK_REGISTER_CLIENT",
-    #     "value": os.getenv("KEYCLOAK_REGISTER_CLIENT", "true"),
-    # },
     {"name": "UV_CACHE_DIR", "value": "/app/.cache/uv"},
 ]
 
