@@ -10,4 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Then copy your script
 COPY agent_oauth_secret.py .
+
+# Add a non-root user and switch to it
+RUN useradd -m -u 1001 appuser
+USER appuser
 CMD ["python", "agent_oauth_secret.py"]
