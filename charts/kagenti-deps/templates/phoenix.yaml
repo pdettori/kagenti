@@ -131,5 +131,25 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+{{- else }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: phoenix
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+    app: phoenix
+spec:
+  parentRefs:
+    - name: http
+      namespace: {{ .Release.Namespace }}
+  hostnames:
+    - phoenix.{{ .Values.domain | default "localtest.me" }}
+  rules:
+    - backendRefs:
+        - name: phoenix
+          port: 6006
+
 {{- end }}
 {{- end }}

@@ -37,6 +37,8 @@ charts:
           enabled: true
         ingressGateway:
           enabled: true
+        kiali:
+          enabled: true  
         toolhive:
           enabled: true 
 

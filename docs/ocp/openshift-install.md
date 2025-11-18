@@ -110,7 +110,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
 4. **Install Dependencies:**
    ```shell
-   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace 
+   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --wait
    ```
 
 5. **Install MCP Gateway Chart:**
