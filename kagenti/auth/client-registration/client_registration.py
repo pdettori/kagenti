@@ -100,10 +100,12 @@ client_id = get_client_id()
 
 try:
     KEYCLOAK_URL = get_env_var("KEYCLOAK_URL")
-    KEYCLOAK_ENABLE_TOKEN_EXCHANGE = (
-        get_env_var("KEYCLOAK_ENABLE_TOKEN_EXCHANGE").lower() == "true"
+    KEYCLOAK_DISABLE_TOKEN_EXCHANGE = (
+        os.getenv("KEYCLOAK_DISABLE_TOKEN_EXCHANGE", "false").lower() == "true"
     )
-    KEYCLOAK_REGISTER_CLIENT = get_env_var("KEYCLOAK_REGISTER_CLIENT").lower() == "true"
+    KEYCLOAK_DISABLE_CLIENT_REGISTRATION = (
+        os.getenv("KEYCLOAK_REGISTER_CLIENT", "false").lower() == "true"
+    )
 except ValueError as e:
     print(
         f"Expected environment variable missing. Skipping client registration of {client_id}."
@@ -111,9 +113,9 @@ except ValueError as e:
     print(e)
     exit()
 
-if not KEYCLOAK_REGISTER_CLIENT:
+if KEYCLOAK_DISABLE_CLIENT_REGISTRATION:
     print(
-        f"Client registration (KEYCLOAK_KEYCLOAK_CLIENT=false) disabled. Skipping registration of {client_id}."
+        f"Client registration (KEYCLOAK_DISABLE_CLIENT_REGISTRATION=true) disabled. Skipping registration of {client_id}."
     )
     exit()
 
@@ -143,7 +145,7 @@ internal_client_id = register_client(
         # Security considerations: Ensure only trusted clients have this capability, restrict scopes and permissions as needed,
         # and audit usage to prevent privilege escalation or unauthorized access.
         "attributes": {
-            "standard.token.exchange.enabled": KEYCLOAK_ENABLE_TOKEN_EXCHANGE,  # Enable token exchange
+            "standard.token.exchange.enabled": not KEYCLOAK_DISABLE_TOKEN_EXCHANGE,  # Enable token exchange
         },
     },
 )

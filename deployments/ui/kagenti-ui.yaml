@@ -22,41 +22,41 @@ spec:
     spec:
       serviceAccountName: kagenti-ui-service-account
       initContainers:
-      - name: wait-for-oauth-secret
-        image: bitnami/kubectl:latest
-        command:
-        - /bin/sh
-        - -c
-        - |
-          echo "Waiting for OAuth secret to be created..."
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            if kubectl get secret kagenti-ui-oauth-secret -n kagenti-system >/dev/null 2>&1; then
-              echo "OAuth secret found. Verifying required keys..."
-              REQUIRED_KEYS="CLIENT_ID CLIENT_SECRET AUTH_ENDPOINT TOKEN_ENDPOINT REDIRECT_URI"
-              ALL_PRESENT=true
-              for KEY in $REQUIRED_KEYS; do
-                if ! kubectl get secret kagenti-ui-oauth-secret -n kagenti-system -o jsonpath='{.data.'$KEY'}' >/dev/null 2>&1; then
-                  echo "Missing key: $KEY"
-                  ALL_PRESENT=false
+        - name: wait-for-oauth-secret
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for OAuth secret to be created..."
+              MAX_ATTEMPTS=60
+              ATTEMPT=0
+              while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                ATTEMPT=$((ATTEMPT + 1))
+                if kubectl get secret kagenti-ui-oauth-secret -n kagenti-system >/dev/null 2>&1; then
+                  echo "OAuth secret found. Verifying required keys..."
+                  REQUIRED_KEYS="CLIENT_ID CLIENT_SECRET AUTH_ENDPOINT TOKEN_ENDPOINT REDIRECT_URI"
+                  ALL_PRESENT=true
+                  for KEY in $REQUIRED_KEYS; do
+                    if ! kubectl get secret kagenti-ui-oauth-secret -n kagenti-system -o jsonpath='{.data.'$KEY'}' >/dev/null 2>&1; then
+                      echo "Missing key: $KEY"
+                      ALL_PRESENT=false
+                    fi
+                  done
+                  if [ "$ALL_PRESENT" = "true" ]; then
+                    echo "All required OAuth keys are present. Proceeding..."
+                    exit 0
+                  else
+                    echo "Some keys are missing. Waiting 2 seconds... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+                    sleep 2
+                  fi
+                else
+                  echo "OAuth secret not found. Waiting 2 seconds... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+                  sleep 2
                 fi
               done
-              if [ "$ALL_PRESENT" = "true" ]; then
-                echo "All required OAuth keys are present. Proceeding..."
-                exit 0
-              else
-                echo "Some keys are missing. Waiting 2 seconds... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-                sleep 2
-              fi
-            else
-              echo "OAuth secret not found. Waiting 2 seconds... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-              sleep 2
-            fi
-          done
-          echo "ERROR: OAuth secret not ready after $MAX_ATTEMPTS attempts. Proceeding anyway but authentication may not work."
-          exit 0
+              echo "ERROR: OAuth secret not ready after $MAX_ATTEMPTS attempts. Proceeding anyway but authentication may not work."
+              exit 0
       containers:
         - name: kagenti-ui-container
           image: ghcr.io/kagenti/kagenti/ui:latest
@@ -87,7 +87,7 @@ spec:
                 configMapKeyRef:
                   name: "kagenti-ui-config"
                   key: "KEYCLOAK_CONSOLE_URL"
-                  optional: true              
+                  optional: true
             - name: "ENABLE_AUTH"
               value: "true"
             - name: "CLIENT_ID"
@@ -134,10 +134,10 @@ spec:
                   optional: true
             - name: "MCP_PROXY_FULL_ADDRESS"
               valueFrom:
-                 configMapKeyRef:
+                configMapKeyRef:
                   name: "kagenti-ui-config"
                   key: "MCP_PROXY_FULL_ADDRESS"
-                  optional: true      
+                  optional: true
           volumeMounts:
             - name: cache
               mountPath: /app/.cache
