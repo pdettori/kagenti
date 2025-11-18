@@ -454,7 +454,7 @@ def create_secrets(**kwargs):
                 f"🔄 Patched '{kagenti_keycloak_secret_name}' in namespace '{ns}'"
             )
         except ApiException as e:
-            if getattr(e, "status", None) == 404:
+            if e.status == 404:
                 # Secret not found -> create it using string_data
                 secret_body = client.V1Secret(
                     metadata=client.V1ObjectMeta(name=kagenti_keycloak_secret_name),
