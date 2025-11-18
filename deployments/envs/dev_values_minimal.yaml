@@ -40,7 +40,11 @@ charts:
         platformOperator:
           enabled: true
         ui:
-          enabled: true  
+          enabled: true
+     # configs
+     ui:      
+      auth:
+        enabled: false         
 
   #################################################################### 
   # istio  - required for the ingress gateway
