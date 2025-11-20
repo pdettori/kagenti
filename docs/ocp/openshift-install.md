@@ -301,7 +301,7 @@ Run the following command:
 ```shell
 kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
 ```
-If the daemonset are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
+If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
 will not work. 
 
 Run the following commands:
