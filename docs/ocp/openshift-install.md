@@ -294,7 +294,7 @@ kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: 
 
 ## Troubleshooting
 
-### Spire dameonset does not start
+### Spire daemonset does not start
 
 Run the following command:
 
