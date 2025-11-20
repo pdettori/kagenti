@@ -158,13 +158,10 @@ To override existing environments, you may create a [customized override file](.
 
 ## Checking the Spire daemonsets
 
-After installation, check if the spire dameonset are correctly started with the command:
+After installation, check if the spire daemonset are correctly started with the command:
 
 ```shell
 kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
-```
-
-If `Current` and/or `Ready` status is `0`, follow the steps [troubleshooting](#spire-dameonset-does-not-start) section.
 
 ## Authentication Configuration
 
