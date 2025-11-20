@@ -40,7 +40,7 @@ spec:
     maxOpenConns: 100 
     maxIdleConns: 2
     connMaxLifetime: 3600
-  jwtIssuer: "https://oidc-discovery-provider.localtest.me"  
+  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
 --- 
 apiVersion: operator.openshift.io/v1alpha1
 kind: SpireAgent
