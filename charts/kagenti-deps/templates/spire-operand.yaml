@@ -40,6 +40,7 @@ spec:
     maxOpenConns: 100 
     maxIdleConns: 2
     connMaxLifetime: 3600
+  jwtIssuer: "https://oidc-discovery-provider.localtest.me"  
 --- 
 apiVersion: operator.openshift.io/v1alpha1
 kind: SpireAgent
@@ -73,5 +74,6 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation    
 spec:
   trustDomain: localtest.me
-  agentSocketName: 'spire-agent.sock'  
+  agentSocketName: 'spire-agent.sock'
+  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
 {{- end }}

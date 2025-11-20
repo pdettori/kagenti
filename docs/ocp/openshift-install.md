@@ -156,6 +156,16 @@ Check [here](../../deployments/ansible/README.md) for more details on the new in
 To override existing environments, you may create a [customized override file](../../deployments/ansible/README.md#using-override-files).
 
 
+## Checking the Spire daemonsets
+
+After installation, check if the spire dameonset are correctly started with the command:
+
+```shell
+kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
+```
+
+If `Current` and/or `Ready` status is `0`, follow the steps [troubleshooting](#spire-dameonset-does-not-start) section.
+
 ## Authentication Configuration
 
 Kagenti UI now supports Keycloak authentication by default. The `kagenti` helm chart creates automatically the required  
@@ -285,4 +295,36 @@ running the command:
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
 ```
 
+## Troubleshooting
 
+### Spire dameonset does not start
+
+Run the following command:
+
+```shell
+kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
+```
+If the daemonset are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
+will not work. 
+
+Run the following commands:
+
+```shell
+kubectl describe daemonsets.apps -n zero-trust-workload-identity-manager spire-agent
+kubectl describe daemonsets.apps -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+If any of them shows `Events` including messages such as `Error creating: pods <pod-name-prefix> is forbidden: unable to validate against any security context constraint`, run the following commands:
+
+```shell
+oc adm policy add-scc-to-user privileged -z spire-agent -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets.apps -n zero-trust-workload-identity-manager spire-agent 
+
+oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets.apps -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+
+wait a few seconds and verify that the daemonsets are correctly started:
+
+```shell
+kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
+```
