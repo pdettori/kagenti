@@ -302,7 +302,7 @@ kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: 
 Run the following command:
 
 ```shell
-kubectl get daemonsets -n zero-trust-workload-identity-manager 
+kubectl get daemonsets -n zero-trust-workload-identity-manager
 ```
 If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
 will not work. 
