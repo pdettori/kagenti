@@ -326,5 +326,5 @@ kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire
 Wait a few seconds and verify that the daemonsets are correctly started:
 
 ```shell
-kubectl get daemonsets -n zero-trust-workload-identity-manager 
+kubectl get daemonsets -n zero-trust-workload-identity-manager
 ```
