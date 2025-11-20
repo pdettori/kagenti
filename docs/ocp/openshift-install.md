@@ -317,7 +317,7 @@ If any of them shows `Events` including messages such as `Error creating: pods <
 
 ```shell
 oc adm policy add-scc-to-user privileged -z spire-agent -n zero-trust-workload-identity-manager
-kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-agent 
+kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-agent
 
 oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n zero-trust-workload-identity-manager
 kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
