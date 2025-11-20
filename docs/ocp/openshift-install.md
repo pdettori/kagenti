@@ -320,7 +320,7 @@ oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n zero-trus
 kubectl rollout restart daemonsets.apps -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
 ```
 
-wait a few seconds and verify that the daemonsets are correctly started:
+Wait a few seconds and verify that the daemonsets are correctly started:
 
 ```shell
 kubectl get daemonsets.apps -n zero-trust-workload-identity-manager 
