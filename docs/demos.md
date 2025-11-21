@@ -66,7 +66,7 @@ AGENT_NAMESPACES=<comma separated list of Kubernetes namespaces to set up in Kin
 SLACK_BOT_TOKEN=<This is required only if you wish to use the Slack tool example.>
 ```
 
-Run the installer.
+Run the installer. Use the `--help` flag to see all available options.
 
 ```shell
 cd kagenti/installer
@@ -113,7 +113,7 @@ This option will:
 - Skip kind-specific operations like image preloading
 - Deploy all platform components to your existing cluster
 
-Make sure your `KUBECONFIG` is properly set and points to a cluster where you have admin privileges before using this option.
+Make sure your `KUBECONFIG` is properly set and points to a cluster where you have admin privileges before using this option. (Use `kubectl config get-contexts` and `use-context`)
 
 **Note:** When using an existing cluster, the registry component is automatically skipped as it's primarily designed for kind clusters that have been initialized with a specific configuration.
 
@@ -121,12 +121,6 @@ To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
 ```shell
 uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
-```
-
-To get a full list of components and available install parameters issue:
-
-```shell
-uv run kagenti-installer --help
 ```
 
 ## Connect to the Kagenti UI
