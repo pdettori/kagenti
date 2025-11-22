@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5 # Using latest major version
+        uses: actions/checkout@v6 # Using latest major version
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

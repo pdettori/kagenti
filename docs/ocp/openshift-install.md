@@ -189,6 +189,17 @@ Check [Ansible README](../../deployments/ansible/README.md) for more details on 
 
 To override existing environments, you may create a [customized override file](../../deployments/ansible/README.md#using-override-files).
 
+
+## Checking the Spire daemonsets
+
+After installation, check if the spire daemonsets are correctly started with the command:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+
+If `Current` and/or `Ready` status is `0`, follow the steps in the [troubleshooting](#spire-daemonset-does-not-start) section.
+
 ## Authentication Configuration
 
 Kagenti UI now supports Keycloak authentication by default. The `kagenti` helm chart creates automatically the required  
@@ -321,7 +332,41 @@ running the command:
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
 ```
 
-## Upgrade from OCP 4.18 to 4.19
+## Troubleshooting
+
+### Spire daemonset does not start
+
+Run the following command:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
+will not work. 
+
+Run the following commands:
+
+```shell
+kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-agent
+kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+If any of them shows `Events` including messages such as `Error creating: pods <pod-name-prefix> is forbidden: unable to validate against any security context constraint`, run the following commands:
+
+```shell
+oc adm policy add-scc-to-user privileged -z spire-agent -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-agent
+
+oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+
+Wait a few seconds and verify that the daemonsets are correctly started:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+
+### Upgrade from OCP 4.18 to 4.19
 
 If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 65 Gi).
 
@@ -353,7 +398,7 @@ You can ignore the warnings, the upgrade should be happening.
 oc get clusterversion
 ```
 
-## Remove Cert Manager
+### Remove Cert Manager
 
 If cert manager is running, we have to remove it before Kagenti installation.
 
