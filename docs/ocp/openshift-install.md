@@ -415,7 +415,7 @@ Using the OpenShift Container Platform web console:
   2. Go to Operators > Installed Operators.
   3. Locate the cert-manager Operator for Red Hat OpenShift in the list.
   4. Click the Options menu (three vertical dots) next to the operator.
-  5. Select Uninstall Operator
+  5. Select Uninstall Operator.
 
 Then from the console:
 
