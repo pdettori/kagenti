@@ -103,9 +103,6 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    **Important**: We have to disable the use of the OpenShift CA as its trusted Cert:
 
    ```shell
-   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG
-   
-   
    helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
    ```
 
