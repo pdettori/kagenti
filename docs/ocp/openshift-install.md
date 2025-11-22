@@ -186,10 +186,9 @@ Check [Ansible README](../../deployments/ansible/README.md) for more details on 
 
 To override existing environments, you may create a [customized override file](../../deployments/ansible/README.md#using-override-files).
 
-
 ## Checking the Spire daemonsets
 
-After installation, check if the spire daemonsets are correctly started with the command:
+After installation, check if the SPIRE daemonsets are correctly started with the command:
 
 ```shell
 kubectl get daemonsets -n zero-trust-workload-identity-manager
@@ -242,21 +241,21 @@ Open the printed address in your browser and accept the certificate. It is norma
 ## Running the demo
 
 At this time, only the OpenAI API-backed agents have been tested (`a2a-content-extractor` and `a2a-currency-converter`).
-You may use the pre-built images available at https://github.com/orgs/kagenti/packages?repo_name=agent-examples
-or build from source. Building from source has been tested only with `quay.io`, and requires setting up a robot account on [quay.io](https://quay.io), creating empty repos in your organization for the repos to build (e.g.`a2a-contact-extractor` and `a2a-currency-converter`) and granting the robot account write access to those repos.
+You may use the pre-built images available at [https://github.com/orgs/kagenti/packages?repo_name=agent-examples](https://github.com/orgs/kagenti/packages?repo_name=agent-examples) or build from source.
+
+Building from source has been tested only with `quay.io`, and requires setting up a robot account on [quay.io](https://quay.io), creating empty repos in your organization for the repos to build (e.g.`a2a-contact-extractor` and `a2a-currency-converter`) and granting the robot account write access to those repos.
 
 Finally, you may get the Kubernetes secret from the robot account you created, and apply the secret to the namespaces
-you enabled for agents and tools (e.g. `team1` and `team2`). 
+you enabled for agents and tools (e.g. `team1` and `team2`).
 
 You should now be able to use the UI to:
 
 - Import an agent
 - List the agent
 - Interact with the agent from the agent details page
-- Import a MCP tool 
-- List the tool 
+- Import a MCP tool
+- List the tool
 - Interact with the tool from the tool details page
-
 
 # 🚀 Running the Demo
 
@@ -271,8 +270,8 @@ There are two ways to get the agent images for the demo: using pre-built images 
 
 This is the fastest way to get started. The required images are already built and hosted on the GitHub Container Registry.
 
-1.  You can find all the necessary images here: **[kagenti/agent-examples Packages](https://github.com/orgs/kagenti/packages?repo_name=agent-examples)**
-2.  No image building or secret configuration is required. You can proceed directly to the **"Verifying in the UI"** section.
+1. You can find all the necessary images here: **[kagenti/agent-examples Packages](https://github.com/orgs/kagenti/packages?repo_name=agent-examples)**
+2. No image building or secret configuration is required. You can proceed directly to the **"Verifying in the UI"** section.
 
 ---
 
@@ -282,28 +281,29 @@ Follow this path if you want to build the agent container images yourself.
 
 ### Prerequisites
 
-* A user or organization account on **[quay.io](https://quay.io)**.
-* Namespaces created in your Kubernetes cluster where you will run agents and tools (e.g., `team1` and `team2`).
+- A user or organization account on **[quay.io](https://quay.io)**.
+- Namespaces created in your Kubernetes cluster where you will run agents and tools (e.g., `team1` and `team2`).
 
 ### Steps
 
-1.  **Configure Quay.io**
-    * [Create a robot account](https://docs.redhat.com/en/documentation/red_hat_quay/3/html/user_guide/managing_robot_accounts) for your organization.
-    * Create empty repositories for the images you need to build (e.g., `a2a-content-extractor` and `a2a-currency-converter`).
-    * Grant your robot account **write access** to these new repositories.
+1. **Configure Quay.io**
+    - [Create a robot account](https://docs.redhat.com/en/documentation/red_hat_quay/3/html/user_guide/managing_robot_accounts) for your organization.
+    - Create empty repositories for the images you need to build (e.g., `a2a-content-extractor` and `a2a-currency-converter`).
+    - Grant your robot account **write access** to these new repositories.
 
-2.  **Create Kubernetes Image Pull Secret**
-    * Navigate to your robot account settings in the Quay.io UI.
-    * Select the **Kubernetes Secret** tab and copy the generated secret manifest.
-    * Apply the secret to each namespace where agents will run.
+2. **Create Kubernetes Image Pull Secret**
+    - Navigate to your robot account settings in the Quay.io UI.
+    - Select the **Kubernetes Secret** tab and copy the generated secret manifest.
+    - Apply the secret to each namespace where agents will run.
+
       ```bash
       # Save the secret to a file named quay-secret.yaml, then run:
       kubectl apply -f quay-secret.yaml -n team1
       kubectl apply -f quay-secret.yaml -n team2
       ```
 
-3.  **Build and Push the Images**
-    * Follow the project's build instructions to build the agent images and push them to your Quay.io repositories.
+3. **Build and Push the Images**
+    - Follow the project's build instructions to build the agent images and push them to your Quay.io repositories.
 
 ---
 
@@ -311,14 +311,14 @@ Follow this path if you want to build the agent container images yourself.
 
 After completing either of the setup options above, you should be able to use the UI to:
 
-* **Agents**
-    1.  Import a new agent.
-    2.  List the imported agent.
-    3.  Interact with the agent from its details page.
-* **Tools**
-    1.  Import a new MCP tool.
-    2.  List the imported tool.
-    3.  Interact with the tool from its details page.
+- **Agents**
+    1. Import a new agent.
+    2. List the imported agent.
+    3. Interact with the agent from its details page.
+- **Tools**
+    1. Import a new MCP tool.
+    2. List the imported tool.
+    3. Interact with the tool from its details page.
 
 ## Accessing Keycloak
 
@@ -338,8 +338,8 @@ Run the following command:
 ```shell
 kubectl get daemonsets -n zero-trust-workload-identity-manager
 ```
-If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration 
-will not work. 
+
+If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration will not work.
 
 Run the following commands:
 
@@ -347,6 +347,7 @@ Run the following commands:
 kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-agent
 kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
 ```
+
 If any of them shows `Events` including messages such as `Error creating: pods <pod-name-prefix> is forbidden: unable to validate against any security context constraint`, run the following commands:
 
 ```shell
@@ -375,13 +376,13 @@ Steps:
 oc patch clusterversion version --type merge -p '{"spec":{"channel":"stable-4.19"}}'
 ```
 
-1. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
+2. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
 
 ```shell
 oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' --type=merge
 ```
 
-1. Upgrade to the latest version
+3. Upgrade to the latest version
 
 ```shell
 oc adm upgrade --to-latest=true --allow-not-recommended=true
@@ -389,7 +390,7 @@ oc adm upgrade --to-latest=true --allow-not-recommended=true
 
 You can ignore the warnings, the upgrade should be happening.
 
-1. Monitor the upgrade status:
+4. Monitor the upgrade status:
 
 ```shell
 oc get clusterversion
