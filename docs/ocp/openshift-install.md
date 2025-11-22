@@ -15,7 +15,7 @@ These limitations will be addressed in successive PRs.
 - kubectl >= v1.32.1 or oc >= 4.16.0
 - git >= 2.48.0
 - Access to OpenShift cluster with admin authority (We tested with OpenShift 4.19, see the [upgrade notes](#upgrade-from-ocp-418-to-419) if necessary)
-- Currently we can't disable the installation of Cert Manager, so [remove CA Manager](#remove-cert-manager) before installing Kagenti
+- Currently we can't disable the installation of Cert Manager, so [remove Cert Manager](#remove-cert-manager) before installing Kagenti
 
 ## Check Cluster Network Type and Configure for OVN in Ambient Mode
 
