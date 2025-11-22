@@ -91,7 +91,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
       LATEST_GATEWAY_TAG=$(skopeo list-tags docker://ghcr.io/kagenti/charts/mcp-gateway | jq -r '.Tags[-1]')
       ```
 
-      if this command fails, visit [this page](https://github.com/kagenti/mcp-gateway/pkgs/container/charts%2Fmcp-gateway) to determine the latest version to use
+      if this command fails, visit [this page](https://github.com/kagenti/mcp-gateway/pkgs/container/charts%2Fmcp-gateway) to determine the latest version to use.
 
    ```shell
    helm install mcp-gateway oci://ghcr.io/kagenti/charts/mcp-gateway --create-namespace --namespace mcp-system --version $LATEST_GATEWAY_TAG
