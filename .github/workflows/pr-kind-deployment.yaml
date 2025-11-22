@@ -221,8 +221,27 @@ jobs:
         run: |
           pip install -r kagenti/tests/requirements.txt
 
+      - name: Start port-forward for agent service
+        run: |
+          # Start port-forward in background for E2E tests
+          kubectl port-forward -n team1 svc/weather-service 8000:8000 > /tmp/port-forward.log 2>&1 &
+          PORT_FORWARD_PID=$!
+          echo "PORT_FORWARD_PID=$PORT_FORWARD_PID" >> $GITHUB_ENV
+
+          # Wait for port-forward to be ready
+          for i in {1..10}; do
+            if curl -s http://localhost:8000/health >/dev/null 2>&1 || curl -s http://localhost:8000/ >/dev/null 2>&1; then
+              echo "Port-forward is ready!"
+              break
+            fi
+            echo "Waiting for port-forward... ($i/10)"
+            sleep 1
+          done
+
       - name: Run E2E tests
         working-directory: kagenti
+        env:
+          AGENT_URL: http://localhost:8000
         run: |
           pytest tests/e2e/ -v \
             --timeout=300 \
