@@ -13,14 +13,17 @@ import jwt
 from keycloak import KeycloakAdmin, KeycloakPostError
 
 
-def get_env_var(name: str) -> str:
+def get_env_var(name: str, default: str | None = None) -> str:
     """
-    Fetch an environment variable or raise ValueError if missing.
+    Fetch an environment variable or return default if provided.
+    Raise ValueError if missing and no default is set.
     """
     value = os.environ.get(name)
-    if not value:
-        raise ValueError(f"Missing required environment variable: {name}")
-    return value
+    if value is not None and value != "":
+        return value
+    if default is not None:
+        return default
+    raise ValueError(f"Missing required environment variable: {name}")
 
 
 def write_client_secret(
@@ -101,10 +104,10 @@ client_id = get_client_id()
 try:
     KEYCLOAK_URL = get_env_var("KEYCLOAK_URL")
     KEYCLOAK_TOKEN_EXCHANGE_ENABLED = (
-        get_env_var("KEYCLOAK_TOKEN_EXCHANGE_ENABLED").lower() == "true"
+        get_env_var("KEYCLOAK_TOKEN_EXCHANGE_ENABLED", "true").lower() == "true"
     )
     KEYCLOAK_CLIENT_REGISTRATION_ENABLED = (
-        get_env_var("KEYCLOAK_CLIENT_REGISTRATION_ENABLED").lower() == "true"
+        get_env_var("KEYCLOAK_CLIENT_REGISTRATION_ENABLED", "true").lower() == "true"
     )
 except ValueError as e:
     print(
