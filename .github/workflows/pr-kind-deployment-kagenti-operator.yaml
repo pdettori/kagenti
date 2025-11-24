@@ -197,17 +197,38 @@ jobs:
           kubectl get service dockerhost -n team1
           kubectl get endpointslice dockerhost -n team1
 
-      - name: Apply weather-tool and weather service (Agent/Tool resources)
+      - name: Wait for kagenti-operator CRDs to be established
+        run: |
+          echo "Waiting for kagenti-operator CRDs to be established..."
+
+          # List of CRDs required by kagenti-operator
+          CRDS=(
+            "agents.agent.kagenti.dev"
+            "agentbuilds.agent.kagenti.dev"
+            "agentcards.agent.kagenti.dev"
+            "mcpservers.mcp.kagenti.com"
+            "mcpvirtualservers.mcp.kagenti.com"
+          )
+
+          for crd in "${CRDS[@]}"; do
+            echo "Waiting for CRD: $crd"
+            kubectl wait --for condition=established --timeout=300s crd/$crd || {
+              echo "ERROR: CRD $crd not found or not established"
+              echo "Available CRDs:"
+              kubectl get crds | grep -E 'kagenti|mcp' || echo "No kagenti/mcp CRDs found"
+              echo ""
+              echo "Kagenti-system pods:"
+              kubectl get pods -n kagenti-system
+              exit 1
+            }
+            echo "✓ CRD $crd is ready"
+          done
+
+          echo "All kagenti-operator CRDs are established!"
+
+      - name: Apply weather-service Agent resource
         run: |
           kubectl apply -f kagenti/examples/agents/
-
-      - name: Wait for weather-tool deployment
-        run: |
-          timeout 120 bash -c 'until kubectl get deployment weather-tool -n team1 &> /dev/null; do sleep 2; done'
-          kubectl wait --for=condition=available --timeout=300s deployment/weather-tool -n team1 || {
-            kubectl get events -n team1 --sort-by='.lastTimestamp'
-            exit 1
-          }
 
       - name: Wait for weather-service deployment
         run: |
@@ -274,10 +295,6 @@ jobs:
           echo ""
           echo "=== Team1 Namespace Status ==="
           kubectl get all -n team1 || true
-
-          echo ""
-          echo "=== Weather Tool Logs ==="
-          kubectl logs -n team1 deployment/weather-tool --tail=50 --all-containers=true || true
 
           echo ""
           echo "=== Weather Service Logs ==="
