@@ -86,7 +86,7 @@ jobs:
       - name: Run Ansible installer (dev mode with kagenti-operator)
         run: |
           cd deployments/ansible
-          ./run-install.sh --env dev_kagenti_operator
+          ./run-install.sh --env-file ../envs/dev_kagenti_operator_values.yaml
 
       - name: Wait for platform to be ready
         run: |
