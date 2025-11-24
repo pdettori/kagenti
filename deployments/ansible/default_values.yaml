@@ -99,11 +99,13 @@ charts:
       components:
         agentNamespaces:
           enabled: true
-        # additional artifacts required by MCP gateway     
+        # additional artifacts required by MCP gateway
         mcpGateway:
           enabled: false
         platformOperator:
           enabled: false
+        kagentiOperator:
+          enabled: true
         ui:
           enabled: false
         istio:
