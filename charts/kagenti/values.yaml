@@ -11,6 +11,8 @@ components:
     enabled: true
   platformOperator:
     enabled: true
+  kagentiOperator:
+    enabled: true
   ui:
     enabled: true
   istio:
@@ -107,6 +109,21 @@ kagenti-platform-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       # TODO this should be controllable with a helm value flag in kagenti-platform-operator-chart
       # - "--enable-client-registration=false"
+      resources:
+        limits:
+          memory: 512Mi
+
+# ------------------------------------------------------------------
+#  Kagenti Operator Configuration
+# ------------------------------------------------------------------
+kagenti-operator-chart:
+  controllerManager:
+    container:
+      args:
+      - "--leader-elect"
+      - "--metrics-bind-address=:8443"
+      - "--health-probe-bind-address=:8081"
+      - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       resources:
         limits:
           memory: 512Mi
