@@ -183,8 +183,8 @@ class TestWeatherAgentConversation:
             f"Response: {full_response}"
         )
 
-        print(f"\n✓ Agent responded successfully via A2A protocol")
-        print(f"✓ Weather MCP tool was invoked")
+        print("\n✓ Agent responded successfully via A2A protocol")
+        print("✓ Weather MCP tool was invoked")
         print(f"  Query: {user_message}")
         print(f"  Response: {full_response[:200]}...")
 

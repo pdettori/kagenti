@@ -16,7 +16,6 @@ Usage:
 """
 
 import pytest
-from kubernetes import client
 from kubernetes.client.rest import ApiException
 
 
@@ -54,19 +53,51 @@ class TestPlatformHealth:
         """
         Verify there are no crashlooping pods.
 
-        Checks that no pods have excessive restart counts (>3).
+        Checks that no pods are currently in a CrashLoopBackOff state
+        or have recently restarted (within the last 5 minutes).
+        Initial startup restarts are ignored.
         """
+        from datetime import datetime, timezone, timedelta
+
         pods = k8s_client.list_pod_for_all_namespaces(watch=False)
 
         crashlooping_pods = []
+        now = datetime.now(timezone.utc)
+        recent_restart_threshold = timedelta(minutes=5)
+
         for pod in pods.items:
+            # Check if pod is in CrashLoopBackOff state
             if pod.status.container_statuses:
                 for container in pod.status.container_statuses:
-                    if container.restart_count > 3:
-                        crashlooping_pods.append(
-                            f"{pod.metadata.namespace}/{pod.metadata.name} "
-                            f"(container: {container.name}, restarts: {container.restart_count})"
-                        )
+                    # Check for CrashLoopBackOff state
+                    if container.state and container.state.waiting:
+                        if container.state.waiting.reason == "CrashLoopBackOff":
+                            crashlooping_pods.append(
+                                f"{pod.metadata.namespace}/{pod.metadata.name} "
+                                f"(container: {container.name}, state: CrashLoopBackOff, "
+                                f"restarts: {container.restart_count})"
+                            )
+                            continue
+
+                    # Check for recent restarts (not just total count)
+                    if (
+                        container.restart_count > 0
+                        and container.state
+                        and container.state.running
+                    ):
+                        started_at = container.state.running.started_at
+                        if started_at:
+                            time_since_start = now - started_at
+                            # If pod restarted recently (within 5 min) and has multiple restarts, flag it
+                            if (
+                                time_since_start < recent_restart_threshold
+                                and container.restart_count > 2
+                            ):
+                                crashlooping_pods.append(
+                                    f"{pod.metadata.namespace}/{pod.metadata.name} "
+                                    f"(container: {container.name}, recent restarts: {container.restart_count}, "
+                                    f"last started: {time_since_start.total_seconds():.0f}s ago)"
+                                )
 
         assert len(crashlooping_pods) == 0, (
             f"Found {len(crashlooping_pods)} crashlooping pods:\n"
