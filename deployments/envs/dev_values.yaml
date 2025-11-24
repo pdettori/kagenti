@@ -53,6 +53,8 @@ charts:
         agentNamespaces:
           enabled: true
         platformOperator:
+          enabled: false  # Disabled to avoid ConfigMap collision with kagentiOperator
+        kagentiOperator:
           enabled: true
         kagentiOperator:
           enabled: false
