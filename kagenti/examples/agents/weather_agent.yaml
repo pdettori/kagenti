@@ -1,0 +1,66 @@
+apiVersion: kagenti.operator.dev/v1alpha1
+kind: Agent
+metadata:
+  labels:
+    app.kubernetes.io/created-by: e2e-test
+    app.kubernetes.io/name: kagenti-operator
+    kagenti.io/framework: LangGraph
+    kagenti.io/protocol: a2a
+    kagenti.io/type: agent
+  name: weather-service
+  namespace: team1
+spec:
+  agentBuildRef: weather-service-build
+  deployAfterBuild: true
+  env:
+  - name: PORT
+    value: "8000"
+  - name: HOST
+    value: 0.0.0.0
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://otel-collector.kagenti-system.svc.cluster.local:8335
+  - name: KEYCLOAK_URL
+    value: http://keycloak.keycloak.svc.cluster.local:8080
+  - name: UV_CACHE_DIR
+    value: /app/.cache/uv
+  - name: LLM_API_BASE
+    value: http://dockerhost:11434/v1
+  - name: LLM_API_KEY
+    value: dummy
+  - name: LLM_MODEL
+    value: qwen2.5:0.5b
+  - name: GITHUB_SECRET_NAME
+    value: github-token-secret
+  kubernetes:
+    containerPorts:
+    - containerPort: 8000
+      name: http
+      protocol: TCP
+    imageSpec:
+      image: weather-service
+      imagePullPolicy: Always
+      imageRegistry: registry.cr-system.svc.cluster.local:5000
+      imageTag: v0.0.1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    servicePorts:
+    - name: http
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+    volumeMounts:
+    - mountPath: /app/.cache
+      name: cache
+    - mountPath: /.marvin
+      name: marvin
+    volumes:
+    - emptyDir: {}
+      name: cache
+    - emptyDir: {}
+      name: marvin
+  suspend: false

@@ -1,4 +1,4 @@
-name: PR Kind Deployment Test
+name: PR Kind Deployment Test (Kagenti Operator)
 
 on:
   pull_request:
@@ -83,10 +83,10 @@ jobs:
               password: "ci-test-pg-password"
           EOF
 
-      - name: Run Ansible installer (dev mode)
+      - name: Run Ansible installer (dev mode with kagenti-operator)
         run: |
           cd deployments/ansible
-          ./run-install.sh --env dev
+          ./run-install.sh --env dev_kagenti_operator
 
       - name: Wait for platform to be ready
         run: |
@@ -191,9 +191,9 @@ jobs:
           kubectl get service dockerhost -n team1
           kubectl get endpointslice dockerhost -n team1
 
-      - name: Apply weather-tool and weather service
+      - name: Apply weather-tool and weather service (Agent/Tool resources)
         run: |
-          kubectl apply -f kagenti/examples/components/
+          kubectl apply -f kagenti/examples/agents/
 
       - name: Wait for weather-tool deployment
         run: |

@@ -1,0 +1,36 @@
+apiVersion: kagenti.operator.dev/v1alpha1
+kind: ToolBuild
+metadata:
+  labels:
+    app.kubernetes.io/created-by: e2e-test
+    app.kubernetes.io/name: kagenti-operator
+    kagenti.io/framework: Python
+  name: weather-tool-build
+  namespace: team1
+spec:
+  cleanupAfterBuild: true
+  mode: custom
+  pipeline:
+    namespace: team1
+    parameters:
+    - name: SOURCE_REPO_SECRET
+      value: github-token-secret
+    - name: repo-url
+      value: github.com/kagenti/agent-examples
+    - name: revision
+      value: main
+    - name: subfolder-path
+      value: mcp/weather_tool
+    - name: image
+      value: registry.cr-system.svc.cluster.local:5000/weather-tool:v0.0.1
+    steps:
+    - configMap: github-clone-step
+      enabled: true
+      name: github-clone
+    - configMap: check-subfolder-step
+      enabled: true
+      name: folder-verification
+    - configMap: kaniko-docker-build-step-local
+      enabled: true
+      name: kaniko-build
+  toolType: MCP

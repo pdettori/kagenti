@@ -1,0 +1,34 @@
+apiVersion: kagenti.operator.dev/v1alpha1
+kind: AgentBuild
+metadata:
+  labels:
+    app.kubernetes.io/created-by: e2e-test
+    app.kubernetes.io/name: kagenti-operator
+    kagenti.io/framework: LangGraph
+  name: weather-service-build
+  namespace: team1
+spec:
+  mode: dev-local
+  pipeline:
+    namespace: ""
+    parameters:
+    - name: SOURCE_REPO_SECRET
+      value: github-token-secret
+    - name: repo-url
+      value: github.com/kagenti/agent-examples
+    - name: revision
+      value: main
+    - name: subfolder-path
+      value: a2a/weather_service
+    - name: image
+      value: registry.cr-system.svc.cluster.local:5000/weather-service:v0.0.1
+    steps:
+    - configMap: github-clone-step
+      enabled: true
+      name: github-clone
+    - configMap: check-subfolder-step
+      enabled: true
+      name: folder-verification
+    - configMap: kaniko-docker-build-step-local
+      enabled: true
+      name: kaniko-build
