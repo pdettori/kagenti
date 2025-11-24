@@ -7,7 +7,6 @@ End-to-end tests for Kagenti platform deployment validation.
 ```
 tests/
 ├── README.md                      # This file
-├── requirements.txt               # Test dependencies
 ├── conftest.py                    # Shared pytest fixtures
 └── e2e/                           # E2E test suite
     ├── __init__.py
@@ -16,6 +15,8 @@ tests/
     └── test_agent_conversation.py # Agent A2A conversation with Ollama
 ```
 
+**Note**: Test dependencies are now defined in the root `pyproject.toml` under `[project.optional-dependencies.test]`.
+
 ## Running Tests
 
 ### Prerequisites
@@ -23,8 +24,8 @@ tests/
 1. **Deploy Kagenti platform** to a Kubernetes cluster (Kind, OpenShift, etc.)
 2. **Install test dependencies**:
    ```bash
-   cd kagenti/tests
-   pip install -r requirements.txt
+   # From repository root
+   pip install -e .[test]
    ```
 3. **For agent conversation tests**, set up port-forwarding if testing from outside the cluster:
    ```bash

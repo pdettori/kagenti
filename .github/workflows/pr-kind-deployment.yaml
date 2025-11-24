@@ -219,7 +219,7 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install -r kagenti/tests/requirements.txt
+          pip install -e .[test]
 
       - name: Start port-forward for agent service
         run: |
