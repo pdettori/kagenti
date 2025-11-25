@@ -114,13 +114,13 @@ except ValueError as e:
         f"Expected environment variable missing. Skipping client registration of {client_id}."
     )
     print(e)
-    exit()
+    exit(1)
 
 if not KEYCLOAK_CLIENT_REGISTRATION_ENABLED:
     print(
         f"Client registration (KEYCLOAK_CLIENT_REGISTRATION_ENABLED=false) disabled. Skipping registration of {client_id}."
     )
-    exit()
+    exit(0)
 
 keycloak_admin = KeycloakAdmin(
     server_url=KEYCLOAK_URL,
@@ -148,7 +148,9 @@ internal_client_id = register_client(
         # Security considerations: Ensure only trusted clients have this capability, restrict scopes and permissions as needed,
         # and audit usage to prevent privilege escalation or unauthorized access.
         "attributes": {
-            "standard.token.exchange.enabled": str(KEYCLOAK_TOKEN_EXCHANGE_ENABLED).lower(),  # Enable token exchange
+            "standard.token.exchange.enabled": str(
+                KEYCLOAK_TOKEN_EXCHANGE_ENABLED
+            ).lower(),  # Enable token exchange
         },
     },
 )
