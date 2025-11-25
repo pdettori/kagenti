@@ -44,7 +44,7 @@ Kagenti's identity architecture is built on three core principles:
 In Kagenti, workloads receive SPIFFE identities in the following format:
 
 ```console
-spiffe://localtest.me/ns/{namespace}/sa/{service-account}
+spiffe://{trust-domain}/ns/{namespace}/sa/{service-account}
 ```
 
 **Examples:**
@@ -57,10 +57,10 @@ spiffe://localtest.me/ns/team/sa/slack-researcher
 spiffe://localtest.me/ns/team/sa/weather-tool
 
 # GitHub Issue Agent  
-spiffe://localtest.me/ns/team/sa/github-issue-agent
+spiffe://apps.cluster-swkz5.dynamic.redhatworkshops.io/ns/team/sa/github-issue-agent
 
 # MCP Gateway Service
-spiffe://localtest.me/ns/gateway-system/sa/mcp-gateway
+spiffe://apps.cluster-swkz5.dynamic.redhatworkshops.io/ns/gateway-system/sa/mcp-gateway
 ```
 
 ### SVID Types
@@ -200,10 +200,6 @@ admin:
 # Access Keycloak Admin Console
 open http://keycloak.localtest.me:8080/admin/master/console/
 
-# Default admin credentials
-Username: admin
-Password: admin
-
 # Get admin credentials from Kubernetes (if different)
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template=\
   'Username: {{.data.username | base64decode}}  Password: {{.data.password | base64decode}}{{"\n"}}'
@@ -240,12 +236,15 @@ sequenceDiagram
     participant UI as Kagenti UI
     participant KC as Keycloak
     
-    User->>UI: Access Agent Catalog
+    User->>UI: Access UI
     UI->>KC: Redirect to login
     KC->>User: Present login form
     User->>KC: Provide credentials
-    KC->>UI: Return JWT token
+    KC->>UI: Return OAuth token
     UI->>User: Display authenticated interface
+    User->>UI: Access Agent Catalog
+    UI->>KC: Present OAuth token
+    KC->>UI: Return JWT token
 ```
 </details>
 
