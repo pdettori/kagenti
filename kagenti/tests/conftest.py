@@ -51,6 +51,12 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "auth: marks tests related to authentication/authorization"
     )
+    config.addinivalue_line(
+        "markers", "platform_operator: marks tests for platform-operator (Component CRDs)"
+    )
+    config.addinivalue_line(
+        "markers", "kagenti_operator: marks tests for kagenti-operator (Agent/AgentBuild CRDs)"
+    )
 
 
 def pytest_collection_modifyitems(config, items):

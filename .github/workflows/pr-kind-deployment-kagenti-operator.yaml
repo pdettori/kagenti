@@ -226,9 +226,14 @@ jobs:
 
           echo "All kagenti-operator CRDs are established!"
 
-      - name: Apply weather-service Agent resource
+      - name: Apply pipeline-template-dev ConfigMap
         run: |
-          kubectl apply -f kagenti/examples/agents/
+          kubectl apply -f kagenti/examples/agents/pipeline-template-dev.yaml
+
+      - name: Apply weather-service Agent resources
+        run: |
+          kubectl apply -f kagenti/examples/agents/weather_agent_build.yaml
+          kubectl apply -f kagenti/examples/agents/weather_agent.yaml
 
       - name: Wait for weather-service deployment
         run: |
@@ -265,12 +270,13 @@ jobs:
             sleep 1
           done
 
-      - name: Run E2E tests
+      - name: Run E2E tests (kagenti-operator only)
         working-directory: kagenti
         env:
           AGENT_URL: http://localhost:8000
         run: |
           pytest tests/e2e/ -v \
+            -m "not platform_operator" \
             --timeout=300 \
             --tb=short \
             --junit-xml=../test-results/e2e-results.xml

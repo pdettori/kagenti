@@ -238,12 +238,13 @@ jobs:
             sleep 1
           done
 
-      - name: Run E2E tests
+      - name: Run E2E tests (platform-operator only)
         working-directory: kagenti
         env:
           AGENT_URL: http://localhost:8000
         run: |
           pytest tests/e2e/ -v \
+            -m "not kagenti_operator" \
             --timeout=300 \
             --tb=short \
             --junit-xml=../test-results/e2e-results.xml
