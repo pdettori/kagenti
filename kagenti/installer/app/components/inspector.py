@@ -13,10 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typer
 
 from .. import config
-from ..utils import console, run_command
+from ..utils import run_command
 
 
 def install(**kwargs):

@@ -28,13 +28,12 @@ from a2a.types import (
 
 
 # ============================================================================
-# Test: Weather Agent Conversation via A2A Protocol (Platform Operator Only)
+# Test: Weather Agent Conversation via A2A Protocol (Both Operators)
 # ============================================================================
 
 
-@pytest.mark.platform_operator
 class TestWeatherAgentConversation:
-    """Test weather-service agent with MCP weather-tool (platform-operator only)."""
+    """Test weather-service agent with MCP weather-tool (works with both operators)."""
 
     @pytest.mark.asyncio
     async def test_agent_simple_query(self):

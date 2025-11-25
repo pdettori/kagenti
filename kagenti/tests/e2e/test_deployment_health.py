@@ -106,13 +106,12 @@ class TestPlatformHealth:
 
 
 # ============================================================================
-# Test: Weather Tool Deployment (Platform Operator Only)
+# Test: Weather Tool Deployment (Both Operators)
 # ============================================================================
 
 
-@pytest.mark.platform_operator
 class TestWeatherToolDeployment:
-    """Test weather-tool deployment health (platform-operator with Component CRDs)."""
+    """Test weather-tool deployment health (works with both operators)."""
 
     @pytest.mark.critical
     def test_weather_tool_deployment_exists(self, k8s_apps_client):

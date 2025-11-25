@@ -35,8 +35,8 @@ def get_keycloak_access_token(
         print(f"HTTP error occurred: {e}")
         print(f"Error details: {response.text}")
 
-    except KeyError as e:
-        print(f"Cannot obtain access token")
+    except KeyError:
+        print("Cannot obtain access token")
         print(f"Error details: {response.text}")
 
 

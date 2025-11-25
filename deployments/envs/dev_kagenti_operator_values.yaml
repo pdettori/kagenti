@@ -13,6 +13,12 @@ certManager:
 tekton:
   enabled: true
 
+toolhiveCRDs:
+  enabled: true
+
+toolhiveOperator:
+  enabled: true
+
 kiali:
   enabled: true
 
@@ -40,6 +46,10 @@ charts:
         kiali:
           enabled: true
         toolhive:
+          enabled: true
+        toolhiveCRDs:
+          enabled: true
+        toolhiveOperator:
           enabled: true
 
   ####################################################################
