@@ -366,7 +366,7 @@ kubectl get daemonsets -n zero-trust-workload-identity-manager
 
 ### Upgrade from OCP 4.18 to 4.19
 
-If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 65 Gi).
+If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
 
 Steps:
 
