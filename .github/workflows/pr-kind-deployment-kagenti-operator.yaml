@@ -230,31 +230,11 @@ jobs:
         run: |
           kubectl apply -f kagenti/examples/agents/pipeline-template-dev.yaml
 
-      - name: Apply Agent resources (weather-service) and MCPServer (weather-tool)
+      # TOOL DEPLOYMENT (FIRST - agent depends on tool being available)
+      - name: Build weather-tool image
         run: |
-          # Deploy weather-service (agent) using Agent/AgentBuild CRs
-          kubectl apply -f kagenti/examples/agents/weather_agent_build.yaml
-          kubectl apply -f kagenti/examples/agents/weather_agent.yaml
-
-          # Build weather-tool image using AgentBuild
+          echo "===== STEP 1: Building weather-tool image ====="
           kubectl apply -f kagenti/examples/agents/weather_tool_build.yaml
-
-          # Deploy weather-tool using Toolhive MCPServer CR
-          kubectl apply -f kagenti/examples/mcpservers/weather_tool.yaml
-
-      - name: Wait for weather-service deployment
-        run: |
-          timeout 300 bash -c 'until kubectl get deployment weather-service -n team1 &> /dev/null; do sleep 2; done' || {
-            echo "Deployment not created after 300s, checking operator logs..."
-            kubectl logs -n kagenti-system deployment/kagenti-controller-manager --tail=100
-            kubectl get agents -n team1
-            kubectl describe agent weather-service -n team1
-            exit 1
-          }
-          kubectl wait --for=condition=available --timeout=300s deployment/weather-service -n team1 || {
-            kubectl get events -n team1 --sort-by='.lastTimestamp'
-            exit 1
-          }
 
       - name: Wait for weather-tool AgentBuild to complete
         run: |
@@ -280,6 +260,11 @@ jobs:
             sleep 5
           done
 
+      - name: Deploy weather-tool via Toolhive MCPServer
+        run: |
+          echo "===== STEP 2: Deploying weather-tool via Toolhive MCPServer ====="
+          kubectl apply -f kagenti/examples/mcpservers/weather_tool.yaml
+
       - name: Wait for weather-tool MCPServer deployment
         run: |
           echo "Waiting for Toolhive to create weather-tool deployment from MCPServer..."
@@ -293,6 +278,27 @@ jobs:
           kubectl wait --for=condition=available --timeout=300s deployment/weather-tool -n team1 || {
             kubectl get events -n team1 --sort-by='.lastTimestamp'
             kubectl describe deployment weather-tool -n team1
+            exit 1
+          }
+
+      # AGENT DEPLOYMENT (AFTER tool is ready - agent depends on tool)
+      - name: Deploy weather-service Agent
+        run: |
+          echo "===== STEP 3: Deploying weather-service Agent ====="
+          kubectl apply -f kagenti/examples/agents/weather_agent_build.yaml
+          kubectl apply -f kagenti/examples/agents/weather_agent.yaml
+
+      - name: Wait for weather-service deployment
+        run: |
+          timeout 300 bash -c 'until kubectl get deployment weather-service -n team1 &> /dev/null; do sleep 2; done' || {
+            echo "Deployment not created after 300s, checking operator logs..."
+            kubectl logs -n kagenti-system deployment/kagenti-controller-manager --tail=100
+            kubectl get agents -n team1
+            kubectl describe agent weather-service -n team1
+            exit 1
+          }
+          kubectl wait --for=condition=available --timeout=300s deployment/weather-service -n team1 || {
+            kubectl get events -n team1 --sort-by='.lastTimestamp'
             exit 1
           }
 
