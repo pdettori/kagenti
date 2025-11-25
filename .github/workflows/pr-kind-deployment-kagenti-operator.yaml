@@ -230,6 +230,20 @@ jobs:
         run: |
           kubectl apply -f kagenti/examples/agents/pipeline-template-dev.yaml
 
+      - name: Wait for Toolhive CRDs to be established
+        run: |
+          echo "Waiting for Toolhive MCPServer CRD to be established..."
+          kubectl wait --for condition=established --timeout=300s crd/mcpservers.toolhive.stacklok.dev || {
+            echo "ERROR: Toolhive MCPServer CRD not found or not established"
+            echo "Available CRDs:"
+            kubectl get crds | grep -E 'toolhive|mcp' || echo "No toolhive/mcp CRDs found"
+            echo ""
+            echo "Toolhive-system pods:"
+            kubectl get pods -n toolhive-system || echo "No toolhive-system namespace"
+            exit 1
+          }
+          echo "✓ Toolhive MCPServer CRD is ready"
+
       # TOOL DEPLOYMENT (FIRST - agent depends on tool being available)
       - name: Build weather-tool image
         run: |
