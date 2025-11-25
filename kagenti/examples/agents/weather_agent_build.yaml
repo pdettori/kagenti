@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: kagenti-operator
     kagenti.io/framework: LangGraph
   name: weather-service-build
-  namespace: team1
+  namespace: kagenti-system
 spec:
   mode: dev
 
@@ -18,7 +18,7 @@ spec:
       name: github-token-secret
 
   pipeline:
-    namespace: team1
+    namespace: kagenti-system
     parameters:
     - name: SOURCE_REPO_SECRET
       value: github-token-secret

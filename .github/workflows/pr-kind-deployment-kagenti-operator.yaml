@@ -253,22 +253,22 @@ jobs:
       - name: Wait for weather-tool AgentBuild to complete
         run: |
           echo "Waiting for weather-tool-build AgentBuild to complete..."
-          timeout 300 bash -c 'until kubectl get agentbuild weather-tool-build -n team1 &> /dev/null; do sleep 2; done' || {
+          timeout 300 bash -c 'until kubectl get agentbuild weather-tool-build -n kagenti-system &> /dev/null; do sleep 2; done' || {
             echo "AgentBuild not created after 300s"
-            kubectl get agentbuilds -n team1
+            kubectl get agentbuilds -n kagenti-system
             exit 1
           }
 
           # Wait for build to succeed
           for i in {1..60}; do
-            phase=$(kubectl get agentbuild weather-tool-build -n team1 -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+            phase=$(kubectl get agentbuild weather-tool-build -n kagenti-system -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
             echo "AgentBuild phase: $phase"
             if [ "$phase" = "Succeeded" ]; then
               echo "AgentBuild completed successfully!"
               break
             elif [ "$phase" = "Failed" ]; then
               echo "AgentBuild failed!"
-              kubectl describe agentbuild weather-tool-build -n team1
+              kubectl describe agentbuild weather-tool-build -n kagenti-system
               exit 1
             fi
             sleep 5
