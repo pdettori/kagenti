@@ -148,7 +148,7 @@ internal_client_id = register_client(
         # Security considerations: Ensure only trusted clients have this capability, restrict scopes and permissions as needed,
         # and audit usage to prevent privilege escalation or unauthorized access.
         "attributes": {
-            "standard.token.exchange.enabled": KEYCLOAK_TOKEN_EXCHANGE_ENABLED,  # Enable token exchange
+            "standard.token.exchange.enabled": str(KEYCLOAK_TOKEN_EXCHANGE_ENABLED).lower(),  # Enable token exchange
         },
     },
 )
