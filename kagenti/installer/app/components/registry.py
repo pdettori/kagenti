@@ -60,9 +60,9 @@ def install(**kwargs):
             console.log(
                 "[bold green]✓[/bold green] Registry DNS configured in Kind container."
             )
-        except ValueError:
+        except ValueError as e:
             console.log(
-                "[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
+                f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
             )
             raise typer.Exit(1)
 

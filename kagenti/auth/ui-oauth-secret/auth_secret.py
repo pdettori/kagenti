@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import sys
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Union
 from keycloak import KeycloakAdmin, KeycloakPostError
 from kubernetes import client, config, dynamic
 from kubernetes.client import api_client

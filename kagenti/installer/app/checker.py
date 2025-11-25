@@ -37,7 +37,7 @@ def check_dependencies(use_existing_cluster: bool = False):
         container_engine = ContainerEngine(config.CONTAINER_ENGINE)
     except ValueError:
         console.log(
-            "[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
+            f"[bold red]✗ Container engine must be either 'docker' or 'podman'[/bold red]"
         )
         raise typer.Exit(1)
 

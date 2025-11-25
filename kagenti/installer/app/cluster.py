@@ -39,7 +39,7 @@ def kind_cluster_exists():
         )
         return config.CLUSTER_NAME in result.stdout.split()
     except subprocess.CalledProcessError as e:
-        console.log("[bold red]✗ Failed to run kind command.[/bold red]")
+        console.log(f"[bold red]✗ Failed to run kind command.[/bold red]")
         console.log(f"[red]{e.stderr.strip()}[/red]")
         raise typer.Exit(1)
 
@@ -55,9 +55,9 @@ def kind_cluster_running():
             check=True,
         )
         return f"{config.CLUSTER_NAME}-control-plane" in result.stdout.split()
-    except ValueError:
+    except ValueError as e:
         console.log(
-            "[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py [/bold red]"
+            f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py [/bold red]"
         )
         raise typer.Exit(1)
     except subprocess.CalledProcessError as e:
@@ -187,7 +187,7 @@ containerdConfigPatches:
                 f"[bold green]✓[/bold green] Kind cluster '{config.CLUSTER_NAME}' created."
             )
         except subprocess.CalledProcessError as e:
-            console.log("[bold red]✗ Failed to create Kind cluster.[/bold red]")
+            console.log(f"[bold red]✗ Failed to create Kind cluster.[/bold red]")
             console.log(f"[red]{e.stderr.strip()}[/red]")
             raise typer.Exit(1)
     console.print()
@@ -203,9 +203,9 @@ def preload_images_in_kind(images: list[str]):
     )
     try:
         container_engine = config.ContainerEngine(config.CONTAINER_ENGINE)
-    except ValueError:
+    except ValueError as e:
         console.log(
-            "[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py[/bold red]"
+            f"[bold red]✗ Container engine must be set to either 'docker' or 'podman' in config.py[/bold red]"
         )
         raise typer.Exit(1)
 

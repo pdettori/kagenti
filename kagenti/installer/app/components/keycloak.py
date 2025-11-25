@@ -23,6 +23,7 @@ from .. import config
 from ..utils import console, run_command, secret_exists
 
 
+import time
 from keycloak import KeycloakAdmin, KeycloakPostError
 
 
@@ -267,5 +268,5 @@ def install(use_existing_cluster: bool = False, **kwargs):
                 )
     else:
         console.log(
-            "[bold yellow]Skipping initial Keycloak setup because existing cluster is used.[/bold yellow]"
+            f"[bold yellow]Skipping initial Keycloak setup because existing cluster is used.[/bold yellow]"
         )
