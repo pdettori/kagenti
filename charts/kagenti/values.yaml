@@ -40,7 +40,6 @@ common:
 #  Agents Namespaces
 # ------------------------------------------------------------------
 agentNamespaces:
-- kagenti-system  # Needed for AgentBuilds running in kagenti-system
 - team1
 - team2
 
