@@ -28,8 +28,8 @@ spec:
       value: "http://otel-collector.kagenti-system.svc.cluster.local:8335"
     - name: KEYCLOAK_URL
       value: "http://keycloak.keycloak.svc.cluster.local:8080"
-    - name: UV_CACHE_DIR
-      value: "/app/.cache/uv"
+    - name: UV_NO_CACHE
+      value: "1"
     - name: MCP_URL
       value: "http://weather-tool:8000/mcp"
     - name: LLM_API_BASE

@@ -304,6 +304,31 @@ jobs:
             exit 1
           }
 
+      - name: Patch weather-tool StatefulSet for writable /tmp
+        run: |
+          echo "Patching weather-tool StatefulSet to add writable /tmp volume..."
+          # Wait for StatefulSet to be created by Toolhive proxyrunner
+          timeout 60 bash -c 'until kubectl get statefulset weather-tool -n team1 &> /dev/null; do sleep 2; done' || {
+            echo "StatefulSet not created after 60s"
+            kubectl get statefulset -n team1
+            exit 1
+          }
+
+          # Patch the StatefulSet to add emptyDir volume for /tmp
+          # This is needed because Toolhive sets readOnlyRootFilesystem: true but doesn't provide writable volumes
+          kubectl patch statefulset weather-tool -n team1 -p '{"spec":{"template":{"spec":{"volumes":[{"name":"tmp","emptyDir":{}}],"containers":[{"name":"mcp","volumeMounts":[{"name":"tmp","mountPath":"/tmp"}]}]}}}}'
+
+          # Delete the pod to force recreation with the new volume
+          kubectl delete pod -n team1 -l app=weather-tool --wait=false || true
+
+          # Wait for the new pod to be ready
+          kubectl wait --for=condition=ready --timeout=300s pod -n team1 -l app=weather-tool || {
+            echo "weather-tool pod not ready after patch"
+            kubectl get pods -n team1 -l app=weather-tool
+            kubectl logs -n team1 -l app=weather-tool --tail=50 || true
+            exit 1
+          }
+
       # AGENT DEPLOYMENT (AFTER tool is ready - agent depends on tool)
       - name: Deploy weather-service Agent
         run: |
