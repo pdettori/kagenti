@@ -339,7 +339,7 @@ jobs:
         run: |
           # Start port-forward in background for E2E tests
           # Forward directly to pod port 8000 (weather-service listens on 8000, not 8080)
-          POD_NAME=$(kubectl get pod -n team1 -l app=weather-service -o jsonpath='{.items[0].metadata.name}')
+          POD_NAME=$(kubectl get pod -n team1 -l app.kubernetes.io/name=weather-service -o jsonpath='{.items[0].metadata.name}')
           kubectl port-forward -n team1 pod/$POD_NAME 8000:8000 > /tmp/port-forward.log 2>&1 &
           PORT_FORWARD_PID=$!
           echo "PORT_FORWARD_PID=$PORT_FORWARD_PID" >> $GITHUB_ENV
