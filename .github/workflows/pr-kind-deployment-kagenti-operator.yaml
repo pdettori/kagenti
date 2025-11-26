@@ -379,13 +379,13 @@ jobs:
             sleep 1
           done
 
-      - name: Run E2E tests (kagenti-operator only)
+      - name: Run E2E tests (all tests with auto-skip)
         working-directory: kagenti
         env:
           AGENT_URL: http://localhost:8000
+          KAGENTI_CONFIG_FILE: deployments/envs/dev_kagenti_operator_values.yaml
         run: |
           pytest tests/e2e/ -v \
-            -m "not platform_operator" \
             --timeout=300 \
             --tb=short \
             --junit-xml=../test-results/e2e-results.xml
