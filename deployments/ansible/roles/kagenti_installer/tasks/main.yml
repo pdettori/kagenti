@@ -80,16 +80,16 @@
 #
 #  Cert manager
 #
-- name: Install cert manager and wait for start 
+- name: Install cert manager and wait for start
   block:
-  - name: Install cert-manager 
+  - name: Install cert-manager
     kubernetes.core.k8s:
       state: present
       src: "https://github.com/cert-manager/cert-manager/releases/download/{{certManager.version}}/cert-manager.yaml"
 
   - name: Wait for cert manager webhook to start
     command: >-
-      kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=60s
+      kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=120s
   when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))          
 
 #

@@ -54,6 +54,8 @@ charts:
           enabled: true
         platformOperator:
           enabled: true
+        kagentiOperator:
+          enabled: false
         ui:
           enabled: true
         # additional artifacts required by MCP gateway     
