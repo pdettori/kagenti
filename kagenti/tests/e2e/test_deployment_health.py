@@ -138,9 +138,9 @@ class TestWeatherToolDeployment:
         desired_replicas = deployment.spec.replicas or 1
         ready_replicas = deployment.status.ready_replicas or 0
 
-        assert (
-            ready_replicas >= desired_replicas
-        ), f"weather-tool deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+        assert ready_replicas >= desired_replicas, (
+            f"weather-tool deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+        )
 
     def test_weather_tool_pods_running(self, k8s_client, k8s_apps_client):
         """Verify weather-tool pods are in Running state."""
@@ -160,15 +160,13 @@ class TestWeatherToolDeployment:
         assert len(pods.items) > 0, "No weather-tool pods found"
 
         for pod in pods.items:
-            assert (
-                pod.status.phase == "Running"
-            ), f"weather-tool pod {pod.metadata.name} not running: {pod.status.phase}"
+            assert pod.status.phase == "Running", (
+                f"weather-tool pod {pod.metadata.name} not running: {pod.status.phase}"
+            )
 
-    def test_weather_tool_service_exists(self, k8s_client, operator_mode):
+    @pytest.mark.requires_features(["platform_operator"])
+    def test_weather_tool_service_exists(self, k8s_client):
         """Verify weather-tool service exists (platform-operator only)."""
-        if operator_mode != "platform_operator":
-            pytest.skip("Service 'weather-tool' only exists in platform-operator mode")
-
         try:
             service = k8s_client.read_namespaced_service(
                 name="weather-tool", namespace="team1"
@@ -177,10 +175,9 @@ class TestWeatherToolDeployment:
         except ApiException as e:
             pytest.fail(f"weather-tool service not found: {e}")
 
-    def test_weather_tool_service_has_endpoints(self, k8s_client, operator_mode):
+    @pytest.mark.requires_features(["platform_operator"])
+    def test_weather_tool_service_has_endpoints(self, k8s_client):
         """Verify weather-tool service has endpoints (platform-operator only)."""
-        if operator_mode != "platform_operator":
-            pytest.skip("Service 'weather-tool' only exists in platform-operator mode")
 
         try:
             endpoints = k8s_client.read_namespaced_endpoints(
@@ -234,9 +231,9 @@ class TestWeatherServiceDeployment:
         desired_replicas = deployment.spec.replicas or 1
         ready_replicas = deployment.status.ready_replicas or 0
 
-        assert (
-            ready_replicas >= desired_replicas
-        ), f"weather-service deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+        assert ready_replicas >= desired_replicas, (
+            f"weather-service deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+        )
 
     def test_weather_service_pods_running(self, k8s_client, k8s_apps_client):
         """Verify weather-service pods are in Running state."""
@@ -256,17 +253,13 @@ class TestWeatherServiceDeployment:
         assert len(pods.items) > 0, "No weather-service pods found"
 
         for pod in pods.items:
-            assert (
-                pod.status.phase == "Running"
-            ), f"weather-service pod {pod.metadata.name} not running: {pod.status.phase}"
-
-    def test_weather_service_service_exists(self, k8s_client, operator_mode):
-        """Verify weather-service service exists (platform-operator only)."""
-        if operator_mode != "platform_operator":
-            pytest.skip(
-                "Service 'weather-service' only exists in platform-operator mode"
+            assert pod.status.phase == "Running", (
+                f"weather-service pod {pod.metadata.name} not running: {pod.status.phase}"
             )
 
+    @pytest.mark.requires_features(["platform_operator"])
+    def test_weather_service_service_exists(self, k8s_client):
+        """Verify weather-service service exists (platform-operator only)."""
         try:
             service = k8s_client.read_namespaced_service(
                 name="weather-service", namespace="team1"
@@ -275,12 +268,9 @@ class TestWeatherServiceDeployment:
         except ApiException as e:
             pytest.fail(f"weather-service service not found: {e}")
 
-    def test_weather_service_service_has_endpoints(self, k8s_client, operator_mode):
+    @pytest.mark.requires_features(["platform_operator"])
+    def test_weather_service_service_has_endpoints(self, k8s_client):
         """Verify weather-service service has endpoints (platform-operator only)."""
-        if operator_mode != "platform_operator":
-            pytest.skip(
-                "Service 'weather-service' only exists in platform-operator mode"
-            )
 
         try:
             endpoints = k8s_client.read_namespaced_endpoints(
@@ -335,9 +325,9 @@ class TestKeycloakDeployment:
             desired_replicas = deployment.spec.replicas or 1
             ready_replicas = deployment.status.ready_replicas or 0
 
-            assert (
-                ready_replicas >= desired_replicas
-            ), f"Keycloak deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+            assert ready_replicas >= desired_replicas, (
+                f"Keycloak deployment not ready: {ready_replicas}/{desired_replicas} replicas"
+            )
             return  # Success
         except ApiException:
             pass  # Try statefulset
@@ -351,9 +341,9 @@ class TestKeycloakDeployment:
             desired_replicas = statefulset.spec.replicas or 1
             ready_replicas = statefulset.status.ready_replicas or 0
 
-            assert (
-                ready_replicas >= desired_replicas
-            ), f"Keycloak statefulset not ready: {ready_replicas}/{desired_replicas} replicas"
+            assert ready_replicas >= desired_replicas, (
+                f"Keycloak statefulset not ready: {ready_replicas}/{desired_replicas} replicas"
+            )
         except ApiException as e:
             pytest.fail(f"Keycloak deployment/statefulset not found: {e}")
 
@@ -380,17 +370,17 @@ class TestPlatformOperatorDeployment:
                 label_selector="control-plane=controller-manager",
             )
 
-            assert (
-                len(deployments.items) > 0
-            ), "Platform Operator deployment not found in kagenti-system"
+            assert len(deployments.items) > 0, (
+                "Platform Operator deployment not found in kagenti-system"
+            )
 
             deployment = deployments.items[0]
             desired_replicas = deployment.spec.replicas or 1
             ready_replicas = deployment.status.ready_replicas or 0
 
-            assert (
-                ready_replicas >= desired_replicas
-            ), f"Platform Operator not ready: {ready_replicas}/{desired_replicas} replicas"
+            assert ready_replicas >= desired_replicas, (
+                f"Platform Operator not ready: {ready_replicas}/{desired_replicas} replicas"
+            )
 
         except ApiException as e:
             pytest.fail(f"Could not check Platform Operator: {e}")
