@@ -64,12 +64,14 @@ mmdc -i 01-user-authentication-flow.mmd -o 01-user-authentication-flow.png
 mmdc -i 02-agent-token-exchange-flow.mmd -o 02-agent-token-exchange-flow.png  
 mmdc -i 03-tool-access-delegated-token-flow.mmd -o 03-tool-access-delegated-token-flow.png
 mmdc -i 04-mcp-gateway-authentication-flow.mmd -o 04-mcp-gateway-authentication-flow.png
+mmdc -i 05-tool-with-external-api-flow.mmd -o 05-tool-with-external-api-flow.png
 
 # Generate all diagrams as SVG (vector format)
 mmdc -i 01-user-authentication-flow.mmd -o 01-user-authentication-flow.svg
 mmdc -i 02-agent-token-exchange-flow.mmd -o 02-agent-token-exchange-flow.svg
 mmdc -i 03-tool-access-delegated-token-flow.mmd -o 03-tool-access-delegated-token-flow.svg
 mmdc -i 04-mcp-gateway-authentication-flow.mmd -o 04-mcp-gateway-authentication-flow.svg
+mmdc -i 05-tool-with-external-api-flow.mmd -o 05-tool-with-external-api-flow.svg
 ```
 
 ### Option 3: Batch Script

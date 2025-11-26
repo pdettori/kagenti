@@ -197,8 +197,11 @@ admin:
 ### Keycloak Admin Access
 
 ```bash
-# Access Keycloak Admin Console
+# Access Keycloak Admin Console 
+# on kind:
 open http://keycloak.localtest.me:8080/admin/master/console/
+# on OpenShift:
+open "https://$(kubectl get route mcp-proxy -n kagenti-system -o jsonpath='{.status.ingress[0].host}')"
 
 # Get admin credentials from Kubernetes (if different)
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template=\
@@ -325,26 +328,26 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 }
 ```
 
-#### Stage 3: Tool Access with Delegated Token
+#### Stage 3: Internal Tool Access with Delegated Token
 
-![Tool Access with Delegated Token Flow](./diagrams/images/png/03-tool-access-delegated-token-flow.png)
+![Internal Tool Access with Delegated Token Flow](./diagrams/images/png/03-tool-access-delegated-token-flow.png)
 
-*Figure 3: Tool Access Flow - Shows how agents call tools using delegated tokens with proper permission validation*
+*Figure 3: Internal Tool Access Flow - Shows how agents call internal tools using delegated tokens with proper permission validation*
 
 <details>
 <summary>View Mermaid Source Code</summary>
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Slack Agent
-    participant Tool as Slack Tool
-    participant API as Slack API
+    participant Agent as Auth Bridge
+    participant Tool as Internal Tool
+    participant API as Internal API
     participant KC as Keycloak
     
     Agent->>Tool: Call tool with delegated token
     Tool->>KC: Validate token
     KC->>Tool: Confirm token + scopes
-    Tool->>API: Make Slack API call
+    Tool->>API: Make Internal API call
     API->>Tool: Return data
     Tool->>Agent: Return processed result
 ```
@@ -481,6 +484,62 @@ def validate_request(request):
         return PermissionLevel.PARTIAL
     else:
         raise AuthorizationError("Insufficient permissions")
+```
+
+#### Stage 4: External API Access with Delegated Token and Vault
+
+![External API Access with Delegated Token and Vault Flow](./diagrams/images/png/05-tool-with-external-api-flow.png)
+
+*Figure 5: External API Access with Vault Flow - Shows how agents call internal tools using delegated tokens with proper permission validation and the Vault exchanges this token for external API key for accessing external APIs*
+
+<details>
+<summary>View Mermaid Source Code</summary>
+
+```mermaid
+sequenceDiagram
+    participant Agent as Agent
+    participant Tool as Tool
+    participant KC as Keycloak
+    participant VA as Vault
+    participant API as External API
+
+    Agent->>Tool: Call tool with delegated token
+    Tool->>KC: Validate token
+    KC->>Tool: Confirm token + scopes
+    Tool->>VA: Request External API key (send token)
+    VA->>KC: Request OIDC discovery
+    KC->>VA: Return public keys to validate token
+    VA->>VA: Verify the Vault policies and claims
+    VA->>Tool: Return External API key
+    Tool->>API: Request data with External API key
+    API->>Tool: Return data
+```
+</details>
+
+### JWT Token Structure
+
+**User Token:**
+```json
+{
+  "sub": "user-123",
+  "preferred_username": "slack-full-access-user",
+  "aud": "kagenti-ui",
+  "exp": 1735689600,
+  "roles": ["slack-full-access", "slack-partial-access"]
+}
+```
+
+**Agent-Scoped Token (after exchange):**
+```json
+{
+  "sub": "user-123",
+  "act": {
+    "sub": "spiffe://localtest.me/ns/team/sa/slack-researcher"
+  },
+  "aud": "slack-tool",
+  "exp": 1735686900,
+  "scope": "slack-full-access"
+}
 ```
 
 ---
