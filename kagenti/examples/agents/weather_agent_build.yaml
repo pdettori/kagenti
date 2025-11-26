@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: kagenti-operator
     kagenti.io/framework: LangGraph
   name: weather-service-build
-  namespace: kagenti-system
+  namespace: team1
 spec:
   mode: dev
 

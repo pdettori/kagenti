@@ -235,12 +235,6 @@ jobs:
 
           echo "All kagenti-operator CRDs are established!"
 
-      - name: Deploy Tekton step ConfigMaps (TEMPORARY WORKAROUND)
-        run: |
-          # TODO: These should be deployed by kagenti-operator Helm chart
-          # See .github/manifests/tekton-step-configmaps.yaml for details
-          kubectl apply -f .github/manifests/tekton-step-configmaps.yaml
-
       - name: Apply pipeline-template-dev ConfigMap
         run: |
           kubectl apply -f kagenti/examples/agents/pipeline-template-dev.yaml

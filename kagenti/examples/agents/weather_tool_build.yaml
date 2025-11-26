@@ -8,7 +8,7 @@ metadata:
     kagenti.io/protocol: mcp
     kagenti.io/type: tool
   name: weather-tool-build
-  namespace: kagenti-system
+  namespace: team1
 spec:
   mode: dev
 
