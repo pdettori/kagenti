@@ -43,34 +43,56 @@ def enabled_features(kagenti_config):
 
     Returns dict like: {'keycloak': True, 'spire': True, 'platform_operator': True, ...}
     Treats operators as features for unified handling.
+
+    Extracts features from ALL layers of the config:
+    - Top-level enabled flags (gatewayApi, certManager, tekton, kiali, etc.)
+    - charts.*.enabled
+    - charts.*.values.components.*
     """
     if not kagenti_config:
         return {}
 
     features = {}
+
+    # ===== Top-level enabled flags =====
+    top_level_features = [
+        "gatewayApi",
+        "certManager",
+        "tekton",
+        "kiali",
+        "toolhiveCRDs",
+        "toolhiveOperator",
+    ]
+    for feature in top_level_features:
+        if feature in kagenti_config:
+            features[feature] = kagenti_config[feature].get("enabled", False)
+
+    # ===== Chart-level enabled flags =====
     charts = kagenti_config.get("charts", {})
+
+    # Each chart can have an enabled flag
+    for chart_name, chart_config in charts.items():
+        if isinstance(chart_config, dict) and "enabled" in chart_config:
+            # Store as chart name (e.g., "istio", "mcpGateway")
+            features[chart_name] = chart_config["enabled"]
+
+    # ===== Component-level enabled flags =====
 
     # Check charts.kagenti-deps.values.components
     deps_chart = charts.get("kagenti-deps", {})
     deps_components = deps_chart.get("values", {}).get("components", {})
 
-    features["keycloak"] = deps_components.get("keycloak", {}).get("enabled", False)
-    features["otel"] = deps_components.get("otel", {}).get("enabled", False)
-    features["toolhive"] = deps_components.get("toolhive", {}).get("enabled", False)
+    for component_name, component_config in deps_components.items():
+        if isinstance(component_config, dict) and "enabled" in component_config:
+            features[component_name] = component_config["enabled"]
 
-    # Check spire
-    features["spire"] = charts.get("spire", {}).get("enabled", False)
-
-    # Check operators (treat as features)
+    # Check charts.kagenti.values.components (includes operators)
     kagenti_chart = charts.get("kagenti", {})
     components = kagenti_chart.get("values", {}).get("components", {})
 
-    features["platform_operator"] = components.get("platformOperator", {}).get(
-        "enabled", False
-    )
-    features["kagenti_operator"] = components.get("kagentiOperator", {}).get(
-        "enabled", False
-    )
+    for component_name, component_config in components.items():
+        if isinstance(component_config, dict) and "enabled" in component_config:
+            features[component_name] = component_config["enabled"]
 
     return features
 
@@ -79,7 +101,7 @@ def pytest_collection_modifyitems(config, items):
     """
     Skip tests at collection time based on required features.
 
-    This allows using decorators like @pytest.mark.requires_features(["platform_operator"])
+    This allows using decorators like @pytest.mark.requires_features(["platformOperator"])
     instead of runtime pytest.skip() calls.
 
     Uses positive condition: tests declare what features they REQUIRE, not what they exclude.
@@ -109,27 +131,45 @@ def pytest_collection_modifyitems(config, items):
 
     # Build enabled features dict (same logic as enabled_features fixture)
     enabled = {}
+
+    # ===== Top-level enabled flags =====
+    top_level_features = [
+        "gatewayApi",
+        "certManager",
+        "tekton",
+        "kiali",
+        "toolhiveCRDs",
+        "toolhiveOperator",
+    ]
+    for feature in top_level_features:
+        if feature in kagenti_config:
+            enabled[feature] = kagenti_config[feature].get("enabled", False)
+
+    # ===== Chart-level enabled flags =====
     charts = kagenti_config.get("charts", {})
+
+    # Each chart can have an enabled flag
+    for chart_name, chart_config in charts.items():
+        if isinstance(chart_config, dict) and "enabled" in chart_config:
+            enabled[chart_name] = chart_config["enabled"]
+
+    # ===== Component-level enabled flags =====
 
     # deps components
     deps_chart = charts.get("kagenti-deps", {})
     deps_components = deps_chart.get("values", {}).get("components", {})
-    enabled["keycloak"] = deps_components.get("keycloak", {}).get("enabled", False)
-    enabled["otel"] = deps_components.get("otel", {}).get("enabled", False)
-    enabled["toolhive"] = deps_components.get("toolhive", {}).get("enabled", False)
 
-    # spire
-    enabled["spire"] = charts.get("spire", {}).get("enabled", False)
+    for component_name, component_config in deps_components.items():
+        if isinstance(component_config, dict) and "enabled" in component_config:
+            enabled[component_name] = component_config["enabled"]
 
-    # operators
+    # kagenti components (includes operators)
     kagenti_chart = charts.get("kagenti", {})
     components = kagenti_chart.get("values", {}).get("components", {})
-    enabled["platform_operator"] = components.get("platformOperator", {}).get(
-        "enabled", False
-    )
-    enabled["kagenti_operator"] = components.get("kagentiOperator", {}).get(
-        "enabled", False
-    )
+
+    for component_name, component_config in components.items():
+        if isinstance(component_config, dict) and "enabled" in component_config:
+            enabled[component_name] = component_config["enabled"]
 
     # Process each test item
     for item in items:

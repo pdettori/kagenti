@@ -242,9 +242,9 @@ jobs:
         working-directory: kagenti
         env:
           AGENT_URL: http://localhost:8000
+          KAGENTI_CONFIG_FILE: deployments/envs/dev_values.yaml
         run: |
-          pytest tests/e2e/ -v \
-            -m "not kagenti_operator" \
+          pytest tests/e2e/common tests/e2e/platform_operator -v \
             --timeout=300 \
             --tb=short \
             --junit-xml=../test-results/e2e-results.xml
