@@ -15,17 +15,20 @@
 
 from enum import Enum
 from pathlib import Path
+import os
 
 # --- Core Paths ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # Adjust if directory structure changes
 ENV_FILE = SCRIPT_DIR / ".env"
 RESOURCES_DIR = SCRIPT_DIR / "resources"
+DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localtest.me")
 
 # --- Cluster & Operator Configuration ---
 CLUSTER_NAME = "agent-platform"
 OPERATOR_NAMESPACE = "kagenti-system"
 TEKTON_VERSION = "v0.66.0"
+BUILDPACKS_VERSION = "0.3"
 KEYCLOAK_URL = "http://keycloak.localtest.me:8080/realms/master"
 
 
@@ -44,7 +47,7 @@ REQ_VERSIONS = {
     "docker": {"min": "5.0.0", "max": "29.0.0"},
     "podman": {"min": "5.0.0", "max": "5.6.0"},
     "kubectl": {"min": "1.29.0", "max": "1.35.0"},
-    "helm": {"min": "3.14.0", "max": "3.19.0"},
+    "helm": {"min": "3.14.0", "max": "3.20.0"},
     "git": {"min": "2.30.0", "max": "3.0.0"},
 }
 

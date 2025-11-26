@@ -203,6 +203,9 @@ open http://keycloak.localtest.me:8080/admin/master/console/
 # Get admin credentials from Kubernetes (if different)
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template=\
   'Username: {{.data.username | base64decode}}  Password: {{.data.password | base64decode}}{{"\n"}}'
+```console
+spiffe://${DOMAIN_NAME}/ns/team/sa/weather-service
+spiffe://${DOMAIN_NAME}/ns/team/sa/weather-tool
 ```
 
 ---

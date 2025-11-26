@@ -1,5 +1,3 @@
-# templates/keycloak-namespace.yaml
-
 {{- if .Values.components.keycloak.enabled }}
 # ------------------------------------------------------------------
 #  Creates the Namespace for all Keycloak-related resources.
@@ -12,4 +10,5 @@ metadata:
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
     istio-discovery: enabled
+    shared-gateway-access: "true"
 {{- end }}

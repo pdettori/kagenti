@@ -1,0 +1,79 @@
+{{- if and .Values.components.spire.enabled .Values.openshift }}
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpiffeCSIDriver
+metadata:
+  name: cluster
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation    
+spec:
+  agentSocketPath: /run/spire/agent-sockets/spire-agent.sock
+  pluginName: csi.spiffe.io
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpireServer
+metadata:
+  name: cluster
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation    
+spec:
+  trustDomain: localtest.me
+  clusterName: agent-platform
+  caSubject:
+    commonName: localtest.me
+    country: "US"
+    organization: "RH"
+  persistence:
+    type: pvc
+    size: "5Gi"
+    accessMode: ReadWriteOnce 
+  datastore:
+    databaseType: sqlite3
+    connectionString: "/run/spire/data/datastore.sqlite3"
+    maxOpenConns: 100 
+    maxIdleConns: 2
+    connMaxLifetime: 3600
+  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
+--- 
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpireAgent
+metadata:
+  name: cluster
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation    
+spec:
+  trustDomain: localtest.me
+  clusterName: agent-platform
+  nodeAttestor:
+    k8sPSATEnabled: "true"
+  workloadAttestors:
+    k8sEnabled: "true"
+    workloadAttestorsVerification:
+      type: "auto"
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpireOIDCDiscoveryProvider
+metadata:
+  name: cluster
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation    
+spec:
+  trustDomain: localtest.me
+  agentSocketName: 'spire-agent.sock'
+  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
+{{- end }}

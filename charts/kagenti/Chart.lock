@@ -1,9 +1,9 @@
 dependencies:
 - name: kagenti-platform-operator-chart
   repository: oci://ghcr.io/kagenti/kagenti-operator
-  version: 0.2.0-alpha.10
-- name: mcp-gateway
-  repository: oci://ghcr.io/kagenti/charts
-  version: 0.2.0
-digest: sha256:c8c8a6f6b6e7974f43e887b90774d6c93293c9c74f1ff80fabe9366d523a834d
-generated: "2025-10-17T15:39:47.729224-04:00"
+  version: 0.2.0-alpha.16
+- name: kagenti-operator-chart
+  repository: oci://ghcr.io/kagenti/kagenti-operator
+  version: 0.2.0-alpha.17
+digest: sha256:79f5027ed854172062227a46737c95d0c688d3a10af59aceb88083dc9850e8c0
+generated: "2025-11-23T21:30:25.291362-08:00"

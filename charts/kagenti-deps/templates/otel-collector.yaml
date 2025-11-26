@@ -3,8 +3,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: otel-collector
+  namespace: {{ .Release.Namespace }}
   labels:
     app: otel-collector
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -21,7 +23,6 @@ spec:
           command:
           - /otelcol-contrib
           - --config=/etc/otelcol-config/base.yaml
-          #- --config=/etc/otelcol-config/beeai.yaml # use only base config for now
           - --set
           - receivers::otlp::protocols::http::endpoint=0.0.0.0:8335
           volumeMounts:
@@ -46,8 +47,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector
+  namespace: {{ .Release.Namespace }}
   labels:
     app: otel-collector
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
   selector:
     app: otel-collector
@@ -70,6 +73,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-collector-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 data:
   base.yaml: |
     receivers:

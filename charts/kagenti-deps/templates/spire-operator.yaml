@@ -1,9 +1,19 @@
 {{- if and .Values.components.spire.enabled .Values.openshift }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.spire.namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+    istio-discovery: enabled
+---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: zero-trust-workload-identity-manager
-  namespace: zero-trust-workload-identity-manager
+  namespace: {{ .Values.spire.namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
 spec:
     upgradeStrategy: Default
     targetNamespaces:
@@ -14,10 +24,11 @@ kind: Subscription
 metadata:
   labels:
     operators.coreos.com/openshift-zero-trust-workload-identity-manager.zero-trust-workl: ''
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: openshift-zero-trust-workload-identity-manager
   namespace: {{ .Values.spire.namespace }}
 spec:
-  channel: tech-preview-v0.1
+  channel: tech-preview-v0.2
   installPlanApproval: Automatic
   name: openshift-zero-trust-workload-identity-manager
   source: redhat-operators

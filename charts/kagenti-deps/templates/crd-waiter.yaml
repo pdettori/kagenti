@@ -1,21 +1,25 @@
-{{- if and .Values.components.keycloak.enabled .Values.openshift }}
+{{- if and (or .Values.components.keycloak.enabled .Values.components.istio.enabled .Values.components.kiali.enabled) .Values.openshift }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-sa
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-weight": "-15"
     "helm.sh/hook-delete-policy": before-hook-creation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-role
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-weight": "-15"
     "helm.sh/hook-delete-policy": before-hook-creation
 rules:
 - apiGroups: ["apiextensions.k8s.io"]
@@ -26,9 +30,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "kagenti.fullname" . }}-crd-waiter-binding
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install, pre-upgrade
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-weight": "-15"
     "helm.sh/hook-delete-policy": before-hook-creation
 subjects:
 - kind: ServiceAccount
@@ -44,9 +50,11 @@ kind: Job
 metadata:
   name: {{ .Release.Name }}-crd-waiter
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
-    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-weight": "-10"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
   template:

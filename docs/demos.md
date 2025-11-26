@@ -9,9 +9,10 @@ Detailed overview of the identity concepts are covered in the [Kagenti Identity 
 
 Check the details for running various demos.
 
+- Interactive online demo at KubeCon NA 2025: [Tutorial: Build-a-Bot Workshop: Enabling Trusted Agents With SPIRE + MCP](https://red.ht/3WL5Loc)
 - Simplest Demo - [Weather Service](./demo-weather-agent.md)
 - Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent.md)
-- Github issue demo - [Github Issue Agent](./demo-github-issue.md)
+- Github Issue Demo - [Github Issue Agent](./demo-github-issue.md) ([demo recording](https://youtu.be/5SpTwERN2jU))
 
 ## Installation
 
@@ -65,7 +66,7 @@ AGENT_NAMESPACES=<comma separated list of Kubernetes namespaces to set up in Kin
 SLACK_BOT_TOKEN=<This is required only if you wish to use the Slack tool example.>
 ```
 
-Run the installer.
+Run the installer. Use the `--help` flag to see all available options.
 
 ```shell
 cd kagenti/installer
@@ -79,6 +80,24 @@ Using `--silent` flag removes the interactive install mode.
 ```shell
 uv run kagenti-installer --silent
 ```
+
+#### New Ansible-based installer
+
+The new installer relies mainly on helm charts and is 
+going to replace `kagenti-installer`. 
+
+1. Copy example secrets file: `deployments/envs/secret_values.yaml.example` to `deployments/envs/.secret_values.yaml` and fill in the values in that file.
+
+2. Run the installer as:
+
+```bash
+deployments/ansible/run-install.sh --env dev
+```
+
+Check [here](../deployments/ansible/README.md) for more details on the new installer. 
+
+To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
+
 
 ### Using an Existing Kubernetes Cluster
 
@@ -94,7 +113,7 @@ This option will:
 - Skip kind-specific operations like image preloading
 - Deploy all platform components to your existing cluster
 
-Make sure your `KUBECONFIG` is properly set and points to a cluster where you have admin privileges before using this option.
+Make sure your `KUBECONFIG` is properly set and points to a cluster where you have admin privileges before using this option. (Use `kubectl config get-contexts` and `use-context`)
 
 **Note:** When using an existing cluster, the registry component is automatically skipped as it's primarily designed for kind clusters that have been initialized with a specific configuration.
 
@@ -102,12 +121,6 @@ To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
 ```shell
 uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
-```
-
-To get a full list of components and available install parameters issue:
-
-```shell
-uv run kagenti-installer --help
 ```
 
 ## Connect to the Kagenti UI
@@ -141,9 +154,7 @@ From the UI, you can:
 
 ## Detailed Instructions for Running the Weather Demo
 
-For step-by-step instructions for importing and running agents and tools, see
-
-- [How to Build, Deploy, and Run the Weather Agent Demo](./demo-weather-agent.md)
+For step-by-step instructions for importing and running agents and tools, see the [collection of agent demos](#demo-list).
 
 ## Importing Your Own Agent to Kagenti
 
@@ -345,7 +356,7 @@ kubectl delete -n keycloak -f app/resources/keycloak.yaml
 kubectl apply -n keycloak -f app/resources/keycloak.yaml
 kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
-uv run kagenti-installer --skip-install registry --skip-install tekton --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector --skip-install cert_manager
+uv run kagenti-installer --skip-install registry --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
 ```
 

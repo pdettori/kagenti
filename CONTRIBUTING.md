@@ -2,7 +2,7 @@
 
 Greetings! We are grateful for your interest in joining the Kagenti community and making a positive impact. Whether you're raising issues, enhancing documentation, fixing bugs, or developing new features, your contributions are essential to our success.
 
-To get started, kindly read through this document and familiarize yourself with our code of conduct. 
+To get started, kindly read through this document and familiarize yourself with our code of conduct.
 
 We can't wait to collaborate with you!
 
@@ -66,4 +66,4 @@ Please read the following if you're interested in contributing to Kagenti.
 By contributing to this project you agree to the Developer Certificate of
 Origin (DCO). This document was created by the Linux Kernel community and is a
 simple statement that you, as a contributor, have the legal right to make the
-contribution. See the [DCO](DCO) file for details.
+contribution. See the [DCO](https://developercertificate.org/) for details.

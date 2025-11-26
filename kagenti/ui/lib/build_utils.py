@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,too-many-nested-blocks
 
 """
 Utilities for building UI.
@@ -43,6 +43,131 @@ from .kube import (
 from .utils import sanitize_for_k8s_name, remove_url_prefix, get_resource_name_from_path
 
 logger = logging.getLogger(__name__)
+
+
+def parse_env_file(content: str, st_object=None):  # pylint: disable=too-many-branches,too-many-statements,too-many-nested-blocks
+    """Parse `.env` file content into a list of env var dicts.
+
+    Returns a list of dicts suitable for inclusion in k8s env lists. Supports
+    JSON-encoded values (quoted in the .env) that decode to objects like
+    {"valueFrom": {...}} or shorthand {"secretKeyRef": {...}} which will be
+    converted into a valueFrom entry.
+    """
+    env_vars = []
+    lines = content.strip().splitlines()
+
+    for line_num, line in enumerate(lines, 1):
+        raw_line = line
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            if st_object:
+                st_object.warning(
+                    f"⚠️ Line {line_num}: Invalid format (missing '='): {raw_line}"
+                )
+            else:
+                logger.warning(
+                    "Line %s: Invalid format (missing '='): %s", line_num, raw_line
+                )
+            continue
+        name, value = line.split("=", 1)
+        name = name.strip()
+        value = value.strip()
+
+        # strip surrounding quotes if present
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        elif value.startswith("'") and value.endswith("'"):
+            value = value[1:-1]
+
+        if not name:
+            if st_object:
+                st_object.warning(f"⚠️ Line {line_num}: Empty variable name")
+            else:
+                logger.warning("Line %s: Empty variable name", line_num)
+            continue
+
+        env_entry = None
+
+        # Attempt JSON parse only when value looks like JSON
+        if value and (value.startswith("{") or value.startswith("[")):
+            env_entry = _parse_json_value(value, name, line_num, st_object)
+        else:
+            env_entry = {"name": name, "value": value}
+
+        env_vars.append(env_entry)
+
+    return env_vars
+
+
+def _parse_json_value(value: str, name: str, line_num: int, st_object=None) -> dict:
+    """Parse a JSON-looking value from an .env entry into an env dict.
+
+    This centralizes the JSON parsing and logging/warning behavior to keep
+    parse_env_file smaller and easier to read.
+    """
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, dict):
+            if "value" in parsed or "valueFrom" in parsed:
+                return {"name": name, **parsed}
+            if "secretKeyRef" in parsed or "configMapKeyRef" in parsed:
+                return {"name": name, "valueFrom": parsed}
+            # Unrecognized dict shape; keep as string but warn
+            if st_object:
+                st_object.warning(
+                    f"⚠️ Line {line_num}: JSON parsed but has unrecognized keys; kept as string for '{name}'"
+                )
+            else:
+                logger.warning(
+                    "Line %s: JSON parsed but has unrecognized keys; kept as string for '%s'",
+                    line_num,
+                    name,
+                )
+            return {"name": name, "value": value}
+
+        # Non-dict JSON (list, string etc) -> keep as string but warn
+        if st_object:
+            st_object.warning(
+                f"⚠️ Line {line_num}: JSON parsed to non-object; kept as string for '{name}'"
+            )
+        else:
+            logger.warning(
+                "Line %s: JSON parsed to non-object; kept as string for '%s'",
+                line_num,
+                name,
+            )
+        return {"name": name, "value": value}
+    except json.JSONDecodeError:
+        if st_object:
+            st_object.warning(
+                f"⚠️ Line {line_num}: Invalid JSON; kept as string: {value}"
+            )
+        else:
+            logger.warning("Line %s: Invalid JSON; kept as string: %s", line_num, value)
+        return {"name": name, "value": value}
+
+
+def _is_valid_env_entry(env_var: dict) -> bool:
+    """Return True when an env var dict has a valid name and value/structured data.
+
+    Valid when:
+    - name exists and is non-empty after stripping, and
+    - either contains a structured reference (valueFrom or dict-valued 'value')
+      or contains a non-empty string 'value'.
+    """
+    if not isinstance(env_var, dict):
+        return False
+    name = (env_var.get("name") or "").strip()
+    if not name:
+        return False
+    has_structured = "valueFrom" in env_var or isinstance(env_var.get("value"), dict)
+    has_plain = (
+        isinstance(env_var.get("value"), str) and env_var.get("value", "").strip()
+    )
+    return bool(has_structured or has_plain)
+
 
 # Pipeline mode constants
 DEV_EXTERNAL_MODE = "dev-external"
@@ -119,7 +244,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
     try:
         keycloak_admin = KeycloakAdmin(
             server_url=os.getenv(
-                "KEYCLOAK_SERVER_URL", "http://keycloak.localtest.me:8080"
+                "KEYCLOAK_SERVER_URL", f"http://keycloak.{constants.DOMAIN_NAME}:8080"
             ),
             username=os.getenv("KEYCLOAK_ADMIN_USER", "admin"),
             password=os.getenv("KEYCLOAK_ADMIN_PASSWORD", "admin"),
@@ -142,7 +267,7 @@ def _get_keycloak_client_secret(st_object, client_name: str) -> str:
         return ""
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+# pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals, disable=too-many-branches
 def _construct_tool_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -160,6 +285,7 @@ def _construct_tool_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -210,6 +336,9 @@ def _construct_tool_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -219,6 +348,10 @@ def _construct_tool_resource_body(
         final_env_vars.extend(additional_env_vars)
     if client_secret_for_env:
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
+
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
+    )
 
     # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
@@ -233,6 +366,7 @@ def _construct_tool_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     # Build the spec dictionary
     spec = {
         "description": description,
@@ -245,12 +379,12 @@ def _construct_tool_resource_body(
             "namespace": build_namespace,
             "deployAfterBuild": True,
             "kubernetes": {
-                "imageSpec": {
-                    "image": image_name,
-                    "imageTag": image_tag,
-                    "imageRegistry": image_registry_prefix,
-                    "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                },
+                "imageSpec": _build_image_spec(
+                    image_name=image_name,
+                    image_tag=image_tag,
+                    image_registry_prefix=image_registry_prefix,
+                    pull_secrets=pull_secrets,
+                ),
                 "containerPorts": [
                     {
                         "name": "http",
@@ -362,6 +496,52 @@ def _construct_tool_resource_body(
     return body
 
 
+def _build_image_spec(
+    image_name: str,
+    image_tag: str,
+    image_registry_prefix: Optional[str],
+    image_pull_policy: str = constants.DEFAULT_IMAGE_POLICY,
+    pull_secrets: Optional[str] = None,
+) -> dict:
+    """
+    Build imageSpec dictionary based on registry configuration.
+
+    Handles both external registry images and local images without registry prefix.
+    For local images (no registry), sets imagePullPolicy to "Never" to prevent
+    pull attempts.
+
+    Args:
+        image_name: Name of the container image
+        image_tag: Image tag (e.g., 'latest', 'v1.0')
+        image_registry_prefix: Registry prefix (e.g., 'quay.io/myorg') or None/empty for local
+        image_pull_policy: Pull policy for external registries (default from constants)
+        pull_secrets: Secrets to use when pulling image from remote private repository
+
+    Returns:
+        dict: imageSpec configuration for Kubernetes deployment
+    """
+    image_spec = {
+        "image": image_name,
+        "imageTag": image_tag,
+        "imagePullSecrets": pull_secrets if pull_secrets else [],
+    }
+
+    # Only include imageRegistry if it has a value
+    # Local images (None or empty string) should not have imageRegistry field
+    if image_registry_prefix:
+        image_spec["imageRegistry"] = image_registry_prefix
+        # Local cluster registry - never pull (image is already there)
+        if image_registry_prefix == "registry.cr-system.svc.cluster.local:5000":
+            image_spec["imagePullPolicy"] = "IfNotPresent"
+        else:
+            image_spec["imagePullPolicy"] = image_pull_policy
+    else:
+        # Used for images pre-loaded into kind
+        image_spec["imagePullPolicy"] = "IfNotPresent"
+
+    return image_spec
+
+
 def is_valid_image_url(url: str) -> bool:
     """Is URL valid?"""
     pattern = re.compile(r"^[\w\.-]+(?:/[\w\-]+)+:[\w\.\-]+$")
@@ -386,6 +566,7 @@ def extract_image_name(url):
     return None
 
 
+# pylint: disable=too-many-branches
 def _construct_agent_resource_body(
     st_object,
     core_v1_api: Optional[kubernetes.client.CoreV1Api],
@@ -403,6 +584,7 @@ def _construct_agent_resource_body(
     additional_env_vars: Optional[list] = None,
     image_tag: str = constants.DEFAULT_IMAGE_TAG,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Constructs the Kubernetes resource body for a new build.
@@ -453,6 +635,9 @@ def _construct_agent_resource_body(
         image_registry_prefix, image_name, _tag = parse_image_url(repo_url)
         if _tag:
             image_tag = _tag
+        # Handle local images with no registry prefix
+        if image_registry_prefix is None:
+            image_registry_prefix = ""
 
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
@@ -464,6 +649,10 @@ def _construct_agent_resource_body(
         final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
     final_env_vars.append(
         {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
+    )
+
+    pull_secrets = _get_image_pull_secrets(
+        build_from_source, registry_config, image_pull_secret
     )
 
     # Extract service ports from pod_config or use defaults
@@ -479,6 +668,7 @@ def _construct_agent_resource_body(
                 "protocol": "TCP",
             }
         ]
+
     body = {
         "apiVersion": f"{constants.CRD_GROUP}/{constants.CRD_VERSION}",
         "kind": "Component",
@@ -502,12 +692,12 @@ def _construct_agent_resource_body(
                 "namespace": build_namespace,
                 "deployAfterBuild": True,
                 "kubernetes": {
-                    "imageSpec": {
-                        "image": image_name,
-                        "imageTag": image_tag,
-                        "imageRegistry": image_registry_prefix,
-                        "imagePullPolicy": constants.DEFAULT_IMAGE_POLICY,
-                    },
+                    "imageSpec": _build_image_spec(
+                        image_name=image_name,
+                        image_tag=image_tag,
+                        image_registry_prefix=image_registry_prefix,
+                        pull_secrets=pull_secrets,
+                    ),
                     "containerPorts": [
                         {
                             "name": "http",
@@ -595,6 +785,30 @@ def _construct_agent_resource_body(
         }
 
     return body
+
+
+def _get_image_pull_secrets(build_from_source, registry_config, image_pull_secret):
+    """
+    Determine imagePullSecrets based on deployment method.
+
+    Args:
+        build_from_source: Boolean indicating if building from source
+        registry_config: Registry configuration dict (used when build_from_source=True)
+        image_pull_secret: Secret name for existing images (used when build_from_source=False)
+
+    Returns:
+        List of imagePullSecret dicts or empty list
+    """
+    if build_from_source:
+        # Use registry_config for source builds
+        if registry_config and registry_config.get("requires_auth"):
+            return [{"name": registry_config["credentials_secret"]}]
+    else:
+        # Use image_pull_secret for existing image deployments
+        if image_pull_secret:
+            return [{"name": image_pull_secret}]
+
+    return []
 
 
 # pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
@@ -881,6 +1095,7 @@ def trigger_and_monitor_deployment_from_image(
     description: str = "",
     additional_env_vars: Optional[List[Dict[str, Any]]] = None,
     pod_config: Optional[dict] = None,
+    image_pull_secret: Optional[str] = None,
 ):
     """
     Triggers a build for a new resource and monitors its status.
@@ -932,6 +1147,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     elif resource_type.lower() == "tool":
@@ -949,6 +1165,7 @@ def trigger_and_monitor_deployment_from_image(
             description=description,
             build_from_source=False,
             pod_config=pod_config,
+            image_pull_secret=image_pull_secret,
             additional_env_vars=additional_env_vars,
         )
     if not cr_body:
@@ -1225,36 +1442,8 @@ def render_import_form(
                 st.session_state[configmap_loaded_key] = True
                 return
 
-        # takes as input content of the .env file from remote repo and
-        # parses each line to extract name-value pair and adds them to
-        # a list
-        def parse_env_file(content):
-            env_vars = []
-            lines = content.strip().split("\n")
-
-            for line_num, line in enumerate(lines, 1):
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" not in line:
-                    st_object.warning(
-                        f"⚠️ Line {line_num}: Invalid format (missing '='): {line}"
-                    )
-                    continue
-                name, value = line.split("=", 1)
-                name = name.strip()
-                value = value.strip()
-
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-                elif value.startswith("'") and value.endswith("'"):
-                    value = value[1:-1]
-
-                if name:
-                    env_vars.append({"name": name, "value": value})
-                else:
-                    st_object.warning(f"⚠️ Line {line_num}: Empty variable name")
-            return env_vars
+        # Using module-level `parse_env_file` implementation (supports JSON values)
+        # The module-level function accepts an optional `st_object` for warnings/logging.
 
         configmap_col1, configmap_col2, _ = st_object.columns([2, 2, 2])
         with configmap_col1:
@@ -1320,18 +1509,87 @@ def render_import_form(
                         label_visibility="collapsed" if i > 0 else "visible",
                     )
                 with col2:
-                    env_var["value"] = st.text_input(
-                        "Value",
-                        value=env_var["value"],
-                        key=f"{resource_type.lower()}_env_value_{i}",
-                        placeholder="example: AAAA_BBBB_CCCC",
-                        label_visibility="collapsed" if i > 0 else "visible",
+                    # Support plain string values and structured JSON (valueFrom) entries.
+                    # Determine if this entry is structured
+                    is_structured = (
+                        isinstance(env_var.get("value"), dict) or "valueFrom" in env_var
                     )
+
+                    mode_key = f"{resource_type.lower()}_env_mode_{i}"
+                    # default to Structured when detected, otherwise Plain
+                    default_index = 0 if is_structured else 1
+                    mode = st_object.radio(
+                        "",
+                        options=["Structured", "Plain"],
+                        index=default_index,
+                        key=mode_key,
+                        horizontal=True,
+                        label_visibility="collapsed",
+                    )
+
+                    if mode == "Structured":
+                        # show JSON editor populated from valueFrom or from a dict value
+                        json_obj = None
+                        if "valueFrom" in env_var:
+                            json_obj = env_var.get("valueFrom")
+                        elif isinstance(env_var.get("value"), dict):
+                            json_obj = env_var.get("value")
+
+                        json_str = (
+                            json.dumps(json_obj, indent=2)
+                            if json_obj is not None
+                            else "{}"
+                        )
+                        edited = st_object.text_area(
+                            "Structured JSON",
+                            value=json_str,
+                            key=f"{resource_type.lower()}_env_json_{i}",
+                            height=120,
+                            label_visibility="collapsed",
+                        )
+                        # Try to parse edited JSON and store as valueFrom
+                        try:
+                            parsed = json.loads(edited)
+                            env_var.pop("value", None)
+                            env_var["valueFrom"] = parsed
+                        except json.JSONDecodeError:
+                            # Keep the message concise and use an f-string
+                            var_name = env_var.get("name", "")
+                            st_object.warning(
+                                f"⚠️ Invalid JSON for variable '{var_name}'. Fix the JSON or switch to Plain mode."
+                            )
+                    else:
+                        # Plain mode: keep a simple text input. If previously structured, drop structured data.
+                        current_value = env_var.get("value")
+                        if current_value is None:
+                            # avoid exposing structured secret data; start empty
+                            current_value = ""
+                        env_var["value"] = st_object.text_input(
+                            "Value",
+                            value=current_value,
+                            key=f"{resource_type.lower()}_env_value_{i}",
+                            placeholder="example: AAAA_BBBB_CCCC",
+                            label_visibility="collapsed" if i > 0 else "visible",
+                        )
+                        env_var.pop("valueFrom", None)
 
                 with col3:
                     if i == 0:
                         st_object.write("")
                         st_object.write("")
+                    # visualize origin: configmap-loaded vars, structured references, or custom
+                    structured_ref = False
+                    # valueFrom can be present directly, or value may be a dict with structured content
+                    if "valueFrom" in env_var and isinstance(
+                        env_var.get("valueFrom"), dict
+                    ):
+                        structured_ref = True
+                        vf = env_var.get("valueFrom")
+                    elif isinstance(env_var.get("value"), dict):
+                        structured_ref = True
+                        vf = env_var.get("value")
+                    else:
+                        vf = None
 
                     if is_configmap_var:
                         var_type = env_var.get("configmap_type", "configmap")
@@ -1348,6 +1606,23 @@ def render_import_form(
                         else:
                             st_object.markdown(
                                 "<span style='font-size: 10px; color: green'>🗂️ **ConfigMap**</span>",
+                                unsafe_allow_html=True,
+                            )
+                    elif structured_ref and vf is not None:
+                        # Detect secret vs configmap inside structured valueFrom
+                        if "secretKeyRef" in vf:
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: red'>🔒 **Secret reference**</span>",
+                                unsafe_allow_html=True,
+                            )
+                        elif "configMapKeyRef" in vf:
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: green'>🗂️ **ConfigMap reference**</span>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st_object.markdown(
+                                "<span style='font-size: 10px; color: purple'>🧩 **Structured**</span>",
                                 unsafe_allow_html=True,
                             )
                     else:
@@ -1392,18 +1667,19 @@ def render_import_form(
     if st.session_state.get(import_dialog_key, False):
         st_object.markdown("---")
         st_object.subheader("Import Environment Variables from .env file")
-
-        repo_url = st_object.text_input(
-            "Github Repository URL:",
-            placeholder="http://github.com/username/repository",
-            key=f"{resource_type.lower()}_repo_url",
-            help="Enter the Github repository URL",
+        # Small tooltip/note about secret references
+        st_object.caption(
+            "Tip: If your .env contains JSON secret/configmap references (e.g. using `secretKeyRef` or `configMapKeyRef`), "
+            "Kagenti will include them as `valueFrom` references in the generated manifest but will NOT store secret plaintext. "
+            "Ensure the referenced Secrets/ConfigMaps already exist in the target namespace before deploying. "
+            "See `docs/new-agent.md` for examples."
         )
-        file_path = st_object.text_input(
-            "Path to .env file:",
-            placeholder=". env or config/.env or path/to/your/.env",
-            key=f"{resource_type.lower()}_env_file_path",
-            help="Enter the path to .env file within the repository",
+
+        env_raw_url = st_object.text_input(
+            "GitHub repository raw url containing the .env file:",
+            placeholder="https://raw.githubusercontent.com/username/repository/path-to/.env",
+            key=f"{resource_type.lower()}_repo_url",
+            help="Enter the GitHub raw URL to the repository containing the .env file",
         )
 
         import_col1, import_col2, _import_col3 = st_object.columns([1, 1, 2])
@@ -1411,32 +1687,14 @@ def render_import_form(
             if st_object.button(
                 " 🔄 Import",
                 key=f"{resource_type.lower()}_do_import",
-                disabled=not (repo_url and file_path),
+                disabled=not (env_raw_url and env_raw_url.strip()),
             ):
                 try:
                     with st_object.spinner("Fetching .env file from repository ..."):
-                        # Need to convert Github repo URL to raw file URL
-                        if "github.com" in repo_url:
-                            if repo_url.endswith(".git"):
-                                repo_url = repo_url[:-4]
-
-                            repo_path = repo_url.replace(
-                                "https://github.com/", ""
-                            ).replace("http://github.com/", "")
-                            if "/tree/" in repo_path:
-                                parts = repo_path.split("/tree/")
-                                repo_path = parts[0]
-                                branch = parts[1].split("/")[0]
-                            else:
-                                branch = "main"
-                            raw_url = f"https://raw.githubusercontent.com/{repo_path}/{branch}/{file_path.lstrip('/')}"
-                        else:
-                            raw_url = f"{repo_url.rstrip('/')}/{file_path.lstrip('/')}"
-
-                        response = requests.get(raw_url, timeout=20)
+                        response = requests.get(env_raw_url, timeout=20)
+                        response.raise_for_status()
                         env_content = response.text
-
-                        imported_vars = parse_env_file(env_content)
+                        imported_vars = parse_env_file(env_content, st_object)
                         if imported_vars:
                             existing_names = {
                                 var["name"] for var in st.session_state[custom_env_key]
@@ -1462,10 +1720,6 @@ def render_import_form(
                                 )
                             st.session_state[import_dialog_key] = False
                             st.rerun()
-                        else:
-                            st_object.error(
-                                "❌ No valid environment variables found in the file"
-                            )
                 except requests.RequestException as e:
                     st_object.error(f"❌ Failed to fetch file: {str(e)}")
                 except Exception as e:
@@ -1484,15 +1738,15 @@ def render_import_form(
         invalid_custom_env_vars = []
 
         for env_var in custom_env_vars:
-            if env_var["name"].strip() and env_var["value"].strip():
-                valid_custom_env_vars.append(
-                    {"name": env_var["name"].strip(), "value": env_var["value"].strip()}
-                )
-            elif env_var["name".strip() or env_var["value"].strip()]:
-                invalid_custom_env_vars.append(env_var)
+            filtered_env_var = {
+                k: v for k, v in env_var.items() if k in ("name", "value", "valueFrom")
+            }
+            if _is_valid_env_entry(env_var):
+                valid_custom_env_vars.append(filtered_env_var)
+            else:
+                invalid_custom_env_vars.append(filtered_env_var)
 
         if invalid_custom_env_vars:
-            # pylint: disable=line-too-long
             st_object.warning(
                 f"{len(invalid_custom_env_vars)} environment variable(s) have missing name or value and will be ignored"
             )
@@ -1511,9 +1765,37 @@ def render_import_form(
 
     if custom_env_vars:
         for env_var in custom_env_vars:
-            if env_var["name"].strip() and env_var["value"].strip():
+            # Skip invalid entries centrally
+            if not _is_valid_env_entry(env_var):
+                continue
+
+            name = (env_var.get("name") or "").strip()
+
+            # Structured env var (valueFrom)
+            if "valueFrom" in env_var and isinstance(env_var.get("valueFrom"), dict):
                 final_additional_envs.append(
-                    {"name": env_var["name"].strip(), "value": env_var["value"].strip()}
+                    {"name": name, "valueFrom": env_var["valueFrom"]}
+                )
+                continue
+
+            # Sometimes structured JSON may be stored under 'value' as a dict
+            if isinstance(env_var.get("value"), dict):
+                # Only allow known keys to be included for manifest predictability
+                allowed_keys = ["valueFrom", "configMapKeyRef", "secretKeyRef"]
+                env_entry = {"name": name}
+                for key in allowed_keys:
+                    if key in env_var["value"]:
+                        env_entry[key] = env_var["value"][key]
+                final_additional_envs.append(env_entry)
+                continue
+
+            # Plain string value (helper ensured non-empty)
+            val = env_var.get("value")
+            if isinstance(val, str):
+                final_additional_envs.append({"name": name, "value": val.strip()})
+            else:
+                logger.warning(
+                    f"Skipping env var '{name}' with non-string value: {val!r}"
                 )
 
     custom_obj_api = get_custom_objects_api()
@@ -1675,13 +1957,17 @@ def render_import_form(
         # *** The Kagenti installer will only copy the necessary configuration (like ConfigMaps and Secrets) for those specific
         #     namespaces.
         st_object.write(
-            f"Provide Docker image details to deploy a new {resource_type.lower()}."
+            f"Provide container image details to deploy a new {resource_type.lower()}."
         )
         docker_image_url = st_object.text_input(
-            "Docker Image (e.g., myrepo/myimage:tag)",
+            "Container Image (e.g., myrepo/myimage:tag)",
             key=f"{resource_type.lower()}_docker_image",
         )
-
+        repo_secret_name = st_object.text_input(
+            "Image Pull Secret Name (optional, leave empty for public images)",
+            key=f"{resource_type.lower()}_repo_secret",
+            help="Name of the Kubernetes secret containing credentials for private container registries",
+        )
         selected_protocol = default_protocol
         if protocol_options:
             current_protocol_index = (
@@ -1736,6 +2022,7 @@ def render_import_form(
                 description=f"{resource_type} '{resource_name_suggestion}' built from UI.",
                 pod_config=pod_config,
                 additional_env_vars=final_additional_envs,
+                image_pull_secret=repo_secret_name if repo_secret_name else None,
             )
 
     st_object.markdown("---")
@@ -1863,19 +2150,33 @@ def remove_service_port(index, service_ports_key):
 
 
 def parse_image_url(url: str):
-    """Parse an Image URL"""
-    # Split off the tag
-    if ":" not in url:
-        raise ValueError("URL must contain a tag (e.g., :latest)")
+    """Parse an Image URL
 
-    base, tag = url.rsplit(":", 1)
-    parts = base.strip("/").split("/")
+    Supports two formats:
+    1. Full format: repo/path:tag (e.g., 'myrepo/my_app:v1.0')
+    2. Local format: image_name or image_name:tag (e.g., 'my_app' or 'my_app:latest')
+    """
+    # Split off the tag if present
+    if ":" in url:
+        base, tag = url.rsplit(":", 1)
+    else:
+        base = url
+        tag = "latest"  # Default tag if none specified
 
-    if len(parts) < 2:
-        raise ValueError("URL must contain at least a repo and image name")
+    # Remove leading/trailing slashes
+    base = base.strip("/")
 
-    image_name = parts[-1]
-    repo = "/".join(parts[:-1])
+    # Split into parts
+    parts = base.split("/")
+
+    # Handle local image (no repo path)
+    if len(parts) == 1:
+        repo = None  # or "" or "local" depending on your preference
+        image_name = parts[0]
+    else:
+        # Full format with repo
+        image_name = parts[-1]
+        repo = "/".join(parts[:-1])
 
     return repo, image_name, tag
 

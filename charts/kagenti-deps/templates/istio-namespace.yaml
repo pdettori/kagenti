@@ -1,6 +1,4 @@
-# templates/istio-namespace.yaml
-
-{{- if .Values.components.istio.enabled }}
+{{- if and .Values.components.istio.enabled .Values.openshift }}
 # ------------------------------------------------------------------
 #  Creates the Namespaces for all Istio components.
 # ------------------------------------------------------------------
@@ -11,14 +9,7 @@ metadata:
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
     istio-discovery: enabled
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: "{{ .Values.istio.cni.namespace }}"
-  labels:
-    {{- include "kagenti.labels" . | nindent 4 }}
-    istio-discovery: enabled
+
 ---
 apiVersion: v1
 kind: Namespace
@@ -27,4 +18,13 @@ metadata:
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
     istio-discovery: enabled    
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{ .Values.istio.cni.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+    istio-discovery: enabled
 {{- end }}
+

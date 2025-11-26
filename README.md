@@ -58,6 +58,21 @@ These demos are built on the following core technologies:
 - Tool-side communication via [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 - Agent-side communication via [A2A](https://google.github.io/A2A)
 
+## Prerequisites
+
+For running the local demos (and the `preload-file` Makefile target) you should have the following tools installed and available in your PATH:
+
+- `kubectl` — used to query the cluster for pods and images.
+- `jq` — used to parse and filter JSON output from `kubectl`.
+
+On macOS you can install them with Homebrew, for example:
+
+```
+brew install kubectl jq
+```
+
+If these tools are missing, the `preload-file` target will now fail with a clear message explaining which tool is absent and how to install it.
+
 ---
 
 ### Try our demo
@@ -72,8 +87,16 @@ We regularly publish articles at the intersection of cloud-native architecture, 
 
 Some recent posts include:
 
+- [Introducing MCP-Gateway in Kagenti: A Unified Front Door for Your MCP Servers](https://medium.com/kagenti-the-agentic-platform/introducing-mcp-gateway-in-kagenti-a-unified-front-door-for-your-mcp-servers-28db5b6ef62d)
+- [Hands-On Introduction to Agentic AI Concepts with Kagenti](https://medium.com/kagenti-the-agentic-platform/hands-on-introduction-to-agentic-ai-concepts-with-kagenti-d70f15aa9051)
 - [Toward a Cloud-Native Platform for AI Agents](https://medium.com/kagenti-the-agentic-platform/toward-a-cloud-native-platform-for-ai-agents-70081f15316d)
 - [Security in and around MCP](https://medium.com/kagenti-the-agentic-platform/security-in-and-around-mcp-part-1-oauth-in-mcp-3f15fed0dd6e)
 - [Identity in Agentic Platforms: Enabling Secure, Least-Privilege Access](https://medium.com/kagenti-the-agentic-platform/identity-in-agentic-platforms-enabling-secure-least-privilege-access-996527f1c983)
 
 Explore more on our [Kagenti Medium publication](https://medium.com/kagenti-the-agentic-platform).
+
+## QR Code for Kagenti.io
+
+This QR Code links to <http://kagenti.io>
+
+![Kagenti.io QR Code](./docs/images/Kagenti.QRcode.png)

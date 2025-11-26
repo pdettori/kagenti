@@ -4,6 +4,7 @@ kind: Keycloak
 metadata:
   labels:
     app: kagenti
+    {{- include "kagenti.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "1"
@@ -32,21 +33,23 @@ spec:
       name: keycloak-db-secret
     vendor: postgres  
   unsupported:
-      podTemplate:
-        spec:
-          containers:
-            - name: keycloak
-              env:
-                - name: KC_PROXY_HEADERS
-                  value: "forwarded"
+    podTemplate:
+      spec:
+        containers:
+          - name: keycloak
+            env:
+              - name: KC_PROXY_HEADERS
+                value: "forwarded"
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  annotations:
-    openshift.io/host.generated: "true"
   name: keycloak
   namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    openshift.io/host.generated: "true"  
 spec:
   path: /
   port:
@@ -59,3 +62,4 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 {{- end }}
+

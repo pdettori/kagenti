@@ -128,6 +128,14 @@ internal_client_id = register_client(
         "directAccessGrantsEnabled": True,
         "fullScopeAllowed": False,
         "publicClient": False,  # Enable client authentication
+        # Enable token exchange for this client.
+        # Token exchange allows this client to exchange tokens for other tokens, potentially across different clients.
+        # Use case: [EXPLAIN THE SPECIFIC USE CASE HERE, e.g., "Required for service-to-service authentication in microservices architecture."]
+        # Security considerations: Ensure only trusted clients have this capability, restrict scopes and permissions as needed,
+        # and audit usage to prevent privilege escalation or unauthorized access.
+        "attributes": {
+            "standard.token.exchange.enabled": "true",  # Enable token exchange
+        },
     },
 )
 

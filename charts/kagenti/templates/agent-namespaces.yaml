@@ -2,7 +2,8 @@
 # For each namespace, it creates the namespace itself, applies necessary labels,
 # and creates secrets for GitHub, OpenAI, and Slack.
 {{- if .Values.agentNamespaces }}
-{{- range .Values.agentNamespaces }}
+{{- $root := . }}
+{{- range $root.Values.agentNamespaces }}
 ---
 # ——————————————————————————————————————————————————————————————————————————————
 #  Namespace: {{ . }}
@@ -13,9 +14,12 @@ kind: Namespace
 metadata:
   name: {{ . }}
   labels:
+    kagenti-enabled: "true"
     istio-discovery: enabled
     istio.io/dataplane-mode: ambient
-    kagenti-enabled: "true"
+    istio.io/use-waypoint: waypoint
+    shared-gateway-access: "true"
+  {{- include "kagenti.labels" $root | nindent 4 }}
 ---
 # ——————————————————————————————————————————————————————————————————————————————
 #  Secrets for Namespace: {{ . }}
@@ -26,6 +30,8 @@ kind: Secret
 metadata:
   name: github-token-secret
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 type: Opaque
 stringData:
   user: {{ $.Values.secrets.githubUser | quote }}
@@ -37,6 +43,8 @@ kind: Secret
 metadata:
   name: ghcr-secret
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: {{ (printf "{\"auths\":{\"ghcr.io\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" $.Values.secrets.githubUser $.Values.secrets.githubToken (printf "%s:%s" $.Values.secrets.githubUser $.Values.secrets.githubToken | b64enc)) | b64enc }}
@@ -47,6 +55,8 @@ kind: Secret
 metadata:
   name: openai-secret
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 type: Opaque
 stringData:
   apikey: {{ $.Values.secrets.openaiApiKey | quote }}
@@ -57,6 +67,8 @@ kind: Secret
 metadata:
   name: slack-secret
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 type: Opaque
 stringData:
   bot-token: {{ $.Values.secrets.slackBotToken | quote }}
@@ -68,6 +80,8 @@ kind: Secret
 metadata:
   name: quay-registry-secret
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: {{ (printf "{\"auths\":{\"quay.io\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" $.Values.secrets.quayUser $.Values.secrets.quayToken (printf "%s:%s" $.Values.secrets.quayUser $.Values.secrets.quayToken | b64enc)) | b64enc }}
@@ -80,6 +94,8 @@ kind: ConfigMap
 metadata:
   name: environments
   namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
 data:
   ollama: |
     [

@@ -166,5 +166,11 @@ cython_debug/
 .vscode
 
 .secrets.yaml
+.secret_values.yaml
 
 *.tgz
+
+.values_override.yaml
+
+# Local testing scripts (not committed)
+local-testing/

@@ -36,11 +36,13 @@ jobs:
             path: ./kagenti/auth
           - name: client-registration
             path: ./kagenti/auth
+          - name: agent-oauth-secret
+            path: ./kagenti/auth
 
     steps:
       # 1. Checkout the repository code
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # 2. Set up QEMU for multi-architecture builds
       - name: Set up QEMU

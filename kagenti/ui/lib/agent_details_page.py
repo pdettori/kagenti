@@ -30,12 +30,14 @@ from .utils import (
 )
 from .kube import (
     get_custom_objects_api,
+    get_core_v1_api,
     get_agent_details,
     get_kubernetes_namespace,
+    get_pod_environment_variables,
     is_running_in_cluster,
 )
 from .a2a_utils import run_agent_chat_stream_a2a, render_a2a_agent_card
-from .common_ui import display_resource_metadata
+from .common_ui import display_resource_metadata, display_environment_variables
 from . import constants
 
 logger = logging.getLogger(__name__)
@@ -148,6 +150,13 @@ def render_agent_details_content(agent_k8s_name: str):
     tags = display_resource_metadata(st, agent_details_data)
     protocol = tags.get("protocol", "").lower()
 
+    # Display environment variables
+    core_v1_api = get_core_v1_api()
+    if core_v1_api:
+        env_vars = get_pod_environment_variables(core_v1_api, agent_k8s_name, namespace)
+        display_environment_variables(st, env_vars)
+        st.markdown("---")
+
     # Determine agent URL from agent object name
     agent_service_host_name = agent_k8s_name
 
@@ -165,8 +174,8 @@ def render_agent_details_content(agent_k8s_name: str):
         if running_in_cluster:
             agent_url = f"{scheme}{agent_service_host_name}.{namespace}.svc.cluster.local:{agent_port}"
         else:
-            # For local/off-cluster, localtest.me resolves to localhost.
-            agent_url = f"{scheme}{agent_service_host_name}.localtest.me:{agent_port}"
+            # For local/off-cluster, use configured DOMAIN_NAME (defaults to localtest.me)
+            agent_url = f"{scheme}{agent_service_host_name}.{constants.DOMAIN_NAME}:{agent_port}"
 
         logger.info(
             f"Agent URL for '{agent_k8s_name}': {agent_url} (in-cluster: {running_in_cluster}, port: {agent_port})"

@@ -4,6 +4,7 @@ kind: Subscription
 metadata:
   labels:
     operators.coreos.com/servicemeshoperator3.openshift-operators: ""
+    {{- include "kagenti.labels" . | nindent 4 }}
   name: servicemeshoperator3
   namespace: openshift-operators
 spec:
