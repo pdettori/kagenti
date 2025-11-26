@@ -11,6 +11,7 @@ from kubernetes.client.exceptions import ApiException
 class TestWeatherAgent:
     """Test weather-service agent deployment in kagenti-operator mode."""
 
+    @pytest.mark.requires_features(["kagenti_operator"])
     def test_deployment_exists(self, k8s_apps_client):
         """Verify weather-service deployment exists."""
         try:
@@ -21,6 +22,7 @@ class TestWeatherAgent:
         except ApiException as e:
             pytest.fail(f"weather-service deployment not found: {e}")
 
+    @pytest.mark.requires_features(["kagenti_operator"])
     def test_deployment_ready(self, k8s_apps_client):
         """Verify weather-service deployment is ready."""
         deployment = k8s_apps_client.read_namespaced_deployment(
@@ -34,6 +36,7 @@ class TestWeatherAgent:
             ready_replicas >= desired_replicas
         ), f"weather-service not ready: {ready_replicas}/{desired_replicas} replicas"
 
+    @pytest.mark.requires_features(["kagenti_operator"])
     def test_pods_running(self, k8s_client, k8s_apps_client):
         """Verify weather-service pods are running."""
         deployment = k8s_apps_client.read_namespaced_deployment(
@@ -55,6 +58,7 @@ class TestWeatherAgent:
                 pod.status.phase == "Running"
             ), f"Pod {pod.metadata.name} not running: {pod.status.phase}"
 
+    @pytest.mark.requires_features(["kagenti_operator"])
     def test_service_exists(self, k8s_client, weather_service_name):
         """Verify weather-service service exists with correct name."""
         try:
