@@ -76,279 +76,45 @@ jobs:
           ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml
 
       - name: Create secret values file for CI
-        run: |
-          mkdir -p deployments/envs
-          cat > deployments/envs/.secret_values.yaml <<EOF
-          # CI secret values (fake values for testing)
-          global:
-            jwt_key: "ci-test-jwt-key"
-            db_password: "ci-test-db-password"
-
-          kagenti:
-            postgres:
-              password: "ci-test-pg-password"
-
-          secrets:
-            githubUser: "ci-test-user"
-            githubToken: "ci-test-token"
-            openaiApiKey: "ci-test-openai-key"
-            slackBotToken: "ci-test-slack-token"
-            adminSlackBotToken: "ci-test-admin-slack-token"
-            quayUser: "ci-test-quay-user"
-            quayToken: "ci-test-quay-token"
-          EOF
+        run: bash .github/scripts/common/20-create-secrets.sh
 
       - name: Run Ansible installer (dev mode with kagenti-operator)
-        run: |
-          cd deployments/ansible
-          ./run-install.sh --env-file ../envs/dev_kagenti_operator_values.yaml
+        run: bash .github/scripts/kagenti-operator/30-run-installer.sh
 
       - name: Wait for platform to be ready
-        run: |
-          # Wait for core platform components to be ready
-          kubectl wait --for=condition=available --timeout=300s deployment -n kagenti-system --all || {
-            echo "Platform components not ready"
-            kubectl get pods -A
-            kubectl get events -A --sort-by='.lastTimestamp' | tail -30
-            exit 1
-          }
+        run: bash .github/scripts/common/40-wait-platform-ready.sh
 
       - name: Install Ollama
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
+        run: bash .github/scripts/common/50-install-ollama.sh
 
       - name: Start Ollama and pull model
-        run: |
-          # Start Ollama in background
-          ollama serve > /tmp/ollama.log 2>&1 &
-          OLLAMA_PID=$!
-          echo "Ollama PID: $OLLAMA_PID"
-
-          # Wait for Ollama to be ready (poll with timeout)
-          echo "Waiting for Ollama to be ready..."
-          for i in {1..30}; do
-            if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-              echo "Ollama is ready!"
-              break
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 2
-          done
-
-          # Verify Ollama is responsive
-          curl -s http://localhost:11434/api/tags || {
-            echo "ERROR: Ollama failed to start"
-            echo "Ollama logs:"
-            cat /tmp/ollama.log
-            exit 1
-          }
-
-          # Pull the required model (with progress and timeout)
-          echo "Pulling qwen2.5:0.5b model (~400MB, lightweight for CI)..."
-          timeout 300 ollama pull qwen2.5:0.5b || {
-            echo "ERROR: Model pull failed or timed out after 5 minutes"
-            exit 1
-          }
-
-          # Verify model was pulled successfully
-          ollama list | grep qwen2.5 || {
-            echo "ERROR: Model not found after pull"
-            ollama list
-            exit 1
-          }
-
-          echo "Model pulled successfully!"
+        run: bash .github/scripts/common/60-pull-ollama-model.sh
 
       - name: Configure dockerhost service for Kind
-        run: |
-          # Create dockerhost service so pods can reach host Ollama
-          # Fix jq query to handle Kind network structure properly
-          DOCKER_HOST_IP=$(docker network inspect kind | jq -r '.[].IPAM.Config[] | select(.Gateway != null) | .Gateway' | head -1)
-          echo "Docker host IP: ${DOCKER_HOST_IP}"
-
-          # Validate IP was found
-          if [ -z "$DOCKER_HOST_IP" ] || [ "$DOCKER_HOST_IP" = "null" ]; then
-            echo "ERROR: Could not determine Docker host IP"
-            echo "Network info:"
-            docker network inspect kind | jq '.[].IPAM.Config[]'
-            exit 1
-          fi
-
-          cat <<EOF | kubectl apply -f -
-          apiVersion: discovery.k8s.io/v1
-          kind: EndpointSlice
-          metadata:
-            name: dockerhost
-            namespace: team1
-            labels:
-              kubernetes.io/service-name: dockerhost
-          addressType: IPv4
-          endpoints:
-          - addresses:
-            - ${DOCKER_HOST_IP}
-            conditions:
-              ready: true
-          ports:
-          - name: ollama
-            port: 11434
-            protocol: TCP
-          ---
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: dockerhost
-            namespace: team1
-          spec:
-            clusterIP: None
-          EOF
-
-          # Verify service was created
-          kubectl get service dockerhost -n team1
-          kubectl get endpointslice dockerhost -n team1
+        run: bash .github/scripts/common/70-configure-dockerhost.sh
 
       - name: Wait for kagenti-operator CRDs to be established
-        run: |
-          echo "Waiting for kagenti-operator CRDs to be established..."
-
-          # List of CRDs required by kagenti-operator
-          CRDS=(
-            "agents.agent.kagenti.dev"
-            "agentbuilds.agent.kagenti.dev"
-            "agentcards.agent.kagenti.dev"
-            "mcpservers.mcp.kagenti.com"
-            "mcpvirtualservers.mcp.kagenti.com"
-          )
-
-          for crd in "${CRDS[@]}"; do
-            echo "Waiting for CRD: $crd"
-            kubectl wait --for condition=established --timeout=300s crd/$crd || {
-              echo "ERROR: CRD $crd not found or not established"
-              echo "Available CRDs:"
-              kubectl get crds | grep -E 'kagenti|mcp' || echo "No kagenti/mcp CRDs found"
-              echo ""
-              echo "Kagenti-system pods:"
-              kubectl get pods -n kagenti-system
-              exit 1
-            }
-            echo "✓ CRD $crd is ready"
-          done
-
-          echo "All kagenti-operator CRDs are established!"
+        run: bash .github/scripts/kagenti-operator/41-wait-crds.sh
 
       - name: Apply pipeline-template-dev ConfigMap
-        run: |
-          kubectl apply -f kagenti/examples/agents/pipeline-template-dev.yaml
+        run: bash .github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 
       - name: Wait for Toolhive CRDs to be established
-        run: |
-          echo "Waiting for Toolhive MCPServer CRD to be established..."
-          kubectl wait --for condition=established --timeout=300s crd/mcpservers.toolhive.stacklok.dev || {
-            echo "ERROR: Toolhive MCPServer CRD not found or not established"
-            echo "Available CRDs:"
-            kubectl get crds | grep -E 'toolhive|mcp' || echo "No toolhive/mcp CRDs found"
-            echo ""
-            echo "Toolhive-system pods:"
-            kubectl get pods -n toolhive-system || echo "No toolhive-system namespace"
-            exit 1
-          }
-          echo "✓ Toolhive MCPServer CRD is ready"
+        run: bash .github/scripts/kagenti-operator/43-wait-toolhive-crds.sh
 
       # TOOL DEPLOYMENT (FIRST - agent depends on tool being available)
       - name: Build weather-tool image
-        run: |
-          echo "===== STEP 1: Building weather-tool image ====="
-          kubectl apply -f kagenti/examples/agents/weather_tool_build.yaml
-
-      - name: Wait for weather-tool AgentBuild to complete
-        run: |
-          echo "Waiting for weather-tool-build AgentBuild to complete..."
-          timeout 300 bash -c 'until kubectl get agentbuild weather-tool-build -n team1 &> /dev/null; do sleep 2; done' || {
-            echo "AgentBuild not created after 300s"
-            kubectl get agentbuilds -n team1
-            exit 1
-          }
-
-          # Wait for build to succeed
-          for i in {1..60}; do
-            phase=$(kubectl get agentbuild weather-tool-build -n team1 -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-            echo "AgentBuild phase: $phase"
-            if [ "$phase" = "Succeeded" ]; then
-              echo "AgentBuild completed successfully!"
-              break
-            elif [ "$phase" = "Failed" ]; then
-              echo "AgentBuild failed!"
-              kubectl describe agentbuild weather-tool-build -n team1
-              exit 1
-            fi
-            sleep 5
-          done
+        run: bash .github/scripts/kagenti-operator/71-build-weather-tool.sh
 
       - name: Deploy weather-tool via Toolhive MCPServer
-        run: |
-          echo "===== STEP 2: Deploying weather-tool via Toolhive MCPServer ====="
-          kubectl apply -f kagenti/examples/mcpservers/weather_tool.yaml
-
-      - name: Wait for weather-tool MCPServer deployment
-        run: |
-          echo "Waiting for Toolhive to create weather-tool deployment from MCPServer..."
-          timeout 300 bash -c 'until kubectl get deployment weather-tool -n team1 &> /dev/null; do sleep 2; done' || {
-            echo "Deployment not created after 300s, checking MCPServer and Toolhive operator..."
-            kubectl get mcpservers -n team1
-            kubectl describe mcpserver weather-tool -n team1
-            kubectl logs -n toolhive-system deployment/toolhive-operator --tail=100 || echo "Toolhive operator logs not available"
-            exit 1
-          }
-          kubectl wait --for=condition=available --timeout=300s deployment/weather-tool -n team1 || {
-            kubectl get events -n team1 --sort-by='.lastTimestamp'
-            kubectl describe deployment weather-tool -n team1
-            exit 1
-          }
+        run: bash .github/scripts/kagenti-operator/72-deploy-weather-tool.sh
 
       - name: Patch weather-tool StatefulSet for writable /tmp
-        run: |
-          echo "Patching weather-tool StatefulSet to add writable /tmp volume..."
-          # Wait for StatefulSet to be created by Toolhive proxyrunner
-          timeout 60 bash -c 'until kubectl get statefulset weather-tool -n team1 &> /dev/null; do sleep 2; done' || {
-            echo "StatefulSet not created after 60s"
-            kubectl get statefulset -n team1
-            exit 1
-          }
-
-          # Patch the StatefulSet to add emptyDir volume for /tmp
-          # This is needed because Toolhive sets readOnlyRootFilesystem: true but doesn't provide writable volumes
-          kubectl patch statefulset weather-tool -n team1 -p '{"spec":{"template":{"spec":{"volumes":[{"name":"tmp","emptyDir":{}}],"containers":[{"name":"mcp","volumeMounts":[{"name":"tmp","mountPath":"/tmp"}]}]}}}}'
-
-          # Delete the pod to force recreation with the new volume
-          kubectl delete pod -n team1 -l app=weather-tool --wait=false || true
-
-          # Wait for the new pod to be ready
-          kubectl wait --for=condition=ready --timeout=300s pod -n team1 -l app=weather-tool || {
-            echo "weather-tool pod not ready after patch"
-            kubectl get pods -n team1 -l app=weather-tool
-            kubectl logs -n team1 -l app=weather-tool --tail=50 || true
-            exit 1
-          }
+        run: bash .github/scripts/kagenti-operator/73-patch-weather-tool.sh
 
       # AGENT DEPLOYMENT (AFTER tool is ready - agent depends on tool)
       - name: Deploy weather-service Agent
-        run: |
-          echo "===== STEP 3: Deploying weather-service Agent ====="
-          kubectl apply -f kagenti/examples/agents/weather_agent_build.yaml
-          kubectl apply -f kagenti/examples/agents/weather_agent.yaml
-
-      - name: Wait for weather-service deployment
-        run: |
-          timeout 300 bash -c 'until kubectl get deployment weather-service -n team1 &> /dev/null; do sleep 2; done' || {
-            echo "Deployment not created after 300s, checking operator logs..."
-            kubectl logs -n kagenti-system deployment/kagenti-controller-manager --tail=100
-            kubectl get agents -n team1
-            kubectl describe agent weather-service -n team1
-            exit 1
-          }
-          kubectl wait --for=condition=available --timeout=300s deployment/weather-service -n team1 || {
-            kubectl get events -n team1 --sort-by='.lastTimestamp'
-            exit 1
-          }
+        run: bash .github/scripts/kagenti-operator/74-deploy-weather-agent.sh
 
       - name: Verify deployment health
         run: |
@@ -357,38 +123,13 @@ jobs:
           .github/scripts/verify_deployment.sh || true
 
       - name: Install test dependencies
-        run: |
-          pip install -e .[test]
+        run: bash .github/scripts/common/80-install-test-deps.sh
 
       - name: Start port-forward for agent service
-        run: |
-          # Start port-forward in background for E2E tests
-          # Forward directly to pod port 8000 (weather-service listens on 8000, not 8080)
-          POD_NAME=$(kubectl get pod -n team1 -l app.kubernetes.io/name=weather-service -o jsonpath='{.items[0].metadata.name}')
-          kubectl port-forward -n team1 pod/$POD_NAME 8000:8000 > /tmp/port-forward.log 2>&1 &
-          PORT_FORWARD_PID=$!
-          echo "PORT_FORWARD_PID=$PORT_FORWARD_PID" >> $GITHUB_ENV
-
-          # Wait for port-forward to be ready
-          for i in {1..10}; do
-            if curl -s http://localhost:8000/health >/dev/null 2>&1 || curl -s http://localhost:8000/ >/dev/null 2>&1; then
-              echo "Port-forward is ready!"
-              break
-            fi
-            echo "Waiting for port-forward... ($i/10)"
-            sleep 1
-          done
+        run: bash .github/scripts/common/85-start-port-forward.sh
 
       - name: Run E2E tests (kagenti-operator)
-        working-directory: kagenti
-        env:
-          AGENT_URL: http://localhost:8000
-          KAGENTI_CONFIG_FILE: deployments/envs/dev_kagenti_operator_values.yaml
-        run: |
-          pytest tests/e2e/common tests/e2e/kagenti_operator -v \
-            --timeout=300 \
-            --tb=short \
-            --junit-xml=../test-results/e2e-results.xml
+        run: bash .github/scripts/kagenti-operator/90-run-e2e-tests.sh
 
       - name: Upload test results
         if: always()
@@ -399,22 +140,4 @@ jobs:
 
       - name: Collect logs on failure
         if: failure()
-        run: |
-          echo "=== Failed Pods ==="
-          kubectl get pods --all-namespaces --field-selector=status.phase!=Running,status.phase!=Succeeded || true
-
-          echo ""
-          echo "=== Recent Events (last 30) ==="
-          kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -30 || true
-
-          echo ""
-          echo "=== Team1 Namespace Status ==="
-          kubectl get all -n team1 || true
-
-          echo ""
-          echo "=== Weather Service Logs ==="
-          kubectl logs -n team1 deployment/weather-service --tail=50 --all-containers=true || true
-
-          echo ""
-          echo "=== Keycloak Logs (if exists) ==="
-          kubectl logs -n keycloak deployment/keycloak --tail=30 || kubectl logs -n keycloak statefulset/keycloak --tail=30 || true
+        run: bash .github/scripts/common/99-collect-logs.sh
