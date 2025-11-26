@@ -13,7 +13,7 @@ import jwt
 from keycloak import KeycloakAdmin, KeycloakPostError
 
 
-def get_env_var(name: str, default: str | None = None) -> str:
+def get_env_var(name: str, default: str | None = None) -> str | None:
     """
     Fetch an environment variable or return default if provided.
     Raise ValueError if missing and no default is set.
