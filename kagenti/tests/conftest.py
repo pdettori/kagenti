@@ -15,6 +15,10 @@ def pytest_configure(config):
         "requires_features(features): skip test if required features are not enabled "
         "(auto-detected from KAGENTI_CONFIG_FILE)",
     )
+    config.addinivalue_line(
+        "markers",
+        "critical: marks tests as critical (should always pass)",
+    )
 
 
 # ============================================================================
