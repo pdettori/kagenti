@@ -2,6 +2,23 @@
 # Kubernetes Utilities Library
 # Provides helper functions for Kubernetes operations
 
+# Cross-platform timeout wrapper
+# On Linux: uses timeout command
+# On macOS: uses perl-based timeout (timeout not available)
+run_with_timeout() {
+    local timeout_seconds="$1"
+    shift
+    local command="$@"
+
+    if command -v timeout &> /dev/null; then
+        # Linux/GNU timeout available
+        timeout "$timeout_seconds" bash -c "$command"
+    else
+        # macOS fallback using perl
+        perl -e "alarm $timeout_seconds; exec @ARGV" bash -c "$command"
+    fi
+}
+
 # Wait for deployment to be available
 wait_for_deployment() {
     local deployment="$1"

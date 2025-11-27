@@ -3,6 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/env-detect.sh"
 source "$SCRIPT_DIR/../lib/logging.sh"
+source "$SCRIPT_DIR/../lib/k8s-utils.sh"
 
 log_step "60" "Pulling Ollama model"
 
@@ -75,7 +76,7 @@ if ! ollama list | grep -q qwen2.5:0.5b; then
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         log_info "Pulling qwen2.5:0.5b model (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
 
-        if timeout 300 ollama pull qwen2.5:0.5b; then
+        if run_with_timeout 300 'ollama pull qwen2.5:0.5b'; then
             log_success "Model pull successful"
             break
         fi

@@ -3,13 +3,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/env-detect.sh"
 source "$SCRIPT_DIR/../lib/logging.sh"
+source "$SCRIPT_DIR/../lib/k8s-utils.sh"
 
 log_step "71" "Building weather-tool image"
 
 kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_tool_build.yaml"
 
 # Wait for AgentBuild to exist
-timeout 300 bash -c 'until kubectl get agentbuild weather-tool-build -n team1 &> /dev/null; do sleep 2; done' || {
+run_with_timeout 300 'until kubectl get agentbuild weather-tool-build -n team1 &> /dev/null; do sleep 2; done' || {
     log_error "AgentBuild not created after 300s"
     kubectl get agentbuilds -n team1
     exit 1
