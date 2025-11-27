@@ -39,8 +39,6 @@ secrets:
   openaiApiKey: "ci-test-openai-key"
   slackBotToken: "ci-test-slack-token"
   adminSlackBotToken: "ci-test-admin-slack-token"
-  quayUser: "ci-test-quay-user"
-  quayToken: "ci-test-quay-token"
 EOF
 else
     log_info "Creating local test secrets"
