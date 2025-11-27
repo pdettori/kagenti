@@ -1,4 +1,4 @@
-name: PR Kind Deployment Test (Platform Operator)
+name: Kind PR Test
 
 on:
   pull_request:
@@ -10,7 +10,8 @@ on:
       - 'charts/**'
 
 jobs:
-  deploy-on-kind:
+  e2e-dev-kagenti-operator:
+    name: e2e (Dev, Kagenti Operator)
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -23,11 +24,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
 
@@ -36,44 +32,20 @@ jobs:
         with:
           version: 'v3.17.0'  # Pin to v3 - Helm v4 has breaking changes incompatible with ansible kubernetes.core.helm module
 
-      - name: Install jq (for health checks)
-        run: |
-          sudo apt-get update && sudo apt-get install -y jq
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Free up disk space
-        run: |
-          echo "Disk space before cleanup:"
-          df -h
+        run: bash .github/scripts/common/05-free-disk-space.sh
 
-          # Remove unnecessary packages
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-
-          # Remove Docker cache and unused images
-          docker system prune -af --volumes
-
-          # Remove large packages we don't need
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-
-          echo "Disk space after cleanup:"
-          df -h
-
-      - name: Install Ansible and dependencies
-        run: |
-          pip install ansible PyYAML kubernetes openshift
-          ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml
+      - name: Setup Python and Ansible dependencies
+        run: bash .github/scripts/common/10-setup-dependencies.sh
 
       - name: Create secret values file for CI
         run: bash .github/scripts/common/20-create-secrets.sh
 
-      - name: Run Ansible installer (dev mode)
-        run: bash .github/scripts/platform-operator/30-run-installer.sh
+      - name: Run Ansible installer (dev mode with kagenti-operator)
+        run: bash .github/scripts/kagenti-operator/30-run-installer.sh
 
       - name: Wait for platform to be ready
         run: bash .github/scripts/common/40-wait-platform-ready.sh
@@ -87,11 +59,28 @@ jobs:
       - name: Configure dockerhost service for Kind
         run: bash .github/scripts/common/70-configure-dockerhost.sh
 
-      - name: Apply weather-tool and weather service
-        run: bash .github/scripts/platform-operator/71-deploy-components.sh
+      - name: Wait for kagenti-operator CRDs to be established
+        run: bash .github/scripts/kagenti-operator/41-wait-crds.sh
 
-      - name: Wait for weather deployments
-        run: bash .github/scripts/platform-operator/72-wait-deployments.sh
+      - name: Apply pipeline-template-dev ConfigMap
+        run: bash .github/scripts/kagenti-operator/42-apply-pipeline-template.sh
+
+      - name: Wait for Toolhive CRDs to be established
+        run: bash .github/scripts/kagenti-operator/43-wait-toolhive-crds.sh
+
+      # TOOL DEPLOYMENT (FIRST - agent depends on tool being available)
+      - name: Build weather-tool image
+        run: bash .github/scripts/kagenti-operator/71-build-weather-tool.sh
+
+      - name: Deploy weather-tool via Toolhive MCPServer
+        run: bash .github/scripts/kagenti-operator/72-deploy-weather-tool.sh
+
+      - name: Patch weather-tool StatefulSet for writable /tmp
+        run: bash .github/scripts/kagenti-operator/73-patch-weather-tool.sh
+
+      # AGENT DEPLOYMENT (AFTER tool is ready - agent depends on tool)
+      - name: Deploy weather-service Agent
+        run: bash .github/scripts/kagenti-operator/74-deploy-weather-agent.sh
 
       - name: Verify deployment health
         run: |
@@ -105,8 +94,8 @@ jobs:
       - name: Start port-forward for agent service
         run: bash .github/scripts/common/85-start-port-forward.sh
 
-      - name: Run E2E tests (platform-operator only)
-        run: bash .github/scripts/platform-operator/90-run-e2e-tests.sh
+      - name: Run E2E tests (kagenti-operator)
+        run: bash .github/scripts/kagenti-operator/90-run-e2e-tests.sh
 
       - name: Upload test results
         if: always()

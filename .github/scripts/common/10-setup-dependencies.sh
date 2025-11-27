@@ -8,20 +8,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/env-detect.sh"
 source "$SCRIPT_DIR/../lib/logging.sh"
 
-log_step "10" "Setting up dependencies"
+log_step "10" "Setting up Python and Ansible dependencies"
 
 if [ "$IS_CI" = true ]; then
-    log_info "Running in CI - installing dependencies"
+    log_info "Running in CI - installing Python/Ansible dependencies"
 
-    # Install uv (Python setup is done by actions)
+    # Install uv for Python package management
+    log_info "Installing uv..."
     python -m pip install --upgrade pip
     pip install uv
 
-    # Install jq
-    sudo apt-get update && sudo apt-get install -y jq
+    # Install jq for JSON processing
+    log_info "Installing jq..."
+    sudo apt-get update -qq && sudo apt-get install -y jq
 
-    # Install Ansible and dependencies
+    # Install Ansible and Kubernetes Python libraries
+    log_info "Installing Ansible and dependencies..."
     pip install ansible PyYAML kubernetes openshift
+
+    # Install Ansible collections
+    log_info "Installing Ansible collections..."
     ansible-galaxy collection install -r "$REPO_ROOT/deployments/ansible/collections-reqs.yml"
 else
     log_info "Running locally - checking dependencies"
@@ -49,4 +55,4 @@ else
     ansible-galaxy collection install -r "$REPO_ROOT/deployments/ansible/collections-reqs.yml"
 fi
 
-log_success "Dependencies setup complete"
+log_success "Python and Ansible dependencies setup complete"
