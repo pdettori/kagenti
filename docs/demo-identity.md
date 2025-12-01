@@ -1,4 +1,4 @@
-# Kagenti Identity, Authentication & Authorization Guide
+# Kagenti Identity, Authentication, & Authorization Guide
 
 This comprehensive guide covers all aspects of identity, authentication, and authorization in the Kagenti platform. Kagenti implements a **Zero-Trust Architecture** that combines SPIFFE/SPIRE workload identity, OAuth2 token exchange, and Keycloak identity management to provide secure, scalable, and dynamic authentication for cloud-native AI agents.
 
