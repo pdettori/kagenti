@@ -1,6 +1,6 @@
 sequenceDiagram
-    participant UI as Kagenti UI
-    participant Agent as Auth Bridge
+    participant UI as Inout
+    participant Agent as Agent (Auth Bridge)
     participant KC as Keycloak
     participant SPIRE as SPIRE Server
     
@@ -12,3 +12,4 @@ sequenceDiagram
     SPIRE->>KC: Confirm attested identity
     KC->>Agent: Return scoped token
     Agent->>Agent: Process with scoped permissions
+    Agent->>UI: Return results

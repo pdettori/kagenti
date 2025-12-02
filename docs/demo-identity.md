@@ -289,7 +289,7 @@ grant_type=authorization_code
 
 ```mermaid
 sequenceDiagram
-    participant UI as Kagenti UI
+    participant UI as Inout
     participant Agent as Slack Agent
     participant KC as Keycloak
     participant SPIRE as SPIRE Server
@@ -302,6 +302,7 @@ sequenceDiagram
     SPIRE->>KC: Confirm identity
     KC->>Agent: Return scoped token
     Agent->>Agent: Process with scoped permissions
+    Agent->>UI: Return results
 ```
 </details>
 
@@ -339,7 +340,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Auth Bridge
+    participant Agent as Agent (Auth Bridge)
     participant Tool as Internal MCP Tool
     participant API as Internal API
     participant KC as Keycloak
