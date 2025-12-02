@@ -47,8 +47,40 @@
       set_fact:
         preload_images: "{{ (lookup('file', preload_images_file).split('\n') | map('trim') | reject('equalto','') | reject('match','^#')) | list }}"
 
+    - name: Pull images
+      command: docker pull {{ item }}
+      loop: "{{ preload_images }}"
+      register: docker_pull_results
+      failed_when: false
+
+    - name: Report if some image pull failed
+      debug:
+        msg: "Failed to pull image: {{ item.item }}. RC: {{ item.rc }}. Error: {{ item.stderr | default('No specific error captured') }}"
+      loop: "{{ docker_pull_results.results | selectattr('failed', 'equalto', True) | list }}"
+      run_once: true
+
     - name: Load images into kind
-      command: kind load docker-image {{ item }} --name {{ kind_cluster_name }}
+      # use raw loading instead of `kind load docker-image` as it is broken on latest Rancher Desktop with VZ virtualization 
+      shell: |
+        docker save {{ item }} -o image.tar > /dev/null 2>&1 \
+        && \
+        docker cp image.tar {{ kind_cluster_name }}-control-plane:/image.tar > /dev/null 2>&1 \
+        && \
+        docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import /image.tar > /dev/null \
+        || { \
+            echo "🚨 ERROR: Image import failed on node '{{ kind_cluster_name }}-control-plane'. Displaying container error log:"; \
+            docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import /image.tar; \
+            exit 1; \
+        } \
+        && \
+        docker exec {{ kind_cluster_name }}-control-plane rm /image.tar > /dev/null 2>&1 \
+        && \
+        rm image.tar > /dev/null 2>&1
+      args:
+        chdir: /tmp
+        executable: /bin/bash
       loop: "{{ preload_images }}"
       register: kind_load_results
       failed_when: false
+      changed_when: false
+
