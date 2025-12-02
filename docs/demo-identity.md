@@ -239,26 +239,7 @@ Kagenti implements OAuth2 Token Exchange to enable secure token delegation acros
 
 *Figure 1: User Authentication Flow - Shows how users authenticate with Kagenti UI through Keycloak OIDC flow*
 
-<details>
-<summary>View Mermaid Source Code</summary>
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant UI as Kagenti UI
-    participant KC as Keycloak
-    
-    User->>UI: Access UI
-    UI->>KC: Redirect to login
-    KC->>User: Present login form
-    User->>KC: Provide credentials
-    KC->>UI: Return OAuth token
-    UI->>User: Display authenticated interface
-    User->>UI: Access Agent Catalog
-    UI->>KC: Present OAuth token
-    KC->>UI: Return JWT token
-```
-</details>
+[View Mermaid Source Code](./diagrams/01-user-authentication-flow.mmd)
 
 **HTTP Request:**
 
@@ -290,27 +271,7 @@ grant_type=authorization_code
 
 *Figure 2: Agent Token Exchange Flow - Demonstrates OAuth2 token exchange between agents and Keycloak using SPIFFE identity*
 
-<details>
-<summary>View Mermaid Source Code</summary>
-
-```mermaid
-sequenceDiagram
-    participant UI as Inout
-    participant Agent as Slack Agent
-    participant KC as Keycloak
-    participant SPIRE as SPIRE Server
-    
-    UI->>Agent: Forward user request + token
-    Agent->>SPIRE: Get JWT SVID
-    SPIRE->>Agent: Return JWT SVID
-    Agent->>KC: Token exchange request
-    KC->>SPIRE: Validate JWT SVID
-    SPIRE->>KC: Confirm identity
-    KC->>Agent: Return scoped token
-    Agent->>Agent: Process with scoped permissions
-    Agent->>UI: Return results
-```
-</details>
+[View Mermaid Source Code](./diagrams/02-agent-token-exchange-flow.mmd)
 
 **Token Exchange Request:**
 
@@ -342,24 +303,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 *Figure 3: Internal Tool Access Flow - Shows how agents call internal tools using delegated tokens with proper permission validation*
 
-<details>
-<summary>View Mermaid Source Code</summary>
-
-```mermaid
-sequenceDiagram
-    participant Agent as Agent (Auth Bridge)
-    participant Tool as Internal MCP Tool
-    participant API as Internal API
-    participant KC as Keycloak
-    
-    Agent->>Tool: Call tool with delegated token
-    Tool->>KC: Validate token
-    KC->>Tool: Confirm token + scopes
-    Tool->>API: Make Internal API call
-    API->>Tool: Return data
-    Tool->>Agent: Return processed result
-```
-</details>
+[View Mermaid Source Code](./diagrams/03-tool-access-delegated-token-flow.mmd)
 
 ### JWT Token Structure
 
@@ -403,25 +347,7 @@ The **MCP Gateway** acts as an authentication proxy for all Model Context Protoc
 
 *Figure 4: MCP Gateway Authentication Flow - Illustrates authentication flow through the MCP Gateway proxy for Model Context Protocol communications*
 
-<details>
-<summary>View Mermaid Source Code</summary>
-
-```mermaid
-sequenceDiagram
-    participant Agent
-    participant Gateway as MCP Gateway
-    participant Tool as MCP Tool
-    participant KC as Keycloak
-    
-    Agent->>Gateway: MCP request + JWT token
-    Gateway->>KC: Validate token
-    KC->>Gateway: Token validation result
-    Gateway->>Gateway: Check tool permissions
-    Gateway->>Tool: Forward authenticated request
-    Tool->>Gateway: Return MCP response
-    Gateway->>Agent: Return response
-```
-</details>
+[View Mermaid Source Code](./diagrams/04-mcp-gateway-authentication-flow.mmd)
 
 #### MCP Authentication Headers
 
@@ -505,29 +431,7 @@ def validate_request(request):
 
 *Figure 5: External API Access with Vault Flow - Shows how agents call internal tools using delegated tokens with proper permission validation and the Vault exchanges this token for external API key for accessing external APIs*
 
-<details>
-<summary>View Mermaid Source Code</summary>
-
-```mermaid
-sequenceDiagram
-    participant Agent as Agent
-    participant Tool as Tool
-    participant KC as Keycloak
-    participant VA as Vault
-    participant API as External API
-
-    Agent->>Tool: Call tool with delegated token
-    Tool->>KC: Validate token
-    KC->>Tool: Confirm token + scopes
-    Tool->>VA: Request External API key (send token)
-    VA->>KC: Request OIDC discovery
-    KC->>VA: Return public keys to validate token
-    VA->>VA: Verify the Vault policies and claims
-    VA->>Tool: Return External API key
-    Tool->>API: Request data with External API key
-    API->>Tool: Return data
-```
-</details>
+[View Mermaid Source Code](./diagrams/05-tool-with-external-api-flow.mmd)
 
 ### JWT Token Structure
 
