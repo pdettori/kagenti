@@ -2,12 +2,18 @@
 
 This comprehensive guide covers all aspects of identity, authentication, and authorization in the Kagenti platform. Kagenti implements a **Zero-Trust Architecture** that combines SPIFFE/SPIRE workload identity, OAuth2 token exchange, and Keycloak identity management to provide secure, scalable, and dynamic authentication for cloud-native AI agents.
 
+In practice, the Authorization Pattern within the Agentic Platform enables:
+
+- Machine Identity Management – replacing static credentials with SPIRE-issued JWTs.
+- Secure Delegation – enforcing token exchange to propagate identity across services without excessive permissions.
+- Continuous Verification – ensuring authentication and authorization at each step, preventing privilege escalation.
+
 ## 📚 Related Documentation
 
-* **[Kagenti Identity Overview](./2025-10.Kagenti-Identity.pdf)** - High-level architectural concepts
-* **[Token Exchange Deep Dive](../kagenti/examples/identity/token_exchange.md)** - Detailed OAuth2 token exchange flows
-* **[Client Registration Examples](../kagenti/examples/identity/keycloak_token_exchange/README.md)** - Practical integration examples
-* **[Personas and Roles](../PERSONAS_AND_ROLES.md)** - Identity management personas and access levels
+- **[Kagenti Identity Overview](./2025-10.Kagenti-Identity.pdf)** - High-level architectural concepts
+- **[Token Exchange Deep Dive](../kagenti/examples/identity/token_exchange.md)** - Detailed OAuth2 token exchange flows
+- **[Client Registration Examples](../kagenti/examples/identity/keycloak_token_exchange/README.md)** - Practical integration examples
+- **[Personas and Roles](../PERSONAS_AND_ROLES.md)** - Identity management personas and access levels
 
 ---
 
