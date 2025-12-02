@@ -136,20 +136,20 @@ kubectl exec -n team deployment/slack-researcher -- cat /opt/jwt_svid.token | \
 
 Keycloak serves as the central identity provider that:
 
-* Manages user identities and authentication
-* Issues OAuth2/OIDC tokens
-* Enforces role-based access control (RBAC)
-* Facilitates token exchange between services
-* Validates SPIFFE identities for workload authentication
+- Manages user identities and authentication
+- Issues OAuth2/OIDC tokens
+- Enforces role-based access control (RBAC)
+- Facilitates token exchange between services
+- Validates SPIFFE identities for workload authentication
 
 ### Realm Configuration
 
 **Master Realm** is configured with:
 
-* **Users**: Demo users with different access levels
-* **Clients**: Each agent/tool is a Keycloak client
-* **Roles**: Granular permissions (e.g., `slack-full-access`, `github-partial-access`)
-* **Scopes**: Define token audiences and permissions
+- **Users**: Demo users with different access levels
+- **Clients**: Each agent/tool is a Keycloak client
+- **Roles**: Granular permissions (e.g., `slack-full-access`, `github-partial-access`)
+- **Scopes**: Define token audiences and permissions
 
 ### Client Types
 
@@ -225,9 +225,9 @@ spiffe://${DOMAIN_NAME}/ns/team/sa/weather-tool
 
 Kagenti implements OAuth2 Token Exchange to enable secure token delegation across the agent ecosystem. This allows:
 
-* User identity propagation through agent → tool chains
-* Least-privilege token scoping
-* Audit trails for all access requests
+- User identity propagation through agent → tool chains
+- Least-privilege token scoping
+- Audit trails for all access requests
 
 ### Authentication Flow Stages
 
@@ -313,6 +313,7 @@ sequenceDiagram
 </details>
 
 **Token Exchange Request:**
+
 ```bash
 POST /realms/master/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
@@ -363,6 +364,7 @@ sequenceDiagram
 ### JWT Token Structure
 
 **User Token:**
+
 ```json
 {
   "sub": "user-123",
@@ -374,6 +376,7 @@ sequenceDiagram
 ```
 
 **Agent-Scoped Token (after exchange):**
+
 ```json
 {
   "sub": "user-123",
@@ -421,6 +424,7 @@ sequenceDiagram
 </details>
 
 #### MCP Authentication Headers
+
 ```bash
 # Agent to Gateway
 POST /mcp
@@ -435,6 +439,7 @@ Content-Type: application/json
 ```
 
 #### Gateway Configuration
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -467,6 +472,7 @@ spec:
 ### Tool-Specific Authentication
 
 #### Slack Tool Authentication
+
 ```python
 # In Slack MCP Tool
 def validate_request(request):
@@ -556,6 +562,7 @@ sequenceDiagram
 ### Client Registration Process
 
 #### Automatic Registration via Init Container
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -588,6 +595,7 @@ spec:
 ```
 
 #### Manual Client Registration
+
 ```python
 from keycloak import KeycloakAdmin
 import jwt
@@ -629,6 +637,7 @@ print(f"Registered client: {client_id} with internal ID: {internal_client_id}")
 ### Token Exchange Implementation
 
 #### Agent-Side Token Exchange
+
 ```python
 import requests
 import os
@@ -686,6 +695,7 @@ tool_response = requests.post(
 ### Common Issues and Solutions
 
 #### 1. SPIRE Agent Not Receiving SVID
+
 **Symptoms:**
 ```bash
 kubectl exec -n team deployment/slack-researcher -- ls /opt/
@@ -693,6 +703,7 @@ kubectl exec -n team deployment/slack-researcher -- ls /opt/
 ```
 
 **Diagnosis:**
+
 ```bash
 # Check SPIRE agent logs
 kubectl logs -n spire daemonset/spire-agent
@@ -707,11 +718,13 @@ kubectl exec -n spire deployment/spire-server -- \
 ```
 
 **Solutions:**
-* Ensure agent namespace has correct labels: `shared-gateway-access=true`
-* Verify SPIRE server can reach Kubernetes API
-* Check workload selector configuration
+
+- Ensure agent namespace has correct labels: `shared-gateway-access=true`
+- Verify SPIRE server can reach Kubernetes API
+- Check workload selector configuration
 
 #### 2. Token Exchange Failing
+
 **Symptoms:**
 ```json
 {
@@ -721,6 +734,7 @@ kubectl exec -n spire deployment/spire-server -- \
 ```
 
 **Diagnosis:**
+
 ```bash
 # Check client registration in Keycloak
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -733,11 +747,13 @@ kubectl exec -n team deployment/slack-researcher -- \
 ```
 
 **Solutions:**
-* Verify client is registered with correct SPIFFE ID
-* Ensure JWT SVID audience matches Keycloak expectations
-* Check token exchange permissions in Keycloak client configuration
+
+- Verify client is registered with correct SPIFFE ID
+- Ensure JWT SVID audience matches Keycloak expectations
+- Check token exchange permissions in Keycloak client configuration
 
 #### 3. MCP Gateway Authentication Issues
+
 **Symptoms:**
 ```json
 {
@@ -747,6 +763,7 @@ kubectl exec -n team deployment/slack-researcher -- \
 ```
 
 **Diagnosis:**
+
 ```bash
 # Check gateway logs
 kubectl logs -n gateway-system deployment/mcp-gateway-controller
@@ -760,13 +777,15 @@ kubectl get httproute slack-tool-route -o yaml
 ```
 
 **Solutions:**
-* Verify HTTPRoute has correct authentication filters
-* Ensure tool is properly registered with gateway
-* Check token format and expiration
+
+- Verify HTTPRoute has correct authentication filters
+- Ensure tool is properly registered with gateway
+- Check token format and expiration
 
 ### Debugging Commands
 
 #### SPIRE Debugging
+
 ```bash
 # List all SPIRE entries
 kubectl exec -n spire deployment/spire-server -- \
@@ -783,6 +802,7 @@ kubectl exec -n spire deployment/spire-server -- \
 ```
 
 #### Keycloak Debugging
+
 ```bash
 # Get admin token
 ADMIN_TOKEN=$(curl -sX POST \
@@ -809,6 +829,7 @@ curl -H "Authorization: Bearer $USER_TOKEN" \
 ```
 
 #### Token Validation
+
 ```bash
 # Decode JWT without verification (for debugging)
 decode_jwt() {
@@ -842,44 +863,49 @@ check_token_expiry $TOKEN
 ### Production Security Checklist
 
 #### SPIRE Configuration
-* [ ] Enable SPIRE server HA (multiple replicas)
-* [ ] Use persistent storage for SPIRE server database
-* [ ] Configure proper node attestation (not k8s-sat in production)
-* [ ] Enable SPIRE server TLS with proper certificates
-* [ ] Implement SPIRE server access controls
-* [ ] Set appropriate SVID TTL values (< 1 hour recommended)
-* [ ] Enable SPIRE audit logging
+
+- [ ] Enable SPIRE server HA (multiple replicas)
+- [ ] Use persistent storage for SPIRE server database
+- [ ] Configure proper node attestation (not k8s-sat in production)
+- [ ] Enable SPIRE server TLS with proper certificates
+- [ ] Implement SPIRE server access controls
+- [ ] Set appropriate SVID TTL values (< 1 hour recommended)
+- [ ] Enable SPIRE audit logging
 
 #### Keycloak Security
-* [ ] Change default admin credentials
-* [ ] Enable HTTPS for all Keycloak endpoints
-* [ ] Configure proper session timeouts
-* [ ] Set up backup and recovery procedures
-* [ ] Enable audit logging
-* [ ] Implement brute force protection
-* [ ] Configure proper CORS policies
-* [ ] Use strong client secrets for confidential clients
+
+- [ ] Change default admin credentials
+- [ ] Enable HTTPS for all Keycloak endpoints
+- [ ] Configure proper session timeouts
+- [ ] Set up backup and recovery procedures
+- [ ] Enable audit logging
+- [ ] Implement brute force protection
+- [ ] Configure proper CORS policies
+- [ ] Use strong client secrets for confidential clients
 
 #### Token Security
-* [ ] Set short token lifetimes (5-15 minutes)
-* [ ] Implement token refresh mechanisms
-* [ ] Use secure token storage (never in logs)
-* [ ] Validate all token claims (aud, exp, iat)
-* [ ] Implement proper token revocation
-* [ ] Use HTTPS for all token exchanges
-* [ ] Monitor for token abuse patterns
+
+- [ ] Set short token lifetimes (5-15 minutes)
+- [ ] Implement token refresh mechanisms
+- [ ] Use secure token storage (never in logs)
+- [ ] Validate all token claims (aud, exp, iat)
+- [ ] Implement proper token revocation
+- [ ] Use HTTPS for all token exchanges
+- [ ] Monitor for token abuse patterns
 
 #### Network Security
-* [ ] Use mTLS between all internal services
-* [ ] Implement network policies to restrict traffic
-* [ ] Configure ingress with proper TLS termination
-* [ ] Use service mesh for additional security layers
-* [ ] Monitor all authentication events
-* [ ] Implement rate limiting on auth endpoints
+
+- [ ] Use mTLS between all internal services
+- [ ] Implement network policies to restrict traffic
+- [ ] Configure ingress with proper TLS termination
+- [ ] Use service mesh for additional security layers
+- [ ] Monitor all authentication events
+- [ ] Implement rate limiting on auth endpoints
 
 ### Security Monitoring
 
 #### Key Metrics to Monitor
+
 ```yaml
 # Authentication Metrics
 - authentication_requests_total
@@ -898,6 +924,7 @@ check_token_expiry $TOKEN
 ```
 
 #### Audit Log Configuration
+
 ```yaml
 # SPIRE Server Audit
 apiVersion: v1
@@ -926,6 +953,7 @@ data:
 ## 📋 Quick Reference
 
 ### Essential URLs
+
 ```bash
 # Keycloak Admin Console
 http://keycloak.localtest.me:8080/admin/master/console/
@@ -957,6 +985,9 @@ github-partial-access-user: password
 ```
 
 ### Common SPIFFE IDs
+
+Using local kind:
+
 ```bash
 # Agents
 spiffe://localtest.me/ns/team/sa/slack-researcher
@@ -973,7 +1004,17 @@ spiffe://localtest.me/ns/gateway-system/sa/mcp-gateway
 spiffe://localtest.me/ns/kagenti-system/sa/kagenti-operator
 ```
 
+Using OpenShift:
+
+```bash
+# Agents
+spiffe://apps.cluster-swkz5.dynamic.redhatworkshops.io/ns/team/sa/slack-researcher
+spiffe://apps.cluster-swkz5.dynamic.redhatworkshops.io/ns/team/sa/weather-service
+spiffe://apps.cluster-swkz5.dynamic.redhatworkshops.io/ns/team/sa/github-issue-agent
+```
+
 ### Token Exchange Endpoints
+
 ```bash
 # Keycloak Token Endpoint
 POST http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/token
@@ -990,17 +1031,20 @@ POST http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/open
 ## 📚 Additional Resources
 
 ### Standards and Specifications
-* **[RFC 8693: OAuth 2.0 Token Exchange](https://tools.ietf.org/html/rfc8693)** - Token exchange specification
-* **[SPIFFE Specification](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/)** - Workload identity framework
-* **[OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)** - Authentication layer on OAuth 2.0
-* **[JWT RFC 7519](https://tools.ietf.org/html/rfc7519)** - JSON Web Token specification
+
+- **[RFC 8693: OAuth 2.0 Token Exchange](https://tools.ietf.org/html/rfc8693)** - Token exchange specification
+- **[SPIFFE Specification](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/)** - Workload identity framework
+- **[OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)** - Authentication layer on OAuth 2.0
+- **[JWT RFC 7519](https://tools.ietf.org/html/rfc7519)** - JSON Web Token specification
 
 ### Implementation Guides
-* **[Keycloak Documentation](https://www.keycloak.org/documentation)** - Complete Keycloak reference
-* **[SPIRE Documentation](https://spiffe.io/docs/latest/spire-about/)** - SPIRE deployment and configuration
-* **[Istio Security](https://istio.io/latest/docs/concepts/security/)** - Service mesh security concepts
+
+- **[Keycloak Documentation](https://www.keycloak.org/documentation)** - Complete Keycloak reference
+- **[SPIRE Documentation](https://spiffe.io/docs/latest/spire-about/)** - SPIRE deployment and configuration
+- **[Istio Security](https://istio.io/latest/docs/concepts/security/)** - Service mesh security concepts
 
 ### Community Resources
-* **[Kagenti GitHub Organization](https://github.com/orgs/kagenti/repositories)** - All project repositories
-* **[Kagenti Medium Publication](https://medium.com/kagenti-the-agentic-platform)** - Technical blog posts
-* **[SPIFFE Community](https://spiffe.io/community/)** - SPIFFE/SPIRE community resources
+
+- **[Kagenti GitHub Organization](https://github.com/orgs/kagenti/repositories)** - All project repositories
+- **[Kagenti Medium Publication](https://medium.com/kagenti-the-agentic-platform)** - Technical blog posts
+- **[SPIFFE Community](https://spiffe.io/community/)** - SPIFFE/SPIRE community resources
