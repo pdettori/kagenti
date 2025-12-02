@@ -340,7 +340,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 ```mermaid
 sequenceDiagram
     participant Agent as Auth Bridge
-    participant Tool as Internal Tool
+    participant Tool as Internal MCP Tool
     participant API as Internal API
     participant KC as Keycloak
     
