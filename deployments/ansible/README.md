@@ -31,7 +31,10 @@ and preload images when requested.
 
    ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml
 
-- A working `kubectl` and Helm (recommended: install `helm-diff` plugin for cleaner diffs):
+- A working `kubectl` and `helm` - note that helm v4 has breaking changes incompatible with 
+  ansible `kubernetes.core.helm` so helm needs to be still v3
+
+- recommended: install `helm-diff` plugin for cleaner diffs:
 
    helm plugin install https://github.com/databus23/helm-diff
 
