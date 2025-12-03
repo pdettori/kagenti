@@ -56,7 +56,7 @@
     - name: Report if some image pull failed
       debug:
         msg: "Failed to pull image: {{ item.item }}. RC: {{ item.rc }}. Error: {{ item.stderr | default('No specific error captured') }}"
-      loop: "{{ docker_pull_results.results | selectattr('failed', 'equalto', True) | list }}"
+      loop: "{{ docker_pull_results.results | selectattr('rc', 'ne', 0) | list }}"
       run_once: true
 
     - name: Load images into kind
