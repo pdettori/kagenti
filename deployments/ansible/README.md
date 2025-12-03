@@ -212,7 +212,7 @@ To ensure Kagenti installs correctly, configure Rancher Desktop with the followi
 
 ### 2. Update Rancher Desktop to Version 1.21
 - This version resolves DNS issues for Kind (UDP port forwarding on Linux/macOS) and supports **VZ virtualization with Rosetta emulation**.
-- Download from: Rancher Desktop v1.21 Release.
+- Download from: [Rancher Desktop v1.21 Release](https://github.com/rancher-sandbox/rancher-desktop/releases/tag/v1.21.0)
 
 ---
 
