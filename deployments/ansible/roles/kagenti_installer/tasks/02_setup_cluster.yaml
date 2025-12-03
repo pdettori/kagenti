@@ -62,7 +62,7 @@
     - name: Load images into kind
       # use raw loading instead of `kind load docker-image` as it is broken on latest Rancher Desktop with VZ virtualization 
       shell: |
-        docker save {{ item }} -o image.tar > /dev/null 2>&1 \
+        docker save "{{ item }}" -o image.tar > /dev/null 2>&1 \
         && \
         docker cp image.tar {{ kind_cluster_name }}-control-plane:/image.tar > /dev/null 2>&1 \
         && \
