@@ -23,7 +23,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 
 At this time the demo has only been tested on MacOS and RHEL.
 
-When you encounter any problems, review our [Troubleshooting](#troubleshooting) section.
+When you encounter any problems, review our [Troubleshooting](./troubleshooting.md) section.
 
 ### Setup
 

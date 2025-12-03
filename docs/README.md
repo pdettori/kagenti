@@ -17,7 +17,7 @@ Kagenti is built on existing open-source cloud-native technologies.
 
 We are developing other demos:
 
-- [Github Issue Agent Demo](./demo-slack-research-agent.md): See this demo to run an agent that can query Github Issues using Github's remote MCP Server. 
+- [Github Issue Agent Demo](./demo-github-issue.md): See this demo to run an agent that can query Github Issues using Github's remote MCP Server. 
   - [Interactive Online Demo](https://red.ht/3WL5Loc): See this demo presented at KubeCon NA 2025 to see the Github Issue example without running it locally. 
 - [Slack Authentication Demo](./demo-slack-research-agent.md): See this demo to deploy an agent and a simple MCP Server tool to talk to the Slack API. 
 
