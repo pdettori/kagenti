@@ -179,6 +179,38 @@ if [[ ${EXTRA_NOKIND:-false} = true ]]; then
   JSON_ENTRIES+=("\"create_kind_cluster\": false")
 fi
 
+# macOS SSL certificate fix: Set SSL environment variables to use certifi bundle
+# This fixes "CERTIFICATE_VERIFY_FAILED" errors when Ansible tries to fetch HTTPS resources
+if [[ "$(uname)" == "Darwin" ]]; then
+  # Try to find certifi certificates using Python
+  if command -v python3 >/dev/null 2>&1; then
+    CERTIFI_PATH=$(python3 -c "import certifi; print(certifi.where())" 2>/dev/null || echo "")
+    if [[ -n "$CERTIFI_PATH" && -f "$CERTIFI_PATH" ]]; then
+      export SSL_CERT_FILE="$CERTIFI_PATH"
+      export REQUESTS_CA_BUNDLE="$CERTIFI_PATH"
+      echo "macOS detected: Setting SSL_CERT_FILE to $CERTIFI_PATH"
+    else
+      echo "WARNING: macOS detected but certifi not found. Installing certifi..." >&2
+      # Try to install certifi using uv or pip
+      if command -v uv >/dev/null 2>&1; then
+        uv pip install --upgrade certifi >/dev/null 2>&1 || true
+      else
+        python3 -m pip install --upgrade certifi >/dev/null 2>&1 || true
+      fi
+      # Try again to get the path
+      CERTIFI_PATH=$(python3 -c "import certifi; print(certifi.where())" 2>/dev/null || echo "")
+      if [[ -n "$CERTIFI_PATH" && -f "$CERTIFI_PATH" ]]; then
+        export SSL_CERT_FILE="$CERTIFI_PATH"
+        export REQUESTS_CA_BUNDLE="$CERTIFI_PATH"
+        echo "macOS detected: Installed certifi and set SSL_CERT_FILE to $CERTIFI_PATH"
+      else
+        echo "WARNING: Could not configure SSL certificates for macOS. You may encounter SSL errors." >&2
+        echo "         To fix manually, run: python3 -m pip install --upgrade certifi" >&2
+      fi
+    fi
+  fi
+fi
+
 # Call ansible-playbook via the 'uv' wrapper when available so uv manages deps/venv.
 # Fall back to ansible-playbook if uv is not present.
 if command -v uv >/dev/null 2>&1; then

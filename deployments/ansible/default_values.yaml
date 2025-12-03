@@ -22,7 +22,17 @@ certManager:
 
 tekton:
   enabled: false
-  version: v0.66.0  
+  version: v0.66.0
+
+toolhiveCRDs:
+  enabled: false
+  version: 0.0.60
+
+toolhiveOperator:
+  enabled: false
+  version: 0.5.3
+  release_name: "toolhive-operator"
+  namespace: "toolhive-system"
 
 kiali:
   enabled: false
@@ -99,11 +109,13 @@ charts:
       components:
         agentNamespaces:
           enabled: true
-        # additional artifacts required by MCP gateway     
+        # additional artifacts required by MCP gateway
         mcpGateway:
           enabled: false
         platformOperator:
           enabled: false
+        kagentiOperator:
+          enabled: true
         ui:
           enabled: false
         istio:

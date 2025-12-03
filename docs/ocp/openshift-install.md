@@ -2,19 +2,20 @@
 
 **This document is work in progress**
 
-## Current limitations 
+## Current limitations
 
 These limitations will be addressed in successive PRs.
 
 - Only [quay.io](https://quay.io) registry has been tested in build from source
 - Ollama models not tested - OpenAI key required for now
 
-## Requirements 
+## Requirements
 
 - helm >= v3.18.0
 - kubectl >= v1.32.1 or oc >= 4.16.0
 - git >= 2.48.0
-- Access to OpenShift cluster with admin authority (We tested with OpenShift 4.18 and 4.19)
+- Access to OpenShift cluster with admin authority (We tested with OpenShift 4.19, see the [upgrade notes](#upgrade-from-ocp-418-to-419) if necessary)
+- Currently we can't disable the installation of Cert Manager, so [remove Cert Manager](#remove-cert-manager) before installing Kagenti
 
 ## Check Cluster Network Type and Configure for OVN in Ambient Mode
 
@@ -22,6 +23,7 @@ When enabling Istio Ambient mode on OpenShift clusters, readiness probes may fai
 This behavior is documented in this [issue](https://github.com/kagenti/kagenti/issues/329).
 
 ### Why This Happens
+
 `OVNKubernetes` defaults to shared gateway mode, which routes kubelet health probe traffic outside the host network stack. As a result, the Ztunnel proxy cannot intercept the probes, causing them to fail incorrectly.
 
 **Verify Network Type**
@@ -44,6 +46,14 @@ kubectl patch network.operator.openshift.io cluster --type=merge -p '{"spec":{"d
 
 **Important**: This configuration is a temporary workaround and should only be used until OpenShift provides native support for Istio Ambient mode. Future releases are expected to eliminate the need for this manual adjustment.
 
+## Configure Trust Domain
+
+Zero Trust Workload Identity Manager (ZTWIM) utilizes the OpenShift "apps" subdomain as its Trust Domain by default. Set the `DOMAIN` environment variable based on this property:
+
+```shell
+export DOMAIN=apps.$(kubectl get dns cluster -o jsonpath='{ .spec.baseDomain }')
+```
+
 ## Installing the Helm Chart
 
 To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift cluster. You might want to modify `charts/kagenti/values.yaml` to specify the namespaces where agents and tools should be deployed under `agentNamespaces:` and toggle components for installation under `components:`.
@@ -60,32 +70,46 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
 3. **Kagenti Dependencies Helm Chart Installation:**
    - If you have git installed you may determine the latest tag with the command:
+
       ```shell
-      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
-      ``` 
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/v||; s/\^{}//')
+      ```
+
       if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
 
-
    This chart includes all the OpenShift software components required by Kagenti.
-   ```shell
 
-   helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
-   ```
+      ```shell
+      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
+      ```
+
 4. **Install MCP Gateway Chart:**
 
+   - If you have [skopeo](https://www.redhat.com/en/topics/containers/what-is-skopeo) installed you may determine the latest tag with the command:
+
+      ```shell
+      LATEST_GATEWAY_TAG=$(skopeo list-tags docker://ghcr.io/kagenti/charts/mcp-gateway | jq -r '.Tags[-1]')
+      ```
+
+      if this command fails, visit [this page](https://github.com/kagenti/mcp-gateway/pkgs/container/charts%2Fmcp-gateway) to determine the latest version to use.
+
    ```shell
-   helm install mcp-gateway oci://ghcr.io/kagenti/charts/mcp-gateway --create-namespace --namespace mcp-system --version $LATEST_TAG
+   helm install mcp-gateway oci://ghcr.io/kagenti/charts/mcp-gateway --create-namespace --namespace mcp-system --version $LATEST_GATEWAY_TAG
    ```
 
-5.  **Kagenti Helm Chart Installation:**
+5. **Kagenti Helm Chart Installation:**
    This chart includes Kagenti software components and configurations.
+
+   **Important**: We have to disable the use of the OpenShift CA as its trusted Cert:
+
    ```shell
-   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG
+   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
    ```
 
 ### Installing from Repo
 
 1. **Clone Repository:**
+
    ```shell
    git clone https://github.com/kagenti/kagenti.git
    cd kagenti
@@ -93,9 +117,11 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 
 2. **Prepare Helm Secrets:**
    - Copy and edit the secrets template:
+
      ```shell
      cp charts/kagenti/.secrets_template.yaml charts/kagenti/.secrets.yaml
      ```
+
    - Ensure the required keys are filled as per the comments in the file.
 
 3. **Update Helm Charts dependencies:**
@@ -109,6 +135,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    ```
 
 4. **Install Dependencies:**
+
    ```shell
    helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --wait
    ```
@@ -120,17 +147,21 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    ```
 
 6. **Install the Kagenti Chart:**
- 
+
    - Open [kagenti-platform-operator-chart](https://github.com/kagenti/kagenti-operator/pkgs/container/kagenti-operator%2Fkagenti-platform-operator-chart) to find the latest available version (e.g., 0.2.0-alpha.12).
    - Open charts/kagenti/Chart.yaml and set the version field for kagenti-platform-operator-chart to match the latest tag.
    - If you updated the version tag, run the following command to update the chart dependencies:
+
      ```shell
       helm dependency update ./charts/kagenti/
       ```
+
    - Determine the latest tag with the command:
+
       ```shell
-      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/v||; s/\^{}//')
       ```
+
       if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
 
    Install the kagenti chart as follows:
@@ -151,16 +182,28 @@ You may also use the new ansible based installer to install the helm charts.
 deployments/ansible/run-install.sh --env ocp
 ```
 
-Check [here](../../deployments/ansible/README.md) for more details on the new installer.
+Check [Ansible README](../../deployments/ansible/README.md) for more details on the new installer.
 
 To override existing environments, you may create a [customized override file](../../deployments/ansible/README.md#using-override-files).
 
+## Checking the Spire daemonsets
+
+After installation, check if the SPIRE daemonsets are correctly started with the command:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+
+If `Current` and/or `Ready` status is `0`, follow the steps in the [troubleshooting](#spire-daemonset-does-not-start) section.
 
 ## Authentication Configuration
 
 Kagenti UI now supports Keycloak authentication by default. The `kagenti` helm chart creates automatically the required  
 `kagenti-ui-oauth-secret`in the `kagenti-system` namespace required by the UI.
 
+```shell
+  kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
+```
 
 ## Access the UI
 
@@ -198,21 +241,21 @@ Open the printed address in your browser and accept the certificate. It is norma
 ## Running the demo
 
 At this time, only the OpenAI API-backed agents have been tested (`a2a-content-extractor` and `a2a-currency-converter`).
-You may use the pre-built images available at https://github.com/orgs/kagenti/packages?repo_name=agent-examples
-or build from source. Building from source has been tested only with `quay.io`, and requires setting up a robot account on [quay.io](https://quay.io), creating empty repos in your organization for the repos to build (e.g.`a2a-contact-extractor` and `a2a-currency-converter`) and granting the robot account write access to those repos.
+You may use the pre-built images available at [https://github.com/orgs/kagenti/packages?repo_name=agent-examples](https://github.com/orgs/kagenti/packages?repo_name=agent-examples) or build from source.
+
+Building from source has been tested only with `quay.io`, and requires setting up a robot account on [quay.io](https://quay.io), creating empty repos in your organization for the repos to build (e.g.`a2a-contact-extractor` and `a2a-currency-converter`) and granting the robot account write access to those repos.
 
 Finally, you may get the Kubernetes secret from the robot account you created, and apply the secret to the namespaces
-you enabled for agents and tools (e.g. `team1` and `team2`). 
+you enabled for agents and tools (e.g. `team1` and `team2`).
 
 You should now be able to use the UI to:
 
 - Import an agent
 - List the agent
 - Interact with the agent from the agent details page
-- Import a MCP tool 
-- List the tool 
+- Import a MCP tool
+- List the tool
 - Interact with the tool from the tool details page
-
 
 # 🚀 Running the Demo
 
@@ -227,8 +270,8 @@ There are two ways to get the agent images for the demo: using pre-built images 
 
 This is the fastest way to get started. The required images are already built and hosted on the GitHub Container Registry.
 
-1.  You can find all the necessary images here: **[kagenti/agent-examples Packages](https://github.com/orgs/kagenti/packages?repo_name=agent-examples)**
-2.  No image building or secret configuration is required. You can proceed directly to the **"Verifying in the UI"** section.
+1. You can find all the necessary images here: **[kagenti/agent-examples Packages](https://github.com/orgs/kagenti/packages?repo_name=agent-examples)**
+2. No image building or secret configuration is required. You can proceed directly to the **"Verifying in the UI"** section.
 
 ---
 
@@ -238,28 +281,29 @@ Follow this path if you want to build the agent container images yourself.
 
 ### Prerequisites
 
-* A user or organization account on **[quay.io](https://quay.io)**.
-* Namespaces created in your Kubernetes cluster where you will run agents and tools (e.g., `team1` and `team2`).
+- A user or organization account on **[quay.io](https://quay.io)**.
+- Namespaces created in your Kubernetes cluster where you will run agents and tools (e.g., `team1` and `team2`).
 
 ### Steps
 
-1.  **Configure Quay.io**
-    * [Create a robot account](https://docs.redhat.com/en/documentation/red_hat_quay/3/html/user_guide/managing_robot_accounts) for your organization.
-    * Create empty repositories for the images you need to build (e.g., `a2a-content-extractor` and `a2a-currency-converter`).
-    * Grant your robot account **write access** to these new repositories.
+1. **Configure Quay.io**
+    - [Create a robot account](https://docs.redhat.com/en/documentation/red_hat_quay/3/html/user_guide/managing_robot_accounts) for your organization.
+    - Create empty repositories for the images you need to build (e.g., `a2a-content-extractor` and `a2a-currency-converter`).
+    - Grant your robot account **write access** to these new repositories.
 
-2.  **Create Kubernetes Image Pull Secret**
-    * Navigate to your robot account settings in the Quay.io UI.
-    * Select the **Kubernetes Secret** tab and copy the generated secret manifest.
-    * Apply the secret to each namespace where agents will run.
+2. **Create Kubernetes Image Pull Secret**
+    - Navigate to your robot account settings in the Quay.io UI.
+    - Select the **Kubernetes Secret** tab and copy the generated secret manifest.
+    - Apply the secret to each namespace where agents will run.
+
       ```bash
       # Save the secret to a file named quay-secret.yaml, then run:
       kubectl apply -f quay-secret.yaml -n team1
       kubectl apply -f quay-secret.yaml -n team2
       ```
 
-3.  **Build and Push the Images**
-    * Follow the project's build instructions to build the agent images and push them to your Quay.io repositories.
+3. **Build and Push the Images**
+    - Follow the project's build instructions to build the agent images and push them to your Quay.io repositories.
 
 ---
 
@@ -267,14 +311,14 @@ Follow this path if you want to build the agent container images yourself.
 
 After completing either of the setup options above, you should be able to use the UI to:
 
-* **Agents**
-    1.  Import a new agent.
-    2.  List the imported agent.
-    3.  Interact with the agent from its details page.
-* **Tools**
-    1.  Import a new MCP tool.
-    2.  List the imported tool.
-    3.  Interact with the tool from its details page.
+- **Agents**
+    1. Import a new agent.
+    2. List the imported agent.
+    3. Interact with the agent from its details page.
+- **Tools**
+    1. Import a new MCP tool.
+    2. List the imported tool.
+    3. Interact with the tool from its details page.
 
 ## Accessing Keycloak
 
@@ -285,4 +329,99 @@ running the command:
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template='Username: {{.data.username | base64decode}}  password: {{.data.password | base64decode}}{{"\n"}}'
 ```
 
+## Troubleshooting
 
+### Spire daemonset does not start
+
+Run the following command:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+
+If the daemonsets are not correctly started ('Current' and/or 'Ready' status is '0') the agent client registration will not work.
+
+Run the following commands:
+
+```shell
+kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-agent
+kubectl describe daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+
+If any of them shows `Events` including messages such as `Error creating: pods <pod-name-prefix> is forbidden: unable to validate against any security context constraint`, run the following commands:
+
+```shell
+oc adm policy add-scc-to-user privileged -z spire-agent -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-agent
+
+oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n zero-trust-workload-identity-manager
+kubectl rollout restart daemonsets -n zero-trust-workload-identity-manager spire-spiffe-csi-driver
+```
+
+Wait a few seconds and verify that the daemonsets are correctly started:
+
+```shell
+kubectl get daemonsets -n zero-trust-workload-identity-manager
+```
+
+### Upgrade from OCP 4.18 to 4.19
+
+If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
+
+Steps:
+
+1. First Update the channel
+
+```shell
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"stable-4.19"}}'
+```
+
+2. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
+
+```shell
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' --type=merge
+```
+
+3. Upgrade to the latest version
+
+```shell
+oc adm upgrade --to-latest=true --allow-not-recommended=true
+```
+
+You can ignore the warnings, the upgrade should be happening.
+
+4. Monitor the upgrade status:
+
+```shell
+oc get clusterversion
+```
+
+### Remove Cert Manager
+
+If cert manager is running, we have to remove it before Kagenti installation.
+
+Check:
+
+```shell
+kubectl get all -n cert-manager-operator
+kubectl get all -n cert-manager
+```
+
+Using the OpenShift Container Platform web console:
+
+  1. Log in to the OpenShift Container Platform web console.
+  2. Go to Operators > Installed Operators.
+  3. Locate the cert-manager Operator for Red Hat OpenShift in the list.
+  4. Click the Options menu (three vertical dots) next to the operator.
+  5. Select Uninstall Operator.
+
+Then from the console:
+
+```shell
+kubectl delete deploy cert-manager cert-manager-cainjector cert-manager-webhook -n cert-manager
+
+kubectl delete service cert-manager cert-manager-cainjector cert-manager-webhook -n cert-manager
+
+kubectl get all -n cert-manager
+kubectl delete ns cert-manager-operator cert-manager
+```
