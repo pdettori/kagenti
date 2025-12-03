@@ -98,7 +98,7 @@ Check [here](../deployments/ansible/README.md) for more details on the new insta
 
 To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
 
-If you are using Rancher Desktop we reccomend following [these steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos) to setup your environment.
+If you are using Rancher Desktop we recommend following [these steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos) to setup your environment.
 
 
 ### Using an Existing Kubernetes Cluster
