@@ -60,22 +60,9 @@
       run_once: true
 
     - name: Load images into kind
-      # use raw loading instead of `kind load docker-image` as it is broken on latest Rancher Desktop with VZ virtualization 
-      shell: |
-        docker save "{{ item }}" -o image.tar > /dev/null 2>&1 \
-        && \
-        docker cp image.tar {{ kind_cluster_name }}-control-plane:/image.tar > /dev/null 2>&1 \
-        && \
-        docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import /image.tar > /dev/null \
-        || { \
-            echo "🚨 ERROR: Image import failed on node '{{ kind_cluster_name }}-control-plane'. Displaying container error log:"; \
-            docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import /image.tar; \
-            exit 1; \
-        } \
-        && \
-        docker exec {{ kind_cluster_name }}-control-plane rm /image.tar > /dev/null 2>&1 \
-        && \
-        rm image.tar > /dev/null 2>&1
+      # use raw loading instead of `kind load docker-image` as it is broken on latest Rancher Desktop with VZ virtualization
+      shell: >
+        docker save "{{ item }}" -o image.tar && docker cp image.tar {{ kind_cluster_name }}-control-plane:/image.tar && docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import /image.tar && docker exec {{ kind_cluster_name }}-control-plane rm /image.tar && rm image.tar
       args:
         chdir: /tmp
         executable: /bin/bash
@@ -83,4 +70,17 @@
       register: kind_load_results
       failed_when: false
       changed_when: false
+
+    - name: Report failed kind image imports
+      debug:
+        msg: "Failed to import image {{ item.item }}. rc={{ item.rc }} stdout={{ item.stdout | default('') }} stderr={{ item.stderr | default('') }}"
+      loop: "{{ kind_load_results.results | selectattr('rc','ne',0) | list }}"
+      run_once: true
+      when: kind_load_results is defined and (kind_load_results.results | selectattr('rc','ne',0) | list) | length > 0
+
+    - name: Fail if any kind image import failed
+      fail:
+        msg: "One or more images failed to import into kind cluster '{{ kind_cluster_name }}'. See previous debug messages for details."
+      run_once: true
+      when: kind_load_results is defined and (kind_load_results.results | selectattr('rc','ne',0) | list) | length > 0
 
