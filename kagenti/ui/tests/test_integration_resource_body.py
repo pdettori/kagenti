@@ -66,6 +66,6 @@ def test_construct_tool_resource_body_includes_valuefrom(monkeypatch):
 
     assert body is not None
     env_list = body.get("spec", {}).get("deployer", {}).get("env", [])
-    assert any(e.get("name") == "SECRET_KEY" and "valueFrom" in e for e in env_list), (
-        f"SECRET_KEY with valueFrom not found in env list: {env_list}"
-    )
+    assert any(
+        e.get("name") == "SECRET_KEY" and "valueFrom" in e for e in env_list
+    ), f"SECRET_KEY with valueFrom not found in env list: {env_list}"
