@@ -1000,7 +1000,6 @@ def trigger_and_monitor_build(
         )
         use_deployment_only_monitoring = True
     elif resource_type.lower() == "agent" and not build_from_source:
-        current_build_status = "Succeeded"
         # Deploy agent from existing image (no build step)
         build_cr_body = _construct_agent_resource_body(
             st_object=st_object,
@@ -2072,19 +2071,6 @@ def render_import_form(
                     help="Command to start the agent (e.g., 'python main.py', 'uvicorn app:app')",
                 )
 
-                # Image name derived from resource name
-                # suggested_image_name = sanitize_for_k8s_name(
-                #    get_resource_name_from_path(final_source_subfolder_path)
-                #    if final_source_subfolder_path
-                #    else "agent-image"
-                # )
-
-                # image_name_input = st_object.text_input(
-                #    "Image Name",
-                #    value=suggested_image_name,
-                #    key=f"{resource_type.lower()}_image_name",
-                #    help="Name for the built container image",
-                # )
 
             # If no subfolder is specified, require a manual resource name
             if not final_source_subfolder_path:

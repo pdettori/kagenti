@@ -18,7 +18,6 @@ toolhiveCRDs:
 toolhiveOperator:
   enabled: true
 
-
 charts:
   #################################################################### 
   # kagenti-deps 

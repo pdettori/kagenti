@@ -9,7 +9,6 @@ components:
     enabled: true
   mcpGateway:
     enabled: true
-
   agentOperator:
     enabled: true   
   platformWebhook:
