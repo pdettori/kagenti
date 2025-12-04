@@ -1000,7 +1000,6 @@ def trigger_and_monitor_build(
         )
         use_deployment_only_monitoring = True
     elif resource_type.lower() == "agent" and not build_from_source:
-        current_build_status = "Succeeded"
         # Deploy agent from existing image (no build step)
         build_cr_body = _construct_agent_resource_body(
             st_object=st_object,
