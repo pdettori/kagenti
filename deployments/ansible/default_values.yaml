@@ -34,6 +34,16 @@ toolhiveOperator:
   release_name: "toolhive-operator"
   namespace: "toolhive-system"
 
+toolhiveCRDs:
+  enabled: false
+  version: 0.0.60  
+
+toolhiveOperator:
+  enabled: false
+  version: 0.5.3  
+  release_name: "toolhive-operator"
+  namespace: "toolhive-system"
+
 kiali:
   enabled: false
   version: release-1.28  
@@ -76,7 +86,9 @@ charts:
           enabled: false
         ingressGateway:
           enabled: false
-        toolhive:
+        toolhiveOperator:
+          enabled: false
+        toolhiveCRDs:
           enabled: false
       # components settings    
       containerRegistry:
@@ -166,6 +178,7 @@ charts:
             - kagenti-system
             - tekton-*
             - istio-*
+            - toolhive-*
           identities:
             clusterSPIFFEIDs:
               default:
