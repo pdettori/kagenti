@@ -156,10 +156,10 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
       helm dependency update ./charts/kagenti/
       ```
 
-   - Determine the latest tag with the command:
+   - Determine the latest ui tag with the command:
 
       ```shell
-      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/v||; s/\^{}//')
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
       ```
 
       if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
