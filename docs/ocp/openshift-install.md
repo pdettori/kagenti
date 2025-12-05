@@ -377,13 +377,13 @@ Steps:
 1. First Update the channel
 
 ```shell
-oc patch clusterversion version --type merge -p '{"spec":{"channel":"stable-4.19"}}'
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"fast-4.19"}}'
 ```
 
 2. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
 
 ```shell
-oc patch clusterversion version --type merge -p '{"spec":{"channel":"fast-4.19"}}'
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' --type=merge
 oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-boot-image-opt-out-in-4.19":"true"}}' --type=merge
 ```
 
