@@ -366,7 +366,48 @@ kubectl get daemonsets -n zero-trust-workload-identity-manager
 
 ### Upgrade from OCP 4.18 to 4.19
 
-If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
+If the only available option is OpenShift 4.18, you can always upgrade the cluster.
+
+We tested upgrades with two OCP Platforms:
+<details>
+  <summary><strong>Red Hat OpenShift Container Platform Cluster (AWS)</strong></summary>
+
+Steps:
+
+1. First Update the channel
+
+```shell
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"stable-4.19"}}'
+```
+
+2. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
+
+```shell
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"fast-4.19"}}'
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-boot-image-opt-out-in-4.19":"true"}}' --type=merge
+```
+
+3. Upgrade to the latest version
+
+```shell
+oc adm upgrade --to-latest=true --allow-not-recommended=true
+```
+
+You can ignore the warnings, the upgrade should be happening.
+
+4. Monitor the upgrade status:
+
+```shell
+oc get clusterversion
+```
+
+</details>
+
+Another option, that just stopped working recently:
+<details>
+  <summary><strong>Single Node</strong></summary>
+
+If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
 
 Steps:
 
@@ -395,6 +436,7 @@ You can ignore the warnings, the upgrade should be happening.
 ```shell
 oc get clusterversion
 ```
+</details>
 
 ### Remove Cert Manager
 
