@@ -80,7 +80,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    This chart includes all the OpenShift software components required by Kagenti.
 
       ```shell
-      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
+      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG --set spire.trustDomain=${DOMAIN}
       ```
 
 4. **Install MCP Gateway Chart:**
@@ -137,7 +137,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 4. **Install Dependencies:**
 
    ```shell
-   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --wait
+   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --set spire.trustDomain=${DOMAIN} --wait
    ```
 
 5. **Install MCP Gateway Chart:**
@@ -167,7 +167,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    Install the kagenti chart as follows:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG}
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
    ```
 
 ## Using the new ansible-based installer
