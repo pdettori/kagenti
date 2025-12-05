@@ -50,7 +50,7 @@ spec:
   - name: mcp-gateway
     namespace: gateway-system
   hostnames:
-  - "weather-tool.mcp.test.com" #note this is matching the gateway listener. It is purely for internal routing by envoy
+  - "weather-tool.mcp.local" #note this is matching the gateway listener. It is purely for internal routing by envoy
   rules:
   - matches:
     - path:
@@ -166,7 +166,7 @@ spec:
   - name: mcp-gateway
     namespace: gateway-system
   hostnames:
-  - 'slack-tool.mcp.test.com' #note this is matching the gateway listener. It is purely for internal routing by envoy'
+  - 'slack-tool.mcp.local' #note this is matching the gateway listener. It is purely for internal routing by envoy'
   rules:
   - matches:
     - path:
