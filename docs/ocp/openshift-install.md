@@ -167,7 +167,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    Install the kagenti chart as follows:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
    ```
 
 ## Using the new ansible-based installer
