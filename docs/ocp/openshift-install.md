@@ -80,7 +80,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    This chart includes all the OpenShift software components required by Kagenti.
 
       ```shell
-      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
+      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG --set spire.trustDomain=${DOMAIN}
       ```
 
 4. **Install MCP Gateway Chart:**
@@ -137,7 +137,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 4. **Install Dependencies:**
 
    ```shell
-   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --wait
+   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --set spire.trustDomain=${DOMAIN} --wait
    ```
 
 5. **Install MCP Gateway Chart:**
@@ -156,10 +156,10 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
       helm dependency update ./charts/kagenti/
       ```
 
-   - Determine the latest tag with the command:
+   - Determine the latest ui tag with the command:
 
       ```shell
-      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/v||; s/\^{}//')
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
       ```
 
       if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
@@ -167,7 +167,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    Install the kagenti chart as follows:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG}
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
    ```
 
 ## Using the new ansible-based installer

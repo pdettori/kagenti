@@ -24,10 +24,10 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation    
 spec:
-  trustDomain: localtest.me
+  trustDomain: {{ .Values.spire.trustDomain }}
   clusterName: agent-platform
   caSubject:
-    commonName: localtest.me
+    commonName: {{ .Values.spire.trustDomain }}
     country: "US"
     organization: "RH"
   persistence:
@@ -40,7 +40,7 @@ spec:
     maxOpenConns: 100 
     maxIdleConns: 2
     connMaxLifetime: 3600
-  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
+  jwtIssuer: "https://oidc-discovery-provider.{{.Values.spire.trustDomain}}"
 --- 
 apiVersion: operator.openshift.io/v1alpha1
 kind: SpireAgent
@@ -53,7 +53,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation    
 spec:
-  trustDomain: localtest.me
+  trustDomain: {{ .Values.spire.trustDomain }}
   clusterName: agent-platform
   nodeAttestor:
     k8sPSATEnabled: "true"
@@ -73,7 +73,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation    
 spec:
-  trustDomain: localtest.me
+  trustDomain: {{ .Values.spire.trustDomain }}
   agentSocketName: 'spire-agent.sock'
-  jwtIssuer: "https://oidc-discovery-provider.localtest.me"
+  jwtIssuer: "https://oidc-discovery-provider.{{.Values.spire.trustDomain}}"
 {{- end }}
