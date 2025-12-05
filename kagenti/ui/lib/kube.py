@@ -32,9 +32,9 @@ logger = logging.getLogger(__name__)
 
 # --- Kubernetes Configuration ---
 @st.cache_resource
-def get_kube_api_client_cached() -> (
-    Tuple[Optional[kubernetes.client.ApiClient], Optional[str], Optional[str]]
-):
+def get_kube_api_client_cached() -> Tuple[
+    Optional[kubernetes.client.ApiClient], Optional[str], Optional[str]
+]:
     """
     Loads Kubernetes configuration and returns an ApiClient,
     along with a status message and icon for UI feedback.

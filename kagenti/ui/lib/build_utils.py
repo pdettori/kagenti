@@ -2071,7 +2071,6 @@ def render_import_form(
                     help="Command to start the agent (e.g., 'python main.py', 'uvicorn app:app')",
                 )
 
-
             # If no subfolder is specified, require a manual resource name
             if not final_source_subfolder_path:
                 manual_resource_name = st_object.text_input(
