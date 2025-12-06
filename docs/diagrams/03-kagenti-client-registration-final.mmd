@@ -24,7 +24,7 @@ sequenceDiagram
     OIDC-->>KC: DCR is enabled
 
     %% (4) AuthBridge self-registration; identity verified via OIDC
-    Note over KC,AuthBridge: Register application using DCR
+    Note over KC,AB: Register application using DCR
     AB->>KC: Attempt to register application
     KC->>OIDC: Verify application identity
     OIDC-->>KC: Identity verified and register application
