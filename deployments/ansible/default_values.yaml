@@ -34,16 +34,6 @@ toolhiveOperator:
   release_name: "toolhive-operator"
   namespace: "toolhive-system"
 
-toolhiveCRDs:
-  enabled: false
-  version: 0.0.60  
-
-toolhiveOperator:
-  enabled: false
-  version: 0.5.3  
-  release_name: "toolhive-operator"
-  namespace: "toolhive-system"
-
 kiali:
   enabled: false
   version: release-1.28  
@@ -86,15 +76,25 @@ charts:
           enabled: false
         ingressGateway:
           enabled: false
-        toolhiveOperator:
-          enabled: false
-        toolhiveCRDs:
-          enabled: false
       # components settings    
       containerRegistry:
         namespace: cr-system
         name: registry  
 
+  #################################################################### 
+  # toolhive CRDs chart
+  ####################################################################        
+  toolhiveCRDs:
+    namespace: "kagenti-system"
+    enabled: true
+    version: 0.0.60
+  #################################################################### 
+  # toolhive operator chart
+  ####################################################################        
+  toolhiveOperator:
+    namespace: "kagenti-system"
+    enabled: true
+    version: 0.5.3
   #################################################################### 
   # mcp-gateway chart
   ####################################################################        
