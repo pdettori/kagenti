@@ -15,57 +15,8 @@ This directory contains Mermaid sequence diagrams that illustrate the authentica
 - Keycloak returns JWT token to UI
 - User gains access to authenticated interface
 
-### 2. Agent Token Exchange Flow
-**File**: `02-agent-token-exchange-flow.mmd`
-**Description**: Demonstrates OAuth2 token exchange between agents and Keycloak using SPIFFE identity.
-
-**Key Steps**:
-- UI forwards user request and token to agent
-- Agent retrieves JWT SVID from SPIRE
-- Agent performs token exchange with Keycloak
-- Keycloak validates SPIFFE identity with SPIRE
-- Agent receives scoped token for processing
-
-### 3. Tool Access with Delegated Token Flow
-**File**: `03-tool-access-delegated-token-flow.mmd`
-**Description**: Shows how agents call tools using delegated tokens with proper permission validation.
-
-**Key Steps**:
-- Agent calls tool with delegated token
-- Tool validates token with Keycloak
-- Tool makes external API calls with validated permissions
-- Tool returns processed results to agent
-
-### 4. MCP Gateway Authentication Flow
-**File**: `04-mcp-gateway-authentication-flow.mmd`
-**Description**: Illustrates authentication flow through the MCP Gateway proxy for Model Context Protocol communications.
-
-**Key Steps**:
-- Agent sends MCP request with JWT token to gateway
-- Gateway validates token with Keycloak
-- Gateway checks tool permissions
-- Gateway forwards authenticated request to tool
-- Gateway returns MCP response to agent
-
-### 5. Tool Access for external API
-**File**: `05-tool-with-external-api-flow.mmd`
-**Description**: Shows how agents call internal tools using delegated tokens with proper permission validation, and how Vault exchanges this token for an external API key to securely access external APIs.
-
-**Key Steps**:
-- Agent calls tool with delegated token
-- Tool validates token with Keycloak
-- Keycloak confirms token validity and scopes
-- Tool requests external API key from Vault, passing the token
-- Vault requests OIDC discovery from Keycloak
-- Keycloak returns public keys for token validation
-- Vault verifies token claims and enforces Vault policies
-- Vault returns external API key to tool
-- Tool calls external API using the retrieved API key
-- External API returns data to tool
-- Tool returns processed data to agent
-
-### 6. Keycloak Client Registration Flow (Secret-based)
-**File**: `06-keycloak-client-registration-flow.mmd`
+### 2. Keycloak Client Registration Flow (Secret-based)
+**File**: `02-keycloak-client-registration-flow.mmd`
 **Description**: Shows how Keycloak client registration uses SPIFFE identity to register and obtain a client secret for application authentication.
 
 **Key Steps**:
@@ -77,8 +28,8 @@ This directory contains Mermaid sequence diagrams that illustrate the authentica
 - Keycloak returns application client secret to Keycloak client registration
 - AuthBridge reads application client secret for downstream authentication
 
-### 7. Keycloak Client Registration Flow (Secretless with OIDC DCR)
-**File**: `07-keycloak-client-registration-dcr-flow.mmd`
+### 3. Keycloak Client Registration Flow (Secretless with OIDC DCR)
+**File**: `03-keycloak-client-registration-dcr-flow.mmd`
 **Description**: Illustrates dynamic client registration using OIDC endpoint verification and secretless authentication, eliminating the need for client secrets.
 
 **Key Steps**:
@@ -94,6 +45,55 @@ This directory contains Mermaid sequence diagrams that illustrate the authentica
 - OIDC endpoint confirms AuthBridge identity
 - No client secret is returned to Keycloak client registration
 - AuthBridge does not need to read any client secret
+
+### 4. Agent Token Exchange Flow
+**File**: `04-agent-token-exchange-flow.mmd`
+**Description**: Demonstrates OAuth2 token exchange between agents and Keycloak using SPIFFE identity.
+
+**Key Steps**:
+- UI forwards user request and token to agent
+- Agent retrieves JWT SVID from SPIRE
+- Agent performs token exchange with Keycloak
+- Keycloak validates SPIFFE identity with SPIRE
+- Agent receives scoped token for processing
+
+### 5. Tool Access with Delegated Token Flow
+**File**: `05-tool-access-delegated-token-flow.mmd`
+**Description**: Shows how agents call tools using delegated tokens with proper permission validation.
+
+**Key Steps**:
+- Agent calls tool with delegated token
+- Tool validates token with Keycloak
+- Tool makes external API calls with validated permissions
+- Tool returns processed results to agent
+
+### 6. MCP Gateway Authentication Flow
+**File**: `06-mcp-gateway-authentication-flow.mmd`
+**Description**: Illustrates authentication flow through the MCP Gateway proxy for Model Context Protocol communications.
+
+**Key Steps**:
+- Agent sends MCP request with JWT token to gateway
+- Gateway validates token with Keycloak
+- Gateway checks tool permissions
+- Gateway forwards authenticated request to tool
+- Gateway returns MCP response to agent
+
+### 7. Tool Access for external API
+**File**: `07-tool-with-external-api-flow.mmd`
+**Description**: Shows how agents call internal tools using delegated tokens with proper permission validation, and how Vault exchanges this token for an external API key to securely access external APIs.
+
+**Key Steps**:
+- Agent calls tool with delegated token
+- Tool validates token with Keycloak
+- Keycloak confirms token validity and scopes
+- Tool requests external API key from Vault, passing the token
+- Vault requests OIDC discovery from Keycloak
+- Keycloak returns public keys for token validation
+- Vault verifies token claims and enforces Vault policies
+- Vault returns external API key to tool
+- Tool calls external API using the retrieved API key
+- External API returns data to tool
+- Tool returns processed data to agent
 
 ## Generating Images
 

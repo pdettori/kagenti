@@ -265,13 +265,29 @@ grant_type=authorization_code
 }
 ```
 
-#### Stage 2: Agent Token Exchange
+#### Stage 2: Keycloak Client Registration Flow (Secret-based)
 
-![Agent Token Exchange Flow](./diagrams/images/png/02-agent-token-exchange-flow.png)
+![Keycloak Client Registration Flow (Secret-based) Flow](./diagrams/images/png/02-kagenti-client-registration.png)
 
-*Figure 2: Agent Token Exchange Flow - Demonstrates OAuth2 token exchange between agents and Keycloak using SPIFFE identity*
+*Figure 2: Keycloak Client Registration Flow (Secret-based) Flow - Shows how automatic client registration registers clients in Keycloak*
 
-[View Mermaid Source Code](./diagrams/02-agent-token-exchange-flow.mmd)
+[View Mermaid Source Code](./diagrams/02-kagenti-client-registration.mmd)
+
+#### Stage 3: Keycloak Client Registration Flow (Secretless with OIDC DCR)
+
+![Keycloak Client Registration Flow (Secretless with OIDC DCR) Flow](./diagrams/images/png/03-kagenti-client-registreation-final.png)
+
+*Figure 3: Keycloak Client Registration Flow (Secretless with OIDC DCR) Flow - Shows how automatic client registration registers clients in Keycloak without credentials*
+
+[View Mermaid Source Code](./diagrams/03-kagenti-client-registreation-final.mmd)
+
+#### Stage 4: Agent Token Exchange
+
+![Agent Token Exchange Flow](./diagrams/images/png/04-agent-token-exchange-flow.png)
+
+*Figure 4: Agent Token Exchange Flow - Demonstrates OAuth2 token exchange between agents and Keycloak using SPIFFE identity*
+
+[View Mermaid Source Code](./diagrams/04-agent-token-exchange-flow.mmd)
 
 **Token Exchange Request:**
 
@@ -297,13 +313,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 }
 ```
 
-#### Stage 3: Internal Tool Access with Delegated Token
+#### Stage 5: Internal Tool Access with Delegated Token
 
-![Internal Tool Access with Delegated Token Flow](./diagrams/images/png/03-tool-access-delegated-token-flow.png)
+![Internal Tool Access with Delegated Token Flow](./diagrams/images/png/05-tool-access-delegated-token-flow.png)
 
-*Figure 3: Internal Tool Access Flow - Shows how agents call internal tools using delegated tokens with proper permission validation*
+*Figure 5: Internal Tool Access Flow - Shows how agents call internal tools using delegated tokens with proper permission validation*
 
-[View Mermaid Source Code](./diagrams/03-tool-access-delegated-token-flow.mmd)
+[View Mermaid Source Code](./diagrams/05-tool-access-delegated-token-flow.mmd)
 
 ### JWT Token Structure
 
@@ -341,13 +357,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 The **MCP Gateway** acts as an authentication proxy for all Model Context Protocol communications:
 
-#### Gateway Authentication Flow
+#### Stage 6: Gateway Authentication Flow
 
-![MCP Gateway Authentication Flow](./diagrams/images/png/04-mcp-gateway-authentication-flow.png)
+![MCP Gateway Authentication Flow](./diagrams/images/png/06-mcp-gateway-authentication-flow.png)
 
-*Figure 4: MCP Gateway Authentication Flow - Illustrates authentication flow through the MCP Gateway proxy for Model Context Protocol communications*
+*Figure 6: MCP Gateway Authentication Flow - Illustrates authentication flow through the MCP Gateway proxy for Model Context Protocol communications*
 
-[View Mermaid Source Code](./diagrams/04-mcp-gateway-authentication-flow.mmd)
+[View Mermaid Source Code](./diagrams/06-mcp-gateway-authentication-flow.mmd)
 
 #### MCP Authentication Headers
 
@@ -425,13 +441,13 @@ def validate_request(request):
         raise AuthorizationError("Insufficient permissions")
 ```
 
-#### Stage 4: External API Access with Delegated Token and Vault
+#### Stage 7: External API Access with Delegated Token and Vault
 
-![External API Access with Delegated Token and Vault Flow](./diagrams/images/png/05-tool-with-external-api-flow.png)
+![External API Access with Delegated Token and Vault Flow](./diagrams/images/png/07-tool-with-external-api-flow.png)
 
-*Figure 5: External API Access with Vault Flow - Shows how agents call internal tools using delegated tokens with proper permission validation and the Vault exchanges this token for external API key for accessing external APIs*
+*Figure 7: External API Access with Vault Flow - Shows how agents call internal tools using delegated tokens with proper permission validation and the Vault exchanges this token for external API key for accessing external APIs*
 
-[View Mermaid Source Code](./diagrams/05-tool-with-external-api-flow.mmd)
+[View Mermaid Source Code](./diagrams/07-tool-with-external-api-flow.mmd)
 
 ### JWT Token Structure
 
