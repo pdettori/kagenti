@@ -40,19 +40,9 @@ Deploying agents in production involves addressing typical challenges associated
 
 ## Agent and Tool Authorization Pattern
 
-The Agent and Tool Authorization Pattern for the Agentic Platform ensures that both human and machine identities are continuously authenticated and authorized, minimizing implicit trust at every stage of interaction. Traditional static credentials, such as API keys or client secrets, risk privilege escalation and credential leaks, and therefore are replaced with dynamic, short-lived identity-based tokens, managed through SPIRE and integrated with Keycloak for access control.
+Kagenti provides a unified framework for identity and authorization in agentic systems, replacing static credentials with dynamic, short‑lived tokens issued through SPIRE and integrated with Keycloak. This approach enforces least‑privilege access, secure delegation, and continuous verification across both human and machine agents. By propagating identity through structured token exchanges, Kagenti ensures that every tool or service invoked by an agent operates under the right permissions without exposing long‑lived secrets.
 
-This approach enforces least privilege access by ensuring that identities — whether users, tools, or external services — only receive the minimum permissions necessary. The authentication and authorization flow follows a structured token exchange mechanism, where a user's identity propagates securely through the system, from initial authentication to tool interactions and external service access. By leveraging SPIFFE/SPIRE for workload identity and OAuth2 transaction tokens for controlled delegation, the platform prevents credential misuse, reduces attack surfaces, and ensures real-time policy enforcement.
-
-In practice, the Authorization Pattern within the Agentic Platform enables:
-
-- Machine Identity Management – replacing static credentials with SPIRE-issued JWTs.
-- Secure Delegation – enforcing token exchange to propagate identity across services without excessive permissions.
-- Continuous Verification – ensuring authentication and authorization at each step, preventing privilege escalation.
-
-More detailed overview of the identity concepts are covered in the [Kagenti Identity PDF document](./docs/2025-10.Kagenti-Identity.pdf).
-
-This end-to-end approach aligns agentic workflows with security best practice principles, making them secure, scalable, and eventually production-ready.
+[The Identity Demo](./docs/demo-identity.md) illustrates these principles in action, showing how agent identities are provisioned, authenticated, and authorized end‑to‑end. It highlights machine identity management, secure delegation via token exchange, and continuous verification at each step of a workflow. Together with the agent and tool authorization pattern, the demo demonstrates Kagenti’s security model—making agent workflows scalable, interoperable, and resilient against evolving threats.
 
 ## Components
 
