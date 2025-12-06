@@ -80,7 +80,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    This chart includes all the OpenShift software components required by Kagenti.
 
       ```shell
-      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG
+      helm install --create-namespace -n kagenti-system kagenti-deps oci://ghcr.io/kagenti/kagenti/kagenti-deps --version $LATEST_TAG --set spire.trustDomain=${DOMAIN}
       ```
 
 4. **Install MCP Gateway Chart:**
@@ -137,7 +137,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
 4. **Install Dependencies:**
 
    ```shell
-   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --wait
+   helm install kagenti-deps ./charts/kagenti-deps/ -n kagenti-system --create-namespace --set spire.trustDomain=${DOMAIN} --wait
    ```
 
 5. **Install MCP Gateway Chart:**
@@ -156,10 +156,10 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
       helm dependency update ./charts/kagenti/
       ```
 
-   - Determine the latest tag with the command:
+   - Determine the latest ui tag with the command:
 
       ```shell
-      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/v||; s/\^{}//')
+      LATEST_TAG=$(git ls-remote --tags --sort="v:refname" https://github.com/kagenti/kagenti.git | tail -n1 | sed 's|.*refs/tags/||; s/\^{}//')
       ```
 
       if this command fails, visit [this page](https://github.com/kagenti/kagenti/pkgs/container/kagenti%2Fkagenti/versions) to determine the latest version to use.
@@ -167,7 +167,7 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    Install the kagenti chart as follows:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG}
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
    ```
 
 ## Using the new ansible-based installer
@@ -366,7 +366,48 @@ kubectl get daemonsets -n zero-trust-workload-identity-manager
 
 ### Upgrade from OCP 4.18 to 4.19
 
-If the only available option is OpenShift 4.18, you can always upgrade the cluster. If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
+If the only available option is OpenShift 4.18, you can always upgrade the cluster.
+
+We tested upgrades with two OCP Platforms:
+<details>
+  <summary><strong>Red Hat OpenShift Container Platform Cluster (AWS)</strong></summary>
+
+Steps:
+
+1. First Update the channel
+
+```shell
+oc patch clusterversion version --type merge -p '{"spec":{"channel":"fast-4.19"}}'
+```
+
+2. Then apply the acks to acknowledge you understand the changes that are associated with the 4.19 upgrade
+
+```shell
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' --type=merge
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-boot-image-opt-out-in-4.19":"true"}}' --type=merge
+```
+
+3. Upgrade to the latest version
+
+```shell
+oc adm upgrade --to-latest=true --allow-not-recommended=true
+```
+
+You can ignore the warnings, the upgrade should be happening.
+
+4. Monitor the upgrade status:
+
+```shell
+oc get clusterversion
+```
+
+</details>
+
+Another option, that just stopped working recently:
+<details>
+  <summary><strong>Single Node</strong></summary>
+
+If you use a `Single Node`, make sure you have a reasonably large instance (at least 24 cores, 64 Gi).
 
 Steps:
 
@@ -395,6 +436,7 @@ You can ignore the warnings, the upgrade should be happening.
 ```shell
 oc get clusterversion
 ```
+</details>
 
 ### Remove Cert Manager
 
