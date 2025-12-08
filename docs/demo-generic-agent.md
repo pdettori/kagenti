@@ -31,7 +31,7 @@ To deploy the Generic Agent:
 2. In the **Select Namespace to Deploy Agent** drop-down, choose the `<namespace>` where you'd like to deploy the agent. (These namespaces are defined in your `.env` file.)
 3. Under [**Select Environment Variable Sets**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets):
    - `ollama` or `openai`
-4. Under [**Environment Variable**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
+4. Under [**Environment Variable**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#environment-variables), add the following environment variable:
    - Click `Add Environment Variable`
    - Under `Name` put `MCP_URLS` and under `Value` put `http://movie-tool:8000/mcp, http://flight-tool:8000/mcp`
 5. In the **Agent Source Repository URL** field, use the default:
@@ -55,7 +55,7 @@ To deploy the Movie Tool:
 1. Go to [OMDB's website](https://www.omdbapi.com/) and apply for a free API key
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in Kagenti's UI.
 1. Select the same `<namespace>` as used for the agent.
-1. Under [**Environment Variable**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#select-environment-variable-sets), select:
+1. Under [**Environment Variable**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#environment-variables), add the following environment variable:
    - Click `Add Environment Variable`
    - Under `Name` put `OMDB_API_KEY` and under `Value` put your OMDB API key
 1. Use the same source repository:
@@ -124,7 +124,8 @@ To verify that both the agent and tool are running:
    For the flight tool:
    ```console
    installer$ kubectl logs -f deployment/flight-tool -n <your-ns>
-   Defaulted container "flight-tool" out of: flight-tool, spiffe-helper, kagenti-client-registration, fix-permissions (init)   INFO:     Started server process [14]
+   Defaulted container "flight-tool" out of: flight-tool, spiffe-helper, kagenti-client-registration, fix-permissions (init)   
+   INFO:     Started server process [14]
    INFO:     Waiting for application startup.
    INFO: StreamableHTTP session manager started
    INFO:     Application startup complete.
@@ -145,9 +146,9 @@ Once the deployment is complete, you can run the demo:
 4. Scroll to the bottom of the page. In the input field labeled *Say something to the agent...*, enter:
 
    ```console
-   Show me flights for one adult from Taipei to San Francisco on November 22nd, 2025. 
+   Show me flights for one adult from Taipei to San Francisco on Janurary 22nd, 2026. 
    ```
-   Please note, that you will need to use a date that is in the future. 
+   Please note that you will need to use a date that is in the future. 
 
    To use the movie tool, use a prompt like this:
    ```console
