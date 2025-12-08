@@ -158,7 +158,7 @@ def render_agent_details_content(agent_k8s_name: str):
         st.markdown("---")
 
     # Determine agent URL from agent object name
-    agent_service_host_name = agent_k8s_name
+    agent_service_host_name = agent_k8s_name + "-svc"
 
     # Determine port based on environment
     running_in_cluster = is_running_in_cluster()
