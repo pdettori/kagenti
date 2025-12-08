@@ -2061,15 +2061,47 @@ def render_import_form(
                 final_source_subfolder_path = manual_subfolder_input
 
             if resource_type.lower() == "agent":
-                st_object.markdown("---")
-                st_object.subheader("Agent Build Configuration")
+                # Initialize session state for override
+                override_key = f"{resource_type.lower()}_override_start_command"
+                if override_key not in st.session_state:
+                    st.session_state[override_key] = False
 
-                start_command = st_object.text_input(
-                    "Start Command",
-                    value="python main.py",
-                    key=f"{resource_type.lower()}_start_command",
-                    help="Command to start the agent (e.g., 'python main.py', 'uvicorn app:app')",
-                )
+                # Show override button only if not already activated
+                if not st.session_state[override_key]:
+                    if st_object.button(
+                        "⚙️ Override Start Command",
+                        key=f"{resource_type.lower()}_show_start_command_btn",
+                        help="Override the default start command for the agent",
+                    ):
+                        st.session_state[override_key] = True
+                        st.rerun()
+
+                # Show configuration section only if override is activated
+                if st.session_state[override_key]:
+                    st_object.markdown("---")
+                    st_object.subheader("Agent Build Configuration")
+
+                    col1, col2 = st_object.columns([4, 1])
+                    with col1:
+                        start_command = st_object.text_input(
+                            "Start Command",
+                            value="python main.py",
+                            key=f"{resource_type.lower()}_start_command",
+                            help="Command to start the agent (e.g., 'python main.py', 'uvicorn app:app')",
+                        )
+                    with col2:
+                        st_object.write("")
+                        st_object.write("")
+                        if st_object.button(
+                            "❌ Reset",
+                            key=f"{resource_type.lower()}_reset_start_command",
+                            help="Reset to default start command",
+                        ):
+                            st.session_state[override_key] = False
+                            st.rerun()
+                else:
+                    # Use default when not overriding
+                    start_command = "python main.py"
 
             # If no subfolder is specified, require a manual resource name
             if not final_source_subfolder_path:
