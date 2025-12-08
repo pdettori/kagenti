@@ -12,7 +12,7 @@ Here's a breakdown of the sections:
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`file_organizer_agent`](https://github.com/kagenti/agent-examples/tree/main/a2a/file_organizer_agent) agent.
 - In [**Import New Tool**](#import-new-tool), you'll build and deploy [`cloud_storage_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/cloud_storage_tool) tool.
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
-- In [**Chat with the Generic Agent**](#chat-with-the-generic-agent), you'll interact with the agent and confirm it responds correctly using movie and flight data.
+- In [**Chat with the Generic Agent**](#chat-with-the-generic-agent), you'll interact with the agent and confirm it correctly organizes files in the specified cloud storage bucket.
 
 > **Prerequisites:**
 > Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
@@ -39,7 +39,7 @@ To deploy the File Organizer Agent:
 7. Set **Protocol** to `a2a`.
 8. Under [**Specify Source Subfolder**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#specify-source-subfolder):
    - Click `Select from examples`
-   - Choose: `a2a/generic_agent`
+   - Choose: `a2a/file_organizer`
 9. Click **Build & Deploy New Agent** to deploy.
 
 **Note:** The `ollama` environmental variable set specifies `llama3.2:3b-instruct-fp16` as the default model. To download the model, run `ollama pull llama3.2:3b-instruct-fp16`. Please ensure an Ollama server is running in a separate terminal via `ollama serve`. 
@@ -97,7 +97,7 @@ To verify that both the agent and tool are running:
 
    ```
 
-   For the movie tool:
+   For the cloud storage tool:
    ```console
    installer$ kubectl logs -f deployment/cloud-storage-tool -n <your-ns>
    Defaulted container "cloud-storage-tool" out of: cloud-storage-tool, spiffe-helper, kagenti-client-registration, fix-permissions (init)                        
@@ -106,7 +106,6 @@ To verify that both the agent and tool are running:
    INFO: StreamableHTTP session manager started
    INFO:     Application startup complete.
    INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-   ```
    ```
 
 4. Once you see the logs indicating that both services are up and running, you're ready to proceed to [Chat with the File Organizer Agent](#chat-with-the-file-organizer-agent).
@@ -140,7 +139,7 @@ Once the deployment is complete, you can run the demo:
 
 7. Each time new objects are added to the bucket, you should prompt the agent again. It should ignore the already organized files (inside folders), and only target files at the root of the bucket
 
-6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
+8. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
 If you encounter any errors, check the [Troubleshooting section](./demos.md#troubleshooting).
 
