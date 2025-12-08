@@ -12,7 +12,7 @@ This demo illustrates how Kagenti manages the lifecycle of all required componen
 Here's a breakdown of the sections:
 
 - In [**Import New Agent**](#import-new-agent), you'll build and deploy the [`generic_agent`](https://github.com/kagenti/agent-examples/tree/main/a2a/generic_agent) agent.
-- In [**Import New Tool**](#import-new-tool), you'll build and deploy [`flight_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/flight_tool) tool and [`movie_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/movie_tool) tool.
+- In [**Import New Tool**](#import-new-tool), you'll build and deploy [`movie_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/movie_tool) tool and [`flight_tool`](https://github.com/kagenti/agent-examples/tree/main/mcp/flight_tool) tool.
 - In [**Validate the Deployment**](#validate-the-deployment), you'll verify that all components are running and operational.
 - In [**Chat with the Generic Agent**](#chat-with-the-generic-agent), you'll interact with the agent and confirm it responds correctly using movie and flight data.
 
