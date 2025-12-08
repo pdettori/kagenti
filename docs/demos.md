@@ -27,7 +27,7 @@ Before running the demo setup script, ensure you have the following prerequisite
 - **Python:** Python version >=3.9
 - **uv:** [uv](https://docs.astral.sh/uv/getting-started/installation) must be installed (e.g. `pip install uv`)
 - **Docker:** Docker Desktop, Rancher Desktop or Podman Machine. You must alias it to `docker` (e.g. `sudo ln -s /opt/homebrew/bin/podman /usr/local/bin/docker`). On MacOS, you will need also to do `brew install docker-credential-helper`. *Not required if using `--use-existing-cluster`*.
-  - On Rancher or Podman Desktop, configure VM size to at least 12 GB of memory and 4 cores
+  - On Rancher or Podman Desktop, configure VM size to at least 16 GB of memory and 4 cores
   - On Podman Desktop, make sure you use a machine with [rootful connection](https://podman-desktop.io/docs/podman/setting-podman-machine-default-connection)
   - Make sure to increase your resource limits (for [rancher](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/), for podman you may need to edit inside the machine the file `/etc/security/limits.conf` and restart the machine)
 - **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker (e.g. `brew install kind`). *Not required if using `--use-existing-cluster`*.
@@ -98,6 +98,11 @@ Check [here](../deployments/ansible/README.md) for more details on the new insta
 
 To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
 
+<<<<<<< HEAD
+=======
+If you are using Rancher Desktop we recommend following [these steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos) to setup your environment.
+
+>>>>>>> upstream/main
 
 ### Using an Existing Kubernetes Cluster
 
@@ -322,7 +327,11 @@ A few problem fixes might include:
 
    ```console
    podman machine stop
+<<<<<<< HEAD
    podman machine set --memory=12288 --cpus=8
+=======
+   podman machine set --memory=8192
+>>>>>>> upstream/main
    podman machine start
    ```
 
@@ -331,7 +340,11 @@ A few problem fixes might include:
    ```console
    podman machine rm -f
    podman machine init
+<<<<<<< HEAD
    podman machine set --memory=12288 --cpus=8
+=======
+   podman machine set --memory=8192
+>>>>>>> upstream/main
    podman machine start
    ```
 
