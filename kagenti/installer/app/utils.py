@@ -131,8 +131,8 @@ def run_command(command: list[str], description: str):
                 check=True,
                 capture_output=True,
                 text=True,
-                encoding='utf-8',
-                errors='replace'  # Replace undecodable bytes to avoid UnicodeDecodeError on Windows
+                encoding="utf-8",
+                errors="replace",  # Replace undecodable bytes to avoid UnicodeDecodeError on Windows
             )
             console.log(
                 f"[bold green]✓[/bold green] {description} [bold green]done[/bold green]."
