@@ -20,7 +20,8 @@ We are developing other demos:
 - [Github Issue Agent Demo](./demo-github-issue.md): See this demo to run an agent that can query Github Issues using Github's remote MCP Server. 
   - [Interactive Online Demo](https://red.ht/3WL5Loc): See this demo presented at KubeCon NA 2025 to see the Github Issue example without running it locally. 
 - [Slack Authentication Demo](./demo-slack-research-agent.md): See this demo to deploy an agent and a simple MCP Server tool to talk to the Slack API. 
-
+- [Generic Agent Demo](./demo-generic-agent.md): See this demo to deploy a generic agent and two MCP Server tools.
+- [File Organizer Agent Demo](./demo-file-organizer-agent.md): See this demo to deploy an agent that can organize files in a cloud storage bucket using a custom MCP Server tool.
 ## Core Concepts
 
 Through this incubation project, we have identified several core components: 

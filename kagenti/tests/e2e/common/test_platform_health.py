@@ -15,6 +15,33 @@ import pytest
 from datetime import datetime, timezone, timedelta
 
 
+def _is_job_pod(pod) -> bool:
+    """Check if a pod is owned by a Kubernetes Job.
+
+    Job pods can fail and be retried - this is expected behavior.
+    We should not count transient job pod failures as platform health issues.
+
+    Detection methods:
+    1. Check owner_references for kind="Job"
+    2. Fallback: Check if pod name contains "-job-" pattern (Job naming convention)
+    """
+    # Method 1: Check owner references
+    owner_refs = pod.metadata.owner_references
+    if owner_refs is not None and len(owner_refs) > 0:
+        for owner in owner_refs:
+            if owner.kind == "Job":
+                return True
+
+    # Method 2: Fallback - check pod naming convention
+    # Job pods are typically named <job-name>-<random-suffix>
+    # Job names often end with "-job" by convention
+    pod_name = pod.metadata.name or ""
+    if "-job-" in pod_name:
+        return True
+
+    return False
+
+
 class TestPlatformHealth:
     """Test overall platform health checks."""
 
@@ -24,15 +51,17 @@ class TestPlatformHealth:
         Verify there are no failed pods in the cluster.
 
         Checks that all pods are in Running or Succeeded phase.
+        Excludes Job pods since they can fail and be retried (expected behavior).
         """
         # Get all pods across all namespaces
         pods = k8s_client.list_pod_for_all_namespaces(watch=False)
 
         # Find pods that are not in Running or Succeeded state
+        # Exclude Job pods - they can fail during retries which is normal
         failed_pods = [
             f"{pod.metadata.namespace}/{pod.metadata.name} ({pod.status.phase})"
             for pod in pods.items
-            if pod.status.phase not in ["Running", "Succeeded"]
+            if pod.status.phase not in ["Running", "Succeeded"] and not _is_job_pod(pod)
         ]
 
         assert len(failed_pods) == 0, (
@@ -91,6 +120,42 @@ class TestPlatformHealth:
         assert len(crashlooping_pods) == 0, (
             f"Found {len(crashlooping_pods)} crashlooping pods:\n"
             + "\n".join(crashlooping_pods)
+        )
+
+    @pytest.mark.critical
+    def test_all_jobs_completed(self, k8s_batch_client):
+        """
+        Verify that all Jobs in the cluster have completed successfully.
+
+        Checks that every Job has at least one successful completion
+        (status.succeeded >= 1). Jobs that are still actively running
+        are not considered failures.
+        """
+        # Get all jobs across all namespaces
+        jobs = k8s_batch_client.list_job_for_all_namespaces(watch=False)
+
+        failed_jobs = []
+        for job in jobs.items:
+            namespace = job.metadata.namespace
+            job_name = job.metadata.name
+
+            succeeded = job.status.succeeded or 0
+            failed = job.status.failed or 0
+            active = job.status.active or 0
+
+            # Skip jobs that are still running
+            if active > 0:
+                continue
+
+            # Job is not running - check if it succeeded
+            if succeeded < 1:
+                failed_jobs.append(
+                    f"{namespace}/{job_name} (succeeded={succeeded}, failed={failed})"
+                )
+
+        assert len(failed_jobs) == 0, (
+            f"Found {len(failed_jobs)} jobs that did not complete successfully:\n"
+            + "\n".join(failed_jobs)
         )
 
 
