@@ -11,5 +11,10 @@ dependencies:
   repository: oci://ghcr.io/kagenti/kagenti-operator
   condition: components.platformOperator.enabled
 
+- name: kagenti-operator-chart
+  version: 0.2.0-alpha.17
+  repository: oci://ghcr.io/kagenti/kagenti-operator
+  condition: components.kagentiOperator.enabled
+
 
 
