@@ -354,6 +354,7 @@ def _construct_tool_resource_body(
             "transport": "streamable-http",
             "port": service_ports[0]["port"],
             "targetPort": service_ports[0]["targetPort"],
+            "proxyPort": constants.DEFAULT_MCP_PORT,
             "podTemplateSpec": {
                 "spec": {
                     "serviceAccountName": k8s_resource_name,
