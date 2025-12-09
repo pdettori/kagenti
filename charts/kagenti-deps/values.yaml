@@ -97,7 +97,7 @@ certManager:
 # ------------------------------------------------------------------
 spire:
   namespace: zero-trust-workload-identity-manager
-
+  trustDomain: localtest.me
 
 containerRegistry:
   namespace: cr-system
