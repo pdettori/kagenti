@@ -62,7 +62,7 @@
     - name: Load images into kind
       # use raw loading instead of `kind load docker-image` as it is broken on latest Rancher Desktop with VZ virtualization
       shell: |
-        tmp=$(mktemp /tmp/image.XXXXXX.tar) && \
+        tmp=$(mktemp /tmp/image.XXXXXX ) && \
         docker save "{{ item }}" -o "$tmp" && \
         docker cp "$tmp" {{ kind_cluster_name }}-control-plane:/"$(basename "$tmp")" && \
         docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")" && \
