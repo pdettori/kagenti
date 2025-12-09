@@ -76,6 +76,28 @@ def k8s_apps_client():
 
 
 @pytest.fixture(scope="session")
+def k8s_batch_client():
+    """
+    Load Kubernetes configuration and return BatchV1Api client.
+
+    Returns:
+        kubernetes.client.BatchV1Api: Kubernetes batch API client for Jobs
+
+    Raises:
+        pytest.fail: If cannot connect to Kubernetes cluster
+    """
+    try:
+        config.load_kube_config()
+    except config.ConfigException:
+        try:
+            config.load_incluster_config()
+        except config.ConfigException as e:
+            pytest.fail(f"Could not load Kubernetes config: {e}")
+
+    return client.BatchV1Api()
+
+
+@pytest.fixture(scope="session")
 def keycloak_admin_credentials(k8s_client) -> Dict[str, str]:
     """
     Get Keycloak admin credentials from Kubernetes secret.
