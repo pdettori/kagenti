@@ -20,7 +20,7 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 |-----------|-------------|
 | **[Kagenti UI](./kagenti/ui/)** | Dashboard for deploying agents/tools, interactive testing, and monitoring |
 | **[Identity & Auth](./docs/demo-identity.md)** | Identity pattern assets that capture common authorization scenarios and provide reusable building blocks for implementing consistent authorization across services |
-| **[Platform Operator](https://github.com/kagenti/mcp-gateway/blob/main/README.md)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
+| **[Platform Operator](https://github.com/kagenti/kagenti-extensions/tree/main/kagenti-webhook)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
 | **[MCP Gateway](https://github.com/kagenti/mcp-gateway/blob/main/README.md)** | Unified gateway for Model Context Protocol (MCP) servers and tools. It acts as the entry point for policy enforcement, handling requests and routing them through the appropriate authorization patterns |
 
 ## Architecture
