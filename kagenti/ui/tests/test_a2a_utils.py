@@ -113,3 +113,45 @@ def test_task_status_update_final_appended(monkeypatch):
 
     assert is_final is True
     assert "Processed result: hello" in chunk_text
+
+
+def test_task_artifact_image_rendering(monkeypatch):
+    import lib.a2a_utils as a2a_utils
+
+    class DummyResp:
+        pass
+
+    class DummyArtifactUpdate:
+        def __init__(self):
+            self.taskId = "task-4"
+            self.artifact = types.SimpleNamespace(
+                artifactId="b9212720-7a02-40da-b245-3c46a19cdc91",
+                name="image.jpeg",
+                parts=[
+                    types.SimpleNamespace(
+                        kind="data",
+                        data={
+                            "content": "/9j/4Q==",
+                            "content_encoding": "base64",
+                            "content_type": "image/jpeg",
+                        },
+                    )
+                ],
+            )
+
+    monkeypatch.setattr(a2a_utils, "SendStreamingMessageSuccessResponse", DummyResp)
+    monkeypatch.setattr(a2a_utils, "TaskArtifactUpdateEvent", DummyArtifactUpdate)
+
+    event = DummyArtifactUpdate()
+    chunk = make_chunk_root(event)
+    chunk.root.__class__ = DummyResp
+
+    chunk_text, is_final = a2a_utils._process_a2a_stream_chunk(
+        chunk, "test", make_log_container(), make_message_placeholder()
+    )
+
+    # Artifact updates are not final events
+    assert is_final is False
+    # Check for img tag and base64 content
+    assert '<img src="data:image/jpeg;base64,/9j/4Q' in chunk_text
+    assert 'alt="image.jpeg"' in chunk_text
