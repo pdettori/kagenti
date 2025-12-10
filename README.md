@@ -10,7 +10,7 @@
 
 | Included Services: |  |
 |--------------------|--------|
-| - Authentication and Authorization<br>- Trusted identity<br>- Deployment<br>- Configuration<br>- Scaling<br>- Fault-tolerance<br>- Checkpointing<br>- Discovery of agents and tools<br>- Persistences | <img src="banner.png" width="400"/> |
+| - Authentication and Authorization<br>- Trusted identity<br>- Deployment<br>- Configuration<br>- Scaling<br>- Fault-tolerance<br>- Checkpointing<br>- Discovery of agents and tools<br>- Persistence | <img src="banner.png" width="400"/> |
 
 ## Core Components
 
