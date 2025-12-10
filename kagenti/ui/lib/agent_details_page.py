@@ -172,7 +172,7 @@ def render_agent_details_content(agent_k8s_name: str):
     if agent_service_host_name:
         scheme = "http://"  # Assuming http for now
         if running_in_cluster:
-            agent_url = f"{scheme}{agent_service_host_name}-svc.{namespace}.svc.cluster.local:{agent_port}"
+            agent_url = f"{scheme}{agent_service_host_name}.{namespace}.svc.cluster.local:{agent_port}"
         else:
             # For local/off-cluster, use configured DOMAIN_NAME (defaults to localtest.me)
             agent_url = f"{scheme}{agent_service_host_name}.{constants.DOMAIN_NAME}:{agent_port}"
