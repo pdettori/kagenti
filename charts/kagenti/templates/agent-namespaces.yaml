@@ -118,11 +118,11 @@ data:
     ]
   mcp-weather: |
     [
-      {"name": "MCP_URL", "value": "http://weather-tool:8000/mcp"}
+      {"name": "MCP_URL", "value": "http://mcp-weather-tool-proxy:8000/mcp"}
     ]
   mcp-slack: |
     [
-      {"name": "MCP_URL", "value": "http://slack-tool:8000/mcp"}
+      {"name": "MCP_URL", "value": "http://mcp-slack-tool-proxy:8000/mcp"}
     ]
   slack-researcher-config: |
     [
