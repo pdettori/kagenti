@@ -21,6 +21,8 @@ import logging
 import os
 import re
 import json
+import html
+import base64
 from uuid import uuid4
 from typing import Any, Tuple
 import streamlit as st
@@ -238,7 +240,19 @@ async def render_a2a_agent_card(st_object, base_url: str):
 
 # pylint: disable=too-many-branches, too-many-statements, too-many-locals
 def _handle_task_artifact_update(event: TaskArtifactUpdateEvent) -> Tuple[str, str]:
-    """Handles TaskArtifactUpdateEvent, returning the content chunk and log message."""
+    """Handles TaskArtifactUpdateEvent, returning the content chunk and log message.
+
+    Processes artifact parts from agent responses, extracting text or image data.
+    Images are converted to HTML img tags with data URIs for inline display.
+
+    Args:
+        event: TaskArtifactUpdateEvent containing artifact data from the agent
+
+    Returns:
+        Tuple[str, str]: A tuple of (content_chunk, log_message) where:
+            - content_chunk: HTML/text content to display
+            - log_message: Formatted log message describing the processing
+    """
     artifact_id = getattr(getattr(event, "artifact", None), "artifactId", "?")
     log_message = (
         f"🔄 Task Artifact Update (ID: {event.taskId}, Artifact: {artifact_id})"
@@ -263,15 +277,33 @@ def _handle_task_artifact_update(event: TaskArtifactUpdateEvent) -> Tuple[str, s
             content_encoding = data.get("content_encoding", "")
             content = data.get("content", "")
 
+            IMAGE_TYPES = {
+                "image/png",
+                "image/jpeg",
+                "image/jpg",
+            }
             is_image = (
                 kind == "data"
-                and content_type.startswith("image/")
+                and content_type in IMAGE_TYPES
                 and content_encoding == "base64"
                 and content
             )
 
             if is_image:
-                name = getattr(event.artifact, "name", "Image")
+                try:
+                    # Validate that content is valid base64
+                    MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
+                    decoded_size = len(base64.b64decode(content, validate=True))
+                    if decoded_size > MAX_IMAGE_SIZE_BYTES:
+                        logger.warning(
+                            f"Image artifact exceeds size limit: {decoded_size} bytes"
+                        )
+                        continue
+                except Exception:
+                    logger.warning("Invalid base64 content in image artifact")
+                    continue
+
+                name = html.escape(getattr(event.artifact, "name", "Image"))
                 # Construct HTML <img> tag for inline display
                 img_html = (
                     f'<img src="data:{content_type};base64,{content}" '
