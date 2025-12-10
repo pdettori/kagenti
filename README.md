@@ -14,12 +14,14 @@
 
 ## Core Components
 
+Kagenti provides a set of components and assets that make it easier to manage AI agents and tools and integrate their fine-grained authorization into modern cloud-native environments.
+
 | Component | Description |
 |-----------|-------------|
-| **[Platform Operator](https://github.com/kagenti/kagenti-operator)** | Kubernetes operator for building agents from source, managing lifecycle, and coordinating platform services |
-| **[MCP Gateway](./docs/gateway.md)** | Unified gateway for Model Context Protocol (MCP) servers and tools |
 | **[Kagenti UI](./kagenti/ui/)** | Dashboard for deploying agents/tools, interactive testing, and monitoring |
-| **[Identity & Auth](./docs/demo-identity.md)** | SPIRE-based workload identity with Keycloak integration for secure token exchange |
+| **[Identity & Auth](./docs/demo-identity.md)** | Identity pattern assets that capture common authorization scenarios and provide reusable building blocks for implementing consistent authorization across services |
+| **[Platform Operator](https://github.com/kagenti/mcp-gateway/blob/main/README.md)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
+| **[MCP Gateway](https://github.com/kagenti/mcp-gateway/blob/main/README.md)** | Unified gateway for Model Context Protocol (MCP) servers and tools. It acts as the entry point for policy enforcement, handling requests and routing them through the appropriate authorization patterns |
 
 ## Architecture
 
@@ -77,7 +79,8 @@ cd kagenti/installer
 uv run kagenti-installer
 ```
 
-The installer creates a Kind cluster and deploys all platform components. Use `--help` for options.
+The installer creates a Kind cluster and deploys all platform components. Use `uv run kagenti-installer --help` for options.
+For more detailed installation instructions including OpenShift refer to [Installation Guide](./docs/install.md).
 
 ### Access the UI
 
@@ -118,3 +121,9 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 ## License
 
 [Apache 2.0](./LICENSE)
+
+## QR Code for Kagenti.io
+
+This QR Code links to <http://kagenti.io>
+
+![Kagenti.io QR Code](./docs/images/Kagenti.QRcode.png)
