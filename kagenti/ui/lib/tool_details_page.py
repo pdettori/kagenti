@@ -132,7 +132,7 @@ def render_mcp_tool_details_content(tool_k8s_name: str):
 
         base_host_port = ""
         if running_in_cluster:
-            base_host_port = f"{tool_service_name}.{namespace}.svc.cluster.local:{mcp_tool_service_port}"
+            base_host_port = f"mcp-{tool_service_name}-proxy.{namespace}.svc.cluster.local:{mcp_tool_service_port}"
         else:
             base_host_port = (
                 f"{tool_service_name}.{constants.DOMAIN_NAME}:{mcp_tool_service_port}"

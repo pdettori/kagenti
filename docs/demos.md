@@ -98,8 +98,11 @@ Check [here](../deployments/ansible/README.md) for more details on the new insta
 
 To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
 
+<<<<<<< HEAD
+=======
 If you are using Rancher Desktop we recommend following [these steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos) to setup your environment.
 
+>>>>>>> upstream/main
 
 ### Using an Existing Kubernetes Cluster
 
@@ -324,7 +327,11 @@ A few problem fixes might include:
 
    ```console
    podman machine stop
+<<<<<<< HEAD
+   podman machine set --memory=12288 --cpus=8
+=======
    podman machine set --memory=8192
+>>>>>>> upstream/main
    podman machine start
    ```
 
@@ -333,7 +340,11 @@ A few problem fixes might include:
    ```console
    podman machine rm -f
    podman machine init
+<<<<<<< HEAD
+   podman machine set --memory=12288 --cpus=8
+=======
    podman machine set --memory=8192
+>>>>>>> upstream/main
    podman machine start
    ```
 
