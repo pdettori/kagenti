@@ -5,10 +5,10 @@ This document provides detailed information about each component of the Kagenti 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Platform Operator](#platform-operator)
+- [Agent Lifecycle Operator](#agent-lifecycle-operator)
 - [MCP Gateway](#mcp-gateway)
 - [Kagenti UI](#kagenti-ui)
-- [Identity & Authorization](#identity--authorization)
+- [Identity & Auth Bridge](#identity--authorization)
 - [Infrastructure Services](#infrastructure-services)
 - [Supported Agent Frameworks](#supported-agent-frameworks)
 - [Communication Protocols](#communication-protocols)
@@ -34,7 +34,7 @@ Kagenti addresses this gap by enhancing existing agent frameworks with productio
 
 ---
 
-## Platform Operator
+## Agent Lifecycle Operator
 
 **Repository**: [kagenti/kagenti-operator](https://github.com/kagenti/kagenti-operator)
 
@@ -88,7 +88,7 @@ spec:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│              Platform Operator                       │
+│              Platform Operator                      │
 ├─────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
 │  │   Agent     │  │ AgentBuild  │  │ AgentCard   │  │
@@ -96,9 +96,9 @@ spec:
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  │
 │         │                │                │         │
 │         ▼                ▼                ▼         │
-│  ┌─────────────────────────────────────────────┐   │
-│  │            Kubernetes API Server            │   │
-│  └─────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────┐    │
+│  │            Kubernetes API Server            │    │
+│  └─────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -207,9 +207,9 @@ kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].
 
 ---
 
-## Identity & Authorization
+## Identity & Auth Bridge
 
-Kagenti provides a unified framework for identity and authorization in agentic systems, replacing static credentials with dynamic, short-lived tokens.
+Kagenti provides a unified framework for identity and authorization in agentic systems, replacing static credentials with dynamic, short-lived tokens. We call this collection of assets **Auth Bridge**.
 
 ### SPIRE (Workload Identity)
 
@@ -288,6 +288,7 @@ The Ingress Gateway routes external HTTP requests to internal services using the
 | **Waypoint** | Optional L7 proxy for advanced traffic policies |
 
 **Benefits**:
+
 - Zero-config mTLS between services
 - No sidecar resource overhead
 - Transparent to applications
@@ -332,6 +333,7 @@ Kagenti is framework-neutral and supports agents built with any framework that c
 [A2A](https://google.github.io/A2A) is Google's standard protocol for agent communication.
 
 **Features**:
+
 - Agent discovery via Agent Cards
 - Standardized task execution API
 - Streaming support for long-running tasks
@@ -348,6 +350,7 @@ GET  /tasks/{id}                # Get task status
 [MCP](https://modelcontextprotocol.io) is Anthropic's protocol for tool integration.
 
 **Features**:
+
 - Tool discovery and invocation
 - Resource access
 - Prompt templates
@@ -368,35 +371,35 @@ POST /mcp    # MCP JSON-RPC messages
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
 │  │                      kagenti-system Namespace                     │  │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐  │  │
-│  │  │ Kagenti UI │  │  Platform  │  │  Ingress   │  │   Kiali    │  │  │
-│  │  │            │  │  Operator  │  │  Gateway   │  │            │  │  │
-│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘  │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐   │  │
+│  │  │ Kagenti UI │  │  Platform  │  │  Ingress   │  │   Kiali    │   │  │
+│  │  │            │  │  Operator  │  │  Gateway   │  │            │   │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘   │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌─────────────────┐   │
-│  │  gateway-system    │  │     mcp-system     │  │    keycloak     │   │
-│  │  ┌──────────────┐  │  │  ┌──────────────┐  │  │  ┌───────────┐  │   │
-│  │  │ MCP Gateway  │  │  │  │ MCP Broker   │  │  │  │ Keycloak  │  │   │
-│  │  │   (Envoy)    │  │  │  │ Controller   │  │  │  │  Server   │  │   │
-│  │  └──────────────┘  │  │  └──────────────┘  │  │  └───────────┘  │   │
-│  └────────────────────┘  └────────────────────┘  └─────────────────┘   │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌─────────────────┐    │
+│  │  gateway-system    │  │     mcp-system     │  │    keycloak     │    │
+│  │  ┌──────────────┐  │  │  ┌──────────────┐  │  │  ┌───────────┐  │    │
+│  │  │ MCP Gateway  │  │  │  │ MCP Broker   │  │  │  │ Keycloak  │  │    │
+│  │  │   (Envoy)    │  │  │  │ Controller   │  │  │  │  Server   │  │    │
+│  │  └──────────────┘  │  │  └──────────────┘  │  │  └───────────┘  │    │
+│  └────────────────────┘  └────────────────────┘  └─────────────────┘    │
 │                                                                         │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                    Agent Namespaces (team1, team2, ...)           │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │ │
-│  │  │  A2A Agents  │  │  MCP Tools   │  │   Istio Ambient Mesh     │ │ │
-│  │  │  (LangGraph, │  │  (weather,   │  │  ┌────────┐ ┌─────────┐  │ │ │
-│  │  │   CrewAI,    │  │   slack,     │  │  │Ztunnel │ │Waypoint │  │ │ │
-│  │  │   AG2...)    │  │   fetch...)  │  │  └────────┘ └─────────┘  │ │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘ │ │
+│  │                    Agent Namespaces (team1, team2, ...)            │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │ │
+│  │  │  A2A Agents  │  │  MCP Tools   │  │   Istio Ambient Mesh     │  │ │
+│  │  │  (LangGraph, │  │  (weather,   │  │  ┌────────┐ ┌─────────┐  │  │ │
+│  │  │   CrewAI,    │  │   slack,     │  │  │Ztunnel │ │Waypoint │  │  │ │
+│  │  │   AG2...)    │  │   fetch...)  │  │  └────────┘ └─────────┘  │  │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │              zero-trust-workload-identity-manager                  │ │
-│  │  ┌────────────────┐  ┌────────────────┐  ┌──────────────────────┐ │ │
-│  │  │  SPIRE Server  │  │  SPIRE Agent   │  │  SPIFFE CSI Driver   │ │ │
-│  │  └────────────────┘  └────────────────┘  └──────────────────────┘ │ │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌──────────────────────┐  │ │
+│  │  │  SPIRE Server  │  │  SPIRE Agent   │  │  SPIFFE CSI Driver   │  │ │
+│  │  └────────────────┘  └────────────────┘  └──────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -409,7 +412,6 @@ POST /mcp    # MCP JSON-RPC messages
 - [Installation Guide](./install.md)
 - [Demo Documentation](./demos.md)
 - [Technical Details](./tech-details.md)
-- [Identity Demo](./demo-identity.md)
+- [Identity, Security, and Auth Bridge](./demo-identity.md)
 - [MCP Gateway Instructions](./gateway.md)
 - [New Agent Guide](./new-agent.md)
-
