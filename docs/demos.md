@@ -323,11 +323,9 @@ A few problem fixes might include:
 
    ```console
    podman machine stop
-<<<<<<< HEAD
+
    podman machine set --memory=12288 --cpus=8
-=======
-   podman machine set --memory=8192
->>>>>>> upstream/main
+
    podman machine start
    ```
 
@@ -336,11 +334,7 @@ A few problem fixes might include:
    ```console
    podman machine rm -f
    podman machine init
-<<<<<<< HEAD
    podman machine set --memory=12288 --cpus=8
-=======
-   podman machine set --memory=8192
->>>>>>> upstream/main
    podman machine start
    ```
 
