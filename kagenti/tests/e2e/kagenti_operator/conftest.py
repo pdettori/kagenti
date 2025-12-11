@@ -12,9 +12,9 @@ def weather_service_name():
     """
     Weather agent service name in kagenti-operator mode.
 
-    Kagenti operator creates service with -svc suffix.
+    Kagenti operator creates service with same name as the agent.
     """
-    return "weather-service-svc"
+    return "weather-service"
 
 
 @pytest.fixture(scope="session")

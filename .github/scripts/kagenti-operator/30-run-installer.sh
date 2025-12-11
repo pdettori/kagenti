@@ -7,6 +7,6 @@ source "$SCRIPT_DIR/../lib/logging.sh"
 log_step "30" "Running Ansible installer (Kagenti Operator)"
 
 cd "$REPO_ROOT/deployments/ansible"
-./run-install.sh --env-file ../envs/dev_kagenti_operator_values.yaml
+./run-install.sh --env-file ../envs/dev_values.yaml
 
 log_success "Ansible installer complete"
