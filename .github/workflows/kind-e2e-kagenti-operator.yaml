@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'kagenti/**'
-      - 'deployments/ui/**'
+      - 'deployments/**'
       - '.github/**'
       - 'charts/**'
 
