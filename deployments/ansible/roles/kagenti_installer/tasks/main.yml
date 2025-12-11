@@ -24,6 +24,10 @@
         state: present
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
+      register: istio_base_result
+      retries: 3
+      delay: 15
+      until: istio_base_result is not failed
 
     - name: Install istiod
       kubernetes.core.helm:
@@ -38,6 +42,10 @@
         timeout: "{{ helm_wait_timeout }}s"
         values:
           profile: ambient
+      register: istiod_result
+      retries: 3
+      delay: 15
+      until: istiod_result is not failed
 
     - name: Install istio-cni
       kubernetes.core.helm:
@@ -51,7 +59,11 @@
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
         values:
-          profile: ambient      
+          profile: ambient
+      register: istio_cni_result
+      retries: 3
+      delay: 15
+      until: istio_cni_result is not failed
 
     - name: Install ztunnel
       kubernetes.core.helm:
@@ -63,7 +75,11 @@
         create_namespace: false
         state: present
         wait: true
-        timeout: "{{ helm_wait_timeout }}s"   
+        timeout: "{{ helm_wait_timeout }}s"
+      register: ztunnel_result
+      retries: 3
+      delay: 15
+      until: ztunnel_result is not failed
 
     - name: Label istio namespace to allow shared gateway access
       kubernetes.core.k8s:
@@ -86,11 +102,15 @@
     kubernetes.core.k8s:
       state: present
       src: "https://github.com/cert-manager/cert-manager/releases/download/{{certManager.version}}/cert-manager.yaml"
+    register: cert_manager_result
+    retries: 3
+    delay: 15
+    until: cert_manager_result is not failed
 
   - name: Wait for cert manager webhook to start
     command: >-
       kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=120s
-  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))          
+  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
 #  Kiali and Prometheus
@@ -101,11 +121,19 @@
       kubernetes.core.k8s:
         state: present
         src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/prometheus.yaml"
+      register: prometheus_result
+      retries: 3
+      delay: 15
+      until: prometheus_result is not failed
 
     - name: Apply kiali manifest
       kubernetes.core.k8s:
         state: present
         src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/kiali.yaml"
+      register: kiali_result
+      retries: 3
+      delay: 15
+      until: kiali_result is not failed
   when: (kiali.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
@@ -115,6 +143,10 @@
   kubernetes.core.k8s:
     state: present
     src: "https://storage.googleapis.com/tekton-releases/pipeline/previous/{{tekton.version}}/release.yaml"
+  register: tekton_result
+  retries: 3
+  delay: 15
+  until: tekton_result is not failed
   when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
@@ -130,6 +162,10 @@
     state: present
     wait: true
     timeout: "{{ helm_wait_timeout }}s"
+  register: toolhive_crds_result
+  retries: 3
+  delay: 15
+  until: toolhive_crds_result is not failed
   when: toolhiveCRDs.enabled | default(false)
 
 - name: Install Toolhive Operator
@@ -142,6 +178,10 @@
     state: present
     wait: true
     timeout: "{{ helm_wait_timeout }}s"
+  register: toolhive_operator_result
+  retries: 3
+  delay: 15
+  until: toolhive_operator_result is not failed
   when: toolhiveOperator.enabled | default(false)
 
 #
@@ -160,6 +200,10 @@
         state: present
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
+      register: spire_crds_result
+      retries: 3
+      delay: 15
+      until: spire_crds_result is not failed
 
     - name: Install spire
       kubernetes.core.helm:
@@ -173,6 +217,10 @@
         wait: false
         timeout: "{{ helm_wait_timeout }}s"
         values: "{{ (charts['spire'] | default({}))['values'] | default({}) }}"
+      register: spire_result
+      retries: 3
+      delay: 15
+      until: spire_result is not failed
   when: (charts.spire.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
@@ -190,6 +238,10 @@
       kubernetes.core.k8s:
         state: present
         src: "https://github.com/kubernetes-sigs/gateway-api/releases/download/{{gatewayApi.version}}/standard-install.yaml"
+      register: gateway_api_result
+      retries: 3
+      delay: 15
+      until: gateway_api_result is not failed
       when: gateway_crd_check.rc != 0
   when: gatewayApi.enabled | default(false)
 
