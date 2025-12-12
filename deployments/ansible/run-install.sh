@@ -22,6 +22,25 @@ if [[ ! -f "$PLAYBOOK" ]]; then
   exit 2
 fi
 
+# Check for unsupported Helm v4: warn and exit early if detected
+if command -v helm >/dev/null 2>&1; then
+  # Prefer the short output (e.g. "v3.12.0+g...") but fall back to full output
+  helm_ver=$(helm version --short 2>/dev/null || helm version 2>/dev/null)
+  # Extract the primary version token and strip build metadata
+  helm_ver_short=$(echo "$helm_ver" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+  # Extract major version number using regex (handles optional "v" prefix)
+  if [[ "$helm_ver_short" =~ ^v?([0-9]+)\. ]]; then
+    helm_major_ver="${BASH_REMATCH[1]}"
+    if [[ "$helm_major_ver" == "4" ]]; then
+      echo "ERROR: Detected Helm version $helm_ver_short which is unsupported by this installer." >&2
+      echo "       Please downgrade to Helm v3.x and re-run this installer." >&2
+      exit 1
+    fi
+  else
+    echo "WARNING: Could not parse Helm version string. Original output: '$helm_ver'. Parsed short version: '$helm_ver_short'. Please ensure you are using Helm v3.x." >&2
+  fi
+fi
+
 ENV_FILES=()
 # Default secrets file (relative to the script/playbook directory). If the
 # user passes --secret this value will be overridden.

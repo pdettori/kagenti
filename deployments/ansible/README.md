@@ -15,6 +15,33 @@ and preload images when requested.
 - Loads secret values from a separate secrets file (if provided) and merges them
    into chart values.
 
+## Quick start — use the wrapper (recommended)
+
+The supported and recommended way to run the Ansible-based installer is via the
+convenience wrapper script `deployments/ansible/run-install.sh`. The wrapper
+performs helpful path resolution for environment/secret files, uses `uv` to run
+`ansible-playbook` in a controlled venv when available, and performs some
+pre-checks (including a Helm v4 compatibility check).
+
+Examples (wrapper):
+
+```bash
+# Development (full dev configuration)
+deployments/ansible/run-install.sh --env dev
+
+# Minimal dev (no auth)
+deployments/ansible/run-install.sh --env minimal
+
+# OpenShift / OCP
+deployments/ansible/run-install.sh --env ocp
+
+# Pass extra ansible-playbook args after `--`
+deployments/ansible/run-install.sh --env dev -- --check --tags debug_vars
+```
+
+See the script `deployments/ansible/run-install.sh --help` for all options and
+examples of how the wrapper builds the `ansible-playbook` command.
+
 ## Key files
 - `installer-playbook.yml` - the entry-point playbook (loads `default_values.yaml`).
 - `default_values.yaml` - baseline variable and chart configuration.
@@ -25,16 +52,18 @@ and preload images when requested.
    a secrets example file).
 
 ## Prerequisites
-- Ansible (tested with Ansible 2.10+ / 2.12+ depending on your env).
-- Python deps for kubernetes support: `PyYAML`, `kubernetes`, `openshift`.
+- Ansible (minimum supported version: 2.10+; for OpenShift/OCP environments, Ansible 2.12+ is required).
+- Python dependencies for Kubernetes support: `PyYAML`, `kubernetes`, `openshift`.
+- A working `kubectl` and `helm`.
+  - IMPORTANT: This installer and the Ansible `kubernetes.core` collection are
+    compatible with Helm v3.x. Helm v4 introduces breaking changes that are
+    incompatible with the collection's current Helm integration. Ensure `helm`
+    on your PATH is v3.x before running the playbook or the wrapper.
 - Install Ansible collections used by the playbook:
 
    ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml
 
-- A working `kubectl` and `helm` - note that helm v4 has breaking changes incompatible with 
-  ansible `kubernetes.core.helm` so helm needs to be still v3
-
-- recommended: install `helm-diff` plugin for cleaner diffs:
+- Recommended: install the `helm-diff` plugin for cleaner diffs:
 
    helm plugin install https://github.com/databus23/helm-diff
 
@@ -84,7 +113,6 @@ runtime variables used to decide which charts to install.
 
 ## Secrets handling
 - Example secrets file: `deployments/envs/secret_values.yaml.example`.
- - Example secrets file: `deployments/envs/secret_values.yaml.example`.
  - Default behavior: if you copy the example to `deployments/envs/.secret_values.yaml`
     (the repository default location) the installer will load it automatically and
     you do not need to pass `-e secret_values_file=...`.
@@ -108,61 +136,33 @@ runtime variables used to decide which charts to install.
     wrapper will fail early with an error. The playbook itself also validates
     the resolved path when it is provided.
 
-## Debugging and inspection
-- If an extra-var doesn't appear to take effect, prefer the explicit JSON/YAML
-   form for `-e` to avoid shell-quoting mistakes.
-- Run the playbook with `--tags debug_vars` (or omit `--tags`) to show debug
-   output added to the role which prints resolved variable values.
 
-## Running without the `uv` wrapper (quick checklist)
-1. Ensure Python deps are installed:
+## Advanced: running Ansible directly (for CI or custom environments)
 
-    pip install PyYAML kubernetes openshift
+If you prefer to run `ansible-playbook` directly (for example from a CI job or
+when you manage Python deps yourself), the playbook supports direct execution.
+When running directly you are responsible for ensuring the right Python
+environment, Ansible collections, and `helm` version are available on the
+runner.
 
-2. Install Ansible collections:
+Checklist when running `ansible-playbook` directly:
+- Install Python deps: `pip install PyYAML kubernetes openshift`
+- Install Ansible collections: `ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml`
+- Optionally set the interpreter: `export ANSIBLE_PYTHON_INTERPRETER=$(which python)`
+- Ensure `helm` is v3.x (Helm v4 is incompatible with the Ansible Helm module).
 
-    ansible-galaxy collection install -r deployments/ansible/collections-reqs.yml
-
-3. Optionally set the Python interpreter Ansible should use (the playbook will
-    try to use `ANSIBLE_PYTHON_INTERPRETER` env var or a repository virtualenv by
-    default):
-
-    export ANSIBLE_PYTHON_INTERPRETER=$(which python)
-
-4. Run the playbook (example):
-
-    ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml -e '{"global_value_files":["../envs/dev_values.yaml"], "secret_values_file": "../envs/.secret_values.yaml"}'
-
-## Wrapper examples (using `run-install.sh`)
-
-Examples:
-
-- Development (full dev configuration):
+Example (direct invocation):
 
 ```bash
-deployments/ansible/run-install.sh --env dev
+ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml \
+  -e '{"global_value_files":["../envs/dev_values.yaml"], "secret_values_file": "../envs/.secret_values.yaml"}'
 ```
 
-- Minimal dev (no auth):
+When running directly, prefer JSON/YAML `-e` forms to avoid shell-quoting issues.
 
-```bash
-deployments/ansible/run-install.sh --env minimal
-```
-
-- OpenShift / OCP:
-
-```bash
-deployments/ansible/run-install.sh --env ocp
-```
-
-Notes on passing additional ansible-playbook args:
-- Add `--` followed by any `ansible-playbook` options. Example (runs the playbook in check mode and shows resolved variables):
-
-```bash
-deployments/ansible/run-install.sh --env dev -- --check --tags debug_vars
-```
-
-The wrapper prefers to run `uv run ansible-playbook` when `uv` is available (so `uv` manages the venv/deps); if `uv` is not found it will fall back to `ansible-playbook` with a warning.
+If you want the wrapper behavior but without `run-install.sh`, replicate the
+wrapper's checks in your invocation: resolve relative paths to absolute ones
+and pass the merged extra-vars as JSON to `-e`.
 
 If you are using Rancher Desktop follow [these steps](#installation-using-rancher-desktop-on-macos).
 
