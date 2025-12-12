@@ -20,10 +20,10 @@ Different demos showcase capabilities relevant to different personas:
 
 - **Agent Developers** → Start with [Weather Service](./demo-weather-agent.md) for framework basics
 - **Tool Developers** → Try [Slack Authentication](./demo-slack-research-agent.md) for MCP integration
-- **Security Administrators** → Focus on identity features in [Slack Authentication](./demo-slack-research-agent.md)
+- **Security Specialists** → Focus on identity features in [Slack Authentication](./demo-slack-research-agent.md)
 - **Platform Operators** → All demos showcase operational aspects
 
-**👥 [Find Your Persona](../PERSONAS_AND_ROLES.md)** to understand which demo best matches your role.
+**👥 [Find Your Persona](../PERSONAS_AND_ROLES.md#overview)** to understand which demo best matches your role.
 
 ## Installation
 

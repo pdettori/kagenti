@@ -6,10 +6,10 @@ This guide covers development workflows for multiple personas in the Kagenti eco
 
 - **Agent Developers** → Focus on agent development and A2A protocol integration
 - **Tool Developers** → Emphasize MCP tool creation and gateway integration  
-- **Extension Developers** → Custom operators and platform extensions
-- **Gateway Administrators** → Protocol routing and Envoy configuration
+- **Extensions Developers** → Custom operators and platform extensions
+- **MCP Gateway Operators** → Protocol routing and Envoy configuration
 
-**👥 [Review Complete Personas Documentation](../PERSONAS_AND_ROLES.md)** to identify your primary and secondary roles.
+**👥 [Review Complete Personas Documentation](../PERSONAS_AND_ROLES.md#1-developer-personas)** to identify your primary role.
 
 ## Working with Git
 

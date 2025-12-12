@@ -4,8 +4,6 @@
 
 When deploying a new agent, you may either deploy from source code or from a pre-existing container image. When deploying from source code, Kagenti will retrieve the source code from GitHub. Kagenti will build your agent by deploying the code into a container based up on the Dockerfile you provide. When deploying from an image, it is expected that the agent code already exists in the container image, so the GitHub retrieval of the code and its installation will be skipped.
 
-## Using Custom Environment files
-
 Kagenti UI allows importing custom environment files. You need to provide the repository and the file name. This assumes the `main` branch only. What if you want to test a file from your branch prior to merging it to `main`?
 Here is a trick:
 

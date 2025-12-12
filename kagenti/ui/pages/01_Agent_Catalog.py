@@ -40,7 +40,7 @@ generic_api_client, _, _ = get_kube_api_client_cached()
 # Add info about user roles and access levels
 help_text = (
     "Different user personas have different access levels to agents. "
-    "Learn more about [user roles and permissions](../PERSONAS_AND_ROLES.md#user-access-levels)."
+    "Learn more about [user roles and permissions](../PERSONAS_AND_ROLES.md#31-end-user)."
 )
 
 
