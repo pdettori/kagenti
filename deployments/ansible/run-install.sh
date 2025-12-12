@@ -34,7 +34,7 @@ if command -v helm >/dev/null 2>&1; then
     if [[ "$helm_major_ver" == "4" ]]; then
       echo "ERROR: Detected Helm version $helm_ver_short which is unsupported by this installer." >&2
       echo "       Please downgrade to Helm v3.x and re-run this installer." >&2
-      exit 2
+      exit 1
     fi
   else
     echo "WARNING: Could not parse Helm version string: '$helm_ver_short'. Please ensure you are using Helm v3.x." >&2
