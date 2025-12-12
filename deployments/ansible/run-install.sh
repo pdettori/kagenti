@@ -27,7 +27,7 @@ if command -v helm >/dev/null 2>&1; then
   # Prefer the short output (e.g. "v3.12.0+g...") but fall back to full output
   helm_ver=$(helm version --short 2>/dev/null || helm version 2>/dev/null)
   # Extract the primary version token and strip build metadata
-  helm_ver_short=$(echo "$helm_ver" | head -n1 | cut -d'+' -f1 | tr -d '[:space:]')
+  helm_ver_short=$(echo "$helm_ver" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
   # Extract major version number using regex (handles optional "v" prefix)
   if [[ "$helm_ver_short" =~ ^v?([0-9]+)\. ]]; then
     helm_major_ver="${BASH_REMATCH[1]}"
