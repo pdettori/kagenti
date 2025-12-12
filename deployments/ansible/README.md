@@ -52,7 +52,7 @@ examples of how the wrapper builds the `ansible-playbook` command.
    a secrets example file).
 
 ## Prerequisites
-- Ansible (tested with Ansible 2.10+ / 2.12+ depending on your environment).
+- Ansible (minimum supported version: 2.10+; for OpenShift/OCP environments, Ansible 2.12+ is required).
 - Python dependencies for Kubernetes support: `PyYAML`, `kubernetes`, `openshift`.
 - A working `kubectl` and `helm`.
   - IMPORTANT: This installer and the Ansible `kubernetes.core` collection are
