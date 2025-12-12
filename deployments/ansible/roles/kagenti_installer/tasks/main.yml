@@ -149,6 +149,35 @@
   until: tekton_result is not failed
   when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
 
+# TODO: Move TektonConfig patching to kagenti-operator
+# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
+# context to know what Tekton settings are needed. The operator should:
+# 1. Check if running on OpenShift (detect TektonConfig CRD)
+# 2. Patch TektonConfig to set pipeline.set-security-context: true
+# 3. This ensures proper fsGroup handling for PVC permissions in build pods
+# For now, we patch it in the installer as a workaround.
+- name: Patch TektonConfig for OpenShift build permissions
+  block:
+    - name: Wait for TektonConfig to exist
+      command: kubectl get tektonconfig config
+      register: tektonconfig_check
+      retries: 30
+      delay: 10
+      until: tektonconfig_check.rc == 0
+      changed_when: false
+
+    - name: Patch TektonConfig to set security context
+      kubernetes.core.k8s:
+        api_version: operator.tekton.dev/v1alpha1
+        kind: TektonConfig
+        name: config
+        definition:
+          spec:
+            pipeline:
+              set-security-context: true
+        merge_type: merge
+  when: enable_openshift | default(false)
+
 #
 #  Toolhive
 #
@@ -393,8 +422,107 @@
       kind: Job
       name:  kagenti-agent-oauth-secret-job
       namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
-  
+
+  # TODO: Move github-clone-step HOME env var fix to kagenti-operator.
+  # The kagenti-operator creates the github-clone-step ConfigMap for Tekton pipelines.
+  # On OpenShift, the git-init container cannot write to / (read-only filesystem),
+  # so HOME must be set to a writable path like /tekton/home.
+  # The operator should set this env var in the ConfigMap definition.
+  # For now, we patch it in the installer as a workaround.
+  - name: Wait for kagenti-operator to create github-clone-step ConfigMap
+    command: kubectl get configmap github-clone-step -n {{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
+    register: github_clone_step_check
+    retries: 30
+    delay: 5
+    until: github_clone_step_check.rc == 0
+    changed_when: false
+    when: enable_openshift | default(false)
+
+  - name: Patch github-clone-step ConfigMap for OpenShift HOME directory
+    kubernetes.core.k8s:
+      api_version: v1
+      kind: ConfigMap
+      name: github-clone-step
+      namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
+      definition:
+        data:
+          task-spec.yaml: |
+            params:
+              - name: GITHUB_TOKEN
+                type: string
+                description: The Git repository URL with the token
+                default: ""
+              - name: repo-url
+                type: string
+                description: The Git repository URL without the token
+              - name: revision
+                type: string
+                description: The Git revision to checkout
+                default: "main"
+            steps:
+              - name: git-clone
+                image: ghcr.io/tektoncd/github.com/tektoncd/pipeline/cmd/git-init:latest
+                env:
+                  - name: HOME
+                    value: /tekton/home
+                command:
+                  - /ko-app/git-init
+                args:
+                  - -url
+                  - https://$(params.repo-url)
+                  - -revision
+                  - $(params.revision)
+                  - -path
+                  - /workspace/source
+              - name: list-dir
+                image: public.ecr.aws/docker/library/alpine:latest
+                workingDir: $(workspaces.source.path)
+                script: |
+                    echo "Listing contents of workspace root ($(workspaces.source.path)): "
+                    ls -la
+
+            workspaces:
+              - name: source
+      merge_type: merge
+    when: enable_openshift | default(false)
+
   when:
   - (charts['kagenti'] | default({})).get('enabled', false) | bool
   - (charts['kagenti'] | default({})).get('chart') is defined
+
+# TODO: Move internal-registry-secret creation to kagenti-operator or kagenti helm chart.
+# The kagenti-operator creates AgentBuilds with Tekton pipelines that push images
+# to the OpenShift internal registry. The buildah step needs a dockerconfigjson-format
+# secret with registry credentials. OpenShift auto-creates builder-dockercfg secrets
+# but in dockercfg format, which buildah cannot use directly.
+# For now, we create the internal-registry-secret in each agent namespace as a workaround.
+- name: Create internal-registry-secret in agent namespaces for OpenShift
+  block:
+    - name: Create internal-registry-secret from builder SA token
+      shell: |
+        for ns in {{ (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | join(' ') }}; do
+          # Get builder dockercfg and convert to dockerconfigjson format
+          DOCKERCFG=$(kubectl get secret -n $ns -o name | grep builder-dockercfg | head -1 | xargs -I {} kubectl get {} -n $ns -o jsonpath='{.data.\.dockercfg}' | base64 -d)
+          if [ -n "$DOCKERCFG" ]; then
+            DOCKERCONFIGJSON=$(echo "{\"auths\": $DOCKERCFG}" | base64 | tr -d '\n')
+            kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: internal-registry-secret
+          namespace: $ns
+        type: kubernetes.io/dockerconfigjson
+        data:
+          .dockerconfigjson: $DOCKERCONFIGJSON
+        EOF
+            echo "Created internal-registry-secret in $ns"
+          else
+            echo "No builder-dockercfg found in $ns, skipping"
+          fi
+        done
+      args:
+        executable: /bin/bash
+  when:
+    - enable_openshift | default(false)
+    - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
 
