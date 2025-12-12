@@ -37,7 +37,7 @@ if command -v helm >/dev/null 2>&1; then
       exit 1
     fi
   else
-    echo "WARNING: Could not parse Helm version string: '$helm_ver_short'. Please ensure you are using Helm v3.x." >&2
+    echo "WARNING: Could not parse Helm version string. Original output: '$helm_ver'. Parsed short version: '$helm_ver_short'. Please ensure you are using Helm v3.x." >&2
   fi
 fi
 
