@@ -43,7 +43,8 @@ Before running the demo setup script, ensure you have the following prerequisite
   - Make sure to increase your resource limits (for [rancher](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/), for podman you may need to edit inside the machine the file `/etc/security/limits.conf` and restart the machine)
 - **Kind:** A [tool](https://kind.sigs.k8s.io) to run a Kubernetes cluster in docker (e.g. `brew install kind`). *Not required if using `--use-existing-cluster`*.
 - **kubectl:** The Kubernetes command-line tool (installs with **kind**).
-- **Helm:** A package manager for Kubernetes (e.g. `brew install helm`).
+- **Helm:** A package manager for Kubernetes (e.g. `brew install helm`). 
+  *Crucial Compatibility Note*: If you are using the Ansible installer, you must use Helm v3. Helm v4 is currently incompatible with the Ansible installer and will cause installation failures.
 - **[ollama](https://ollama.com/download)** to run LLMs locally (e.g. `brew install ollama`). Then start the **ollama* service in the background (e.g.`ollama serve`).
 - **GitHub Token:** Your [GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) to allow fetching source and then to push docker image to ghcr.io repository. Make sure to grant: `repo(all), read/write packages`. Make sure to choose the "classic" token instead of the "fine-grained" token.
 - **OpenAI API Key:** The [OpenAI API Key](https://platform.openai.com/api-keys) for accessing A2A agents. Select `read only`.
@@ -110,6 +111,15 @@ Check [here](../deployments/ansible/README.md) for more details on the new insta
 To override existing environments, you may create a [customized override file](../deployments/ansible/README.md#using-override-files).
 
 If you are using Rancher Desktop we recommend following [these steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos) to setup your environment.
+
+Advanced users: you may invoke the Ansible playbook directly instead of using the `run-install.sh` wrapper. This can be useful if you prefer to run `ansible-playbook` from a specific Python environment or CI runner. Example:
+
+```bash
+ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml \
+  -e '{"global_value_files":["../envs/dev_values.yaml"], "secret_values_file": "../envs/.secret_values.yaml"}'
+```
+
+Note: The wrapper provides convenience features (path resolution for env/secret files, a `uv`-based venv runner, and a Helm v4 compatibility check). When running Ansible directly, ensure `helm` is v3.x since Helm v4 is incompatible with the Ansible Helm integration used by the playbook.
 
 ### Using an Existing Kubernetes Cluster
 
