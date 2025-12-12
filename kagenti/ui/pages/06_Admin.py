@@ -34,7 +34,7 @@ keycloak__console_url = os.environ.get(
 st.header("🔑 Administration & Identity Management")
 st.info(
     "👥 **Admin Role**: As an administrator, you manage multiple personas across the platform. "
-    "Learn about all user types in our [Personas and Roles Documentation](../PERSONAS_AND_ROLES.md#2-operatoradministrator-personas)."
+    "Learn about all user types in our [Personas and Roles Documentation](https://github.com/IBM/kagenti/blob/main/PERSONAS_AND_ROLES.md#2-operatoradministrator-personas)."
 )
 st.write(
     "This section provides access to administrative functions, including identity and "
