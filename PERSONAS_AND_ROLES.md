@@ -12,7 +12,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 ### 1.1 Agent Developer
 
-**Description**: Developers who create intelligent agents using various AI frameworks.
+**Description**: Developers who create AI agents using various frameworks.
 
 **Primary Repository**: [agent-examples](https://github.com/kagenti/agent-examples)
 
@@ -33,11 +33,12 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **Getting Started**:
 
-1. Clone [agent-examples](https://github.com/kagenti/agent-examples) repository
-2. Explore framework-specific examples (`a2a/slack_researcher`, `a2a/weather_service`)
-3. Use sample Dockerfiles and configurations as templates
-4. Access Kagenti UI and navigate to "Import New Agent"
-5. Deploy using your GitHub repository
+1. Review instructions in [new-agent](docs/new-agent.md) documentation
+2. Clone [agent-examples](https://github.com/kagenti/agent-examples) repository
+3. Explore framework-specific examples (`a2a/slack_researcher`, `a2a/weather_service`)
+4. Use sample Dockerfiles and configurations as templates
+5. Access Kagenti UI and navigate to "Import New Agent"
+6. Deploy using your GitHub repository
 
 ---
 
@@ -289,6 +290,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 ### 2.3 Security and Identity Specialist
 
 **Description**: Administrators responsible for implementing and maintaining the zero-trust security model and identity management.
+Review Identity Patterns in [identity documentation](docs/demo-identity.md) for more information.
 
 **Key Responsibilities**:
 
