@@ -102,6 +102,8 @@ spec:
 └─────────────────────────────────────────────────────┘
 ```
 
+For installation and operation help, see our [Agent Lifecycle Operator Guide](https://github.com/kagenti/kagenti-operator/blob/main/kagenti-operator/GETTING_STARTED.md).
+
 ---
 
 ## MCP Gateway
@@ -255,7 +257,7 @@ The Agent and Tool Authorization Pattern replaces static credentials with dynami
 3. **Agent identity** is attested by SPIRE
 4. **Tool access** uses exchanged tokens with minimal scope
 
-For a hands-on demonstration, see the [Identity Demo](./demo-identity.md).
+For detailed overview of Identity and Authorization Patterns, and a hands-on demonstration, see the [Identity Demo](./demo-identity.md).
 
 ### Tornjak (SPIRE Management UI)
 
