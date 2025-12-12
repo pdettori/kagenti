@@ -28,10 +28,16 @@ if command -v helm >/dev/null 2>&1; then
   helm_ver=$(helm version --short 2>/dev/null || helm version 2>/dev/null)
   # Extract the primary version token and strip build metadata
   helm_ver_short=$(echo "$helm_ver" | head -n1 | cut -d'+' -f1 | tr -d '[:space:]')
-  if [[ "$helm_ver_short" == v4* ]]; then
-    echo "ERROR: Detected Helm version $helm_ver_short which is unsupported by this installer." >&2
-    echo "       Please downgrade to Helm v3.x and re-run this installer." >&2
-    exit 2
+  # Extract major version number using regex (handles optional "v" prefix)
+  if [[ "$helm_ver_short" =~ ^v?([0-9]+)\. ]]; then
+    helm_major_ver="${BASH_REMATCH[1]}"
+    if [[ "$helm_major_ver" == "4" ]]; then
+      echo "ERROR: Detected Helm version $helm_ver_short which is unsupported by this installer." >&2
+      echo "       Please downgrade to Helm v3.x and re-run this installer." >&2
+      exit 2
+    fi
+  else
+    echo "WARNING: Could not parse Helm version string: '$helm_ver_short'. Please ensure you are using Helm v3.x." >&2
   fi
 fi
 
