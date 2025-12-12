@@ -8,7 +8,7 @@ This document provides detailed information about each component of the Kagenti 
 - [Agent Lifecycle Operator](#agent-lifecycle-operator)
 - [MCP Gateway](#mcp-gateway)
 - [Kagenti UI](#kagenti-ui)
-- [Identity & Auth Bridge](#identity--authorization)
+- [Identity & Auth Bridge](#identity--auth-bridge)
 - [Infrastructure Services](#infrastructure-services)
 - [Supported Agent Frameworks](#supported-agent-frameworks)
 - [Communication Protocols](#communication-protocols)
