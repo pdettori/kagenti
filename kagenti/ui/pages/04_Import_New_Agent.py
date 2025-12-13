@@ -53,6 +53,6 @@ render_import_form(
 
 st.sidebar.info(
     "🧑‍💻 **Agent Developer Resources**\n\n"
-    "New to agent development? Check our [Agent Developer guide](../PERSONAS_AND_ROLES.md#11-agent-developer) "
+    "New to agent development? Check our [Agent Developer guide](https://github.com/kagenti/kagenti/blob/main/PERSONAS_AND_ROLES.md#11-agent-developer) "
     "and [agent-examples repository](https://github.com/kagenti/agent-examples)."
 )
