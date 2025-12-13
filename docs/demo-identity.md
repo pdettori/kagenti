@@ -212,10 +212,6 @@ open "https://$(kubectl get route mcp-proxy -n kagenti-system -o jsonpath='{.sta
 # Get admin credentials from Kubernetes (if different)
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template=\
   'Username: {{.data.username | base64decode}}  Password: {{.data.password | base64decode}}{{"\n"}}'
-```console
-spiffe://${DOMAIN_NAME}/ns/team/sa/weather-service
-spiffe://${DOMAIN_NAME}/ns/team/sa/weather-tool
-
 ```
 
 ## 🔄 OAuth2 Token Exchange Flows

@@ -9,6 +9,7 @@ from `deployments/envs`. It can also create a local Kind cluster for development
 and preload images when requested.
 
 ## What this installer does
+
 - Installs Helm charts listed under the `charts:` section in the merged values.
 - Optionally creates a Kind cluster when kubectl cannot reach an API server and
    `create_kind_cluster` is true.
@@ -43,6 +44,7 @@ See the script `deployments/ansible/run-install.sh --help` for all options and
 examples of how the wrapper builds the `ansible-playbook` command.
 
 ## Key files
+
 - `installer-playbook.yml` - the entry-point playbook (loads `default_values.yaml`).
 - `default_values.yaml` - baseline variable and chart configuration.
 - `collections-reqs.yml` - Ansible collections required by the playbook.
@@ -52,6 +54,7 @@ examples of how the wrapper builds the `ansible-playbook` command.
    a secrets example file).
 
 ## Prerequisites
+
 - Ansible (minimum supported version: 2.10+; for OpenShift/OCP environments, Ansible 2.12+ is required).
 - Python dependencies for Kubernetes support: `PyYAML`, `kubernetes`, `openshift`.
 - A working `kubectl` and `helm`.
@@ -68,6 +71,7 @@ examples of how the wrapper builds the `ansible-playbook` command.
    helm plugin install https://github.com/databus23/helm-diff
 
 ## How variables and value files are resolved
+
 - The playbook loads `default_values.yaml` first. You may supply one or more
    additional environment value files using the `global_value_files` extra-var.
 - Paths in `global_value_files` are resolved relative to the playbook directory
@@ -79,6 +83,7 @@ examples of how the wrapper builds the `ansible-playbook` command.
    validating and loading the file.
 
 Important variables you can override (via `-e` / `--extra-vars`):
+
 - `global_value_files` (list) - additional values files to merge, e.g. `["../envs/dev_values.yaml"]`.
 - `secret_values_file` (string) - path to a secret values file (absolute or relative to playbook dir).
 - `create_kind_cluster` (bool) - when true and kubectl is not reachable, the role will
@@ -102,6 +107,7 @@ ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.y
 ```
 
 ## Environment examples
+
 - Development (full dev configuration): `../envs/dev_values.yaml` (enables UI,
    platform operator, mcpGateway, istio where required).
 - Minimal dev (no auth): `../envs/dev_values_minimal.yaml`.
@@ -112,6 +118,7 @@ Pick one or more of the files in `deployments/envs` and pass them via
 runtime variables used to decide which charts to install.
 
 ## Secrets handling
+
 - Example secrets file: `deployments/envs/secret_values.yaml.example`.
  - Default behavior: if you copy the example to `deployments/envs/.secret_values.yaml`
     (the repository default location) the installer will load it automatically and
