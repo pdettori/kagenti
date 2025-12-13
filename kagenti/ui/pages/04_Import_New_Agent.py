@@ -50,3 +50,10 @@ render_import_form(
     k8s_client_status_icon=k8s_client_icon,
     show_enabled_namespaces_only=True,
 )
+
+st.sidebar.info(
+    "🧑‍💻 **Agent Developer Resources**\n\n"
+    "New to agent development? Check our "
+    "[Agent Developer guide](https://github.com/kagenti/kagenti/blob/main/PERSONAS_AND_ROLES.md#11-agent-developer) "
+    "and [agent-examples repository](https://github.com/kagenti/agent-examples)."
+)

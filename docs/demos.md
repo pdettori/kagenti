@@ -14,6 +14,17 @@ Check the details for running various demos.
 - Identity & Auth Demo - [Slack Authentication](./demo-slack-research-agent.md)
 - Github Issue Demo - [Github Issue Agent](./demo-github-issue.md) ([demo recording](https://youtu.be/5SpTwERN2jU))
 
+## Choose Your Demo Based on Your Role
+
+Different demos showcase capabilities relevant to different personas:
+
+- **Agent Developers** → Start with [Weather Service](./demo-weather-agent.md) for framework basics
+- **Tool Developers** → Try [Slack Authentication](./demo-slack-research-agent.md) for MCP integration
+- **Security Specialists** → Focus on identity features in [Slack Authentication](./demo-slack-research-agent.md)
+- **Platform Operators** → All demos showcase operational aspects
+
+**👥 [Find Your Persona](../PERSONAS_AND_ROLES.md#overview)** to understand which demo best matches your role.
+
 ## Installation
 
 For installing on OpenShift, please refer to [these installation instructions](./ocp/openshift-install.md).

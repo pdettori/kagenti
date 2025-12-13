@@ -13,7 +13,7 @@ In practice, the Authorization Pattern within the Agentic Platform enables:
 - **[Kagenti Identity Overview](./2025-10.Kagenti-Identity.pdf)** - High-level architectural concepts
 - **[Token Exchange Deep Dive](../kagenti/examples/identity/token_exchange.md)** - Detailed OAuth2 token exchange flows
 - **[Client Registration Examples](../kagenti/examples/identity/keycloak_token_exchange/README.md)** - Practical integration examples
-- **[Personas and Roles](../PERSONAS_AND_ROLES.md)** - Identity management personas and access levels
+- **[Personas and Roles](../PERSONAS_AND_ROLES.md#23-security-and-identity-specialist)** - Security and identity specialist persona
 
 ---
 
@@ -212,10 +212,8 @@ open "https://$(kubectl get route mcp-proxy -n kagenti-system -o jsonpath='{.sta
 # Get admin credentials from Kubernetes (if different)
 kubectl get secret keycloak-initial-admin -n keycloak -o go-template=\
   'Username: {{.data.username | base64decode}}  Password: {{.data.password | base64decode}}{{"\n"}}'
-```console
-spiffe://${DOMAIN_NAME}/ns/team/sa/weather-service
-spiffe://${DOMAIN_NAME}/ns/team/sa/weather-tool
-
+# Example output:
+# Username: admin  Password: XyZ1234!
 ```
 
 ## 🔄 OAuth2 Token Exchange Flows
