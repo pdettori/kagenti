@@ -3,9 +3,10 @@ kind: Agent
 metadata:
   labels:
     app.kubernetes.io/created-by: e2e-test
-    app.kubernetes.io/name: kagenti-operator
+    app.kubernetes.io/name: weather-service
     kagenti.io/framework: LangGraph
     kagenti.io/protocol: a2a
+    kagenti.io/agent-protocol: a2a
     kagenti.io/type: agent
   name: weather-service
   namespace: team1

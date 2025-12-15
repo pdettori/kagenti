@@ -149,35 +149,6 @@
   until: tekton_result is not failed
   when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
 
-# TODO: Move TektonConfig patching to kagenti-operator
-# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
-# context to know what Tekton settings are needed. The operator should:
-# 1. Check if running on OpenShift (detect TektonConfig CRD)
-# 2. Patch TektonConfig to set pipeline.set-security-context: true
-# 3. This ensures proper fsGroup handling for PVC permissions in build pods
-# For now, we patch it in the installer as a workaround.
-- name: Patch TektonConfig for OpenShift build permissions
-  block:
-    - name: Wait for TektonConfig to exist
-      command: kubectl get tektonconfig config
-      register: tektonconfig_check
-      retries: 30
-      delay: 10
-      until: tektonconfig_check.rc == 0
-      changed_when: false
-
-    - name: Patch TektonConfig to set security context
-      kubernetes.core.k8s:
-        api_version: operator.tekton.dev/v1alpha1
-        kind: TektonConfig
-        name: config
-        definition:
-          spec:
-            pipeline:
-              set-security-context: true
-        merge_type: merge
-  when: enable_openshift | default(false)
-
 #
 #  Toolhive
 #
@@ -342,6 +313,35 @@
   when:
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+# TODO: Move TektonConfig patching to kagenti-operator
+# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
+# context to know what Tekton settings are needed. The operator should:
+# 1. Check if running on OpenShift (detect TektonConfig CRD)
+# 2. Patch TektonConfig to set pipeline.set-security-context: true
+# 3. This ensures proper fsGroup handling for PVC permissions in build pods
+# For now, we patch it in the installer as a workaround.
+- name: Patch TektonConfig for OpenShift build permissions
+  block:
+    - name: Wait for TektonConfig to exist
+      command: kubectl get tektonconfig config
+      register: tektonconfig_check
+      retries: 30
+      delay: 10
+      until: tektonconfig_check.rc == 0
+      changed_when: false
+
+    - name: Patch TektonConfig to set security context
+      kubernetes.core.k8s:
+        api_version: operator.tekton.dev/v1alpha1
+        kind: TektonConfig
+        name: config
+        definition:
+          spec:
+            pipeline:
+              set-security-context: true
+        merge_type: merge
+  when: enable_openshift | default(false)
 
 #
 #  Setup DNS for registry in kind
@@ -539,4 +539,24 @@
   when:
     - enable_openshift | default(false)
     - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
+
+# TODO: Fix service port configuration in kagenti-operator.
+# The operator creates Agent services with port 8080 but the Agent spec containerPort is 8000.
+# The UI was using port 8000 to connect to agents in-cluster, causing 503 errors.
+# Fixed in kagenti/ui/lib/constants.py to use port 8080 (service port) by default.
+# The operator should ideally:
+# 1. Read containerPort from Agent spec and use it for both service port and targetPort
+# 2. Or keep service port 8080 and set targetPort to match Agent spec containerPort
+# For now, the test_agents.sh script patches the service targetPort as a workaround.
+
+# TODO: Fix kagenti-operator inconsistencies:
+# 1. Protocol label mismatch:
+#    - AgentCardSyncReconciler uses kagenti.io/agent-protocol
+#    - UI and examples use kagenti.io/protocol
+#    Workaround: Agent YAMLs must include BOTH labels
+# 2. Service name mismatch:
+#    - Agent controller creates services as <agent-name>
+#    - AgentCard controller looks for <agent-name>-svc
+#    This prevents AgentCard from syncing agent card data.
+#    Fix needed in agentcard_controller.go:getAgentService()
 
