@@ -38,7 +38,7 @@ class ContainerEngine(str, Enum):
     DOCKER = "docker"
 
 
-CONTAINER_ENGINE = "docker"
+CONTAINER_ENGINE = os.getenv("CONTAINER_ENGINE", "docker")
 
 # --- Dependency Version Requirements ---
 # Defines the minimum (inclusive) and maximum (exclusive) required versions for tools.
