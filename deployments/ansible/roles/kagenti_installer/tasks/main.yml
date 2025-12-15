@@ -213,6 +213,19 @@
   until: toolhive_operator_result is not failed
   when: toolhiveOperator.enabled | default(false)
 
+# TODO: Move Toolhive SCC configuration to toolhive-operator helm chart.
+# The Toolhive operator needs privileged SCC on OpenShift because the chart
+# specifies runAsUser: 1000 which conflicts with OpenShift's default restricted SCC.
+# The operator chart should either:
+# 1. Not specify runAsUser and let OpenShift assign one from the namespace range
+# 2. Include an OpenShift-specific values option to configure SCC requirements
+# For now, we grant privileged SCC to the service account as a workaround.
+- name: Grant privileged SCC to Toolhive operator for OpenShift
+  command: oc adm policy add-scc-to-user privileged -z toolhive-operator -n {{ toolhiveOperator.namespace }}
+  when:
+    - enable_openshift | default(false)
+    - toolhiveOperator.enabled | default(false)
+
 #
 #  Spire
 #
@@ -423,11 +436,13 @@
       name:  kagenti-agent-oauth-secret-job
       namespace: "{{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}"
 
-  # TODO: Move github-clone-step HOME env var fix to kagenti-operator.
+  # TODO: Move github-clone-step fixes to kagenti-operator.
   # The kagenti-operator creates the github-clone-step ConfigMap for Tekton pipelines.
-  # On OpenShift, the git-init container cannot write to / (read-only filesystem),
-  # so HOME must be set to a writable path like /tekton/home.
-  # The operator should set this env var in the ConfigMap definition.
+  # On OpenShift with Istio ambient mode:
+  # 1. HOME must be set to /tekton/home (git-init can't write to / on OpenShift)
+  # 2. A 30s delay is needed for ztunnel to register the workload before DNS queries
+  #    (ztunnel has a 5s timeout waiting for xds workload info from istiod)
+  # The operator should include these fixes in the ConfigMap definition.
   # For now, we patch it in the installer as a workaround.
   - name: Wait for kagenti-operator to create github-clone-step ConfigMap
     command: kubectl get configmap github-clone-step -n {{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
@@ -438,7 +453,7 @@
     changed_when: false
     when: enable_openshift | default(false)
 
-  - name: Patch github-clone-step ConfigMap for OpenShift HOME directory
+  - name: Patch github-clone-step ConfigMap for OpenShift and Istio ambient mode
     kubernetes.core.k8s:
       api_version: v1
       kind: ConfigMap
@@ -465,15 +480,14 @@
                 env:
                   - name: HOME
                     value: /tekton/home
-                command:
-                  - /ko-app/git-init
-                args:
-                  - -url
-                  - https://$(params.repo-url)
-                  - -revision
-                  - $(params.revision)
-                  - -path
-                  - /workspace/source
+                script: |
+                  #!/bin/sh
+                  # Wait for Istio ambient mesh ztunnel to register this workload.
+                  # Without this delay, DNS queries fail because ztunnel times out
+                  # waiting for workload info from istiod (xds).
+                  echo "Waiting 30s for Istio ambient mesh to register this workload..."
+                  sleep 30
+                  /ko-app/git-init -url https://$(params.repo-url) -revision $(params.revision) -path /workspace/source
               - name: list-dir
                 image: public.ecr.aws/docker/library/alpine:latest
                 workingDir: $(workspaces.source.path)

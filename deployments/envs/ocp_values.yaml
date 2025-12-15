@@ -1,6 +1,19 @@
 # Kagenti minimal installation configuration
 # Auth is enabled in this config
 
+####################################################################
+# Toolhive - MCP server operator (must be at root level for Ansible installer)
+####################################################################
+toolhiveCRDs:
+  enabled: true
+  version: "0.0.83"
+
+toolhiveOperator:
+  enabled: true
+  version: "0.5.12"
+  release_name: toolhive-operator
+  namespace: toolhive-system
+
 charts:
   #################################################################### 
   # kagenti-deps 
