@@ -22,6 +22,8 @@ We are developing other demos:
 - [Slack Authentication Demo](./demo-slack-research-agent.md): See this demo to deploy an agent and a simple MCP Server tool to talk to the Slack API. 
 - [Generic Agent Demo](./demo-generic-agent.md): See this demo to deploy a generic agent and two MCP Server tools.
 - [File Organizer Agent Demo](./demo-file-organizer-agent.md): See this demo to deploy an agent that can organize files in a cloud storage bucket using a custom MCP Server tool.
+- [Image Agent Demo](./demo-generic-agent.md): See this demo to deploy an agent and an MCP Server tool to return randomly generated images of various sizes.
+
 ## Core Concepts
 
 Through this incubation project, we have identified several core components: 
