@@ -173,6 +173,22 @@ Default credentials (when auth is enabled):
 - **Username**: admin
 - **Password**: admin
 
+## Environment Variable Precedence
+
+When creating Agent or Tool resources from the UI, environment variables can come from three sources:
+
+- **Environment variable sets** (from the `environments` ConfigMap)
+- **.env file imports** (imported from a repository `.env` file)
+- **Custom environment variables** added manually in the UI
+
+Precedence when names collide (highest → lowest):
+
+1. Custom environment variables (user-added) — highest precedence, override any conflicting entries
+2. `.env` file imports — override entries from environment variable sets
+3. Environment variable sets (ConfigMap) — lowest precedence
+
+This precedence is enforced when the UI builds the Kubernetes CustomResource manifest (see `lib/build_utils.py`). The operator applies the `podTemplateSpec` from the CustomResource directly to the created Deployment, so correctness is enforced at resource construction time.
+
 ## License
 
 Copyright 2025 IBM Corp.

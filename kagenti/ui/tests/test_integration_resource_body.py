@@ -61,3 +61,71 @@ def test_construct_tool_resource_body_includes_valuefrom(monkeypatch):
     )
 
     assert body is not None
+
+
+def test_custom_env_overrides_default(monkeypatch):
+    """Ensure a user-supplied env var overrides the default with same name."""
+
+    monkeypatch.setattr(
+        build_utils,
+        "get_secret_data",
+        lambda core_v1_api, namespace, name, key: "gituser",
+    )
+    monkeypatch.setattr(build_utils, "_get_keycloak_client_secret", lambda st, name: "")
+
+    st = DummySt()
+
+    additional_env = [{"name": "PORT", "value": "9999"}]
+
+    body = build_utils._construct_tool_resource_body(
+        st_object=st,
+        core_v1_api=None,
+        build_namespace="test-ns",
+        resource_name="my-tool",
+        resource_type="Tool",
+        repo_url="https://example.com/repo.git",
+        protocol="mcp",
+        framework="test",
+        additional_env_vars=additional_env,
+        registry_config=None,
+        pod_config=None,
+        image_pull_secret=None,
+    )
+
+    assert body is not None
+
+    env_list = body["spec"]["podTemplateSpec"]["spec"]["containers"][0]["env"]
+    # filter for PORT entries
+    ports = [e for e in env_list if e.get("name") == "PORT"]
+    assert len(ports) == 1
+    assert ports[0].get("value") == "9999"
+
+
+def test_env_file_overrides_env_set():
+    # env set defines PORT=1111, .env defines PORT=2222 -> .env should win
+    from lib import constants
+
+    env_set = [{"name": "PORT", "value": "1111"}]
+    env_file = [{"name": "PORT", "value": "2222"}]
+
+    merged1 = build_utils._merge_env_vars(constants.DEFAULT_ENV_VARS, env_set)
+    merged2 = build_utils._merge_env_vars(merged1, env_file)
+
+    ports = [e for e in merged2 if e.get("name") == "PORT"]
+    assert len(ports) == 1
+    assert ports[0].get("value") == "2222"
+
+
+def test_custom_overrides_env_file():
+    # .env defines PORT=2222, user custom defines PORT=3333 -> custom should win
+    from lib import constants
+
+    env_file = [{"name": "PORT", "value": "2222"}]
+    custom = [{"name": "PORT", "value": "3333"}]
+
+    merged1 = build_utils._merge_env_vars(constants.DEFAULT_ENV_VARS, env_file)
+    merged2 = build_utils._merge_env_vars(merged1, custom)
+
+    ports = [e for e in merged2 if e.get("name") == "PORT"]
+    assert len(ports) == 1
+    assert ports[0].get("value") == "3333"
