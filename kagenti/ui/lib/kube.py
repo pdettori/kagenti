@@ -299,7 +299,7 @@ def _handle_kube_api_exception(st_object, e, resource_name, action="fetching"):
         if hasattr(e, "body"):
             try:
                 st_object.code(e.body, language="json")
-            except:  # pylint: disable=bare-except
+            except Exception:
                 st_object.text(f"Raw error body: {e.body}")
     else:
         st_object.error(f"An unexpected error occurred {action} {resource_name}: {e}")

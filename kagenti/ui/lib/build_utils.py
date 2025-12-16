@@ -169,6 +169,45 @@ def _is_valid_env_entry(env_var: dict) -> bool:
     return bool(has_structured or has_plain)
 
 
+def _merge_env_vars(
+    base: Optional[list], overrides: Optional[list], st_object=None
+) -> list:
+    """Merge two lists of k8s env var dicts by name.
+
+    Entries from `overrides` take precedence and will replace entries from
+    `base` when the names collide. Order is preserved from `base`, with any
+    new override-only entries appended in their provided order.
+
+    Invalid env entries (per `_is_valid_env_entry`) are ignored and a
+    warning is logged or emitted to `st_object` when available.
+    """
+    merged = {}
+    order = []
+
+    def _emit_warning(message: str) -> None:
+        if st_object:
+            st_object.warning(message)
+        else:
+            logger.warning(message)
+
+    def _apply_env_list(env_list: Optional[list], context: str) -> None:
+        if not env_list:
+            return
+        for ev in env_list:
+            if not _is_valid_env_entry(ev):
+                _emit_warning(f"Skipping invalid {context} env entry: {ev}")
+                continue
+            name = ev.get("name").strip()
+            if name not in merged:
+                order.append(name)
+            merged[name] = ev
+
+    _apply_env_list(base, "base")
+    _apply_env_list(overrides, "override")
+
+    return [merged[n] for n in order]
+
+
 # Pipeline mode constants
 DEV_EXTERNAL_MODE = "dev-external"
 DEV_LOCAL_MODE = "dev-local"
@@ -316,11 +355,15 @@ def _construct_tool_resource_body(
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
     )
-    final_env_vars = list(constants.DEFAULT_ENV_VARS)
-    if additional_env_vars:
-        final_env_vars.extend(additional_env_vars)
+    final_env_vars = _merge_env_vars(
+        constants.DEFAULT_ENV_VARS, additional_env_vars, st_object
+    )
     if client_secret_for_env:
-        final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
+        final_env_vars = _merge_env_vars(
+            final_env_vars,
+            [{"name": "CLIENT_SECRET", "value": client_secret_for_env}],
+            st_object,
+        )
 
     # Extract service ports from pod_config or use defaults
     if pod_config and pod_config.get("service_ports"):
@@ -664,13 +707,19 @@ def _construct_agent_resource_body(
     client_secret_for_env = _get_keycloak_client_secret(
         st_object, f"{k8s_resource_name}-client"
     )
-    final_env_vars = list(constants.DEFAULT_ENV_VARS)
-    if additional_env_vars:
-        final_env_vars.extend(additional_env_vars)
+    final_env_vars = _merge_env_vars(
+        constants.DEFAULT_ENV_VARS, additional_env_vars, st_object
+    )
     if client_secret_for_env:
-        final_env_vars.append({"name": "CLIENT_SECRET", "value": client_secret_for_env})
-    final_env_vars.append(
-        {"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}
+        final_env_vars = _merge_env_vars(
+            final_env_vars,
+            [{"name": "CLIENT_SECRET", "value": client_secret_for_env}],
+            st_object,
+        )
+    final_env_vars = _merge_env_vars(
+        final_env_vars,
+        [{"name": "GITHUB_SECRET_NAME", "value": constants.GIT_USER_SECRET_NAME}],
+        st_object,
     )
 
     pull_secrets = _get_image_pull_secrets(
@@ -1868,27 +1917,56 @@ def render_import_form(
                         env_content = response.text
                         imported_vars = parse_env_file(env_content, st_object)
                         if imported_vars:
-                            existing_names = {
-                                var["name"] for var in st.session_state[custom_env_key]
+                            # Distinguish user-added vars vs configmap-loaded vars
+                            existing_user_names = {
+                                var["name"]
+                                for var in st.session_state[custom_env_key]
+                                if not var.get("configmap_origin", False)
                             }
-                            new_vars = [
-                                var
-                                for var in imported_vars
-                                if var["name"] not in existing_names
-                            ]
-                            duplicate_vars = [
-                                var
-                                for var in imported_vars
-                                if var["name"] in existing_names
-                            ]
-                            st.session_state[custom_env_key].extend(new_vars)
+                            # Map configmap-origin entries by name to allow replacement
+                            configmap_index_by_name = {
+                                var["name"]: idx
+                                for idx, var in enumerate(
+                                    st.session_state[custom_env_key]
+                                )
+                                if var.get("configmap_origin", False)
+                            }
+
+                            skipped_user_duplicates = []
+                            replaced_count = 0
+                            appended = []
+
+                            for var in imported_vars:
+                                name = var.get("name")
+                                if not name:
+                                    continue
+                                if name in existing_user_names:
+                                    skipped_user_duplicates.append(name)
+                                    continue
+                                # mark origin so we can enforce precedence later
+                                var["import_origin"] = "env_file"
+                                if name in configmap_index_by_name:
+                                    # replace the configmap-origin entry
+                                    idx = configmap_index_by_name[name]
+                                    st.session_state[custom_env_key][idx] = var
+                                    replaced_count += 1
+                                else:
+                                    st.session_state[custom_env_key].append(var)
+                                    appended.append(name)
+
                             st_object.success(
                                 "Successfully imported env vars from the .env file"
                             )
-                            if duplicate_vars:
-                                # pylint: disable=line-too-long
-                                st_object.warning(
-                                    f"⚠️ Skipped {len(duplicate_vars)} duplicate variables {', '.join([var['name'] for var in duplicate_vars])}"
+                            if skipped_user_duplicates:
+                                joined = ", ".join(skipped_user_duplicates)
+                                msg = (
+                                    f"⚠️ Skipped {len(skipped_user_duplicates)} variables already "
+                                    f"defined by the user or previously imported: {joined}"
+                                )
+                                st_object.warning(msg)
+                            if replaced_count:
+                                st_object.info(
+                                    f"Replaced {replaced_count} configmap-origin variables with values from the .env file"
                                 )
                             st.session_state[import_dialog_key] = False
                             st.rerun()
@@ -1935,6 +2013,12 @@ def render_import_form(
             if key in env_options and isinstance(env_options[key], list):
                 final_additional_envs.extend(env_options[key])
 
+    # We'll process custom env vars into buckets so we can enforce precedence:
+    # selected_env_sets (already added) < configmap-loaded < .env imports < user-custom
+    configmap_bucket = []
+    envfile_bucket = []
+    user_bucket = []
+
     if custom_env_vars:
         for env_var in custom_env_vars:
             # Skip invalid entries centrally
@@ -1943,32 +2027,41 @@ def render_import_form(
 
             name = (env_var.get("name") or "").strip()
 
-            # Structured env var (valueFrom)
+            # Build canonical entry
             if "valueFrom" in env_var and isinstance(env_var.get("valueFrom"), dict):
-                final_additional_envs.append(
-                    {"name": name, "valueFrom": env_var["valueFrom"]}
-                )
-                continue
-
-            # Sometimes structured JSON may be stored under 'value' as a dict
-            if isinstance(env_var.get("value"), dict):
-                # Only allow known keys to be included for manifest predictability
+                env_entry = {"name": name, "valueFrom": env_var["valueFrom"]}
+            elif isinstance(env_var.get("value"), dict):
                 allowed_keys = ["valueFrom", "configMapKeyRef", "secretKeyRef"]
                 env_entry = {"name": name}
                 for key in allowed_keys:
                     if key in env_var["value"]:
                         env_entry[key] = env_var["value"][key]
-                final_additional_envs.append(env_entry)
-                continue
-
-            # Plain string value (helper ensured non-empty)
-            val = env_var.get("value")
-            if isinstance(val, str):
-                final_additional_envs.append({"name": name, "value": val.strip()})
             else:
-                logger.warning(
-                    f"Skipping env var '{name}' with non-string value: {val!r}"
-                )
+                val = env_var.get("value")
+                if isinstance(val, str):
+                    env_entry = {"name": name, "value": val.strip()}
+                else:
+                    logger.warning(
+                        f"Skipping env var '{name}' with non-string value: {val!r}"
+                    )
+                    continue
+
+            # Bucket by origin flags
+            if env_var.get("configmap_origin", False):
+                configmap_bucket.append(env_entry)
+            elif env_var.get("import_origin") == "env_file":
+                envfile_bucket.append(env_entry)
+            else:
+                user_bucket.append(env_entry)
+
+    # Order: selected env sets (already added), then configmap-loaded vars,
+    # then imported .env vars, then user-provided custom vars
+    if configmap_bucket:
+        final_additional_envs.extend(configmap_bucket)
+    if envfile_bucket:
+        final_additional_envs.extend(envfile_bucket)
+    if user_bucket:
+        final_additional_envs.extend(user_bucket)
 
     custom_obj_api = get_custom_objects_api()
     if not custom_obj_api or not core_v1_api:
