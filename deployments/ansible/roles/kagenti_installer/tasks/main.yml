@@ -168,6 +168,15 @@
   until: toolhive_crds_result is not failed
   when: toolhiveCRDs.enabled | default(false)
 
+# TODO: Request Toolhive operator helm chart to support OpenShift SCC.
+# The Toolhive operator chart hardcodes runAsUser: 1000 which conflicts with
+# OpenShift's restricted SCC (requires UID from namespace range).
+# Proper fix: The chart should either:
+# 1. Not specify runAsUser and let OpenShift assign one from the namespace range
+# 2. Add an openshift.enabled value that omits runAsUser or includes an SCC
+# 3. Use a SecurityContextConstraints resource in the chart for OpenShift
+# Workaround: We install with wait=false, grant privileged SCC to the SA
+# (which helm created), then wait for the deployment separately.
 - name: Install Toolhive Operator
   kubernetes.core.helm:
     release_name: "{{ toolhiveOperator.release_name }}"
@@ -176,7 +185,10 @@
     release_namespace: "{{ toolhiveOperator.namespace }}"
     create_namespace: true
     state: present
-    wait: true
+    # On OpenShift (wait=false): Don't wait here because pods can't start until
+    # SCC is granted. We grant SCC after this task and wait for rollout separately.
+    # On Kubernetes (wait=true): Wait normally since there's no SCC requirement.
+    wait: "{{ not (enable_openshift | default(false)) }}"
     timeout: "{{ helm_wait_timeout }}s"
   register: toolhive_operator_result
   retries: 3
@@ -184,15 +196,16 @@
   until: toolhive_operator_result is not failed
   when: toolhiveOperator.enabled | default(false)
 
-# TODO: Move Toolhive SCC configuration to toolhive-operator helm chart.
-# The Toolhive operator needs privileged SCC on OpenShift because the chart
-# specifies runAsUser: 1000 which conflicts with OpenShift's default restricted SCC.
-# The operator chart should either:
-# 1. Not specify runAsUser and let OpenShift assign one from the namespace range
-# 2. Include an OpenShift-specific values option to configure SCC requirements
-# For now, we grant privileged SCC to the service account as a workaround.
 - name: Grant privileged SCC to Toolhive operator for OpenShift
   command: oc adm policy add-scc-to-user privileged -z toolhive-operator -n {{ toolhiveOperator.namespace }}
+  when:
+    - enable_openshift | default(false)
+    - toolhiveOperator.enabled | default(false)
+
+- name: Wait for Toolhive operator deployment to be ready on OpenShift
+  command: >-
+    kubectl rollout status deployment/toolhive-operator
+    -n {{ toolhiveOperator.namespace }} --timeout=300s
   when:
     - enable_openshift | default(false)
     - toolhiveOperator.enabled | default(false)
@@ -342,6 +355,106 @@
               set-security-context: true
         merge_type: merge
   when: enable_openshift | default(false)
+
+# Wait for Istio ambient mesh components to be ready on OpenShift.
+# The Istio, IstioCNI, and ZTunnel CRs are created as helm post-install hooks,
+# and ztunnel pods may start before istiod is ready, causing certificate issues.
+- name: Wait for Istio ambient mesh to be ready on OpenShift
+  block:
+    - name: Wait for istiod deployment to be ready
+      command: >-
+        kubectl rollout status deployment/istiod
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}
+        --timeout=300s
+      register: istiod_ready
+      retries: 3
+      delay: 30
+      until: istiod_ready.rc == 0
+  when:
+    - enable_openshift | default(false)
+    - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
+
+# On OpenShift AI clusters, there may be a pre-existing Istio (openshift-gateway) that
+# creates CA ConfigMaps in all namespaces. To avoid CA conflicts between our istiod
+# and openshift-gateway istiod, we use the "Shared Trust Pattern" - copying their CA
+# to our istiod so both create identical ConfigMaps.
+#
+# TODO: Implement proper multi-mesh trust based on Istio deployment models.
+# The current approach (copying CA secret) is a workaround. A cleaner solution
+# would follow Istio's "Shared control plane (single-cluster)" or "Multi-primary"
+# trust models as documented at:
+# https://istio.io/latest/docs/ops/deployment/deployment-models/
+#
+# Options to consider:
+# 1. Plug-in CA certificates: Configure both istiods to use the same external CA
+#    https://istio.io/latest/docs/tasks/security/cert-management/plugin-ca-cert/
+# 2. Cross-cluster trust with intermediate CAs: Use cacerts Secret with proper chain
+# 3. External CA integration (cert-manager): Single source of truth for certificates
+- name: Share CA with openshift-gateway Istio (OpenShift AI clusters)
+  block:
+    - name: Check if openshift-gateway Istio CA exists
+      command: kubectl get secret istio-ca-secret -n openshift-ingress
+      register: og_ca_check
+      failed_when: false
+      changed_when: false
+
+    - name: Copy openshift-gateway CA to istio-system (Shared Trust Pattern)
+      shell: |
+        kubectl get secret istio-ca-secret -n openshift-ingress -o yaml | \
+          sed 's/namespace: openshift-ingress/namespace: {{ (charts["kagenti-deps"] | default({})).get("values", {}).get("istio", {}).get("namespace", "istio-system") }}/' | \
+          grep -v "resourceVersion:\|uid:\|creationTimestamp:\|ownerReferences:" | \
+          kubectl apply -f -
+      when: og_ca_check.rc == 0
+
+    - name: Restart istiod to use shared CA
+      command: >-
+        kubectl rollout restart deployment/istiod
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}
+      when: og_ca_check.rc == 0
+
+    - name: Wait for istiod rollout with shared CA
+      command: >-
+        kubectl rollout status deployment/istiod
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}
+        --timeout=120s
+      when: og_ca_check.rc == 0
+
+    - name: Delete old CA ConfigMaps to force recreation with shared CA
+      command: >-
+        kubectl delete configmap istio-ca-root-cert
+        -n {{ item }} --ignore-not-found
+      loop:
+        - "{{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('ztunnel', {}).get('namespace', 'istio-ztunnel') }}"
+        - "{{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}"
+        - "{{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('cni', {}).get('namespace', 'istio-cni') }}"
+        - "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+      ignore_errors: true
+      when: og_ca_check.rc == 0
+
+    - name: Wait for istiod to recreate CA ConfigMaps with shared CA
+      pause:
+        seconds: 10
+      when: og_ca_check.rc == 0
+
+    - name: Restart ztunnel to pick up shared CA certificates
+      command: >-
+        kubectl rollout restart daemonset/ztunnel
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('ztunnel', {}).get('namespace', 'istio-ztunnel') }}
+      when: og_ca_check.rc == 0
+
+    - name: Wait for ztunnel rollout to complete
+      command: >-
+        kubectl rollout status daemonset/ztunnel
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('ztunnel', {}).get('namespace', 'istio-ztunnel') }}
+        --timeout=300s
+      register: ztunnel_ready
+      retries: 3
+      delay: 30
+      until: ztunnel_ready.rc == 0
+      when: og_ca_check.rc == 0
+  when:
+    - enable_openshift | default(false)
+    - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
 
 #
 #  Setup DNS for registry in kind
@@ -539,6 +652,82 @@
   when:
     - enable_openshift | default(false)
     - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
+
+# TODO: Move spiffe-helper-config ConfigMap creation to kagenti-operator or toolhive operator.
+# Toolhive-created StatefulSets expect this ConfigMap to exist for the spiffe-helper sidecar,
+# but neither the Toolhive operator nor the kagenti operator creates it.
+# The kagenti CLI installer creates it in kagenti/installer/app/components/agents.py,
+# but the Ansible installer doesn't. For now, we create it in each agent namespace.
+- name: Create spiffe-helper-config ConfigMap in agent namespaces
+  block:
+    - name: Apply spiffe-helper-config ConfigMap
+      shell: |
+        for ns in {{ (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | join(' ') }}; do
+          kubectl apply -n $ns -f - <<EOF
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: spiffe-helper-config
+        data:
+          helper.conf: |
+            agent_address = "/spiffe-workload-api/spire-agent.sock"
+            cmd = ""
+            cmd_args = ""
+            svid_file_name = "/opt/svid.pem"
+            svid_key_file_name = "/opt/svid_key.pem"
+            svid_bundle_file_name = "/opt/svid_bundle.pem"
+            jwt_svids = [{jwt_audience="kagenti", jwt_svid_file_name="/opt/jwt_svid.token"}]
+            jwt_svid_file_mode = 0644
+            include_federated_domains = true
+        EOF
+          echo "Created spiffe-helper-config in $ns"
+        done
+      args:
+        executable: /bin/bash
+  when:
+    - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
+
+# TODO: Move OAuth secret job ordering to kagenti helm chart.
+# The kagenti-ui-oauth-secret-job needs the OpenShift Route to exist before it runs,
+# because it reads the Route host to construct the OAuth callback URL. Currently,
+# the Job and Route are created in parallel, causing a race condition where the Job
+# may fail with "route not found" error. The Job eventually succeeds on retry, but
+# the UI deployment may have already started with missing/stale OAuth credentials.
+#
+# Proper fix in charts/kagenti/templates/:
+# 1. Add helm hook annotation to oauth-secret-job.yaml:
+#    "helm.sh/hook": post-install,post-upgrade
+#    "helm.sh/hook-weight": "10"  # Higher than Route weight
+# 2. Ensure Route has lower hook-weight or is a regular resource (not a hook)
+# 3. This guarantees Route exists before Job runs
+#
+# For now, we restart the UI deployment after the chart installs to pick up the
+# OAuth secret that was created by the (eventually successful) Job.
+- name: Restart kagenti-ui to pick up OAuth secret on OpenShift
+  block:
+    - name: Wait for OAuth secret job to complete
+      command: >-
+        kubectl wait --for=condition=complete job
+        -l app.kubernetes.io/component=oauth-secret
+        -n {{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
+        --timeout=120s
+      register: oauth_job_wait
+      failed_when: false
+      changed_when: false
+
+    - name: Restart kagenti-ui deployment
+      command: >-
+        kubectl rollout restart deployment/kagenti-ui
+        -n {{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
+
+    - name: Wait for kagenti-ui rollout to complete
+      command: >-
+        kubectl rollout status deployment/kagenti-ui
+        -n {{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
+        --timeout=120s
+  when:
+    - enable_openshift | default(false)
+    - (charts['kagenti'] | default({})).get('enabled', false) | bool
 
 # TODO: Fix service port configuration in kagenti-operator.
 # The operator creates Agent services with port 8080 but the Agent spec containerPort is 8000.
