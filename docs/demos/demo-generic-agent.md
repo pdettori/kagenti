@@ -17,9 +17,9 @@ Here's a breakdown of the sections:
 - In [**Chat with the Generic Agent**](#chat-with-the-generic-agent), you'll interact with the agent and confirm it responds correctly using movie and flight data.
 
 > **Prerequisites:**
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
+> Ensure you've completed the Kagenti platform setup as described in the [Installation Guide](../install.md).
 
-You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
+You should also open the Agent Platform Demo Dashboard as instructed in the [Accessing the UI](../install.md#accessing-the-ui) section.
 
 ---
 
@@ -170,7 +170,7 @@ Once the deployment is complete, you can run the demo:
 
 6. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 
-If you encounter any errors, check the [Troubleshooting section](./demos.md#troubleshooting).
+If you encounter any errors, check the [Troubleshooting Guide](../troubleshooting.md).
 
 ## Cleanup
 

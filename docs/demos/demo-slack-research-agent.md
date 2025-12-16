@@ -21,12 +21,12 @@ Here's a breakdown of the sections:
 - In [**Chat with the Agent**](#chat-with-the-agent), you'll interact with the agent and confirm it responds correctly using real-time Slack data.
 
 > **Prerequisites:**
-> Ensure you've completed the Kagenti platform setup as described in the [Installation](./demos.md#installation) section.
+> Ensure you've completed the Kagenti platform setup as described in the [Installation Guide](../install.md).
 >
 > This demo uses `SLACK_BOT_TOKEN` and `ADMIN_SLACK_BOT_TOKEN` env. variables. See the section
 [Slack Tokens](#slack-tokens) below for more details.
 
-You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
+You should also open the Agent Platform Demo Dashboard as instructed in the [Accessing the UI](../install.md#accessing-the-ui) section.
 
 #### Slack Tokens
 
@@ -75,7 +75,7 @@ The agent will work with a variety of OpenAI models. The following have been tes
 - gpt-4o
 - gpt-4o-mini
 
-To log in and import agents you can use [default Kagenti userid](../demos.md#default-kagenti-userid). Log in to the Kagenti UI.
+To log in and import agents you can use the [default credentials](../install.md#default-credentials). Log in to the Kagenti UI.
 
 ### To deploy the Slack Research Agent
 
@@ -118,7 +118,7 @@ To log in and import agents you can use [default Kagenti userid](../demos.md#def
 
 ## Import New Tool
 
-To import tools you can use [default Kagenti userid](../demos.md#default-kagenti-userid)
+To import tools you can use the [default credentials](../install.md#default-credentials)
 
 To deploy the Slack Tool:
 
@@ -263,7 +263,7 @@ Try each userid for the following interactions with the Slack agent:
 1. You can tail the log files (as shown in the [Validate the Deployment section](#validate-the-deployment)) to observe the interaction between the agent and the tool in real time.
 1. To demonstrate finer-grained access, another query to try is `What's going on in the general slack channel?`. This query should result in more detail for the `slack-full-access-user` but should result in less detail for the `slack-partial-access-user`.
 
-If you encounter any errors, check the [Troubleshooting section](./demos.md#troubleshooting).
+If you encounter any errors, check the [Troubleshooting Guide](../troubleshooting.md).
 
 ## Cleanup
 

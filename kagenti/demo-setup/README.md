@@ -22,7 +22,7 @@ The setup script uses pre-configured Component YAML files located in the `compon
 
 Before running the setup script, ensure:
 
-1. **Kagenti is installed**: Follow the [installation guide](../../docs/demos.md#installation)
+1. **Kagenti is installed**: Follow the [installation guide](../../docs/install.md)
 2. **kubectl is configured**: Can connect to your Kubernetes cluster
 3. **Namespace exists**: The target namespace must be created (done by installer)
    ```bash
