@@ -257,7 +257,7 @@ The Agent and Tool Authorization Pattern replaces static credentials with dynami
 3. **Agent identity** is attested by SPIRE
 4. **Tool access** uses exchanged tokens with minimal scope
 
-For detailed overview of Identity and Authorization Patterns, and a hands-on demonstration, see the [Identity Demo](./demo-identity.md).
+For detailed overview of Identity and Authorization Patterns, and a hands-on demonstration, see the [Identity Guide](./identity-guide.md).
 
 ### Tornjak (SPIRE Management UI)
 
@@ -414,6 +414,6 @@ POST /mcp    # MCP JSON-RPC messages
 - [Installation Guide](./install.md)
 - [Demo Documentation](./demos/README.md)
 - [Technical Details](./tech-details.md)
-- [Identity, Security, and Auth Bridge](./demo-identity.md)
+- [Identity, Security, and Auth Bridge](./identity-guide.md)
 - [MCP Gateway Instructions](./gateway.md)
 - [New Agent Guide](./new-agent.md)

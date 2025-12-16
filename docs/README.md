@@ -21,7 +21,7 @@ For a complete list of available demos and tutorials, see the [Demos Documentati
 Through this incubation project, we have identified several core components: 
 
 - [MCP Gateway](./gateway.md) offers a quickstart to using the MCP Gateway. You may also find more information in [our mcp-gateway repo](https://github.com/kagenti/mcp-gateway).
-- [Identity and Security](./demo-identity.md) provides deeper overview on the various security tools that help implement zero-trust security from the platform level. 
+- [Identity and Security](./identity-guide.md) provides deeper overview on the various security tools that help implement zero-trust security from the platform level. 
 
 ## Develop with Kagenti
 
