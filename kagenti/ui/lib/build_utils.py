@@ -185,12 +185,9 @@ def _merge_env_vars(
     order = []
 
     def _emit_warning(message: str) -> None:
-        try:
-            if st_object:
-                st_object.warning(message)
-            else:
-                logger.warning(message)
-        except Exception:
+        if st_object:
+            st_object.warning(message)
+        else:
             logger.warning(message)
 
     def _apply_env_list(env_list: Optional[list], context: str) -> None:
