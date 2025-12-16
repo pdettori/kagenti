@@ -1963,7 +1963,7 @@ def render_import_form(
                             if skipped_user_duplicates:
                                 st_object.warning(
                                     (
-                                        f"⚠️ Skipped {len(skipped_user_duplicates)} variables already defined by the user: "
+                                        f"⚠️ Skipped {len(skipped_user_duplicates)} variables already defined by the user or previously imported: "
                                         + ", ".join(skipped_user_duplicates)
                                     )
                                 )
