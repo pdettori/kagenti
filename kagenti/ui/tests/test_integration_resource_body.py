@@ -103,15 +103,14 @@ def test_custom_env_overrides_default(monkeypatch):
 
 def test_env_file_overrides_env_set():
     # env set defines PORT=1111, .env defines PORT=2222 -> .env should win
-    from lib import constants
-
     env_set = [{"name": "PORT", "value": "1111"}]
     env_file = [{"name": "PORT", "value": "2222"}]
 
-    merged1 = build_utils._merge_env_vars(constants.DEFAULT_ENV_VARS, env_set)
-    merged2 = build_utils._merge_env_vars(merged1, env_file)
+    # Mimic actual code flow: start with env_set, then merge in env_file
+    selected_env_sets = list(env_set)
+    merged = build_utils._merge_env_vars(selected_env_sets, env_file)
 
-    ports = [e for e in merged2 if e.get("name") == "PORT"]
+    ports = [e for e in merged if e.get("name") == "PORT"]
     assert len(ports) == 1
     assert ports[0].get("value") == "2222"
 
