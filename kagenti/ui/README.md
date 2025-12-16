@@ -187,7 +187,7 @@ Precedence when names collide (highest → lowest):
 2. `.env` file imports — override entries from environment variable sets
 3. Environment variable sets (ConfigMap) — lowest precedence
 
-This precedence is enforced when the UI builds the Kubernetes CustomResource manifest (see `lib/build_utils.py`). The operator applies the `podTemplateSpec` from the CustomResource directly to the created Deployment, so correctness is enforced at resource construction time.
+This precedence is achieved by relying on Kubernetes' "last-wins" behavior when duplicate environment variable names are present in the manifest (see `lib/build_utils.py`). The UI does not explicitly deduplicate or enforce precedence; instead, the order of environment variables in the generated CustomResource ensures that higher-precedence values override lower-precedence ones at deployment time.
 
 ## License
 
