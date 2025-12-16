@@ -106,6 +106,14 @@ This will:
 
 Ensure `KUBECONFIG` points to a cluster with admin privileges.
 
+**Note:** When using an existing cluster, the registry component is automatically skipped as it's primarily designed for kind clusters that have been initialized with a specific configuration.
+
+To skip installation of the specific component e.g. keycloak and SPIRE, issue:
+
+```
+uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
+```
+
 ### Ansible-Based Installer (Alternative)
 
 A newer Helm-based installer using Ansible:
@@ -122,6 +130,15 @@ deployments/ansible/run-install.sh --env dev
 See [Ansible README](../deployments/ansible/README.md) for details and [override files](../deployments/ansible/README.md#using-override-files).
 
 For Rancher Desktop on macOS, follow [these setup steps](../deployments/ansible/README.md#installation-using-rancher-desktop-on-macos).
+
+**Advanced users:** you may invoke the Ansible playbook directly instead of using the `run-install.sh` wrapper. This can be useful if you prefer to run `ansible-playbook` from a specific Python environment or CI runner. Example:
+
+```
+ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml \
+  -e '{"global_value_files":["../envs/dev_values.yaml"], "secret_values_file": "../envs/.secret_values.yaml"}'
+```
+
+Note: The wrapper provides convenience features (path resolution for env/secret files, a `uv`-based venv runner, and a Helm v4 compatibility check). When running Ansible directly, ensure `helm` is v3.x since Helm v4 is incompatible with the Ansible Helm integration used by the playbook.
 
 ---
 
