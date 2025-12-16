@@ -412,7 +412,7 @@ POST /mcp    # MCP JSON-RPC messages
 ## Related Documentation
 
 - [Installation Guide](./install.md)
-- [Demo Documentation](./demos.md)
+- [Demo Documentation](./demos/README.md)
 - [Technical Details](./tech-details.md)
 - [Identity, Security, and Auth Bridge](./demo-identity.md)
 - [MCP Gateway Instructions](./gateway.md)

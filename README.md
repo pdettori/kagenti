@@ -101,7 +101,7 @@ From the UI you can:
 |-------|------|
 | **Installation** | [Installation Guide](./docs/install.md) (Kind & OpenShift) |
 | **Components** | [Component Details](./docs/components.md) |
-| **Demos & Tutorials** | [Demo Documentation](./docs/demos.md) |
+| **Demos & Tutorials** | [Demo Documentation](./docs/demos/README.md) |
 | **Import Your Own Agent** | [New Agent Guide](./docs/new-agent.md) |
 | **Architecture Details** | [Technical Details](./docs/tech-details.md) |
 | **Identity, Security, and Auth Bridge** | [Identity and Auth Bridge](./docs/demo-identity.md) |

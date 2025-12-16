@@ -19,7 +19,7 @@ If you can see the successfully imported value, you are all set!
 
 Before importing a new agent from source, ensure that:
 
-1. The agent code is hosted on GitHub and is accessible using the GitHub credentials provided [during the Kagenti installation](https://github.com/kagenti/kagenti/blob/main/docs/demos.md).
+1. The agent code is hosted on GitHub and is accessible using the GitHub credentials provided [during the Kagenti installation](./install.md).
 2. The agent code is organized within a sub-directory of the Git repository (not in the root directory).
 3. The root of the subdirectory contains a Dockerfile.
 

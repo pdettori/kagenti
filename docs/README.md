@@ -6,22 +6,16 @@ This directory contains the official Kagenti project documentation.
 
 If you are new to Kagenti, we recommend the following flow to get started with a local Kind cluster. 
 
-1. [Installation Guide](./kind-install.md): Step-by-step instructions to start a Kind cluster and install all prerequisite components
-2. [Quickstart Weather Agent](./demo-weather-agent.md): Deploy your first agent. 
+1. [Installation Guide](./install.md): Step-by-step instructions to start a Kind cluster and install all prerequisite components
+2. [Quickstart Weather Agent](./demos/demo-weather-agent.md): Deploy your first agent. 
 
 Kagenti is built on existing open-source cloud-native technologies. 
 
 - [Architecture Overview](./tech-details.md) gives a high-level look at the existing technologies. 
 
-## Additional Demos
+## Demos and Tutorials
 
-We are developing other demos:
-
-- [Github Issue Agent Demo](./demo-github-issue.md): See this demo to run an agent that can query Github Issues using Github's remote MCP Server. 
-  - [Interactive Online Demo](https://red.ht/3WL5Loc): See this demo presented at KubeCon NA 2025 to see the Github Issue example without running it locally. 
-- [Slack Authentication Demo](./demo-slack-research-agent.md): See this demo to deploy an agent and a simple MCP Server tool to talk to the Slack API. 
-- [Generic Agent Demo](./demo-generic-agent.md): See this demo to deploy a generic agent and two MCP Server tools.
-- [File Organizer Agent Demo](./demo-file-organizer-agent.md): See this demo to deploy an agent that can organize files in a cloud storage bucket using a custom MCP Server tool.
+For a complete list of available demos and tutorials, see the [Demos Documentation](./demos/README.md).
 ## Core Concepts
 
 Through this incubation project, we have identified several core components: 
