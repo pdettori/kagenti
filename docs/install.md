@@ -74,6 +74,14 @@ uv run kagenti-installer
 
 The installer creates a Kind cluster named `agent-platform` and deploys all components.
 
+If the installer fails to complete its execution due to an `exceeded its progress deadline` issue, 
+run `docker login -u <username` followed by running the installer again with the options `--skip-install` and `--preload-images`.
+Including one `--skip-install` for each installed component.  For example, 
+
+```shell
+uv run kagenti-installer --preload-images --skip-install registry --skip-install tekton
+```
+
 ### Installation Options
 
 ```bash
