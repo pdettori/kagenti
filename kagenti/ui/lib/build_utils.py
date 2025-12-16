@@ -1958,12 +1958,12 @@ def render_import_form(
                                 "Successfully imported env vars from the .env file"
                             )
                             if skipped_user_duplicates:
-                                st_object.warning(
-                                    (
-                                        f"⚠️ Skipped {len(skipped_user_duplicates)} variables already defined by the user or previously imported: "
-                                        + ", ".join(skipped_user_duplicates)
-                                    )
+                                joined = ", ".join(skipped_user_duplicates)
+                                msg = (
+                                    f"⚠️ Skipped {len(skipped_user_duplicates)} variables already "
+                                    f"defined by the user or previously imported: {joined}"
                                 )
+                                st_object.warning(msg)
                             if replaced_count:
                                 st_object.info(
                                     f"Replaced {replaced_count} configmap-origin variables with values from the .env file"
