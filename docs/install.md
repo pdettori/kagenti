@@ -75,7 +75,7 @@ uv run kagenti-installer
 The installer creates a Kind cluster named `agent-platform` and deploys all components.
 
 If the installer fails to complete its execution due to an `exceeded its progress deadline` issue, 
-run `docker login -u <username` followed by running the installer again with the options `--skip-install` and `--preload-images`.
+run `docker login -u <username>` followed by running the installer again with the options `--skip-install` and `--preload-images`.
 Including one `--skip-install` for each installed component.  For example, 
 
 ```shell
@@ -118,7 +118,7 @@ Ensure `KUBECONFIG` points to a cluster with admin privileges.
 
 To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
-```
+```shell
 uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
 ```
 
@@ -141,7 +141,7 @@ For Rancher Desktop on macOS, follow [these setup steps](../deployments/ansible/
 
 **Advanced users:** you may invoke the Ansible playbook directly instead of using the `run-install.sh` wrapper. This can be useful if you prefer to run `ansible-playbook` from a specific Python environment or CI runner. Example:
 
-```
+```bash
 ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.yml \
   -e '{"global_value_files":["../envs/dev_values.yaml"], "secret_values_file": "../envs/.secret_values.yaml"}'
 ```
