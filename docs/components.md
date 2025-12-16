@@ -5,6 +5,7 @@ This document provides detailed information about each component of the Kagenti 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Architecture Diagram](#architecture-diagram)
 - [Agent Lifecycle Operator](#agent-lifecycle-operator)
 - [MCP Gateway](#mcp-gateway)
 - [Kagenti UI](#kagenti-ui)
@@ -31,6 +32,52 @@ Kagenti is a cloud-native middleware providing a **framework-neutral**, **scalab
 Despite the extensive variety of frameworks available for developing agent-based applications, there is a distinct lack of standardized methods for deploying and operating agent code in production environments, as well as for exposing it through a standardized API. Agents are adept at reasoning, planning, and interacting with various tools, but their full potential can be limited by deployment challenges.
 
 Kagenti addresses this gap by enhancing existing agent frameworks with production-ready infrastructure.
+
+---
+
+## Architecture Diagram
+
+All the Kagenti components and their deployment namespaces
+
+```shell
+┌───────────────────────────────────────────────────────────────────────┐
+│                           Kubernetes Cluster                          │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │                      kagenti-system Namespace                   │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐ │  │
+│  │  │ Kagenti UI │  │  Agent     │  │  Ingress   │  │   Kiali    │ │  │
+│  │  │            │  │  LifeCycle │  │  Gateway   │  │            │ │  │
+│  │  │            │  │  Operator  │  │            │  │            │ │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘ │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                                                                       │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌─────────────────┐  │
+│  │  gateway-system    │  │     mcp-system     │  │    keycloak     │  │
+│  │  ┌──────────────┐  │  │  ┌──────────────┐  │  │  ┌───────────┐  │  │
+│  │  │ MCP Gateway  │  │  │  │ MCP Broker   │  │  │  │ Keycloak  │  │  │
+│  │  │   (Envoy)    │  │  │  │ Controller   │  │  │  │  Server   │  │  │
+│  │  └──────────────┘  │  │  └──────────────┘  │  │  └───────────┘  │  │
+│  └────────────────────┘  └────────────────────┘  └─────────────────┘  │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │                Workload Namespaces (team1, team2, ...)           │ │
+│  │  ┌──────────────┐  ┌──────────────┐   ┌──────────────┐           │ │
+│  │  │  A2A Agents  │  │  MCP Tools   │   │ Custom       │           │ │
+│  │  │  (LangGraph, │  │  (weather,   │   │ Workloads    │           │ │
+│  │  │   CrewAI,    │  │   slack,     │   │              │           │ │
+│  │  │   AG2...)    │  │   fetch...)  │   │              │           │ │
+│  │  └──────────────┘  └──────────────┘   └──────────────┘           │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│    ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐     │
+│    │     SPIRE      │  │    Keycloak    │  │  Istio Ambient     │     │
+│    │  (Identity)    │  │    (Auth)      │  │  (Service Mesh)    │     │
+│    └────────────────┘  └────────────────┘  └────────────────────┘     │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -360,51 +407,6 @@ GET  /tasks/{id}                # Get task status
 **Endpoints**:
 ```
 POST /mcp    # MCP JSON-RPC messages
-```
-
----
-
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Kubernetes Cluster                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                      kagenti-system Namespace                     │  │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐   │  │
-│  │  │ Kagenti UI │  │  Platform  │  │  Ingress   │  │   Kiali    │   │  │
-│  │  │            │  │  Operator  │  │  Gateway   │  │            │   │  │
-│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘   │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌─────────────────┐    │
-│  │  gateway-system    │  │     mcp-system     │  │    keycloak     │    │
-│  │  ┌──────────────┐  │  │  ┌──────────────┐  │  │  ┌───────────┐  │    │
-│  │  │ MCP Gateway  │  │  │  │ MCP Broker   │  │  │  │ Keycloak  │  │    │
-│  │  │   (Envoy)    │  │  │  │ Controller   │  │  │  │  Server   │  │    │
-│  │  └──────────────┘  │  │  └──────────────┘  │  │  └───────────┘  │    │
-│  └────────────────────┘  └────────────────────┘  └─────────────────┘    │
-│                                                                         │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                    Agent Namespaces (team1, team2, ...)            │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │ │
-│  │  │  A2A Agents  │  │  MCP Tools   │  │   Istio Ambient Mesh     │  │ │
-│  │  │  (LangGraph, │  │  (weather,   │  │  ┌────────┐ ┌─────────┐  │  │ │
-│  │  │   CrewAI,    │  │   slack,     │  │  │Ztunnel │ │Waypoint │  │  │ │
-│  │  │   AG2...)    │  │   fetch...)  │  │  └────────┘ └─────────┘  │  │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                                                                         │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │              zero-trust-workload-identity-manager                  │ │
-│  │  ┌────────────────┐  ┌────────────────┐  ┌──────────────────────┐  │ │
-│  │  │  SPIRE Server  │  │  SPIRE Agent   │  │  SPIFFE CSI Driver   │  │ │
-│  │  └────────────────┘  └────────────────┘  └──────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
