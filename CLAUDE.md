@@ -45,7 +45,8 @@ kagenti/
 │   ├── install.md              # Installation guide
 │   ├── components.md           # Component details
 │   ├── tech-details.md         # Architecture and design
-│   ├── demos.md                # Demo documentation
+│   ├── demos/                   # Demo documentation
+│   │   └── README.md           # Demo index
 │   └── diagrams/               # Mermaid diagrams
 ├── Makefile                    # Build automation
 ├── pyproject.toml              # Root Python project config
