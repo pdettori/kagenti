@@ -14,6 +14,8 @@ Check the details for running various demos:
 - **Github Issue Demo** - [Github Issue Agent](./demo-github-issue.md): Run an agent that can query Github Issues using Github's remote MCP Server ([demo recording](https://youtu.be/5SpTwERN2jU))
 - **Generic Agent Demo** - [Generic Agent](./demo-generic-agent.md): Deploy a generic agent and two MCP Server tools
 - **File Organizer Agent Demo** - [File Organizer Agent](./demo-file-organizer-agent.md): Deploy an agent that can organize files in a cloud storage bucket using a custom MCP Server tool
+- **Multimodal Demo** - [Image Agent](./demo-image-agent.md): Deploy an agent and MCP Server tool to return randomly generated images of user-specified sizes. 
+
 
 ## Choose Your Demo Based on Your Role
 
