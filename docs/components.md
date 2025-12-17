@@ -48,7 +48,7 @@ All the Kagenti components and their deployment namespaces
 │  │                      kagenti-system Namespace                   │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐ │  │
 │  │  │ Kagenti UI │  │  Agent     │  │  Ingress   │  │   Kiali    │ │  │
-│  │  │            │  │  LifeCycle │  │  Gateway   │  │            │ │  │
+│  │  │            │  │  Lifecycle │  │  Gateway   │  │            │ │  │
 │  │  │            │  │  Operator  │  │            │  │            │ │  │
 │  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘ │  │
 │  └─────────────────────────────────────────────────────────────────┘  │
