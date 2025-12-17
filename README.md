@@ -19,39 +19,50 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 | Component | Description |
 |-----------|-------------|
 | **[Kagenti UI](./kagenti/ui/)** | Dashboard for deploying agents/tools, interactive testing, and monitoring |
-| **[Identity & Auth Bridge](./docs/demo-identity.md)** | Identity pattern assets that capture common authorization scenarios and provide reusable building blocks for implementing consistent authorization across services |
-| **[Agent Lifecycle Operatorr](https://github.com/kagenti/kagenti-extensions/tree/main/kagenti-webhook)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
+| **[Identity & Auth Bridge](./docs/identity-guide.md)** | Identity pattern assets that capture common authorization scenarios and provide reusable building blocks for implementing consistent authorization across services |
+| **[Agent Lifecycle Operator](https://github.com/kagenti/kagenti-extensions/tree/main/kagenti-webhook)** | Kubernetes admission webhook for building agents from source, managing lifecycle, and coordinating platform services |
 | **[MCP Gateway](https://github.com/kagenti/mcp-gateway/blob/main/README.md)** | Unified gateway for Model Context Protocol (MCP) servers and tools. It acts as the entry point for policy enforcement, handling requests and routing them through the appropriate authorization patterns |
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Kubernetes Cluster                           │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
-│  │  Kagenti UI  │  │ MCP Gateway  │  │   Platform Operator      │   │
-│  └──────┬───────┘  └──────┬───────┘  └────────────┬─────────────┘   │
-│         │                 │                       │                 │
-│  ┌──────▼─────────────────▼───────────────────────▼──────────────┐  │
-│  │                    Ingress Gateway                            │  │
-│  │              (Kubernetes Gateway API + Istio)                 │  │
-│  └───────────────────────────┬───────────────────────────────────┘  │
-│                              │                                      │
-│  ┌───────────────────────────▼───────────────────────────────────┐  │
-│  │                    Agent Namespaces                           │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐    │  │
-│  │  │ A2A Agents  │  │ MCP Tools   │  │ Custom Workloads    │    │  │
-│  │  │ (LangGraph, │  │ (weather,   │  │                     │    │  │
-│  │  │  CrewAI...) │  │  slack...)  │  │                     │    │  │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────┘    │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐     │
-│  │     SPIRE      │  │    Keycloak    │  │  Istio Ambient     │     │
-│  │  (Identity)    │  │    (Auth)      │  │  (Service Mesh)    │     │
-│  └────────────────┘  └────────────────┘  └────────────────────┘     │
-└─────────────────────────────────────────────────────────────────────┘
+```shell
+┌───────────────────────────────────────────────────────────────────────┐
+│                           Kubernetes Cluster                          │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │                      kagenti-system Namespace                   │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐ │  │
+│  │  │ Kagenti UI │  │  Agent     │  │  Ingress   │  │   Kiali    │ │  │
+│  │  │            │  │  Lifecycle │  │  Gateway   │  │            │ │  │
+│  │  │            │  │  Operator  │  │            │  │            │ │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘ │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                                                                       │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌─────────────────┐  │
+│  │  gateway-system    │  │     mcp-system     │  │    keycloak     │  │
+│  │  ┌──────────────┐  │  │  ┌──────────────┐  │  │  ┌───────────┐  │  │
+│  │  │ MCP Gateway  │  │  │  │ MCP Broker   │  │  │  │ Keycloak  │  │  │
+│  │  │   (Envoy)    │  │  │  │ Controller   │  │  │  │  Server   │  │  │
+│  │  └──────────────┘  │  │  └──────────────┘  │  │  └───────────┘  │  │
+│  └────────────────────┘  └────────────────────┘  └─────────────────┘  │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │                Workload Namespaces (team1, team2, ...)           │ │
+│  │  ┌──────────────┐  ┌──────────────┐   ┌──────────────┐           │ │
+│  │  │  A2A Agents  │  │  MCP Tools   │   │ Custom       │           │ │
+│  │  │  (LangGraph, │  │  (weather,   │   │ Workloads    │           │ │
+│  │  │   CrewAI,    │  │   slack,     │   │              │           │ │
+│  │  │   AG2...)    │  │   fetch...)  │   │              │           │ │
+│  │  └──────────────┘  └──────────────┘   └──────────────┘           │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│    ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐     │
+│    │     SPIRE      │  │    Keycloak    │  │  Istio Ambient     │     │
+│    │  (Identity)    │  │    (Auth)      │  │  (Service Mesh)    │     │
+│    └────────────────┘  └────────────────┘  └────────────────────┘     │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -101,10 +112,10 @@ From the UI you can:
 |-------|------|
 | **Installation** | [Installation Guide](./docs/install.md) (Kind & OpenShift) |
 | **Components** | [Component Details](./docs/components.md) |
-| **Demos & Tutorials** | [Demo Documentation](./docs/demos.md) |
+| **Demos & Tutorials** | [Demo Documentation](./docs/demos/README.md) |
 | **Import Your Own Agent** | [New Agent Guide](./docs/new-agent.md) |
 | **Architecture Details** | [Technical Details](./docs/tech-details.md) |
-| **Identity, Security, and Auth Bridge** | [Identity and Auth Bridge](./docs/demo-identity.md) |
+| **Identity, Security, and Auth Bridge** | [Identity and Auth Bridge](./docs/identity-guide.md) |
 | **Developer Guide** | [Contributing](./docs/dev-guide.md) |
 | **Troubleshooting** | [Troubleshooting Guide](./docs/troubleshooting.md) |
 | **Blog Posts** | [Kagenti Blog](./docs/blogs.md) |

@@ -15,7 +15,7 @@ for common development operations.
 
 ### Prerequisites
 
-Follow [installation](./docs/demos.md#installation) instructions.
+Follow [installation](./docs/install.md) instructions.
 
 ### Issues
 

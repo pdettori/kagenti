@@ -290,7 +290,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 ### 2.3 Security and Identity Specialist
 
 **Description**: Administrators responsible for implementing and maintaining the zero-trust security model and identity management.
-Review Identity Patterns in [identity documentation](docs/demo-identity.md) for more information.
+Review Identity Patterns in [identity documentation](docs/identity-guide.md) for more information.
 
 **Key Responsibilities**:
 
