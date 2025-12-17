@@ -34,7 +34,7 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 │  │                      kagenti-system Namespace                   │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐ │  │
 │  │  │ Kagenti UI │  │  Agent     │  │  Ingress   │  │   Kiali    │ │  │
-│  │  │            │  │  LifeCycle │  │  Gateway   │  │            │ │  │
+│  │  │            │  │  Lifecycle │  │  Gateway   │  │            │ │  │
 │  │  │            │  │  Operator  │  │            │  │            │ │  │
 │  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘ │  │
 │  └─────────────────────────────────────────────────────────────────┘  │
