@@ -26,6 +26,10 @@ data:
     [
       {"name": "MCP_URL", "value": "http://weather-tool:8000/mcp"}
     ]
+  mcp-image: |
+    [
+      {"name": "MCP_URL", "value": "http://image-tool:8000/mcp"}
+    ]
   mcp-slack: |
     [
       {"name": "MCP_URL", "value": "http://slack-tool:8000/mcp"}

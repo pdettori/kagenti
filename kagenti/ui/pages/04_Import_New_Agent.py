@@ -30,6 +30,7 @@ AGENT_EXAMPLE_SUBFOLDERS = [
     "a2a/file_organizer",
     "a2a/slack_researcher",
     "a2a/weather_service",
+    "a2a/image_service",
 ]
 AGENT_PROTOCOL_OPTIONS = ["a2a"]
 
