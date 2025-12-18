@@ -1,0 +1,234 @@
+/* Copyright 2025 IBM Corp.
+ * Licensed under the Apache License, Version 2.0
+ *
+ * OpenShift Console-inspired PatternFly theme for Kagenti UI
+ */
+
+/* CSS Custom Properties - OpenShift Console Theme */
+:root {
+  /* Primary colors - OpenShift blue palette */
+  --pf-v5-global--primary-color--100: #0066cc;
+  --pf-v5-global--primary-color--200: #004080;
+  --pf-v5-global--link--Color: #0066cc;
+  --pf-v5-global--link--Color--hover: #004080;
+
+  /* Background colors */
+  --pf-v5-global--BackgroundColor--100: #ffffff;
+  --pf-v5-global--BackgroundColor--200: #f0f0f0;
+  --pf-v5-global--BackgroundColor--dark-100: #151515;
+  --pf-v5-global--BackgroundColor--dark-200: #212427;
+  --pf-v5-global--BackgroundColor--dark-300: #3c3f42;
+
+  /* Masthead - Dark theme like OpenShift */
+  --pf-v5-c-masthead--BackgroundColor: #151515;
+  --pf-v5-c-masthead__brand--c-button--Color: #ffffff;
+
+  /* Page sidebar - Dark theme */
+  --pf-v5-c-page__sidebar--BackgroundColor: #212427;
+  --pf-v5-c-nav--BackgroundColor: #212427;
+  --pf-v5-c-nav__link--Color: #ffffff;
+  --pf-v5-c-nav__link--hover--Color: #ffffff;
+  --pf-v5-c-nav__link--hover--BackgroundColor: #3c3f42;
+  --pf-v5-c-nav__link--m-current--Color: #ffffff;
+  --pf-v5-c-nav__link--m-current--BackgroundColor: #0066cc;
+
+  /* Status colors */
+  --kagenti-status-ready: #3e8635;
+  --kagenti-status-not-ready: #c9190b;
+  --kagenti-status-pending: #f0ab00;
+
+  /* Spacing */
+  --kagenti-page-padding: 24px;
+}
+
+/* Global styles */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page section styling */
+.pf-v5-c-page__main-section {
+  padding: var(--kagenti-page-padding);
+}
+
+/* Card styling - OpenShift style */
+.pf-v5-c-card {
+  --pf-v5-c-card--BoxShadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.pf-v5-c-card:hover {
+  --pf-v5-c-card--BoxShadow: 0 4px 8px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* Table styling */
+.pf-v5-c-table {
+  --pf-v5-c-table--BorderColor: #d2d2d2;
+}
+
+.pf-v5-c-table tbody tr:hover {
+  background-color: #f0f0f0;
+}
+
+/* Status badge styling */
+.kagenti-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.kagenti-status-badge--ready {
+  background-color: var(--kagenti-status-ready);
+  color: white;
+}
+
+.kagenti-status-badge--not-ready {
+  background-color: var(--kagenti-status-not-ready);
+  color: white;
+}
+
+.kagenti-status-badge--pending {
+  background-color: var(--kagenti-status-pending);
+  color: #151515;
+}
+
+/* Navigation section titles */
+.pf-v5-c-nav__section-title {
+  color: #8a8d90;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 16px 16px 8px;
+}
+
+/* Masthead brand */
+.kagenti-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.kagenti-brand-logo {
+  width: 36px;
+  height: 36px;
+}
+
+/* Content area */
+.kagenti-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Empty state styling */
+.pf-v5-c-empty-state {
+  padding: 48px;
+}
+
+/* Form styling */
+.pf-v5-c-form__group {
+  margin-bottom: 16px;
+}
+
+/* Code block styling for JSON display */
+.pf-v5-c-code-block {
+  max-height: 400px;
+  overflow: auto;
+}
+
+/* Chat styling */
+.kagenti-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+  border: 1px solid #d2d2d2;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.kagenti-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #fafafa;
+}
+
+.kagenti-chat-message {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.kagenti-chat-message--user {
+  background-color: #0066cc;
+  color: white;
+  margin-left: auto;
+}
+
+.kagenti-chat-message--assistant {
+  background-color: #ffffff;
+  border: 1px solid #d2d2d2;
+}
+
+.kagenti-chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid #d2d2d2;
+  background-color: #ffffff;
+}
+
+/* Toolbar styling */
+.pf-v5-c-toolbar {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+/* Label/Tag styling */
+.kagenti-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  background-color: #f0f0f0;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* Loading spinner center */
+.kagenti-loading-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .kagenti-chat-message {
+    max-width: 95%;
+  }
+
+  :root {
+    --kagenti-page-padding: 16px;
+  }
+}

@@ -1,0 +1,295 @@
+// Copyright 2025 IBM Corp.
+// Licensed under the Apache License, Version 2.0
+
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Page,
+  Masthead,
+  MastheadToggle,
+  MastheadMain,
+  MastheadBrand,
+  MastheadContent,
+  PageSidebar,
+  PageSidebarBody,
+  PageToggleButton,
+  Nav,
+  NavList,
+  NavItem,
+  NavExpandable,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+  Button,
+  Avatar,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  Divider,
+  MenuToggle,
+  MenuToggleElement,
+  Spinner,
+} from '@patternfly/react-core';
+import {
+  BarsIcon,
+  CogIcon,
+  QuestionCircleIcon,
+  SignOutAltIcon,
+  UserIcon,
+} from '@patternfly/react-icons';
+
+import { useAuth } from '@/contexts';
+
+interface AppLayoutProps {
+  children: React.ReactNode;
+}
+
+export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading, isEnabled, user, login, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+
+  const onSidebarToggle = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const isNavItemActive = (path: string): boolean => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const handleNavSelect = (path: string) => {
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    setIsUserDropdownOpen(false);
+    logout();
+  };
+
+  // Generate user display name
+  const getUserDisplayName = (): string => {
+    if (!user) return 'Guest';
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return user.username;
+  };
+
+  // Generate avatar initials
+  const getAvatarInitials = (): string => {
+    if (!user) return '?';
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    return user.username[0].toUpperCase();
+  };
+
+  // Render user menu toggle
+  const renderUserToggle = () => {
+    if (isLoading) {
+      return (
+        <ToolbarItem>
+          <Spinner size="md" aria-label="Loading user..." />
+        </ToolbarItem>
+      );
+    }
+
+    if (!isAuthenticated && isEnabled) {
+      return (
+        <ToolbarItem>
+          <Button variant="primary" onClick={login}>
+            Sign In
+          </Button>
+        </ToolbarItem>
+      );
+    }
+
+    return (
+      <ToolbarItem>
+        <Dropdown
+          isOpen={isUserDropdownOpen}
+          onSelect={() => setIsUserDropdownOpen(false)}
+          onOpenChange={(isOpen) => setIsUserDropdownOpen(isOpen)}
+          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+            <MenuToggle
+              ref={toggleRef}
+              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+              isExpanded={isUserDropdownOpen}
+              icon={
+                <Avatar
+                  src={`data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#0066CC"/><text x="50" y="62" font-family="Arial" font-size="40" font-weight="bold" fill="white" text-anchor="middle">${getAvatarInitials()}</text></svg>`)}`}
+                  alt={getUserDisplayName()}
+                  size="sm"
+                />
+              }
+            >
+              {getUserDisplayName()}
+            </MenuToggle>
+          )}
+        >
+          <DropdownList>
+            {user?.email && (
+              <>
+                <DropdownItem
+                  key="user-info"
+                  isDisabled
+                  description={user.email}
+                  icon={<UserIcon />}
+                >
+                  {getUserDisplayName()}
+                </DropdownItem>
+                <Divider component="li" key="separator" />
+              </>
+            )}
+            <DropdownItem key="settings" icon={<CogIcon />}>
+              Settings
+            </DropdownItem>
+            {isEnabled && (
+              <DropdownItem
+                key="logout"
+                icon={<SignOutAltIcon />}
+                onClick={handleLogout}
+              >
+                Sign Out
+              </DropdownItem>
+            )}
+          </DropdownList>
+        </Dropdown>
+      </ToolbarItem>
+    );
+  };
+
+  const masthead = (
+    <Masthead>
+      <MastheadToggle>
+        <PageToggleButton
+          variant="plain"
+          aria-label="Global navigation"
+          isSidebarOpen={isSidebarOpen}
+          onSidebarToggle={onSidebarToggle}
+        >
+          <BarsIcon />
+        </PageToggleButton>
+      </MastheadToggle>
+      <MastheadMain>
+        <MastheadBrand
+          className="kagenti-brand"
+          component="a"
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/');
+          }}
+        >
+          <svg
+            className="kagenti-brand-logo"
+            viewBox="0 0 100 100"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="100" height="100" rx="20" fill="#0066CC" />
+            <text
+              x="50"
+              y="68"
+              fontFamily="Arial, sans-serif"
+              fontSize="50"
+              fontWeight="bold"
+              fill="white"
+              textAnchor="middle"
+            >
+              K
+            </text>
+          </svg>
+          Kagenti
+        </MastheadBrand>
+      </MastheadMain>
+      <MastheadContent>
+        <Toolbar isFullHeight isStatic>
+          <ToolbarContent>
+            <ToolbarItem>
+              <Button
+                variant="plain"
+                aria-label="Help"
+                onClick={() =>
+                  window.open('https://kagenti.github.io/.github/', '_blank')
+                }
+              >
+                <QuestionCircleIcon />
+              </Button>
+            </ToolbarItem>
+            {renderUserToggle()}
+          </ToolbarContent>
+        </Toolbar>
+      </MastheadContent>
+    </Masthead>
+  );
+
+  const sidebar = (
+    <PageSidebar isSidebarOpen={isSidebarOpen}>
+      <PageSidebarBody>
+        <Nav aria-label="Navigation">
+          <NavList>
+            <NavItem
+              itemId="home"
+              isActive={isNavItemActive('/')}
+              onClick={() => handleNavSelect('/')}
+            >
+              Home
+            </NavItem>
+            <NavExpandable
+              title="Workloads"
+              groupId="workloads"
+              isActive={
+                isNavItemActive('/agents') || isNavItemActive('/tools')
+              }
+              isExpanded={
+                isNavItemActive('/agents') || isNavItemActive('/tools')
+              }
+            >
+              <NavItem
+                groupId="workloads"
+                itemId="agents"
+                isActive={isNavItemActive('/agents')}
+                onClick={() => handleNavSelect('/agents')}
+              >
+                Agent Catalog
+              </NavItem>
+              <NavItem
+                groupId="workloads"
+                itemId="tools"
+                isActive={isNavItemActive('/tools')}
+                onClick={() => handleNavSelect('/tools')}
+              >
+                Tool Catalog
+              </NavItem>
+            </NavExpandable>
+            <NavItem
+              itemId="observability"
+              isActive={isNavItemActive('/observability')}
+              onClick={() => handleNavSelect('/observability')}
+            >
+              Observability
+            </NavItem>
+            <NavItem
+              itemId="admin"
+              isActive={isNavItemActive('/admin')}
+              onClick={() => handleNavSelect('/admin')}
+            >
+              Administration
+            </NavItem>
+          </NavList>
+        </Nav>
+      </PageSidebarBody>
+    </PageSidebar>
+  );
+
+  return (
+    <Page header={masthead} sidebar={sidebar} isManagedSidebar={false}>
+      {children}
+    </Page>
+  );
+};
