@@ -1,6 +1,6 @@
 # Keycloak Configuration for GitHub Issue Demo
 
-This script configures Keycloak for the [GitHub Issue Demo](../../../../docs/demo-github-issue.md), where logging into Kagenti with accounts of different permissions affects the results those accounts recieve.
+This script configures Keycloak for the [GitHub Issue Demo](../../../../docs/demo-github-issue.md), where logging into Kagenti with accounts of different permissions affects the results those accounts receive.
 
 This script performs the following steps:
 
