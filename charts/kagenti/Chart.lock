@@ -4,6 +4,6 @@ dependencies:
   version: 0.2.0-alpha.19
 - name: kagenti-webhook-chart
   repository: oci://ghcr.io/kagenti/kagenti-extensions
-  version: 0.1.0-alpha.6
-digest: sha256:db87d632998631ad6c5b8a4ed7bca0af1fd6cee97020997c164591488a72bedd
-generated: "2025-12-11T09:44:02.754087-05:00"
+  version: 0.1.0-alpha.9
+digest: sha256:e48039449c18960c29fdecc8a94b6b36037a2eb805f81405494141e4f5ad24d8
+generated: "2025-12-19T15:41:01.581752-05:00"
