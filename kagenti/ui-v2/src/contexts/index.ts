@@ -3,3 +3,6 @@
 
 export { AuthProvider, useAuth, keycloakInstance } from './AuthContext';
 export type { AuthContextType, User } from './AuthContext';
+
+export { ThemeProvider, useTheme } from './ThemeContext';
+export type { ThemeMode, EffectiveTheme } from './ThemeContext';

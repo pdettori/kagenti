@@ -36,9 +36,13 @@ import {
   QuestionCircleIcon,
   SignOutAltIcon,
   UserIcon,
+  MoonIcon,
+  SunIcon,
+  AdjustIcon,
 } from '@patternfly/react-icons';
 
-import { useAuth } from '@/contexts';
+import { useAuth, useTheme } from '@/contexts';
+import type { ThemeMode } from '@/contexts';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -48,8 +52,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, isEnabled, user, login, logout } = useAuth();
+  const { mode, effectiveTheme, setMode } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
 
   const onSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -69,6 +75,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const handleLogout = () => {
     setIsUserDropdownOpen(false);
     logout();
+  };
+
+  const handleThemeChange = (newMode: ThemeMode) => {
+    setMode(newMode);
+    setIsThemeDropdownOpen(false);
+  };
+
+  const getThemeIcon = () => {
+    if (mode === 'auto') return <AdjustIcon />;
+    return effectiveTheme === 'dark' ? <MoonIcon /> : <SunIcon />;
   };
 
   // Generate user display name
@@ -210,6 +226,49 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <MastheadContent>
         <Toolbar isFullHeight isStatic>
           <ToolbarContent>
+            <ToolbarItem>
+              <Dropdown
+                isOpen={isThemeDropdownOpen}
+                onSelect={() => setIsThemeDropdownOpen(false)}
+                onOpenChange={(isOpen) => setIsThemeDropdownOpen(isOpen)}
+                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    variant="plain"
+                    onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
+                    isExpanded={isThemeDropdownOpen}
+                    aria-label="Theme selector"
+                  >
+                    {getThemeIcon()}
+                  </MenuToggle>
+                )}
+              >
+                <DropdownList>
+                  <DropdownItem
+                    key="auto"
+                    icon={<AdjustIcon />}
+                    onClick={() => handleThemeChange('auto')}
+                    description="Follow system preference"
+                  >
+                    System default {mode === 'auto' && '✓'}
+                  </DropdownItem>
+                  <DropdownItem
+                    key="light"
+                    icon={<SunIcon />}
+                    onClick={() => handleThemeChange('light')}
+                  >
+                    Light {mode === 'light' && '✓'}
+                  </DropdownItem>
+                  <DropdownItem
+                    key="dark"
+                    icon={<MoonIcon />}
+                    onClick={() => handleThemeChange('dark')}
+                  >
+                    Dark {mode === 'dark' && '✓'}
+                  </DropdownItem>
+                </DropdownList>
+              </Dropdown>
+            </ToolbarItem>
             <ToolbarItem>
               <Button
                 variant="plain"

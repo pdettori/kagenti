@@ -91,13 +91,15 @@ export interface ToolDetail {
   };
   spec: {
     description?: string;
-    image?: string;
-    transport?: string;
-    port?: number;
-    targetPort?: number;
+    source?: {
+      git?: {
+        url: string;
+        path: string;
+        branch?: string;
+      };
+    };
   };
   status?: {
-    phase?: string;
     conditions?: Array<{
       type: string;
       status: string;
