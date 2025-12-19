@@ -45,6 +45,7 @@ import {
 } from '@patternfly/react-table';
 import { ToolboxIcon } from '@patternfly/react-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import yaml from 'js-yaml';
 
 import { toolService } from '@/services/api';
 
@@ -116,11 +117,11 @@ export const ToolDetailPage: React.FC = () => {
   const labels = metadata.labels || {};
   const conditions: StatusCondition[] = status.conditions || [];
 
-  const isReady = conditions.some(
-    (c) => c.type === 'Ready' && c.status === 'True'
-  );
+  // For MCPServer CRD, the authoritative ready state is status.phase === "Running"
+  const isReady = status.phase === 'Running';
 
-  const toolUrl = `http://${name}.${namespace}.localtest.me:8080`;
+  // Tool URL for off-cluster access (namespace is not included in URL)
+  const toolUrl = `http://${name}.localtest.me:8080`;
 
   const toggleToolExpanded = (toolName: string) => {
     setExpandedTools((prev) => ({
@@ -391,7 +392,16 @@ export const ToolDetailPage: React.FC = () => {
                     fontSize: '0.85em',
                   }}
                 >
-                  {JSON.stringify(tool, null, 2)}
+                  {yaml.dump(
+                    {
+                      ...tool,
+                      metadata: {
+                        ...tool.metadata,
+                        managedFields: undefined,
+                      },
+                    },
+                    { noRefs: true, lineWidth: -1 }
+                  )}
                 </pre>
               </CardBody>
             </Card>

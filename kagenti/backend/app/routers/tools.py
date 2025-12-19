@@ -7,11 +7,13 @@ Tool API endpoints.
 
 import logging
 from typing import Any, List, Optional
+from contextlib import AsyncExitStack
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
 from pydantic import BaseModel
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
 
 from app.core.config import settings
 from app.core.constants import (
@@ -112,22 +114,17 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 
 
 def _is_deployment_ready(resource_data: dict) -> str:
-    """Check if a deployment is ready based on status conditions or phase.
+    """Check if a tool deployment is ready based on status phase.
 
-    Checks for a condition with type="Ready" and status="True",
-    or a status.phase of "Ready" or "Running".
+    For MCPServer CRD, the authoritative ready state is .status.phase == "Running".
+    Conditions can be used for intermediate states but phase is the final indicator.
     """
     status = resource_data.get("status", {})
-    conditions = status.get("conditions", [])
 
-    # Check conditions array for Ready condition
-    for condition in conditions:
-        if condition.get("type") == "Ready" and condition.get("status") == "True":
-            return "Ready"
-
-    # Fallback: check status.phase for MCPServer CRD
+    # Primary check: status.phase for MCPServer CRD
+    # "Running" indicates the tool is fully ready
     phase = status.get("phase", "")
-    if phase in ("Ready", "Running"):
+    if phase == "Running":
         return "Ready"
 
     return "Not Ready"
@@ -396,64 +393,45 @@ async def connect_to_tool(
     Connect to an MCP server and list available tools.
 
     This endpoint connects to the MCP server and retrieves the list of
-    available tools using the MCP protocol.
+    available tools using the MCP client library.
     """
     tool_url = _get_tool_url(name, namespace)
     mcp_endpoint = f"{tool_url}/mcp"
 
+    exit_stack = AsyncExitStack()
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Initialize MCP session
-            init_response = await client.post(
-                mcp_endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {"name": "kagenti-backend", "version": "0.1.0"},
-                    },
-                },
-            )
-            init_response.raise_for_status()
+        async with exit_stack:
+            # Connect using MCP streamable-http transport
+            streams_context = streamablehttp_client(url=mcp_endpoint, headers={})
+            read_stream, write_stream, _ = await streams_context.__aenter__()
 
-            # List tools
-            tools_response = await client.post(
-                mcp_endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 2,
-                    "method": "tools/list",
-                    "params": {},
-                },
-            )
-            tools_response.raise_for_status()
-            tools_data = tools_response.json()
+            # Create and initialize MCP session
+            session_context = ClientSession(read_stream, write_stream)
+            session: ClientSession = await session_context.__aenter__()
+            await session.initialize()
 
-            # Parse tools from response
+            logger.info(f"MCP session initialized for tool '{name}'")
+
+            # List available tools
+            response = await session.list_tools()
             tools = []
-            result = tools_data.get("result", {})
-            for tool_info in result.get("tools", []):
-                tools.append(
-                    MCPToolSchema(
-                        name=tool_info.get("name", ""),
-                        description=tool_info.get("description"),
-                        input_schema=tool_info.get("inputSchema"),
+            if response and hasattr(response, "tools"):
+                for tool in response.tools:
+                    tools.append(
+                        MCPToolSchema(
+                            name=tool.name,
+                            description=tool.description,
+                            input_schema=(
+                                tool.inputSchema if hasattr(tool, "inputSchema") else None
+                            ),
+                        )
                     )
-                )
+                logger.info(f"Listed {len(tools)} tools from MCP server '{name}'")
 
             return MCPToolsResponse(tools=tools)
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"HTTP error connecting to MCP server: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail=f"MCP server returned error: {e.response.status_code}",
-        )
-    except httpx.RequestError as e:
-        logger.error(f"Request error connecting to MCP server: {e}")
+    except ConnectionError as e:
+        logger.error(f"Connection error to MCP server: {e}")
         raise HTTPException(
             status_code=503,
             detail=f"Failed to connect to MCP server at {tool_url}",
@@ -481,59 +459,46 @@ async def invoke_tool(
     tool_url = _get_tool_url(name, namespace)
     mcp_endpoint = f"{tool_url}/mcp"
 
+    exit_stack = AsyncExitStack()
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Initialize MCP session first
-            init_response = await client.post(
-                mcp_endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {"name": "kagenti-backend", "version": "0.1.0"},
-                    },
-                },
-            )
-            init_response.raise_for_status()
+        async with exit_stack:
+            # Connect using MCP streamable-http transport
+            streams_context = streamablehttp_client(url=mcp_endpoint, headers={})
+            read_stream, write_stream, _ = await streams_context.__aenter__()
 
-            # Call the tool
-            call_response = await client.post(
-                mcp_endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 2,
-                    "method": "tools/call",
-                    "params": {
-                        "name": request.tool_name,
-                        "arguments": request.arguments,
-                    },
-                },
-            )
-            call_response.raise_for_status()
-            call_data = call_response.json()
+            # Create and initialize MCP session
+            session_context = ClientSession(read_stream, write_stream)
+            session: ClientSession = await session_context.__aenter__()
+            await session.initialize()
 
-            # Check for JSON-RPC error
-            if "error" in call_data:
-                error = call_data["error"]
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Tool error: {error.get('message', 'Unknown error')}",
-                )
+            logger.info(f"MCP session initialized for tool invocation on '{name}'")
 
-            result = call_data.get("result", {})
-            return MCPInvokeResponse(result=result)
+            # Call the tool using the MCP client library
+            result = await session.call_tool(request.tool_name, request.arguments)
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"HTTP error invoking MCP tool: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail=f"MCP server returned error: {e.response.status_code}",
-        )
-    except httpx.RequestError as e:
-        logger.error(f"Request error invoking MCP tool: {e}")
+            logger.info(f"Tool '{request.tool_name}' invoked successfully on '{name}'")
+
+            # Convert the result to a serializable format
+            result_data = {}
+            if result:
+                if hasattr(result, "content"):
+                    # Extract content from the result
+                    content_list = []
+                    for content_item in result.content:
+                        if hasattr(content_item, "text"):
+                            content_list.append({"type": "text", "text": content_item.text})
+                        elif hasattr(content_item, "data"):
+                            content_list.append({"type": "data", "data": content_item.data})
+                        else:
+                            content_list.append({"type": "unknown", "value": str(content_item)})
+                    result_data["content"] = content_list
+                if hasattr(result, "isError"):
+                    result_data["isError"] = result.isError
+
+            return MCPInvokeResponse(result=result_data)
+
+    except ConnectionError as e:
+        logger.error(f"Connection error to MCP server: {e}")
         raise HTTPException(
             status_code=503,
             detail=f"Failed to connect to MCP server at {tool_url}",
