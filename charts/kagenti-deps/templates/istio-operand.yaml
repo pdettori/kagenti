@@ -14,6 +14,16 @@ spec:
   values:
     pilot:
       trustedZtunnelNamespace: "{{ .Values.istio.ztunnel.namespace }}"
+      # Reduce default resource requests (500m CPU, 2Gi memory) to fit on
+      # resource-constrained clusters like OpenShift AI where GPU workloads
+      # consume most of the available resources.
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
     profile: ambient
     meshConfig:
       discoverySelectors:

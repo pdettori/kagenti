@@ -1,6 +1,19 @@
 # Kagenti minimal installation configuration
 # Auth is enabled in this config
 
+####################################################################
+# Toolhive - MCP server operator (must be at root level for Ansible installer)
+####################################################################
+toolhiveCRDs:
+  enabled: true
+  version: "0.0.83"
+
+toolhiveOperator:
+  enabled: true
+  version: "0.5.12"
+  release_name: toolhive-operator
+  namespace: toolhive-system
+
 charts:
   #################################################################### 
   # kagenti-deps 
@@ -21,7 +34,7 @@ charts:
         otel:
           enabled: true
         spire:
-          enabled: true
+          enabled: false  # Use Helm-based SPIRE instead of OLM (ZTWIM not available on all OCP versions)
         tekton:
           enabled: true
         toolhiveCRDs:
@@ -41,7 +54,7 @@ charts:
   kagenti:
     enabled: true
     values:
-      openshift: false
+      openshift: true
       components:
         agentNamespaces:
           enabled: true
@@ -65,10 +78,17 @@ charts:
       keycloak:
         url: http://keycloak-service.keycloak:8080
 
-  #################################################################### 
+  ####################################################################
   # mcp-gateway chart
-  ####################################################################    
+  ####################################################################
   mcpGateway:
-    enabled: true  
+    enabled: true
 
-
+  ####################################################################
+  # spire - Use Helm charts (ZTWIM operator not available on all OCP versions)
+  ####################################################################
+  spire:
+    enabled: true
+    values:
+      global:
+        openshift: true
