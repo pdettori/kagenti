@@ -44,19 +44,26 @@
   --pf-v5-global--BackgroundColor--100: #ffffff;
   --pf-v5-global--BackgroundColor--200: #f0f0f0;
   --pf-v5-global--BackgroundColor--150: #fafafa;
+  --pf-v5-global--BackgroundColor--light-100: #ffffff;
 
   /* Text colors */
   --pf-v5-global--Color--100: #151515;
   --pf-v5-global--Color--200: #6a6e73;
+  --pf-v5-global--Color--light-100: #151515;
+  --pf-v5-global--Color--light-200: #6a6e73;
 
   /* Card styling */
   --pf-v5-c-card--BackgroundColor: #ffffff;
+  --pf-v5-c-card--BorderColor: #d2d2d2;
   --pf-v5-c-card--BoxShadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   --pf-v5-c-card--hover--BoxShadow: 0 4px 8px 0 rgba(0, 0, 0, 0.15);
 
   /* Table styling */
+  --pf-v5-c-table--BackgroundColor: #ffffff;
   --pf-v5-c-table--BorderColor: #d2d2d2;
+  --pf-v5-c-table--thead--BackgroundColor: #f0f0f0;
   --pf-v5-c-table--tr--hover--BackgroundColor: #f0f0f0;
+  --pf-v5-c-table--Color: #151515;
 
   /* Chat colors */
   --kagenti-chat-messages-bg: #fafafa;
@@ -68,6 +75,7 @@
   /* Form and input colors */
   --pf-v5-c-form-control--BackgroundColor: #ffffff;
   --pf-v5-c-form-control--BorderColor: #d2d2d2;
+  --pf-v5-c-form-control--Color: #151515;
 
   /* Tag colors */
   --kagenti-tag-bg: #f0f0f0;
@@ -79,6 +87,27 @@
 
   /* Border colors */
   --kagenti-border-color: #d2d2d2;
+
+  /* Title colors */
+  --pf-v5-c-title--Color: #151515;
+
+  /* Button colors */
+  --pf-v5-c-button--m-secondary--BackgroundColor: #ffffff;
+  --pf-v5-c-button--m-secondary--Color: #151515;
+  --pf-v5-c-button--m-secondary--BorderColor: #d2d2d2;
+
+  /* Toolbar colors */
+  --pf-v5-c-toolbar--BackgroundColor: transparent;
+
+  /* Empty state */
+  --pf-v5-c-empty-state--Color: #151515;
+
+  /* Breadcrumb */
+  --pf-v5-c-breadcrumb__link--Color: #0066cc;
+
+  /* Clipboard copy */
+  --pf-v5-c-clipboard-copy--BackgroundColor: #ffffff;
+  --pf-v5-c-clipboard-copy--BorderColor: #d2d2d2;
 }
 
 /* Dark theme */
@@ -87,19 +116,30 @@
   --pf-v5-global--BackgroundColor--100: #151515;
   --pf-v5-global--BackgroundColor--200: #212427;
   --pf-v5-global--BackgroundColor--150: #1a1d21;
+  --pf-v5-global--BackgroundColor--light-100: #212427;
 
   /* Text colors */
   --pf-v5-global--Color--100: #ffffff;
   --pf-v5-global--Color--200: #c9c9c9;
+  --pf-v5-global--Color--light-100: #ffffff;
+  --pf-v5-global--Color--light-200: #c9c9c9;
+
+  /* Link colors for dark mode */
+  --pf-v5-global--link--Color: #73bcf7;
+  --pf-v5-global--link--Color--hover: #2b9af3;
 
   /* Card styling */
   --pf-v5-c-card--BackgroundColor: #212427;
+  --pf-v5-c-card--BorderColor: #3c3f42;
   --pf-v5-c-card--BoxShadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --pf-v5-c-card--hover--BoxShadow: 0 4px 8px 0 rgba(0, 0, 0, 0.4);
 
   /* Table styling */
+  --pf-v5-c-table--BackgroundColor: #212427;
   --pf-v5-c-table--BorderColor: #3c3f42;
+  --pf-v5-c-table--thead--BackgroundColor: #1a1d21;
   --pf-v5-c-table--tr--hover--BackgroundColor: #3c3f42;
+  --pf-v5-c-table--Color: #ffffff;
 
   /* Chat colors */
   --kagenti-chat-messages-bg: #1a1d21;
@@ -111,6 +151,7 @@
   /* Form and input colors */
   --pf-v5-c-form-control--BackgroundColor: #212427;
   --pf-v5-c-form-control--BorderColor: #3c3f42;
+  --pf-v5-c-form-control--Color: #ffffff;
 
   /* Tag colors */
   --kagenti-tag-bg: #3c3f42;
@@ -122,6 +163,27 @@
 
   /* Border colors */
   --kagenti-border-color: #3c3f42;
+
+  /* Title colors */
+  --pf-v5-c-title--Color: #ffffff;
+
+  /* Button colors */
+  --pf-v5-c-button--m-secondary--BackgroundColor: #212427;
+  --pf-v5-c-button--m-secondary--Color: #ffffff;
+  --pf-v5-c-button--m-secondary--BorderColor: #3c3f42;
+
+  /* Toolbar colors */
+  --pf-v5-c-toolbar--BackgroundColor: transparent;
+
+  /* Empty state */
+  --pf-v5-c-empty-state--Color: #ffffff;
+
+  /* Breadcrumb */
+  --pf-v5-c-breadcrumb__link--Color: #73bcf7;
+
+  /* Clipboard copy */
+  --pf-v5-c-clipboard-copy--BackgroundColor: #212427;
+  --pf-v5-c-clipboard-copy--BorderColor: #3c3f42;
 }
 
 /* Global styles */
@@ -149,43 +211,134 @@ body {
 /* Page main section */
 .pf-v5-c-page__main {
   background-color: var(--pf-v5-global--BackgroundColor--100);
+  color: var(--pf-v5-global--Color--100);
 }
 
-/* Page section styling */
+/* Page section styling - Override variant="light" in dark mode */
 .pf-v5-c-page__main-section {
   padding: var(--kagenti-page-padding);
   background-color: var(--pf-v5-global--BackgroundColor--100);
+  color: var(--pf-v5-global--Color--100);
+}
+
+/* Force page sections to use theme colors even with variant="light" */
+[data-theme="dark"] .pf-v5-c-page__main-section.pf-m-light {
+  background-color: var(--pf-v5-global--BackgroundColor--100) !important;
+  color: var(--pf-v5-global--Color--100);
+}
+
+/* Title styling */
+.pf-v5-c-title {
+  color: var(--pf-v5-c-title--Color);
 }
 
 /* Card styling - OpenShift style */
 .pf-v5-c-card {
   --pf-v5-c-card--BoxShadow: var(--pf-v5-c-card--BoxShadow);
   background-color: var(--pf-v5-c-card--BackgroundColor);
+  border: 1px solid var(--pf-v5-c-card--BorderColor);
   border-radius: 3px;
+  color: var(--pf-v5-global--Color--100);
   transition: background-color var(--theme-transition-duration),
-    box-shadow var(--theme-transition-duration);
+    box-shadow var(--theme-transition-duration),
+    border-color var(--theme-transition-duration);
 }
 
 .pf-v5-c-card:hover {
   --pf-v5-c-card--BoxShadow: var(--pf-v5-c-card--hover--BoxShadow);
 }
 
+.pf-v5-c-card__title {
+  color: var(--pf-v5-global--Color--100);
+}
+
+.pf-v5-c-card__body {
+  color: var(--pf-v5-global--Color--100);
+}
+
 /* Table styling */
 .pf-v5-c-table {
   --pf-v5-c-table--BorderColor: var(--pf-v5-c-table--BorderColor);
+  background-color: var(--pf-v5-c-table--BackgroundColor);
+  color: var(--pf-v5-c-table--Color);
+}
+
+.pf-v5-c-table thead {
+  background-color: var(--pf-v5-c-table--thead--BackgroundColor);
+}
+
+.pf-v5-c-table th {
+  color: var(--pf-v5-c-table--Color);
+  border-bottom: 1px solid var(--pf-v5-c-table--BorderColor);
+}
+
+.pf-v5-c-table td {
+  color: var(--pf-v5-c-table--Color);
+  border-bottom: 1px solid var(--pf-v5-c-table--BorderColor);
+}
+
+.pf-v5-c-table tbody tr {
+  background-color: var(--pf-v5-c-table--BackgroundColor);
 }
 
 .pf-v5-c-table tbody tr:hover {
   background-color: var(--pf-v5-c-table--tr--hover--BackgroundColor);
 }
 
-/* Description list styling for dark theme */
+/* Description list styling */
 .pf-v5-c-description-list__term {
   color: var(--pf-v5-global--Color--200);
 }
 
 .pf-v5-c-description-list__description {
   color: var(--pf-v5-global--Color--100);
+}
+
+/* Button link variant */
+.pf-v5-c-button.pf-m-link {
+  color: var(--pf-v5-global--link--Color);
+}
+
+.pf-v5-c-button.pf-m-link:hover {
+  color: var(--pf-v5-global--link--Color--hover);
+}
+
+/* Button secondary variant */
+.pf-v5-c-button.pf-m-secondary {
+  background-color: var(--pf-v5-c-button--m-secondary--BackgroundColor);
+  color: var(--pf-v5-c-button--m-secondary--Color);
+  border-color: var(--pf-v5-c-button--m-secondary--BorderColor);
+}
+
+/* Toolbar styling */
+.pf-v5-c-toolbar {
+  padding: 0;
+  margin-bottom: 16px;
+  background-color: var(--pf-v5-c-toolbar--BackgroundColor);
+  color: var(--pf-v5-global--Color--100);
+}
+
+.pf-v5-c-toolbar__content {
+  background-color: transparent;
+}
+
+/* Empty state styling */
+.pf-v5-c-empty-state {
+  padding: 48px;
+  background-color: var(--pf-v5-global--BackgroundColor--100);
+  color: var(--pf-v5-c-empty-state--Color);
+}
+
+.pf-v5-c-empty-state__title-text {
+  color: var(--pf-v5-c-empty-state--Color);
+}
+
+.pf-v5-c-empty-state__body {
+  color: var(--pf-v5-global--Color--200);
+}
+
+.pf-v5-c-empty-state__icon {
+  color: var(--pf-v5-global--Color--200);
 }
 
 /* Status badge styling */
@@ -246,12 +399,6 @@ body {
   overflow: auto;
 }
 
-/* Empty state styling */
-.pf-v5-c-empty-state {
-  padding: 48px;
-  background-color: var(--pf-v5-global--BackgroundColor--100);
-}
-
 /* Form styling */
 .pf-v5-c-form__group {
   margin-bottom: 16px;
@@ -261,6 +408,11 @@ body {
 .pf-v5-c-form-control {
   background-color: var(--pf-v5-c-form-control--BackgroundColor);
   border-color: var(--pf-v5-c-form-control--BorderColor);
+  color: var(--pf-v5-c-form-control--Color);
+}
+
+/* Form label styling */
+.pf-v5-c-form__label-text {
   color: var(--pf-v5-global--Color--100);
 }
 
@@ -268,10 +420,16 @@ body {
 .pf-v5-c-code-block {
   max-height: 400px;
   overflow: auto;
+  background-color: var(--kagenti-code-bg);
+  border: 1px solid var(--kagenti-border-color);
 }
 
 pre {
   background-color: var(--kagenti-code-bg);
+  color: var(--kagenti-code-color);
+}
+
+code {
   color: var(--kagenti-code-color);
 }
 
@@ -319,12 +477,6 @@ pre {
   background-color: var(--kagenti-chat-input-bg);
 }
 
-/* Toolbar styling */
-.pf-v5-c-toolbar {
-  padding: 0;
-  margin-bottom: 16px;
-}
-
 /* Label/Tag styling */
 .kagenti-tag {
   display: inline-flex;
@@ -346,9 +498,60 @@ pre {
   min-height: 200px;
 }
 
+/* Breadcrumb styling */
+.pf-v5-c-breadcrumb__link {
+  color: var(--pf-v5-c-breadcrumb__link--Color);
+}
+
+.pf-v5-c-breadcrumb__item-divider,
+.pf-v5-c-breadcrumb__item {
+  color: var(--pf-v5-global--Color--100);
+}
+
+/* Clipboard copy styling */
+.pf-v5-c-clipboard-copy {
+  background-color: var(--pf-v5-c-clipboard-copy--BackgroundColor);
+  border-color: var(--pf-v5-c-clipboard-copy--BorderColor);
+}
+
+.pf-v5-c-clipboard-copy__text {
+  color: var(--pf-v5-global--Color--100);
+}
+
+/* Tabs styling */
+.pf-v5-c-tabs__link {
+  color: var(--pf-v5-global--Color--100);
+}
+
+.pf-v5-c-tabs__link::after {
+  background-color: var(--kagenti-border-color);
+}
+
+.pf-v5-c-tabs__item.pf-m-current .pf-v5-c-tabs__link {
+  color: var(--pf-v5-global--link--Color);
+}
+
+/* Expandable section styling */
+.pf-v5-c-expandable-section__toggle {
+  color: var(--pf-v5-global--Color--100);
+}
+
+.pf-v5-c-expandable-section__toggle-text {
+  color: var(--pf-v5-global--Color--100);
+}
+
 /* Alert styling in dark mode */
 [data-theme="dark"] .pf-v5-c-alert {
   --pf-v5-c-alert--BackgroundColor: #212427;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v5-c-alert__title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v5-c-alert__description {
+  color: #c9c9c9;
 }
 
 /* Modal styling in dark mode */
@@ -357,9 +560,18 @@ pre {
   color: #ffffff;
 }
 
+[data-theme="dark"] .pf-v5-c-modal-box__title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v5-c-modal-box__body {
+  color: #ffffff;
+}
+
 /* Dropdown menu styling in dark mode */
 [data-theme="dark"] .pf-v5-c-menu {
   background-color: #212427;
+  border-color: #3c3f42;
   --pf-v5-c-menu__list-item--hover--BackgroundColor: #3c3f42;
 }
 
@@ -367,18 +579,57 @@ pre {
   color: #ffffff;
 }
 
-/* Tabs styling in dark mode */
-[data-theme="dark"] .pf-v5-c-tabs__link {
+[data-theme="dark"] .pf-v5-c-menu__item-description {
+  color: #c9c9c9;
+}
+
+/* Select/Dropdown styling in dark mode */
+[data-theme="dark"] .pf-v5-c-menu-toggle {
+  background-color: #212427;
+  border-color: #3c3f42;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v5-c-menu-toggle__text {
+  color: #ffffff;
+}
+
+/* Grid styling */
+.pf-v5-l-grid {
   color: var(--pf-v5-global--Color--100);
 }
 
-[data-theme="dark"] .pf-v5-c-tabs__link::after {
-  background-color: var(--kagenti-border-color);
+/* Split styling */
+.pf-v5-l-split {
+  color: var(--pf-v5-global--Color--100);
 }
 
-/* Expandable section styling */
-[data-theme="dark"] .pf-v5-c-expandable-section__toggle {
+/* Flex styling */
+.pf-v5-l-flex {
   color: var(--pf-v5-global--Color--100);
+}
+
+/* Text input styling */
+[data-theme="dark"] .pf-v5-c-text-input-group {
+  background-color: #212427;
+  border-color: #3c3f42;
+}
+
+[data-theme="dark"] .pf-v5-c-text-input-group__text-input {
+  background-color: #212427;
+  color: #ffffff;
+}
+
+/* Select styling */
+[data-theme="dark"] .pf-v5-c-select__toggle {
+  background-color: #212427;
+  border-color: #3c3f42;
+  color: #ffffff;
+}
+
+/* Spinner color */
+[data-theme="dark"] .pf-v5-c-spinner {
+  --pf-v5-c-spinner--Color: #73bcf7;
 }
 
 /* Responsive adjustments */
