@@ -310,6 +310,15 @@ body {
   border-color: var(--pf-v5-c-button--m-secondary--BorderColor);
 }
 
+/* Button primary variant - Always light text on blue background */
+.pf-v5-c-button.pf-m-primary {
+  color: #ffffff !important;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  color: #ffffff !important;
+}
+
 /* Toolbar styling */
 .pf-v5-c-toolbar {
   padding: 0;
