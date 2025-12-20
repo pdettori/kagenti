@@ -367,9 +367,50 @@ body {
   color: #151515;
 }
 
+/* Sidebar and Navigation - Always dark with light text */
+.pf-v5-c-page__sidebar {
+  background-color: #212427 !important;
+}
+
+.pf-v5-c-nav {
+  background-color: #212427 !important;
+}
+
+.pf-v5-c-nav__link {
+  color: #ffffff !important;
+}
+
+.pf-v5-c-nav__link:hover {
+  color: #ffffff !important;
+  background-color: #3c3f42 !important;
+}
+
+.pf-v5-c-nav__item.pf-m-current > .pf-v5-c-nav__link {
+  color: #ffffff !important;
+  background-color: #0066cc !important;
+}
+
+/* Nav expandable toggle (like "Workloads") */
+.pf-v5-c-nav__link.pf-m-expandable {
+  color: #ffffff !important;
+}
+
+.pf-v5-c-nav__toggle {
+  color: #ffffff !important;
+}
+
+.pf-v5-c-nav__toggle-icon {
+  color: #ffffff !important;
+}
+
+/* Subnav items */
+.pf-v5-c-nav__subnav .pf-v5-c-nav__link {
+  color: #ffffff !important;
+}
+
 /* Navigation section titles */
 .pf-v5-c-nav__section-title {
-  color: #8a8d90;
+  color: #8a8d90 !important;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
