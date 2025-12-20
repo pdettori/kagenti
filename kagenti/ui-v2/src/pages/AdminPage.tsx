@@ -32,7 +32,7 @@ import {
 } from '@patternfly/react-icons';
 import { useQuery } from '@tanstack/react-query';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts';
 import { API_CONFIG } from '@/services/api';
 
 // Auth status API service
