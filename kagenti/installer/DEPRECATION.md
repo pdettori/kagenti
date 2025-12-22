@@ -1,5 +1,4 @@
-DEPRECATION NOTICE: `kagenti-installer`
-=====================================
+## DEPRECATION NOTICE: `kagenti-installer`
 
 The legacy `kagenti-installer` (the uv-based installer located under `kagenti/installer`) is deprecated.
 
