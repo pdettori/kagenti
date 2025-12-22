@@ -23,6 +23,9 @@ from ..utils import console, get_latest_tagged_version, run_command
 
 
 def install(**kwargs):
+    # pin image tag as this installer only works with v0.1.x UI
+    latest_supported_ui_image_tag = "v0.1.3"
+
     """Installs the Kagenti UI from its deployment YAML."""
     run_command(
         [
@@ -74,10 +77,7 @@ def install(**kwargs):
                 # In case there are multiple containers, only update the expected UI one
                 if container["name"] == "kagenti-ui-container":
                     image_name = container["image"].split(":")[0]
-                    updated_tag = get_latest_tagged_version(
-                        github_repo=config.UI_GIT_REPO,
-                        fallback_version=config.UI_FALLBACK_VERSION,
-                    )
+                    updated_tag = latest_supported_ui_image_tag
                     console.log(
                         f"  Using image tag {updated_tag} for Kagenti UI deployment"
                     )

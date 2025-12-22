@@ -76,22 +76,34 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 
 ### Install
 
+The Ansible-based Helm installer is now the recommended and default installer for Kagenti. The legacy `kagenti-installer` (the uv-based Kind installer) is deprecated and will be removed in a future release. See [kagenti/installer/DEPRECATION.md](kagenti/installer/DEPRECATION.md) for migration notes and timelines.
+
+Quick Install (recommended — Ansible-based):
+
 ```bash
 # Clone the repository
 git clone https://github.com/kagenti/kagenti.git
 cd kagenti
 
-# Configure environment
+# Copy and configure secrets
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+
+# Run the Ansible-based installer (default)
+deployments/ansible/run-install.sh --env dev
+```
+
+For local Kind development the legacy `kagenti-installer` remains available but is deprecated:
+
+```bash
+# Configure environment for legacy installer (deprecated)
 cp kagenti/installer/app/.env_template kagenti/installer/app/.env
 # Edit .env with your GITHUB_USER, GITHUB_TOKEN, and optionally OPENAI_API_KEY
-
-# Run the installer
 cd kagenti/installer
 uv run kagenti-installer
 ```
 
-The installer creates a Kind cluster and deploys all platform components. Use `uv run kagenti-installer --help` for options.
-For more detailed installation instructions including OpenShift refer to [Installation Guide](./docs/install.md).
+Use `deployments/ansible/run-install.sh --help` (recommended) or `uv run kagenti-installer --help` (deprecated) for options. For more detailed installation instructions including OpenShift refer to [Installation Guide](./docs/install.md).
 
 ### Access the UI
 

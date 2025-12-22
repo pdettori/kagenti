@@ -23,7 +23,7 @@ spec:
       serviceAccountName: kagenti-ui-service-account
       initContainers:
       - name: wait-for-oauth-secret
-        image: bitnami/kubectl:latest
+        image: quay.io/kubestellar/kubectl:1.30.14
         command:
         - /bin/sh
         - -c
@@ -147,10 +147,10 @@ spec:
             - containerPort: 8501
           resources:
             limits:
-              cpu: 500m
+              cpu: 250m
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 50m
               memory: 256Mi
       volumes:
         - name: cache

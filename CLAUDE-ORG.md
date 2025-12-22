@@ -56,8 +56,15 @@ kagenti/
 
 **Commands**:
 ```bash
-# Run installer
+# Recommended: Run the Ansible-based installer (default)
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+
+# Legacy (deprecated):
 cd kagenti/installer
+# Deprecated: uv-based installer
 uv run kagenti-installer
 
 # Run UI locally
@@ -320,8 +327,15 @@ cd kagenti
 cp kagenti/installer/app/.env_template kagenti/installer/app/.env
 # Edit .env with GITHUB_USER, GITHUB_TOKEN
 
-# Install platform
+# Install platform (recommended: Ansible-based)
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+
+# Legacy (deprecated):
 cd kagenti/installer
+# Deprecated: uv-based installer
 uv run kagenti-installer
 ```
 

@@ -69,7 +69,7 @@ kagenti/
 ### 2. Installer (`kagenti/installer/`)
 - **Technology**: Python CLI with Typer
 - **Purpose**: Deploy Kagenti platform to Kind/Kubernetes
-- **Entry Point**: `uv run kagenti-installer`
+- **Entry Point (deprecated)**: `uv run kagenti-installer` — use the Ansible-based installer `deployments/ansible/run-install.sh` (recommended)
 - **Key Components** (in `app/components/`):
   - `istio.py` - Istio Ambient mesh
   - `keycloak.py` - Identity management
@@ -125,11 +125,20 @@ uv run streamlit run Home.py
 # Access at http://localhost:8501
 ```
 
-### Running the Installer
+```bash
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+```
+
+Legacy (deprecated):
+
 ```bash
 cd kagenti/installer
 cp app/.env_template app/.env
 # Edit .env with GITHUB_USER, GITHUB_TOKEN
+# Deprecated: legacy uv-based installer
 uv run kagenti-installer
 uv run kagenti-installer --help  # View options
 ```

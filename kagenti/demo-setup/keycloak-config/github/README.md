@@ -32,11 +32,21 @@ The script assumes the existence of:
 
 ### Instructions
 
-Run the Kagenti installer
+Recommended: run the Ansible-based installer
+
+```sh
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+```
+
+Legacy (deprecated):
 
 ```sh
 cd kagenti/installer
 uv run kagenti-installer
+```
+The legacy uv-based `kagenti-installer` is deprecated.
 ```
 
 Set up Python environment
