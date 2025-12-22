@@ -3,7 +3,7 @@ DEPRECATION NOTICE: `kagenti-installer`
 
 The legacy `kagenti-installer` (the uv-based installer located under `kagenti/installer`) is deprecated.
 
-Why
+Why is this being deprecated?
 - The Ansible-based Helm installer (`deployments/ansible/run-install.sh`) provides a more flexible, reproducible, and CI-friendly installation path for both local (Kind) and OpenShift environments.
 
 What this means
