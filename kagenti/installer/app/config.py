@@ -17,11 +17,17 @@ from enum import Enum
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
 # --- Core Paths ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # Adjust if directory structure changes
 ENV_FILE = SCRIPT_DIR / ".env"
 RESOURCES_DIR = SCRIPT_DIR / "resources"
+
+# Load .env file early so environment variables are available for configuration
+load_dotenv(dotenv_path=ENV_FILE, override=True)
+
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localtest.me")
 
 # --- Cluster & Operator Configuration ---
@@ -38,16 +44,16 @@ class ContainerEngine(str, Enum):
     DOCKER = "docker"
 
 
-CONTAINER_ENGINE = "docker"
+CONTAINER_ENGINE = os.getenv("CONTAINER_ENGINE", "docker")
 
 # --- Dependency Version Requirements ---
 # Defines the minimum (inclusive) and maximum (exclusive) required versions for tools.
 REQ_VERSIONS = {
     "kind": {"min": "0.20.0", "max": "0.99.0"},
     "docker": {"min": "5.0.0", "max": "29.0.0"},
-    "podman": {"min": "5.0.0", "max": "5.6.0"},
+    "podman": {"min": "5.0.0", "max": "99.0.0"},
     "kubectl": {"min": "1.29.0", "max": "1.35.0"},
-    "helm": {"min": "3.14.0", "max": "3.20.0"},
+    "helm": {"min": "3.14.0", "max": "4.99.0"},
     "git": {"min": "2.30.0", "max": "3.0.0"},
 }
 
