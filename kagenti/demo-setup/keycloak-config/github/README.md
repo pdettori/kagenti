@@ -76,8 +76,9 @@ The legacy uv-based `kagenti-installer` is deprecated.
 
 ```sh
 export KEYCLOAK_ADMIN_USERNAME=admin
+```
 
-Set up Python environment
+### Set up Python environment
 
 ```sh
 cd kagenti/demo-setup/keycloak-config/github
