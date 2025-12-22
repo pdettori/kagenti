@@ -47,7 +47,6 @@ cd kagenti/installer
 uv run kagenti-installer
 ```
 The legacy uv-based `kagenti-installer` is deprecated.
-```
 
 Set up Python environment
 
