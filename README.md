@@ -76,7 +76,7 @@ Kagenti provides a set of components and assets that make it easier to manage AI
 
 ### Install
 
-The Ansible-based Helm installer is now the recommended and default installer for Kagenti. The legacy `kagenti-installer` (the uv-based Kind installer) is deprecated and will be removed in a future release. See [kagenti/installer/DEPRECATION.md](kagenti/installer/DEPRECATION.md) for migration notes and timelines.
+The Ansible-based Helm installer is now the recommended and default installer for Kagenti. The legacy `kagenti-installer` (the uv-based Kind installer) is deprecated and will be removed in a future release. See [installer/DEPRECATION.md](installer/DEPRECATION.md) for migration notes and timelines.
 
 Quick Install (recommended — Ansible-based):
 
