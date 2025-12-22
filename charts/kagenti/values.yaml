@@ -56,6 +56,14 @@ ui:
   tag: v0.2.0-alpha.2
   hostname: kagenti-ui.localtest.me
   url: http://kagenti-ui.localtest.me:8080
+  # Resource defaults for the UI container (can be overridden)
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -112,7 +120,11 @@ kagenti-operator-chart:
       # - "--enable-client-registration=false"
       resources:
         limits:
+          cpu: 300m
           memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
 
 # ------------------------------------------------------------------
 #  Kagenti Operator Configuration
@@ -129,7 +141,11 @@ kagenti-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       resources:
         limits:
+          cpu: 300m
           memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration

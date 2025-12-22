@@ -155,12 +155,16 @@ spec:
           ports:
             - containerPort: 8501
           resources:
+            {{- if .Values.ui.resources }}
+            {{- toYaml .Values.ui.resources | nindent 12 }}
+            {{- else }}
             limits:
-              cpu: 250m
-              memory: 1Gi
+              cpu: 300m
+              memory: 512Mi
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 256Mi
+            {{- end }}
       volumes:
         - name: cache
           emptyDir: {}
