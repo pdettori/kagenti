@@ -82,7 +82,7 @@ Legacy (deprecated):
 
 ```bash
 cd kagenti/installer
-# Deprecated: uv-based installer
+# Legacy (deprecated): uv-based installer
 uv run kagenti-installer
 ```
 
