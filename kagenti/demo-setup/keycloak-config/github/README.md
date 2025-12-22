@@ -35,12 +35,12 @@ This script performs the following steps:
     `github-full-access` client scopes as optional scopes to
     the `git-issue-agent` client
 14. Create the `github-partial-access-user` user with
-    password "password"
+    password `password`
 15. Assign the `github-partial-access` and
     `github-agent-access` realm roles to
     `github-partial-access-user`
 16. Create the `github-full-access-user` user with
-    password "password"
+    password `password`
 17. Assign the `github-partial-access`,
     `github-full-access`, and `github-agent-access` realm
     roles to `github-full-access-user`
