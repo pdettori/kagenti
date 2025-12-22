@@ -25,14 +25,24 @@ The script assumes there to be:
 * `slack-partial-access` realm role
 * `slack-full-access` realm role
 
-These components should be installed by the Kagenti installer.
+These components should be installed by the Kagenti Ansible installer (`deployments/ansible/run-install.sh`). The legacy uv-based `kagenti-installer` is deprecated.
 
 ### Instructions
 
-Run the Kagenti installer
+Recommended: run the Ansible-based installer
+
+```sh
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+```
+
+Legacy (deprecated):
 
 ```sh
 cd kagenti/installer
+# Deprecated: uv-based installer
 uv run kagenti-installer
 ```
 

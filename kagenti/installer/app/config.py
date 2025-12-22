@@ -67,8 +67,9 @@ PRELOADABLE_IMAGES = [
     "otel/opentelemetry-collector-contrib:0.122.1",
     "arizephoenix/phoenix:version-8.32.1",
     "prom/prometheus:v3.1.0",
-    "docker.io/nginxinc/nginx-unprivileged:1.29.0-alpine",
+    "docker.io/nginxinc/nginx-unprivileged:1.29.2-alpine",
     "docker.io/bitnamilegacy/postgresql:12",
+    "docker.io/nginx/nginx-prometheus-exporter:1.5.1",
 ]
 
 

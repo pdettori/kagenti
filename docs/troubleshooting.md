@@ -2,11 +2,11 @@
 
 ## Issues during Kagenti installation
 
-### kagenti-installer reports "exceeded its progress deadline"
+### kagenti-installer (deprecated) reports "exceeded its progress deadline"
 
 Sometimes it can take a long time to pull container images.  Try re-running the installer.  Use `kubectl get deployments --all-namespaces` to identify failing deployments.
 
-### kagenti-installer complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
+### kagenti-installer (deprecated) complains "Please start the Docker daemon." when using Colima instead of Docker Desktop
 
 ```shell
 export DOCKER_HOST="unix://$HOME/.colima/docker.sock"
@@ -94,11 +94,22 @@ kubectl rollout restart -n kagenti-system deployment http-istio
 ### Need to edit ENV values
 
 If you need to update the values in `.env` file, e.g., `GITHUB_TOKEN`
-delete the secret in all your auto-created namespaces, then re-run the install
+delete the secret in all your auto-created namespaces, then re-run the installer.
+
+Recommended (Ansible-based):
 
 ```shell
 kubectl get secret --all-namespaces
 kubectl -n my-namespace delete github-token-secret
+deployments/ansible/run-install.sh --env dev
+```
+
+Legacy (deprecated):
+
+```shell
+kubectl get secret --all-namespaces
+kubectl -n my-namespace delete github-token-secret
+# Deprecated: legacy uv-based installer
 uv run kagenti-installer
 ```
 
@@ -152,6 +163,8 @@ kubectl apply -n keycloak -f app/resources/keycloak.yaml
 kubectl rollout restart daemonset -n istio-system  ztunnel
 kubectl rollout restart -n kagenti-system deployment http-istio
 uv run kagenti-installer --skip-install registry --skip-install addons --skip-install gateway --skip-install spire --skip-install mcp_gateway --skip-install metrics_server --skip-install inspector
+# Note: the command above is for the legacy uv-based installer (deprecated).
+# Prefer the Ansible installer: `deployments/ansible/run-install.sh --env dev` or apply manual fixes as needed.
 kubectl rollout restart -n kagenti-system deployment kagenti-ui
 ```
 

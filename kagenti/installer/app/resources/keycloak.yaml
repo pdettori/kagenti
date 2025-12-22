@@ -127,10 +127,10 @@ spec:
             failureThreshold: 3
           resources:
             limits:
-              cpu: 2000m
+              cpu: 1000m
               memory: 3000Mi
             requests:
-              cpu: 500m
+              cpu: 200m
               memory: 1700Mi
 ---
 # This is deployment of PostgreSQL with an ephemeral storage for testing: Once the Pod stops, the data is lost.
@@ -166,10 +166,10 @@ spec:
           resources:
             requests:
               memory: "512Mi"
-              cpu: "250m"
+              cpu: "100m"
             limits:
               memory: "1Gi"
-              cpu: "500m"
+              cpu: "250m"
           ports:
             - name: postgres
               containerPort: 5432

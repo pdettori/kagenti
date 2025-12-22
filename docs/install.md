@@ -2,6 +2,8 @@
 
 This guide covers installation on both local Kind clusters and OpenShift environments.
 
+**Important:** The Ansible-based Helm installer (deployments/ansible/run-install.sh) is the recommended and default installer for Kagenti. The legacy `kagenti-installer` (uv-based Kind installer) is deprecated and will be removed in a future release. See [kagenti/installer/DEPRECATION.md](../kagenti/installer/DEPRECATION.md) for migration notes and timelines.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -65,26 +67,37 @@ AGENT_NAMESPACES=<Optional: comma-separated namespaces, e.g., team1,team2>
 SLACK_BOT_TOKEN=<Optional: for Slack tool integration>
 ```
 
-Run the installer:
+Run the installer (recommended: Ansible-based):
+
+```bash
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+deployments/ansible/run-install.sh --env dev
+```
+
+The Ansible-based installer will create a Kind cluster (when appropriate) and deploy platform components.
+
+Legacy (deprecated):
 
 ```bash
 cd kagenti/installer
+# Legacy (deprecated): uv-based installer
 uv run kagenti-installer
 ```
 
-The installer creates a Kind cluster named `agent-platform` and deploys all components.
-
-If the installer fails to complete its execution due to an `exceeded its progress deadline` issue, 
-run `docker login -u <username>` followed by running the installer again with the options `--skip-install` and `--preload-images`.
-Including one `--skip-install` for each installed component.  For example, 
+If the legacy installer fails due to an `exceeded its progress deadline` issue, you can try logging in and re-running the legacy installer (deprecated):
 
 ```shell
+docker login -u <username>
 uv run kagenti-installer --preload-images --skip-install registry --skip-install tekton
 ```
+Prefer the Ansible installer for repeatable runs; see `deployments/ansible/README.md` for troubleshooting and image preloading guidance.
 
 ### Installation Options
 
 ```bash
+# Using the legacy uv-based installer (deprecated):
 # Silent mode (non-interactive)
 uv run kagenti-installer --silent
 
@@ -96,6 +109,8 @@ uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-ins
 
 # Show all options
 uv run kagenti-installer --help
+
+# Recommended: use the Ansible installer and its options. See deployments/ansible/README.md
 ```
 
 ### Using an Existing Kubernetes Cluster
@@ -103,6 +118,7 @@ uv run kagenti-installer --help
 If you have an existing cluster:
 
 ```bash
+# Legacy (deprecated):
 uv run kagenti-installer --use-existing-cluster
 ```
 
@@ -119,6 +135,7 @@ Ensure `KUBECONFIG` points to a cluster with admin privileges.
 To skip installation of the specific component e.g. keycloak and SPIRE, issue:
 
 ```shell
+# Legacy (deprecated):
 uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
 ```
 
