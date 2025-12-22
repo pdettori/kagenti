@@ -9,6 +9,9 @@ import { AgentCatalogPage } from './pages/AgentCatalogPage';
 import { AgentDetailPage } from './pages/AgentDetailPage';
 import { ToolCatalogPage } from './pages/ToolCatalogPage';
 import { ToolDetailPage } from './pages/ToolDetailPage';
+import { MCPGatewayPage } from './pages/MCPGatewayPage';
+import { AIGatewayPage } from './pages/AIGatewayPage';
+import { GatewayPoliciesPage } from './pages/GatewayPoliciesPage';
 import { ObservabilityPage } from './pages/ObservabilityPage';
 import { ImportAgentPage } from './pages/ImportAgentPage';
 import { ImportToolPage } from './pages/ImportToolPage';
@@ -26,6 +29,9 @@ function App() {
         <Route path="/tools" element={<ToolCatalogPage />} />
         <Route path="/tools/import" element={<ImportToolPage />} />
         <Route path="/tools/:namespace/:name" element={<ToolDetailPage />} />
+        <Route path="/mcp-gateway" element={<MCPGatewayPage />} />
+        <Route path="/ai-gateway" element={<AIGatewayPage />} />
+        <Route path="/gateway-policies" element={<GatewayPoliciesPage />} />
         <Route path="/observability" element={<ObservabilityPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />

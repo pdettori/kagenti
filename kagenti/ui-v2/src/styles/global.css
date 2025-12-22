@@ -417,7 +417,7 @@ body {
   color: #ffffff !important;
 }
 
-/* Navigation section titles */
+/* Navigation section titles (NavGroup headers) */
 .pf-v5-c-nav__section-title {
   color: #8a8d90 !important;
   font-size: 11px;
@@ -425,6 +425,22 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 16px 16px 8px;
+  margin-top: 8px;
+}
+
+/* First NavGroup should not have top margin */
+.pf-v5-c-nav__section:first-child .pf-v5-c-nav__section-title {
+  margin-top: 0;
+}
+
+/* NavGroup container */
+.pf-v5-c-nav__section {
+  background-color: #212427 !important;
+}
+
+/* NavList within NavGroup */
+.pf-v5-c-nav__section .pf-v5-c-nav__list {
+  background-color: #212427 !important;
 }
 
 /* Masthead brand */
@@ -680,6 +696,26 @@ code {
 /* Spinner color */
 [data-theme="dark"] .pf-v5-c-spinner {
   --pf-v5-c-spinner--Color: #73bcf7;
+}
+
+/* Grey Label styling in dark mode - ensure visibility */
+/* PatternFly uses both .pf-m-grey and .pf-m-gray class names */
+[data-theme="dark"] .pf-v5-c-label.pf-m-grey,
+[data-theme="dark"] .pf-v5-c-label.pf-m-gray {
+  --pf-v5-c-label--BackgroundColor: #3c3f42 !important;
+  --pf-v5-c-label--Color: #c9c9c9 !important;
+  background-color: #3c3f42 !important;
+  color: #c9c9c9 !important;
+}
+
+[data-theme="dark"] .pf-v5-c-label.pf-m-grey .pf-v5-c-label__content,
+[data-theme="dark"] .pf-v5-c-label.pf-m-gray .pf-v5-c-label__content {
+  color: #c9c9c9 !important;
+}
+
+[data-theme="dark"] .pf-v5-c-label.pf-m-grey .pf-v5-c-label__text,
+[data-theme="dark"] .pf-v5-c-label.pf-m-gray .pf-v5-c-label__text {
+  color: #c9c9c9 !important;
 }
 
 /* Responsive adjustments */

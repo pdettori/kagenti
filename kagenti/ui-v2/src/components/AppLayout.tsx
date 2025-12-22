@@ -16,7 +16,7 @@ import {
   Nav,
   NavList,
   NavItem,
-  NavExpandable,
+  NavGroup,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -299,48 +299,71 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             >
               Home
             </NavItem>
-            <NavExpandable
-              title="Workloads"
-              groupId="workloads"
-              isActive={
-                isNavItemActive('/agents') || isNavItemActive('/tools')
-              }
-              isExpanded={
-                isNavItemActive('/agents') || isNavItemActive('/tools')
-              }
-            >
+          </NavList>
+
+          <NavGroup title="Agentic Workloads">
+            <NavList>
               <NavItem
-                groupId="workloads"
                 itemId="agents"
                 isActive={isNavItemActive('/agents')}
                 onClick={() => handleNavSelect('/agents')}
               >
-                Agent Catalog
+                Agents
               </NavItem>
               <NavItem
-                groupId="workloads"
                 itemId="tools"
                 isActive={isNavItemActive('/tools')}
                 onClick={() => handleNavSelect('/tools')}
               >
-                Tool Catalog
+                Tools
               </NavItem>
-            </NavExpandable>
-            <NavItem
-              itemId="observability"
-              isActive={isNavItemActive('/observability')}
-              onClick={() => handleNavSelect('/observability')}
-            >
-              Observability
-            </NavItem>
-            <NavItem
-              itemId="admin"
-              isActive={isNavItemActive('/admin')}
-              onClick={() => handleNavSelect('/admin')}
-            >
-              Administration
-            </NavItem>
-          </NavList>
+            </NavList>
+          </NavGroup>
+
+          <NavGroup title="Gateway & Routing">
+            <NavList>
+              <NavItem
+                itemId="mcp-gateway"
+                isActive={isNavItemActive('/mcp-gateway')}
+                onClick={() => handleNavSelect('/mcp-gateway')}
+              >
+                MCP Gateway
+              </NavItem>
+              <NavItem
+                itemId="ai-gateway"
+                isActive={isNavItemActive('/ai-gateway')}
+                onClick={() => handleNavSelect('/ai-gateway')}
+              >
+                AI Gateway
+              </NavItem>
+              <NavItem
+                itemId="gateway-policies"
+                isActive={isNavItemActive('/gateway-policies')}
+                onClick={() => handleNavSelect('/gateway-policies')}
+              >
+                Gateway Policies
+              </NavItem>
+            </NavList>
+          </NavGroup>
+
+          <NavGroup title="Operations">
+            <NavList>
+              <NavItem
+                itemId="observability"
+                isActive={isNavItemActive('/observability')}
+                onClick={() => handleNavSelect('/observability')}
+              >
+                Observability
+              </NavItem>
+              <NavItem
+                itemId="admin"
+                isActive={isNavItemActive('/admin')}
+                onClick={() => handleNavSelect('/admin')}
+              >
+                Administration
+              </NavItem>
+            </NavList>
+          </NavGroup>
         </Nav>
       </PageSidebarBody>
     </PageSidebar>
