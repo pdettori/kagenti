@@ -21,7 +21,6 @@ import {
 import {
   ChartLineIcon,
   NetworkIcon,
-  ToolboxIcon,
   ExternalLinkAltIcon,
 } from '@patternfly/react-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -93,7 +92,6 @@ export const ObservabilityPage: React.FC = () => {
   // Fallback URLs using domain config
   const tracesUrl = dashboards?.traces || `http://phoenix.${API_CONFIG.domainName}:8080`;
   const networkUrl = dashboards?.network || `http://kiali.${API_CONFIG.domainName}:8080`;
-  const mcpInspectorUrl = dashboards?.mcpInspector || `http://mcp-inspector.${API_CONFIG.domainName}:8080`;
 
   return (
     <>
@@ -122,7 +120,7 @@ export const ObservabilityPage: React.FC = () => {
         )}
 
         <Grid hasGutter>
-          <GridItem md={6} lg={4}>
+          <GridItem md={6}>
             <DashboardCard
               title="Tracing & Performance"
               description="Access detailed trace data for debugging and performance analysis. Monitor LLM calls, latency, and token usage with Phoenix/OpenTelemetry."
@@ -133,24 +131,13 @@ export const ObservabilityPage: React.FC = () => {
             />
           </GridItem>
 
-          <GridItem md={6} lg={4}>
+          <GridItem md={6}>
             <DashboardCard
               title="Network Traffic"
               description="Visualize service interactions, traffic flow, and service mesh health with Kiali. Monitor Istio metrics and network policies."
               icon={<NetworkIcon />}
               url={networkUrl}
               buttonText="Open Kiali"
-              isLoading={isLoading}
-            />
-          </GridItem>
-
-          <GridItem md={6} lg={4}>
-            <DashboardCard
-              title="MCP Gateway"
-              description="Explore federated MCP tools through the MCP Inspector. Test tool invocations, view schemas, and debug tool responses."
-              icon={<ToolboxIcon />}
-              url={mcpInspectorUrl}
-              buttonText="Open MCP Inspector"
               isLoading={isLoading}
             />
           </GridItem>
