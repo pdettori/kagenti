@@ -295,7 +295,7 @@ export const HomePage: React.FC = () => {
           </FlexItem>
           <FlexItem>
             <Button
-              variant="secondary"
+              variant="primary"
               icon={<PlusCircleIcon />}
               onClick={() => navigate('/tools/import')}
             >

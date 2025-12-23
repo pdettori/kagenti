@@ -29,6 +29,9 @@ import {
   MenuToggle,
   MenuToggleElement,
   Spinner,
+  Alert,
+  AlertActionCloseButton,
+  AlertGroup,
 } from '@patternfly/react-core';
 import {
   BarsIcon,
@@ -51,12 +54,18 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, isEnabled, user, login, logout } = useAuth();
+  const { isAuthenticated, isLoading, isEnabled, user, error, login, logout } = useAuth();
   const { mode, effectiveTheme, setMode } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);  const [showError, setShowError] = useState(false);
 
+  // Show error alert when error changes
+  React.useEffect(() => {
+    if (error) {
+      setShowError(true);
+    }
+  }, [error]);
   const onSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -107,6 +116,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   // Render user menu toggle
   const renderUserToggle = () => {
+    console.log('renderUserToggle:', { isLoading, isAuthenticated, isEnabled, user });
+    
     if (isLoading) {
       return (
         <ToolbarItem>
@@ -371,6 +382,26 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <Page header={masthead} sidebar={sidebar} isManagedSidebar={false}>
+      {error && showError && (
+        <AlertGroup isToast isLiveRegion>
+          <Alert
+            variant="danger"
+            title="Authentication Error"
+            actionClose={
+              <AlertActionCloseButton
+                onClose={() => setShowError(false)}
+              />
+            }
+            timeout={false}
+          >
+            {error}
+            <br />
+            <small>
+              Check browser console (F12) for detailed logs.
+            </small>
+          </Alert>
+        </AlertGroup>
+      )}
       {children}
     </Page>
   );

@@ -19,20 +19,46 @@ export const API_CONFIG = {
   domainName: 'localtest.me',
 };
 
+// Token getter function - set by AuthContext
+let tokenGetter: (() => Promise<string | null>) | null = null;
+
 /**
- * Generic fetch wrapper with error handling
+ * Set the token getter function. Called by AuthContext on initialization.
+ */
+export function setTokenGetter(getter: () => Promise<string | null>): void {
+  tokenGetter = getter;
+}
+
+/**
+ * Generic fetch wrapper with error handling and optional authentication
  */
 async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  skipAuth: boolean = false
 ): Promise<T> {
   const url = `${API_CONFIG.baseUrl}${endpoint}`;
 
+  // Build headers with optional Authorization
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add Authorization header if token getter is set and we're not skipping auth
+  if (!skipAuth && tokenGetter) {
+    try {
+      const token = await tokenGetter();
+      if (token) {
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.warn('Failed to get auth token:', error);
+    }
+  }
+
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   });
 

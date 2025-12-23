@@ -91,11 +91,6 @@
   /* Title colors */
   --pf-v5-c-title--Color: #151515;
 
-  /* Button colors */
-  --pf-v5-c-button--m-secondary--BackgroundColor: #ffffff;
-  --pf-v5-c-button--m-secondary--Color: #151515;
-  --pf-v5-c-button--m-secondary--BorderColor: #d2d2d2;
-
   /* Toolbar colors */
   --pf-v5-c-toolbar--BackgroundColor: transparent;
 
@@ -166,11 +161,6 @@
 
   /* Title colors */
   --pf-v5-c-title--Color: #ffffff;
-
-  /* Button colors */
-  --pf-v5-c-button--m-secondary--BackgroundColor: #212427;
-  --pf-v5-c-button--m-secondary--Color: #ffffff;
-  --pf-v5-c-button--m-secondary--BorderColor: #3c3f42;
 
   /* Toolbar colors */
   --pf-v5-c-toolbar--BackgroundColor: transparent;
@@ -294,29 +284,116 @@ body {
   color: var(--pf-v5-global--Color--100);
 }
 
-/* Button link variant */
-.pf-v5-c-button.pf-m-link {
-  color: var(--pf-v5-global--link--Color);
-}
+/* Button styling - consistent across themes */
+/* Reference: Dark theme "Import New Agent" button styling */
 
-.pf-v5-c-button.pf-m-link:hover {
-  color: var(--pf-v5-global--link--Color--hover);
-}
-
-/* Button secondary variant */
-.pf-v5-c-button.pf-m-secondary {
-  background-color: var(--pf-v5-c-button--m-secondary--BackgroundColor);
-  color: var(--pf-v5-c-button--m-secondary--Color);
-  border-color: var(--pf-v5-c-button--m-secondary--BorderColor);
-}
-
-/* Button primary variant - Always light text on blue background */
+/* Primary button - consistent blue with white text */
 .pf-v5-c-button.pf-m-primary {
+  background-color: #0066cc !important;
+  color: #ffffff !important;
+  border-color: #0066cc !important;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background-color: #004080 !important;
+  color: #ffffff !important;
+  border-color: #004080 !important;
+}
+
+/* Secondary button - consistent dark background with white text (like dark theme) */
+.pf-v5-c-button.pf-m-secondary {
+  background-color: #212427 !important;
+  color: #ffffff !important;
+  border-color: #3c3f42 !important;
+}
+
+.pf-v5-c-button.pf-m-secondary:hover,
+.pf-v5-c-button.pf-m-secondary:focus {
+  background-color: #3c3f42 !important;
+  color: #ffffff !important;
+  border-color: #4f5255 !important;
+}
+
+/* Tertiary button - transparent with text color consistent */
+.pf-v5-c-button.pf-m-tertiary {
+  background-color: transparent !important;
+  color: #0066cc !important;
+  border-color: #0066cc !important;
+}
+
+.pf-v5-c-button.pf-m-tertiary:hover,
+.pf-v5-c-button.pf-m-tertiary:focus {
+  background-color: rgba(0, 102, 204, 0.1) !important;
+  color: #004080 !important;
+  border-color: #004080 !important;
+}
+
+/* Danger button - consistent red with white text */
+.pf-v5-c-button.pf-m-danger {
+  background-color: #c9190b !important;
+  color: #ffffff !important;
+  border-color: #c9190b !important;
+}
+
+.pf-v5-c-button.pf-m-danger:hover,
+.pf-v5-c-button.pf-m-danger:focus {
+  background-color: #a30000 !important;
+  color: #ffffff !important;
+  border-color: #a30000 !important;
+}
+
+/* Link button - consistent blue text */
+.pf-v5-c-button.pf-m-link {
+  color: #0066cc !important;
+  background-color: transparent !important;
+}
+
+.pf-v5-c-button.pf-m-link:hover,
+.pf-v5-c-button.pf-m-link:focus {
+  color: #004080 !important;
+  background-color: transparent !important;
+}
+
+/* Plain button (icon buttons) - consistent styling */
+.pf-v5-c-button.pf-m-plain {
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+
+.pf-v5-c-button.pf-m-plain:hover,
+.pf-v5-c-button.pf-m-plain:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Control button - consistent styling */
+.pf-v5-c-button.pf-m-control {
+  background-color: #212427 !important;
+  color: #ffffff !important;
+  border-color: #3c3f42 !important;
+}
+
+.pf-v5-c-button.pf-m-control:hover,
+.pf-v5-c-button.pf-m-control:focus {
+  background-color: #3c3f42 !important;
+  color: #ffffff !important;
+  border-color: #4f5255 !important;
+}
+
+/* User dropdown toggle - always light text on dark background */
+.pf-v5-c-toolbar .pf-v5-c-menu-toggle {
   color: #ffffff !important;
 }
 
-.pf-v5-c-button.pf-m-primary:hover {
+.pf-v5-c-toolbar .pf-v5-c-menu-toggle:hover,
+.pf-v5-c-toolbar .pf-v5-c-menu-toggle:active,
+.pf-v5-c-toolbar .pf-v5-c-menu-toggle:focus {
   color: #ffffff !important;
+}
+
+/* Avatar in toolbar should have light background for contrast */
+.pf-v5-c-toolbar .pf-v5-c-avatar {
+  background-color: var(--pf-v5-global--primary-color--100);
 }
 
 /* Toolbar styling */
@@ -698,24 +775,92 @@ code {
   --pf-v5-c-spinner--Color: #73bcf7;
 }
 
-/* Grey Label styling in dark mode - ensure visibility */
-/* PatternFly uses both .pf-m-grey and .pf-m-gray class names */
-[data-theme="dark"] .pf-v5-c-label.pf-m-grey,
-[data-theme="dark"] .pf-v5-c-label.pf-m-gray {
-  --pf-v5-c-label--BackgroundColor: #3c3f42 !important;
-  --pf-v5-c-label--Color: #c9c9c9 !important;
-  background-color: #3c3f42 !important;
-  color: #c9c9c9 !important;
+/* Label styling - OpenShift Console design guide (PatternFly tokens) */
+/* Theme-invariant colors for consistency */
+
+/* Success (Green) Labels - for Running, Ready, Authenticated states */
+.pf-v5-c-label.pf-m-green {
+  --pf-v5-c-label--BackgroundColor: #bcd8c7 !important;
+  --pf-v5-c-label--Color: #151515 !important;
+  background-color: #bcd8c7 !important;
+  color: #151515 !important;
+  border: 1px solid #bcd8c7 !important;
 }
 
-[data-theme="dark"] .pf-v5-c-label.pf-m-grey .pf-v5-c-label__content,
-[data-theme="dark"] .pf-v5-c-label.pf-m-gray .pf-v5-c-label__content {
-  color: #c9c9c9 !important;
+.pf-v5-c-label.pf-m-green .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-green .pf-v5-c-label__text {
+  color: #151515 !important;
 }
 
-[data-theme="dark"] .pf-v5-c-label.pf-m-grey .pf-v5-c-label__text,
-[data-theme="dark"] .pf-v5-c-label.pf-m-gray .pf-v5-c-label__text {
-  color: #c9c9c9 !important;
+/* Danger (Red) Labels - for errors, Not Ready states */
+.pf-v5-c-label.pf-m-red {
+  --pf-v5-c-label--BackgroundColor: #b1380b !important;
+  --pf-v5-c-label--Color: #ffffff !important;
+  background-color: #b1380b !important;
+  color: #ffffff !important;
+  border: 1px solid #b1380b !important;
+}
+
+.pf-v5-c-label.pf-m-red .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-red .pf-v5-c-label__text {
+  color: #ffffff !important;
+}
+
+/* Warning (Gold/Orange) Labels - for warnings, Not configured, None, Default states */
+.pf-v5-c-label.pf-m-gold,
+.pf-v5-c-label.pf-m-orange {
+  --pf-v5-c-label--BackgroundColor: #fcf7de !important;
+  --pf-v5-c-label--Color: #151515 !important;
+  background-color: #fcf7de !important;
+  color: #151515 !important;
+  border: 1px solid #fcf7de !important;
+}
+
+.pf-v5-c-label.pf-m-gold .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-gold .pf-v5-c-label__text,
+.pf-v5-c-label.pf-m-orange .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-orange .pf-v5-c-label__text {
+  color: #151515 !important;
+}
+
+/* Branded/Blue Labels - for protocols, in-progress states */
+.pf-v5-c-label.pf-m-blue,
+.pf-v5-c-label.pf-m-cyan,
+.pf-v5-c-label.pf-m-purple {
+  --pf-v5-c-label--BackgroundColor: #0066cc !important;
+  --pf-v5-c-label--Color: #ffffff !important;
+  background-color: #0066cc !important;
+  color: #ffffff !important;
+  border: 1px solid #0066cc !important;
+}
+
+.pf-v5-c-label.pf-m-blue .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-blue .pf-v5-c-label__text,
+.pf-v5-c-label.pf-m-cyan .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-cyan .pf-v5-c-label__text,
+.pf-v5-c-label.pf-m-purple .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-purple .pf-v5-c-label__text {
+  color: #ffffff !important;
+}
+
+/* Neutral/Grey Labels - for disabled states or general info */
+.pf-v5-c-label.pf-m-grey,
+.pf-v5-c-label.pf-m-gray,
+.pf-v5-c-label {
+  --pf-v5-c-label--BackgroundColor: #f2f2f2 !important;
+  --pf-v5-c-label--Color: #151515 !important;
+  background-color: #f2f2f2 !important;
+  color: #151515 !important;
+  border: 1px solid #c7c7c7 !important;
+}
+
+.pf-v5-c-label.pf-m-grey .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-gray .pf-v5-c-label__content,
+.pf-v5-c-label.pf-m-grey .pf-v5-c-label__text,
+.pf-v5-c-label.pf-m-gray .pf-v5-c-label__text,
+.pf-v5-c-label .pf-v5-c-label__content,
+.pf-v5-c-label .pf-v5-c-label__text {
+  color: #151515 !important;
 }
 
 /* Responsive adjustments */

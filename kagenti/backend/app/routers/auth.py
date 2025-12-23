@@ -34,6 +34,41 @@ class AuthStatusResponse(BaseModel):
     client_id: Optional[str] = None
 
 
+class AuthConfigResponse(BaseModel):
+    """
+    Authentication configuration for frontend.
+
+    Provides runtime Keycloak configuration so frontend doesn't need
+    build-time environment variables.
+    """
+
+    enabled: bool
+    keycloak_url: Optional[str] = None
+    realm: Optional[str] = None
+    client_id: Optional[str] = None
+    redirect_uri: Optional[str] = None
+
+
+@router.get("/config", response_model=AuthConfigResponse)
+async def get_auth_config() -> AuthConfigResponse:
+    """
+    Get authentication configuration for frontend initialization.
+
+    This endpoint provides runtime Keycloak configuration, allowing
+    the frontend to initialize keycloak-js without build-time env vars.
+    """
+    if not settings.enable_auth:
+        return AuthConfigResponse(enabled=False)
+
+    return AuthConfigResponse(
+        enabled=True,
+        keycloak_url=settings.effective_keycloak_url,
+        realm=settings.effective_keycloak_realm,
+        client_id=settings.effective_client_id,
+        redirect_uri=settings.effective_redirect_uri,
+    )
+
+
 @router.get("/status", response_model=AuthStatusResponse)
 async def get_auth_status(
     user: Optional[TokenData] = Depends(get_current_user),
@@ -43,14 +78,12 @@ async def get_auth_status(
 
     Returns whether auth is enabled and current authentication state.
     """
-    keycloak_url = settings.keycloak_url or f"http://keycloak.{settings.domain_name}:8080"
-
     return AuthStatusResponse(
         enabled=settings.enable_auth,
         authenticated=user is not None,
-        keycloak_url=keycloak_url if settings.enable_auth else None,
-        realm=settings.keycloak_realm if settings.enable_auth else None,
-        client_id=settings.keycloak_client_id if settings.enable_auth else None,
+        keycloak_url=settings.effective_keycloak_url if settings.enable_auth else None,
+        realm=settings.effective_keycloak_realm if settings.enable_auth else None,
+        client_id=settings.effective_client_id if settings.enable_auth else None,
     )
 
 

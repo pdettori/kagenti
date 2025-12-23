@@ -65,8 +65,8 @@ def get_jwks() -> KeycloakJWKS:
     global _jwks
     if _jwks is None:
         _jwks = KeycloakJWKS(
-            keycloak_url=settings.keycloak_url or f"http://keycloak.{settings.domain_name}:8080",
-            realm=settings.keycloak_realm,
+            keycloak_url=settings.effective_keycloak_url,
+            realm=settings.effective_keycloak_realm,
         )
     return _jwks
 

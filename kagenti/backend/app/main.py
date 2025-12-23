@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Kagenti Backend API")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Domain: {settings.domain_name}")
+    logger.info(f"ENABLE_AUTH environment variable set to: {settings.enable_auth}")
     yield
     logger.info("Shutting down Kagenti Backend API")
 

@@ -6,16 +6,16 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: kagenti-ui
+  name: kagenti-ui-v2
   namespace: kagenti-system
   labels:
-    app.kubernetes.io/name: kagenti-ui
+    app.kubernetes.io/name: kagenti-ui-v2
 spec:
   parentRefs:
-    - name: kagenti-gateway
+    - name: http
       namespace: kagenti-system
   hostnames:
-    - "kagenti-ui.localtest.me"
+    - "kagenti-ui-v2.localtest.me"
   rules:
     # Route /api/* to backend
     - matches:
@@ -31,5 +31,5 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: kagenti-ui
+        - name: kagenti-ui-v2
           port: 8080

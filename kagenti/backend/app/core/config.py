@@ -5,8 +5,9 @@
 Application configuration using Pydantic Settings.
 """
 
+import re
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -51,12 +52,62 @@ class Settings(BaseSettings):
     traces_dashboard_url: str = ""
     network_dashboard_url: str = ""
     mcp_inspector_url: str = ""
-    keycloak_url: str = ""
 
-    # Authentication settings
+    # Authentication settings - from kagenti-ui-oauth-secret
     enable_auth: bool = False  # Set to True to enable Keycloak auth
+    # AUTH_ENDPOINT format: http://keycloak.localtest.me:8080/realms/master/protocol/openid-connect/auth
+    auth_endpoint: Optional[str] = None
+    # REDIRECT_URI format: http://kagenti-ui.localtest.me:8080/oauth2/callback
+    redirect_uri: Optional[str] = None
+    # CLIENT_ID from the secret
+    client_id: str = "kagenti-ui"
+
+    # Legacy direct config (fallback if AUTH_ENDPOINT not provided)
+    keycloak_url: str = ""
     keycloak_realm: str = "master"
     keycloak_client_id: str = "kagenti-ui"
+
+    @property
+    def effective_keycloak_url(self) -> str:
+        """
+        Extract Keycloak base URL from AUTH_ENDPOINT or use direct config.
+        AUTH_ENDPOINT format: http://keycloak.localtest.me:8080/realms/master/protocol/openid-connect/auth
+        Returns: http://keycloak.localtest.me:8080
+        """
+        if self.auth_endpoint:
+            # Parse AUTH_ENDPOINT to extract base URL
+            # Pattern: {base_url}/realms/{realm}/protocol/openid-connect/auth
+            match = re.match(r"(https?://[^/]+)/realms/", self.auth_endpoint)
+            if match:
+                return match.group(1)
+        # Fallback to direct config or default
+        if self.keycloak_url:
+            return self.keycloak_url
+        return f"http://keycloak.{self.domain_name}:8080"
+
+    @property
+    def effective_keycloak_realm(self) -> str:
+        """
+        Extract realm from AUTH_ENDPOINT or use direct config.
+        AUTH_ENDPOINT format: http://keycloak.localtest.me:8080/realms/master/protocol/openid-connect/auth
+        Returns: master
+        """
+        if self.auth_endpoint:
+            # Pattern: /realms/{realm}/protocol/
+            match = re.search(r"/realms/([^/]+)/protocol/", self.auth_endpoint)
+            if match:
+                return match.group(1)
+        return self.keycloak_realm
+
+    @property
+    def effective_client_id(self) -> str:
+        """Get client ID from secret (CLIENT_ID) or fallback to direct config."""
+        return self.client_id if self.client_id else self.keycloak_client_id
+
+    @property
+    def effective_redirect_uri(self) -> Optional[str]:
+        """Get redirect URI for frontend Keycloak config."""
+        return self.redirect_uri
 
     @property
     def kagenti_type_label(self) -> str:

@@ -4,21 +4,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kagenti-ui
+  name: kagenti-ui-v2
   namespace: kagenti-system
   labels:
-    app.kubernetes.io/name: kagenti-ui
+    app.kubernetes.io/name: kagenti-ui-v2
     app.kubernetes.io/component: frontend
-    app.kubernetes.io/part-of: kagenti-ui
+    app.kubernetes.io/part-of: kagenti-ui-v2
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: kagenti-ui
+      app.kubernetes.io/name: kagenti-ui-v2
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: kagenti-ui
+        app.kubernetes.io/name: kagenti-ui-v2
         app.kubernetes.io/component: frontend
     spec:
       securityContext:
@@ -28,8 +28,8 @@ spec:
         fsGroup: 1001
       containers:
         - name: frontend
-          image: ghcr.io/kagenti/kagenti-ui:latest
-          imagePullPolicy: Always
+          image: ghcr.io/kagenti/kagenti-ui-v2:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080
@@ -63,10 +63,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kagenti-ui
+  name: kagenti-ui-v2
   namespace: kagenti-system
   labels:
-    app.kubernetes.io/name: kagenti-ui
+    app.kubernetes.io/name: kagenti-ui-v2
 spec:
   type: ClusterIP
   ports:
@@ -75,4 +75,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: kagenti-ui
+    app.kubernetes.io/name: kagenti-ui-v2
