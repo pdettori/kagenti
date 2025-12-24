@@ -377,11 +377,17 @@ async def create_tool(
 def _get_tool_url(name: str, namespace: str) -> str:
     """Get the URL for an MCP tool server.
 
-    Note: For off-cluster access, the tool URL does not include the namespace.
-    The namespace parameter is kept for potential future use with in-cluster routing.
+    Returns different URL formats based on deployment context:
+    - In-cluster: http://{name}.{namespace}.svc.cluster.local:8080
+    - Off-cluster (local dev): http://{name}.{domain}:8080
     """
-    domain = settings.domain_name
-    return f"http://{name}.{domain}:8080"
+    if settings.is_running_in_cluster:
+        # In-cluster: use Kubernetes service DNS
+        return f"http://{name}.{namespace}.svc.cluster.local:8080"
+    else:
+        # Off-cluster: use external domain (e.g., localtest.me)
+        domain = settings.domain_name
+        return f"http://{name}.{domain}:8080"
 
 
 @router.post("/{namespace}/{name}/connect", response_model=MCPToolsResponse)

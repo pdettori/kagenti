@@ -61,11 +61,17 @@ class ChatResponse(BaseModel):
 def _get_agent_url(name: str, namespace: str) -> str:
     """Get the URL for an A2A agent.
 
-    Note: For off-cluster access, the agent URL does not include the namespace.
-    The namespace parameter is kept for potential future use with in-cluster routing.
+    Returns different URL formats based on deployment context:
+    - In-cluster: http://{name}.{namespace}.svc.cluster.local:8080
+    - Off-cluster (local dev): http://{name}.{domain}:8080
     """
-    domain = settings.domain_name
-    return f"http://{name}.{domain}:8080"
+    if settings.is_running_in_cluster:
+        # In-cluster: use Kubernetes service DNS
+        return f"http://{name}.{namespace}.svc.cluster.local:8080"
+    else:
+        # Off-cluster: use external domain (e.g., localtest.me)
+        domain = settings.domain_name
+        return f"http://{name}.{domain}:8080"
 
 
 @router.get("/{namespace}/{name}/agent-card", response_model=AgentCardResponse)

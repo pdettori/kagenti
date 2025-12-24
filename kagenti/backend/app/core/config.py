@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     debug: bool = False
     domain_name: str = "localtest.me"
 
+    @property
+    def is_running_in_cluster(self) -> bool:
+        """Check if the backend is running inside a Kubernetes cluster."""
+        import os
+
+        return os.getenv("KUBERNETES_SERVICE_HOST") is not None
+
     # CORS settings
     cors_origins: List[str] = [
         "http://localhost:3000",
