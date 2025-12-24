@@ -243,6 +243,9 @@ async def _stream_a2a_response(agent_url: str, message: str, session_id: str):
         },
     }
 
+    logger.info(f"Starting A2A stream to {agent_url} with session_id={session_id}")
+    logger.debug(f"Message payload: {json.dumps(message_payload, indent=2)}")
+
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
@@ -252,64 +255,278 @@ async def _stream_a2a_response(agent_url: str, message: str, session_id: str):
                 headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
             ) as response:
                 response.raise_for_status()
+                logger.info(f"Connected to agent, status={response.status_code}")
 
                 async for line in response.aiter_lines():
                     if not line:
                         continue
 
+                    logger.debug(f"Received line: {line[:200]}")  # Log first 200 chars
+
                     # Parse SSE format
                     if line.startswith("data: "):
                         data = line[6:]
                         if data == "[DONE]":
+                            logger.info("Received [DONE] signal from agent")
                             yield f"data: {json.dumps({'done': True, 'session_id': session_id})}\n\n"
                             break
 
                         try:
                             chunk = json.loads(data)
+                            logger.debug(f"Parsed chunk: {json.dumps(chunk, indent=2)[:500]}")
 
                             # Extract text content from various A2A response formats
                             content = ""
+                            should_send = False
 
                             if "result" in chunk:
                                 result = chunk["result"]
 
-                                # TaskArtifactUpdateEvent
+                                # TaskArtifactUpdateEvent - always send artifacts
                                 if "artifact" in result:
-                                    parts = result.get("artifact", {}).get("parts", [])
-                                    for part in parts:
+                                    logger.info("Processing TaskArtifactUpdateEvent")
+                                    artifact = result.get("artifact", {})
+                                    logger.debug(
+                                        f"Artifact structure: {json.dumps(artifact, indent=2)[:1000]}"
+                                    )
+                                    parts = artifact.get("parts", [])
+                                    logger.info(f"Artifact has {len(parts)} parts")
+                                    for i, part in enumerate(parts):
+                                        logger.info(
+                                            f"Part {i} full structure: {json.dumps(part, default=str)[:500]}"
+                                        )
+
+                                        # Handle simple text field
                                         if isinstance(part, dict) and "text" in part:
                                             content += part["text"]
+                                            should_send = True
+                                            logger.info(
+                                                f"Extracted text from part {i}: {part['text'][:100]}"
+                                            )
 
-                                # TaskStatusUpdateEvent
-                                elif "status" in result:
+                                        # Handle kind=text format
+                                        elif (
+                                            isinstance(part, dict)
+                                            and "kind" in part
+                                            and part["kind"] == "text"
+                                        ):
+                                            text = part.get("text", "")
+                                            content += text
+                                            should_send = True
+                                            logger.info(
+                                                f"Extracted text from part {i} (kind=text): {text[:100]}"
+                                            )
+
+                                        # Handle data field (for JSON, images, etc.)
+                                        elif isinstance(part, dict) and "data" in part:
+                                            data = part["data"]
+                                            kind = part.get("kind", "unknown")
+
+                                            logger.info(
+                                                f"Part {i} has data field: kind={kind}, data_type={type(data).__name__}"
+                                            )
+
+                                            # Check if data is a wrapper with content_type/content fields
+                                            # OR if data is the actual content itself
+                                            if isinstance(data, dict):
+                                                # Check if it's a metadata wrapper (has content_type and content)
+                                                if "content_type" in data and "content" in data:
+                                                    content_type = data.get("content_type", "")
+                                                    content_value = data.get("content", "")
+                                                    logger.info(
+                                                        f"Part {i} has wrapped content: content_type={content_type}"
+                                                    )
+
+                                                    if (
+                                                        content_type == "application/json"
+                                                        and content_value
+                                                    ):
+                                                        try:
+                                                            json_data = json.loads(content_value)
+                                                            formatted_json = json.dumps(
+                                                                json_data, indent=2
+                                                            )
+                                                            content += f"\n```json\n{formatted_json}\n```\n"
+                                                            should_send = True
+                                                            logger.info(
+                                                                f"Extracted JSON from wrapped content: {formatted_json[:200]}"
+                                                            )
+                                                        except json.JSONDecodeError as e:
+                                                            logger.warning(
+                                                                f"Failed to parse JSON: {e}"
+                                                            )
+                                                            content += f"\n{content_value}\n"
+                                                            should_send = True
+                                                    elif content_type.startswith("image/"):
+                                                        logger.info(
+                                                            "Image data detected (skipping)"
+                                                        )
+                                                    else:
+                                                        content += f"\n{content_value}\n"
+                                                        should_send = True
+                                                else:
+                                                    # Data IS the actual content (not wrapped)
+                                                    logger.info(
+                                                        f"Part {i} data IS the content (not wrapped)"
+                                                    )
+                                                    formatted_json = json.dumps(data, indent=2)
+                                                    content += f"\n```json\n{formatted_json}\n```\n"
+                                                    should_send = True
+                                                    logger.info(
+                                                        f"Extracted direct JSON object: {formatted_json[:200]}"
+                                                    )
+
+                                            elif isinstance(data, (list, str, int, float, bool)):
+                                                # Data is a primitive type or list
+                                                logger.info(
+                                                    f"Part {i} data is primitive type: {type(data).__name__}"
+                                                )
+                                                if isinstance(data, str):
+                                                    # Try to parse as JSON
+                                                    try:
+                                                        json_data = json.loads(data)
+                                                        formatted_json = json.dumps(
+                                                            json_data, indent=2
+                                                        )
+                                                        content += (
+                                                            f"\n```json\n{formatted_json}\n```\n"
+                                                        )
+                                                        should_send = True
+                                                        logger.info(
+                                                            f"Parsed string as JSON: {formatted_json[:200]}"
+                                                        )
+                                                    except (json.JSONDecodeError, TypeError):
+                                                        # Not JSON, use as plain text
+                                                        content += f"\n{data}\n"
+                                                        should_send = True
+                                                        logger.info(
+                                                            f"Using as plain text: {str(data)[:200]}"
+                                                        )
+                                                else:
+                                                    # List or other primitive
+                                                    formatted = json.dumps(data, indent=2)
+                                                    content += f"\n```json\n{formatted}\n```\n"
+                                                    should_send = True
+                                                    logger.info(
+                                                        f"Formatted primitive as JSON: {formatted[:200]}"
+                                                    )
+
+                                # TaskStatusUpdateEvent - only send if final
+                                elif "status" in result and "taskId" in result:
                                     status = result["status"]
-                                    if "message" in status:
-                                        parts = status["message"].get("parts", [])
-                                        for part in parts:
-                                            if isinstance(part, dict) and "text" in part:
-                                                content += part["text"]
+                                    is_final = result.get("final", False)
+                                    state = status.get("state", "N/A")
+                                    logger.info(
+                                        f"Processing TaskStatusUpdateEvent: taskId={result.get('taskId')}, state={state}, final={is_final}"
+                                    )
+                                    logger.debug(
+                                        f"Status structure: {json.dumps(status, default=str, indent=2)[:1000]}"
+                                    )
+
+                                    # Check for final state
+                                    if is_final or status.get("state") in ["COMPLETED", "FAILED"]:
+                                        if "message" in status and status["message"]:
+                                            message = status["message"]
+                                            logger.debug(
+                                                f"Status message structure: {json.dumps(message, default=str)[:500]}"
+                                            )
+                                            parts = message.get("parts", [])
+                                            logger.info(f"TaskStatusUpdate has {len(parts)} parts")
+                                            for i, part in enumerate(parts):
+                                                logger.debug(
+                                                    f"Part {i}: {json.dumps(part, default=str)[:300]}"
+                                                )
+                                                if isinstance(part, dict):
+                                                    if "text" in part:
+                                                        text = part["text"]
+                                                        content += text
+                                                        should_send = True
+                                                        logger.info(
+                                                            f"Extracted text from part {i}: {text[:100]}"
+                                                        )
+                                                    elif "kind" in part and part["kind"] == "text":
+                                                        text = part.get("text", "")
+                                                        content += text
+                                                        should_send = True
+                                                        logger.info(
+                                                            f"Extracted text from part {i} (kind=text): {text[:100]}"
+                                                        )
+                                        else:
+                                            logger.warning(
+                                                f"TaskStatusUpdate has no message or message is None"
+                                            )
+                                    else:
+                                        logger.debug(
+                                            f"Skipping non-final TaskStatusUpdate (state={state})"
+                                        )
+
+                                # Task object (initial task response)
+                                elif "id" in result and "status" in result:
+                                    task_status = result["status"]
+                                    state = task_status.get("state", "")
+                                    logger.info(
+                                        f"Processing Task object: id={result.get('id')}, state={state}"
+                                    )
+
+                                    # Only send final task states
+                                    if state in ["COMPLETED", "FAILED"]:
+                                        if "message" in task_status and task_status["message"]:
+                                            parts = task_status["message"].get("parts", [])
+                                            logger.debug(f"Task has {len(parts)} parts")
+                                            for part in parts:
+                                                if isinstance(part, dict):
+                                                    if "text" in part:
+                                                        content += part["text"]
+                                                        should_send = True
+                                                    elif "kind" in part and part["kind"] == "text":
+                                                        content += part.get("text", "")
+                                                        should_send = True
+                                    else:
+                                        logger.debug(f"Skipping non-final Task (state={state})")
 
                                 # Direct message
                                 elif "parts" in result:
+                                    logger.info("Processing direct message with parts")
                                     for part in result["parts"]:
-                                        if isinstance(part, dict) and "text" in part:
-                                            content += part["text"]
+                                        if isinstance(part, dict):
+                                            if "text" in part:
+                                                content += part["text"]
+                                                should_send = True
+                                            elif "kind" in part and part["kind"] == "text":
+                                                content += part.get("text", "")
+                                                should_send = True
 
-                            if content:
+                                else:
+                                    logger.warning(
+                                        f"Unknown result structure: keys={list(result.keys())}"
+                                    )
+
+                            # Send content if we extracted any
+                            if content and should_send:
+                                logger.info(
+                                    f"Yielding content (length={len(content)}): {content[:100]}..."
+                                )
                                 yield f"data: {json.dumps({'content': content, 'session_id': session_id})}\n\n"
+                            elif "result" in chunk:
+                                logger.debug(
+                                    f"No content extracted from chunk with result keys: {list(chunk['result'].keys())}"
+                                )
 
-                        except json.JSONDecodeError:
-                            logger.warning(f"Failed to parse SSE data: {data}")
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Failed to parse SSE data: {data[:200]}, error: {e}")
                             continue
 
     except httpx.HTTPStatusError as e:
         error_msg = f"Agent error: {e.response.status_code}"
+        logger.error(f"{error_msg}: {e.response.text[:500]}")
         yield f"data: {json.dumps({'error': error_msg, 'session_id': session_id})}\n\n"
     except httpx.RequestError as e:
         error_msg = f"Connection error: {str(e)}"
+        logger.error(error_msg)
         yield f"data: {json.dumps({'error': error_msg, 'session_id': session_id})}\n\n"
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         yield f"data: {json.dumps({'error': error_msg, 'session_id': session_id})}\n\n"
 
 
