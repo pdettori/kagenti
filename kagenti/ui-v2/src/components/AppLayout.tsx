@@ -312,69 +312,74 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </NavItem>
           </NavList>
 
-          <NavGroup title="Agentic Workloads">
-            <NavList>
-              <NavItem
-                itemId="agents"
-                isActive={isNavItemActive('/agents')}
-                onClick={() => handleNavSelect('/agents')}
-              >
-                Agents
-              </NavItem>
-              <NavItem
-                itemId="tools"
-                isActive={isNavItemActive('/tools')}
-                onClick={() => handleNavSelect('/tools')}
-              >
-                Tools
-              </NavItem>
-            </NavList>
-          </NavGroup>
+          {/* Only show navigation groups to authenticated users */}
+          {(!isEnabled || isAuthenticated) && (
+            <>
+              <NavGroup title="Agentic Workloads">
+                <NavList>
+                  <NavItem
+                    itemId="agents"
+                    isActive={isNavItemActive('/agents')}
+                    onClick={() => handleNavSelect('/agents')}
+                  >
+                    Agents
+                  </NavItem>
+                  <NavItem
+                    itemId="tools"
+                    isActive={isNavItemActive('/tools')}
+                    onClick={() => handleNavSelect('/tools')}
+                  >
+                    Tools
+                  </NavItem>
+                </NavList>
+              </NavGroup>
 
-          <NavGroup title="Gateway & Routing">
-            <NavList>
-              <NavItem
-                itemId="mcp-gateway"
-                isActive={isNavItemActive('/mcp-gateway')}
-                onClick={() => handleNavSelect('/mcp-gateway')}
-              >
-                MCP Gateway
-              </NavItem>
-              <NavItem
-                itemId="ai-gateway"
-                isActive={isNavItemActive('/ai-gateway')}
-                onClick={() => handleNavSelect('/ai-gateway')}
-              >
-                AI Gateway
-              </NavItem>
-              <NavItem
-                itemId="gateway-policies"
-                isActive={isNavItemActive('/gateway-policies')}
-                onClick={() => handleNavSelect('/gateway-policies')}
-              >
-                Gateway Policies
-              </NavItem>
-            </NavList>
-          </NavGroup>
+              <NavGroup title="Gateway & Routing">
+                <NavList>
+                  <NavItem
+                    itemId="mcp-gateway"
+                    isActive={isNavItemActive('/mcp-gateway')}
+                    onClick={() => handleNavSelect('/mcp-gateway')}
+                  >
+                    MCP Gateway
+                  </NavItem>
+                  <NavItem
+                    itemId="ai-gateway"
+                    isActive={isNavItemActive('/ai-gateway')}
+                    onClick={() => handleNavSelect('/ai-gateway')}
+                  >
+                    AI Gateway
+                  </NavItem>
+                  <NavItem
+                    itemId="gateway-policies"
+                    isActive={isNavItemActive('/gateway-policies')}
+                    onClick={() => handleNavSelect('/gateway-policies')}
+                  >
+                    Gateway Policies
+                  </NavItem>
+                </NavList>
+              </NavGroup>
 
-          <NavGroup title="Operations">
-            <NavList>
-              <NavItem
-                itemId="observability"
-                isActive={isNavItemActive('/observability')}
-                onClick={() => handleNavSelect('/observability')}
-              >
-                Observability
-              </NavItem>
-              <NavItem
-                itemId="admin"
-                isActive={isNavItemActive('/admin')}
-                onClick={() => handleNavSelect('/admin')}
-              >
-                Administration
-              </NavItem>
-            </NavList>
-          </NavGroup>
+              <NavGroup title="Operations">
+                <NavList>
+                  <NavItem
+                    itemId="observability"
+                    isActive={isNavItemActive('/observability')}
+                    onClick={() => handleNavSelect('/observability')}
+                  >
+                    Observability
+                  </NavItem>
+                  <NavItem
+                    itemId="admin"
+                    isActive={isNavItemActive('/admin')}
+                    onClick={() => handleNavSelect('/admin')}
+                  >
+                    Administration
+                  </NavItem>
+                </NavList>
+              </NavGroup>
+            </>
+          )}
         </Nav>
       </PageSidebarBody>
     </PageSidebar>

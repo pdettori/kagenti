@@ -31,11 +31,12 @@ import {
   Grid,
   GridItem,
 } from '@patternfly/react-core';
-import { TrashIcon, PlusCircleIcon } from '@patternfly/react-icons';
+import { TrashIcon, PlusCircleIcon, UploadIcon } from '@patternfly/react-icons';
 import { useMutation } from '@tanstack/react-query';
 
 import { agentService } from '@/services/api';
 import { NamespaceSelector } from '@/components/NamespaceSelector';
+import { EnvImportModal } from '@/components/EnvImportModal';
 
 // Example agent subfolders from the original UI
 const AGENT_EXAMPLES = [
@@ -70,8 +71,20 @@ type DeploymentMethod = 'source' | 'image';
 
 interface EnvVar {
   name: string;
-  value: string;
+  value?: string;
+  valueFrom?: {
+    secretKeyRef?: {
+      name: string;
+      key: string;
+    };
+    configMapKeyRef?: {
+      name: string;
+      key: string;
+    };
+  };
 }
+
+type EnvVarType = 'value' | 'secret' | 'configMap';
 
 interface ServicePort {
   name: string;
@@ -118,6 +131,7 @@ export const ImportAgentPage: React.FC = () => {
   // Environment variables
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [showEnvVars, setShowEnvVars] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Validation state
   const [validated, setValidated] = useState<Record<string, 'success' | 'error' | 'default'>>({});
@@ -187,6 +201,57 @@ export const ImportAgentPage: React.FC = () => {
     const updated = [...envVars];
     updated[index][field] = value;
     setEnvVars(updated);
+  };
+
+  const handleImportEnvVars = (importedVars: EnvVar[]) => {
+    // Merge imported variables with existing ones, avoiding duplicates
+    const existingNames = new Set(envVars.map(v => v.name));
+    const newVars = importedVars.filter(v => !existingNames.has(v.name));
+    setEnvVars([...envVars, ...newVars]);
+    setShowEnvVars(true);
+  };
+
+  const getEnvVarType = (envVar: EnvVar): EnvVarType => {
+    if (envVar.valueFrom?.secretKeyRef) return 'secret';
+    if (envVar.valueFrom?.configMapKeyRef) return 'configMap';
+    return 'value';
+  };
+
+  const handleEnvVarTypeChange = (index: number, type: EnvVarType) => {
+    const updated = [...envVars];
+    const currentName = updated[index].name;
+    
+    if (type === 'value') {
+      updated[index] = { name: currentName, value: '' };
+    } else if (type === 'secret') {
+      updated[index] = { 
+        name: currentName, 
+        valueFrom: { secretKeyRef: { name: '', key: '' } } 
+      };
+    } else if (type === 'configMap') {
+      updated[index] = { 
+        name: currentName, 
+        valueFrom: { configMapKeyRef: { name: '', key: '' } } 
+      };
+    }
+    
+    setEnvVars(updated);
+  };
+
+  const updateEnvVarSecret = (index: number, field: 'name' | 'key', value: string) => {
+    const updated = [...envVars];
+    if (updated[index].valueFrom?.secretKeyRef) {
+      updated[index].valueFrom!.secretKeyRef![field] = value;
+      setEnvVars(updated);
+    }
+  };
+
+  const updateEnvVarConfigMap = (index: number, field: 'name' | 'key', value: string) => {
+    const updated = [...envVars];
+    if (updated[index].valueFrom?.configMapKeyRef) {
+      updated[index].valueFrom!.configMapKeyRef![field] = value;
+      setEnvVars(updated);
+    }
   };
 
   // Service port handlers
@@ -292,7 +357,7 @@ export const ImportAgentPage: React.FC = () => {
         imageTag: 'v0.0.1',
         protocol: 'a2a',
         framework,
-        envVars: envVars.filter((ev) => ev.name && ev.value),
+        envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         // Additional fields for build from source
         deploymentMethod: 'source',
         registryUrl: getRegistryUrl(),
@@ -312,7 +377,7 @@ export const ImportAgentPage: React.FC = () => {
         imageTag,
         protocol: 'a2a',
         framework,
-        envVars: envVars.filter((ev) => ev.name && ev.value),
+        envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         // Additional fields for image deployment
         deploymentMethod: 'image',
         containerImage: fullImage,
@@ -765,42 +830,115 @@ export const ImportAgentPage: React.FC = () => {
               >
                 <Card isFlat style={{ marginTop: '8px' }}>
                   <CardBody>
-                    {envVars.map((env, index) => (
-                      <Split hasGutter key={index} style={{ marginBottom: '8px' }}>
-                        <SplitItem isFilled>
-                          <TextInput
-                            aria-label="Environment variable name"
-                            value={env.name}
-                            onChange={(_e, value) => updateEnvVar(index, 'name', value)}
-                            placeholder="VAR_NAME"
-                          />
-                        </SplitItem>
-                        <SplitItem isFilled>
-                          <TextInput
-                            aria-label="Environment variable value"
-                            value={env.value}
-                            onChange={(_e, value) => updateEnvVar(index, 'value', value)}
-                            placeholder="value"
-                          />
-                        </SplitItem>
-                        <SplitItem>
-                          <Button
-                            variant="plain"
-                            onClick={() => removeEnvVar(index)}
-                            aria-label="Remove environment variable"
-                          >
-                            <TrashIcon />
-                          </Button>
-                        </SplitItem>
-                      </Split>
-                    ))}
-                    <Button
-                      variant="link"
-                      icon={<PlusCircleIcon />}
-                      onClick={addEnvVar}
-                    >
-                      Add Environment Variable
-                    </Button>
+                    <div style={{ marginBottom: '16px' }}>
+                      <Button
+                        variant="secondary"
+                        icon={<UploadIcon />}
+                        onClick={() => setShowImportModal(true)}
+                        style={{ marginRight: '8px' }}
+                      >
+                        Import from File/URL
+                      </Button>
+                      <Button
+                        variant="link"
+                        icon={<PlusCircleIcon />}
+                        onClick={addEnvVar}
+                      >
+                        Add Variable
+                      </Button>
+                    </div>
+
+                    {envVars.map((env, index) => {
+                      const envType = getEnvVarType(env);
+                      return (
+                        <Grid hasGutter key={index} style={{ marginBottom: '12px' }}>
+                          <GridItem span={3}>
+                            <TextInput
+                              aria-label="Environment variable name"
+                              value={env.name}
+                              onChange={(_e, value) => updateEnvVar(index, 'name', value)}
+                              placeholder="VAR_NAME"
+                            />
+                          </GridItem>
+                          <GridItem span={2}>
+                            <FormSelect
+                              value={envType}
+                              onChange={(_e, value) => handleEnvVarTypeChange(index, value as EnvVarType)}
+                              aria-label="Variable type"
+                            >
+                              <FormSelectOption value="value" label="Direct Value" />
+                              <FormSelectOption value="secret" label="Secret" />
+                              <FormSelectOption value="configMap" label="ConfigMap" />
+                            </FormSelect>
+                          </GridItem>
+                          <GridItem span={6}>
+                            {envType === 'value' && (
+                              <TextInput
+                                aria-label="Environment variable value"
+                                value={env.value || ''}
+                                onChange={(_e, value) => updateEnvVar(index, 'value', value)}
+                                placeholder="value"
+                              />
+                            )}
+                            {envType === 'secret' && (
+                              <Split hasGutter>
+                                <SplitItem isFilled>
+                                  <TextInput
+                                    aria-label="Secret name"
+                                    value={env.valueFrom?.secretKeyRef?.name || ''}
+                                    onChange={(_e, value) => updateEnvVarSecret(index, 'name', value)}
+                                    placeholder="secret-name"
+                                  />
+                                </SplitItem>
+                                <SplitItem isFilled>
+                                  <TextInput
+                                    aria-label="Secret key"
+                                    value={env.valueFrom?.secretKeyRef?.key || ''}
+                                    onChange={(_e, value) => updateEnvVarSecret(index, 'key', value)}
+                                    placeholder="key"
+                                  />
+                                </SplitItem>
+                              </Split>
+                            )}
+                            {envType === 'configMap' && (
+                              <Split hasGutter>
+                                <SplitItem isFilled>
+                                  <TextInput
+                                    aria-label="ConfigMap name"
+                                    value={env.valueFrom?.configMapKeyRef?.name || ''}
+                                    onChange={(_e, value) => updateEnvVarConfigMap(index, 'name', value)}
+                                    placeholder="configmap-name"
+                                  />
+                                </SplitItem>
+                                <SplitItem isFilled>
+                                  <TextInput
+                                    aria-label="ConfigMap key"
+                                    value={env.valueFrom?.configMapKeyRef?.key || ''}
+                                    onChange={(_e, value) => updateEnvVarConfigMap(index, 'key', value)}
+                                    placeholder="key"
+                                  />
+                                </SplitItem>
+                              </Split>
+                            )}
+                          </GridItem>
+                          <GridItem span={1}>
+                            <Button
+                              variant="plain"
+                              onClick={() => removeEnvVar(index)}
+                              aria-label="Remove environment variable"
+                            >
+                              <TrashIcon />
+                            </Button>
+                          </GridItem>
+                        </Grid>
+                      );
+                    })}
+
+                    {envVars.length === 0 && (
+                      <Text component="p" style={{ fontStyle: 'italic', color: 'var(--pf-v5-global--Color--200)' }}>
+                        No environment variables configured. Click "Import from File/URL" or "Add Variable" to get started.
+                      </Text>
+                    )}
                   </CardBody>
                 </Card>
               </ExpandableSection>
@@ -852,6 +990,13 @@ export const ImportAgentPage: React.FC = () => {
           .
         </Alert>
       </PageSection>
+
+      {/* Import Modal */}
+      <EnvImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImportEnvVars}
+      />
     </>
   );
 };

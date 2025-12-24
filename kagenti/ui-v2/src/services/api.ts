@@ -121,7 +121,14 @@ export const agentService = {
     imageTag: string;
     protocol: string;
     framework: string;
-    envVars?: Array<{ name: string; value: string }>;
+    envVars?: Array<{
+      name: string;
+      value?: string;
+      valueFrom?: {
+        secretKeyRef?: { name: string; key: string };
+        configMapKeyRef?: { name: string; key: string };
+      };
+    }>;
     // New fields for deployment method
     deploymentMethod?: 'source' | 'image';
     // Build from source fields
@@ -167,6 +174,33 @@ export const agentService = {
     return apiFetch(
       `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/build`
     );
+  },
+
+  async parseEnvFile(content: string): Promise<{
+    envVars: Array<{
+      name: string;
+      value?: string;
+      valueFrom?: {
+        secretKeyRef?: { name: string; key: string };
+        configMapKeyRef?: { name: string; key: string };
+      };
+    }>;
+    warnings?: string[];
+  }> {
+    return apiFetch('/agents/parse-env', {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  },
+
+  async fetchEnvFromUrl(url: string): Promise<{
+    content: string;
+    url: string;
+  }> {
+    return apiFetch('/agents/fetch-env-url', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
   },
 };
 

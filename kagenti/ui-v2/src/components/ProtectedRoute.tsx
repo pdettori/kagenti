@@ -19,20 +19,45 @@ import { useAuth } from '@/contexts';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  /**
+   * Optional array of roles required to access this route.
+   * User must have at least one of the specified roles.
+   * If empty or undefined, only authentication is required.
+   * 
+   * Future enhancement: Can be extended to support:
+   * - namespace-based access control
+   * - resource-level permissions
+   * - fine-grained RBAC policies
+   */
   requiredRoles?: string[];
+  /**
+   * Optional namespace restriction.
+   * Reserved for future implementation of namespace-based access control.
+   * When implemented, users will need appropriate roles/permissions for the specified namespace.
+   */
+  requiredNamespace?: string;
 }
 
 /**
  * ProtectedRoute component that wraps routes requiring authentication.
  *
+ * Current behavior:
  * - Shows a loading spinner while auth state is being determined
- * - Shows login prompt if user is not authenticated
- * - Shows access denied if user lacks required roles
+ * - If auth is disabled, grants access to all users
+ * - Shows login prompt if auth is enabled and user is not authenticated
+ * - Shows access denied if user lacks required roles (when requiredRoles is specified)
  * - Renders children if user is authenticated and authorized
+ *
+ * Future extensibility:
+ * - Role-based access control (RBAC) via requiredRoles parameter
+ * - Namespace-based access control via requiredNamespace parameter
+ * - Integration with OAuth2 provider roles and claims
+ * - Resource-level permissions and fine-grained access policies
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRoles = [],
+  // requiredNamespace - reserved for future namespace-based access control
 }) => {
   const { isAuthenticated, isLoading, isEnabled, user, login } = useAuth();
 
@@ -45,12 +70,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // If auth is disabled, render children directly
+  // If auth is disabled, render children directly (no protection needed)
   if (!isEnabled) {
     return <>{children}</>;
   }
 
-  // Show login prompt if not authenticated
+  // Show login prompt if auth is enabled but user is not authenticated
   if (!isAuthenticated) {
     return (
       <Bullseye style={{ minHeight: '400px' }}>
@@ -61,8 +86,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             headingLevel="h4"
           />
           <EmptyStateBody>
-            You need to sign in to access this page. Click the button below to
-            authenticate with Keycloak.
+            This page requires authentication. Please sign in to continue.
           </EmptyStateBody>
           <EmptyStateFooter>
             <EmptyStateActions>
@@ -76,7 +100,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check role-based access if requiredRoles specified
+  // Check role-based access control if requiredRoles specified
+  // This enables future RBAC implementation while maintaining backward compatibility
   if (requiredRoles.length > 0 && user) {
     const hasRequiredRole = requiredRoles.some((role) =>
       user.roles.includes(role)
@@ -92,8 +117,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               headingLevel="h4"
             />
             <EmptyStateBody>
-              You don't have permission to access this page. Required role(s):{' '}
-              {requiredRoles.join(', ')}
+              You don't have the required permissions to access this page.
+              <br />
+              Required role(s): {requiredRoles.join(', ')}
             </EmptyStateBody>
           </EmptyState>
         </Bullseye>
@@ -101,6 +127,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  // User is authenticated and authorized
+  // User is authenticated and authorized - render protected content
   return <>{children}</>;
 };

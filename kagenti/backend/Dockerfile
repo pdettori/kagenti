@@ -22,6 +22,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install CA certificates and update certificate store for SSL verification
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        openssl && \
+    update-ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
@@ -35,6 +44,11 @@ COPY app/ ./app/
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+# Unset SSL_CERT_FILE to prevent Kubernetes service account CA from being used
+# Python will use the system CA bundle at /etc/ssl/certs/ca-certificates.crt
+ENV SSL_CERT_FILE=""
+ENV SSL_CERT_DIR=/etc/ssl/certs
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # Change ownership
 RUN chown -R appuser:appgroup /app

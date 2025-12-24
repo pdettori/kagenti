@@ -267,6 +267,121 @@ No build-time environment variables needed! ✨
 - `POST /api/v1/agents/{ns}/{name}/chat` - Chat with agent
 - (all other API endpoints)
 
+---
+
+## Page-Level Access Control
+
+### Overview
+
+The UI implements page-level access control to protect sensitive resources:
+
+- **Guest users** (unauthenticated) can only access the **Home page**
+- **Authenticated users** have access to all pages and features
+- The design supports future **role-based access control (RBAC)**
+
+### Current Behavior
+
+#### Guest Users
+- ✅ Can view Home page
+- ❌ Cannot access any other pages
+- 🔒 Clicking protected links shows "Authentication Required" prompt
+- 📋 Sidebar shows only "Home" navigation item
+
+#### Authenticated Users
+- ✅ Full access to all pages
+- ✅ Complete sidebar navigation
+- 👤 User profile displayed in masthead
+- 🔑 Access controlled by authentication state
+
+### Protected Pages
+
+All pages except Home require authentication:
+
+- `/agents` - Agent Catalog
+- `/agents/import` - Import Agent
+- `/agents/:namespace/:name` - Agent Details
+- `/tools` - Tool Catalog
+- `/tools/import` - Import Tool
+- `/tools/:namespace/:name` - Tool Details
+- `/mcp-gateway` - MCP Gateway
+- `/ai-gateway` - AI Gateway
+- `/gateway-policies` - Gateway Policies
+- `/observability` - Observability
+- `/admin` - Administration
+
+### Implementation Details
+
+Protected routes use the `<ProtectedRoute>` component wrapper:
+
+```tsx
+// In App.tsx
+<Route path="/agents" element={
+  <ProtectedRoute>
+    <AgentCatalogPage />
+  </ProtectedRoute>
+} />
+```
+
+The component handles:
+1. Loading state while checking authentication
+2. Login prompt for unauthenticated users
+3. Access control based on roles (future)
+4. Rendering protected content for authorized users
+
+### Future: Role-Based Access Control (RBAC)
+
+The architecture supports future RBAC implementation:
+
+```tsx
+// Example: Admin-only page
+<ProtectedRoute requiredRoles={['admin', 'operator']}>
+  <AdminPage />
+</ProtectedRoute>
+
+// Example: Namespace-specific access (planned)
+<ProtectedRoute requiredNamespace="team1">
+  <AgentDetailPage />
+</ProtectedRoute>
+```
+
+**Roles are extracted from Keycloak tokens:**
+- `realm_access.roles` - Realm-level roles
+- `resource_access[client_id].roles` - Client-specific roles
+
+**To implement RBAC in the future:**
+
+1. Define roles in Keycloak (e.g., `viewer`, `editor`, `admin`)
+2. Assign roles to users/groups
+3. Add `requiredRoles` prop to protected routes
+4. Backend API must enforce same authorization rules
+
+### Security Considerations
+
+⚠️ **Important**: Client-side protection is **not security**. It only controls UI visibility. The backend API **must** enforce authorization for all operations.
+
+- UI protection prevents accidental access
+- Backend protection prevents unauthorized API calls
+- Both layers work together for complete security
+
+### Testing Access Control
+
+**As Guest:**
+```bash
+# Open UI without signing in
+open http://kagenti-ui.localtest.me:8080
+
+# Try to access protected page - should show login prompt
+open http://kagenti-ui.localtest.me:8080/agents
+```
+
+**As Authenticated User:**
+1. Sign in via "Sign In" button
+2. Verify full navigation appears
+3. Access all pages successfully
+4. Check user info in masthead
+
+---
+
 ## Additional Resources
 
 - [Keycloak Documentation](https://www.keycloak.org/documentation)

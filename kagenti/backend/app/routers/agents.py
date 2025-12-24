@@ -5,12 +5,17 @@
 Agent API endpoints.
 """
 
+import json
 import logging
-from typing import Any, List, Optional
+import socket
+import ipaddress
+from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.constants import (
     CRD_GROUP,
@@ -43,11 +48,48 @@ from app.models.responses import (
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
 
 
-class EnvVar(BaseModel):
-    """Environment variable."""
+class SecretKeyRef(BaseModel):
+    """Reference to a key in a Secret."""
 
     name: str
-    value: str
+    key: str
+
+
+class ConfigMapKeyRef(BaseModel):
+    """Reference to a key in a ConfigMap."""
+
+    name: str
+    key: str
+
+
+class EnvVarSource(BaseModel):
+    """Source for environment variable value."""
+
+    secretKeyRef: Optional[SecretKeyRef] = None
+    configMapKeyRef: Optional[ConfigMapKeyRef] = None
+
+
+class EnvVar(BaseModel):
+    """Environment variable with support for direct values and references."""
+
+    name: str
+    value: Optional[str] = None
+    valueFrom: Optional[EnvVarSource] = None
+
+    @field_validator("valueFrom")
+    @classmethod
+    def check_value_or_value_from(cls, v, info):
+        """Ensure either value or valueFrom is provided, but not both."""
+        values = info.data
+        has_value = values.get("value") is not None
+        has_value_from = v is not None
+
+        if not has_value and not has_value_from:
+            raise ValueError("Either value or valueFrom must be provided")
+        if has_value and has_value_from:
+            raise ValueError("Cannot specify both value and valueFrom")
+
+        return v
 
 
 class ServicePort(BaseModel):
@@ -405,11 +447,29 @@ def _build_agent_manifest(
     If build_ref_name is provided, creates an Agent with imageSource.buildRef
     referencing the AgentBuild. Otherwise, creates an Agent with direct image URL.
     """
-    # Build environment variables
+    # Build environment variables with support for valueFrom
     env_vars = list(DEFAULT_ENV_VARS)
     if request.envVars:
         for ev in request.envVars:
-            env_vars.append({"name": ev.name, "value": ev.value})
+            if ev.value is not None:
+                # Direct value
+                env_vars.append({"name": ev.name, "value": ev.value})
+            elif ev.valueFrom is not None:
+                # Reference to Secret or ConfigMap
+                env_entry = {"name": ev.name, "valueFrom": {}}
+
+                if ev.valueFrom.secretKeyRef:
+                    env_entry["valueFrom"]["secretKeyRef"] = {
+                        "name": ev.valueFrom.secretKeyRef.name,
+                        "key": ev.valueFrom.secretKeyRef.key,
+                    }
+                elif ev.valueFrom.configMapKeyRef:
+                    env_entry["valueFrom"]["configMapKeyRef"] = {
+                        "name": ev.valueFrom.configMapKeyRef.name,
+                        "key": ev.valueFrom.configMapKeyRef.key,
+                    }
+
+                env_vars.append(env_entry)
 
     # Build service ports
     if request.servicePorts:
@@ -596,3 +656,217 @@ async def create_agent(
             )
         logger.error(f"Failed to create agent: {e}")
         raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+# New models for env parsing
+class ParseEnvRequest(BaseModel):
+    """Request to parse .env file content."""
+
+    content: str
+
+
+class ParseEnvResponse(BaseModel):
+    """Response with parsed environment variables."""
+
+    envVars: List[Dict[str, Any]]
+    warnings: Optional[List[str]] = None
+
+
+class FetchEnvUrlRequest(BaseModel):
+    """Request to fetch .env file from URL."""
+
+    url: str
+
+
+class FetchEnvUrlResponse(BaseModel):
+    """Response with fetched .env file content."""
+
+    content: str
+    url: str
+
+
+# Blocked IP ranges for SSRF protection
+BLOCKED_IP_RANGES = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+]
+
+
+def is_ip_blocked(ip_str: str) -> bool:
+    """Check if IP is in blocked range for SSRF protection."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        return any(ip in network for network in BLOCKED_IP_RANGES)
+    except ValueError:
+        return False
+
+
+@router.post("/parse-env", response_model=ParseEnvResponse)
+async def parse_env_file(request: ParseEnvRequest) -> ParseEnvResponse:
+    """
+    Parse .env file content and return structured environment variables.
+    Supports:
+    - Standard KEY=value format
+    - Extended JSON format for secretKeyRef and configMapKeyRef
+
+    Example extended format:
+    SECRET_KEY='{"valueFrom": {"secretKeyRef": {"name": "openai-secret", "key": "apikey"}}}'
+    """
+    env_vars = []
+    warnings = []
+
+    lines = request.content.strip().split("\n")
+
+    for line_num, line in enumerate(lines, 1):
+        # Skip empty lines and comments
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Parse KEY=VALUE
+        if "=" not in line:
+            warnings.append(f"Line {line_num}: Invalid format, missing '='")
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+
+        # Remove quotes if present
+        if (value.startswith('"') and value.endswith('"')) or (
+            value.startswith("'") and value.endswith("'")
+        ):
+            value = value[1:-1]
+
+        # Try to parse as JSON (for extended format)
+        if value.startswith("{") and value.endswith("}"):
+            try:
+                parsed = json.loads(value)
+                if "valueFrom" in parsed:
+                    env_var = {"name": key, "valueFrom": parsed["valueFrom"]}
+                    env_vars.append(env_var)
+                    continue
+                else:
+                    # It's valid JSON but not our expected format, treat as string
+                    warnings.append(
+                        f"Line {line_num}: JSON value without 'valueFrom' key, treating as string"
+                    )
+            except json.JSONDecodeError as e:
+                warnings.append(f"Line {line_num}: Invalid JSON in value: {str(e)}")
+
+        # Standard value
+        env_vars.append({"name": key, "value": value})
+
+    return ParseEnvResponse(envVars=env_vars, warnings=warnings if warnings else None)
+
+
+@router.post("/fetch-env-url", response_model=FetchEnvUrlResponse)
+async def fetch_env_from_url(request: FetchEnvUrlRequest) -> FetchEnvUrlResponse:
+    """
+    Fetch .env file content from a remote URL.
+    Supports HTTP/HTTPS URLs with security validations to prevent SSRF attacks.
+
+    Example URLs:
+    - https://raw.githubusercontent.com/kagenti/agent-examples/main/a2a/git_issue_agent/.env.openai
+    - https://example.com/config/.env
+    """
+    import os
+    import ssl
+    from pathlib import Path
+
+    logger.info(f"Fetching .env file from URL: {request.url}")
+
+    # Log SSL/Certificate configuration
+    logger.info(f"SSL_CERT_FILE env: {os.environ.get('SSL_CERT_FILE', 'NOT SET')}")
+    logger.info(f"REQUESTS_CA_BUNDLE env: {os.environ.get('REQUESTS_CA_BUNDLE', 'NOT SET')}")
+    logger.info(f"Default SSL context: {ssl.get_default_verify_paths()}")
+
+    # Check if cert files exist
+    cert_paths = [
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/ssl/certs/ca-bundle.crt",
+        "/usr/local/share/ca-certificates/",
+    ]
+    for cert_path in cert_paths:
+        exists = (
+            Path(cert_path).exists() if cert_path.endswith(".crt") else Path(cert_path).is_dir()
+        )
+        logger.info(f"Certificate path {cert_path}: {'EXISTS' if exists else 'NOT FOUND'}")
+
+    # Security validation - only allow http/https
+    parsed_url = urlparse(request.url)
+    if parsed_url.scheme not in ["http", "https"]:
+        raise HTTPException(status_code=400, detail="Only HTTP/HTTPS URLs are supported")
+
+    # Validate hostname exists
+    if not parsed_url.hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL: hostname not found")
+
+    # Prevent SSRF attacks - block private IPs
+    try:
+        ip = socket.gethostbyname(parsed_url.hostname)
+        logger.debug(f"Resolved {parsed_url.hostname} to {ip}")
+        if is_ip_blocked(ip):
+            logger.warning(f"Blocked private IP address: {ip}")
+            raise HTTPException(
+                status_code=400, detail="Private IP addresses are not allowed for security reasons"
+            )
+    except socket.gaierror as e:
+        # Domain can't be resolved - log but let httpx handle it
+        logger.warning(f"Could not resolve hostname {parsed_url.hostname}: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking IP for {parsed_url.hostname}: {e}")
+
+    # Fetch content with timeout
+    try:
+        # Explicitly use system CA bundle instead of Kubernetes service account CA
+        # Kubernetes sets SSL_CERT_FILE to /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        # which doesn't include public CAs like GitHub. We need to explicitly point to system CAs.
+        ca_bundle_path = "/etc/ssl/certs/ca-certificates.crt"
+        if not Path(ca_bundle_path).exists():
+            # Fallback to alternative paths
+            for fallback in ["/etc/ssl/certs/ca-bundle.crt", "/etc/pki/tls/certs/ca-bundle.crt"]:
+                if Path(fallback).exists():
+                    ca_bundle_path = fallback
+                    break
+
+        logger.info(f"Using CA bundle: {ca_bundle_path}")
+
+        # Create SSL context with system certificates
+        ssl_context = ssl.create_default_context(cafile=ca_bundle_path)
+
+        async with httpx.AsyncClient(
+            timeout=10.0, follow_redirects=True, verify=ssl_context
+        ) as client:
+            logger.debug(f"Making HTTP request to {request.url}")
+            response = await client.get(request.url)
+            response.raise_for_status()
+
+            logger.info(f"Successfully fetched URL, content length: {len(response.text)} bytes")
+
+            # Validate content isn't too large (max 1MB)
+            content = response.text
+            if len(content) > 1024 * 1024:
+                raise HTTPException(status_code=413, detail="File content too large (max 1MB)")
+
+            return FetchEnvUrlResponse(content=content, url=request.url)
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout fetching URL {request.url}: {e}")
+        raise HTTPException(status_code=504, detail="Request timeout while fetching URL")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error fetching URL {request.url}: {e.response.status_code}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Failed to fetch URL: {e.response.status_code} {e.response.reason_phrase}",
+        )
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching URL {request.url}: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Failed to fetch URL: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching URL {request.url}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

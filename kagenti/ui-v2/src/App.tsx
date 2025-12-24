@@ -4,6 +4,7 @@
 import { Routes, Route } from 'react-router-dom';
 
 import { AppLayout } from './components/AppLayout';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { AgentCatalogPage } from './pages/AgentCatalogPage';
 import { AgentDetailPage } from './pages/AgentDetailPage';
@@ -22,18 +23,98 @@ function App() {
   return (
     <AppLayout>
       <Routes>
+        {/* Public route - accessible to everyone */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/agents" element={<AgentCatalogPage />} />
-        <Route path="/agents/import" element={<ImportAgentPage />} />
-        <Route path="/agents/:namespace/:name" element={<AgentDetailPage />} />
-        <Route path="/tools" element={<ToolCatalogPage />} />
-        <Route path="/tools/import" element={<ImportToolPage />} />
-        <Route path="/tools/:namespace/:name" element={<ToolDetailPage />} />
-        <Route path="/mcp-gateway" element={<MCPGatewayPage />} />
-        <Route path="/ai-gateway" element={<AIGatewayPage />} />
-        <Route path="/gateway-policies" element={<GatewayPoliciesPage />} />
-        <Route path="/observability" element={<ObservabilityPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        
+        {/* Protected routes - require authentication */}
+        <Route
+          path="/agents"
+          element={
+            <ProtectedRoute>
+              <AgentCatalogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/agents/import"
+          element={
+            <ProtectedRoute>
+              <ImportAgentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/agents/:namespace/:name"
+          element={
+            <ProtectedRoute>
+              <AgentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools"
+          element={
+            <ProtectedRoute>
+              <ToolCatalogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools/import"
+          element={
+            <ProtectedRoute>
+              <ImportToolPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools/:namespace/:name"
+          element={
+            <ProtectedRoute>
+              <ToolDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mcp-gateway"
+          element={
+            <ProtectedRoute>
+              <MCPGatewayPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-gateway"
+          element={
+            <ProtectedRoute>
+              <AIGatewayPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gateway-policies"
+          element={
+            <ProtectedRoute>
+              <GatewayPoliciesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/observability"
+          element={
+            <ProtectedRoute>
+              <ObservabilityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppLayout>
