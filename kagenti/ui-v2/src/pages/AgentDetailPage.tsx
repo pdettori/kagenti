@@ -19,6 +19,7 @@ import {
   DescriptionListTerm,
   DescriptionListDescription,
   Label,
+  LabelGroup,
   Card,
   CardTitle,
   CardBody,
@@ -33,6 +34,12 @@ import {
   SplitItem,
   Flex,
   FlexItem,
+  ExpandableSection,
+  Text,
+  TextContent,
+  TextVariants,
+  List,
+  ListItem,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -44,8 +51,9 @@ import {
 } from '@patternfly/react-table';
 import { CubesIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import yaml from 'js-yaml';
 
-import { agentService } from '@/services/api';
+import { agentService, chatService } from '@/services/api';
 import { AgentChat } from '@/components/AgentChat';
 
 interface StatusCondition {
@@ -67,10 +75,34 @@ interface BuildStatus {
   completionTime?: string;
 }
 
+interface AgentCardSkill {
+  id: string;
+  name: string;
+  description?: string;
+  examples?: string[];
+  tags?: string[];
+}
+
+interface AgentCard {
+  name: string;
+  description?: string;
+  version: string;
+  url: string;
+  protocolVersion?: string;
+  preferredTransport?: string;
+  capabilities?: {
+    streaming?: boolean;
+  };
+  defaultInputModes?: string[];
+  defaultOutputModes?: string[];
+  skills?: AgentCardSkill[];
+}
+
 export const AgentDetailPage: React.FC = () => {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<string | number>(0);
+  const [isAgentCardExpanded, setIsAgentCardExpanded] = React.useState(false);
 
   const { data: agent, isLoading, isError, error } = useQuery({
     queryKey: ['agent', namespace, name],
@@ -93,6 +125,19 @@ export const AgentDetailPage: React.FC = () => {
       }
       return false;
     },
+  });
+
+  // Check if agent is ready to fetch agent card
+  const agentConditions = agent?.status?.conditions || [];
+  const isAgentReady = agentConditions.some(
+    (c: StatusCondition) => c.type === 'Ready' && c.status === 'True'
+  );
+
+  // Fetch agent card if agent is ready
+  const { data: agentCard, isLoading: isAgentCardLoading } = useQuery<AgentCard>({
+    queryKey: ['agentCard', namespace, name],
+    queryFn: () => chatService.getAgentCard(namespace!, name!),
+    enabled: !!namespace && !!name && isAgentReady,
   });
 
   if (isLoading) {
@@ -248,23 +293,223 @@ export const AgentDetailPage: React.FC = () => {
                           </ClipboardCopy>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
-                      <DescriptionListGroup>
-                        <DescriptionListTerm>Agent Card</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          <Button
-                            variant="link"
-                            isInline
-                            icon={<ExternalLinkAltIcon />}
-                            iconPosition="end"
-                            component="a"
-                            href={`${agentUrl}/.well-known/agent.json`}
-                            target="_blank"
-                          >
-                            View Agent Card
-                          </Button>
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
                     </DescriptionList>
+                  </CardBody>
+                </Card>
+              </GridItem>
+
+              {/* Agent Card - Expandable section with formatted content */}
+              <GridItem md={12}>
+                <Card>
+                  <CardTitle>Agent Card</CardTitle>
+                  <CardBody>
+                    {!isReady ? (
+                      <Alert variant="info" title="Agent not ready" isInline>
+                        The agent card will be available once the agent is running.
+                      </Alert>
+                    ) : isAgentCardLoading ? (
+                      <Spinner size="md" aria-label="Loading agent card" />
+                    ) : agentCard ? (
+                      <>
+                        <Flex style={{ marginBottom: '16px' }}>
+                          <FlexItem>
+                            <Button
+                              variant="link"
+                              isInline
+                              icon={<ExternalLinkAltIcon />}
+                              iconPosition="end"
+                              component="a"
+                              href={`${agentUrl}/.well-known/agent.json`}
+                              target="_blank"
+                            >
+                              View Raw JSON
+                            </Button>
+                          </FlexItem>
+                        </Flex>
+                        <ExpandableSection
+                          toggleText={isAgentCardExpanded ? 'Hide Agent Card Details' : 'Show Agent Card Details'}
+                          isExpanded={isAgentCardExpanded}
+                          onToggle={() => setIsAgentCardExpanded(!isAgentCardExpanded)}
+                        >
+                          <Grid hasGutter style={{ marginTop: '16px' }}>
+                            {/* Basic Information */}
+                            <GridItem md={6}>
+                              <Card isFlat>
+                                <CardTitle>Basic Information</CardTitle>
+                                <CardBody>
+                                  <DescriptionList isCompact>
+                                    <DescriptionListGroup>
+                                      <DescriptionListTerm>Name</DescriptionListTerm>
+                                      <DescriptionListDescription>
+                                        {agentCard.name}
+                                      </DescriptionListDescription>
+                                    </DescriptionListGroup>
+                                    <DescriptionListGroup>
+                                      <DescriptionListTerm>Version</DescriptionListTerm>
+                                      <DescriptionListDescription>
+                                        <Label isCompact>{agentCard.version}</Label>
+                                      </DescriptionListDescription>
+                                    </DescriptionListGroup>
+                                    {agentCard.protocolVersion && (
+                                      <DescriptionListGroup>
+                                        <DescriptionListTerm>Protocol Version</DescriptionListTerm>
+                                        <DescriptionListDescription>
+                                          {agentCard.protocolVersion}
+                                        </DescriptionListDescription>
+                                      </DescriptionListGroup>
+                                    )}
+                                    {agentCard.preferredTransport && (
+                                      <DescriptionListGroup>
+                                        <DescriptionListTerm>Transport</DescriptionListTerm>
+                                        <DescriptionListDescription>
+                                          <Label isCompact color="blue">
+                                            {agentCard.preferredTransport}
+                                          </Label>
+                                        </DescriptionListDescription>
+                                      </DescriptionListGroup>
+                                    )}
+                                    <DescriptionListGroup>
+                                      <DescriptionListTerm>URL</DescriptionListTerm>
+                                      <DescriptionListDescription>
+                                        <code style={{ fontSize: '0.85em' }}>{agentCard.url}</code>
+                                      </DescriptionListDescription>
+                                    </DescriptionListGroup>
+                                  </DescriptionList>
+                                </CardBody>
+                              </Card>
+                            </GridItem>
+
+                            {/* Capabilities */}
+                            <GridItem md={6}>
+                              <Card isFlat>
+                                <CardTitle>Capabilities</CardTitle>
+                                <CardBody>
+                                  <DescriptionList isCompact>
+                                    <DescriptionListGroup>
+                                      <DescriptionListTerm>Streaming</DescriptionListTerm>
+                                      <DescriptionListDescription>
+                                        <Label
+                                          isCompact
+                                          color={agentCard.capabilities?.streaming ? 'green' : 'gold'}
+                                        >
+                                          {agentCard.capabilities?.streaming ? 'Enabled' : 'Disabled'}
+                                        </Label>
+                                      </DescriptionListDescription>
+                                    </DescriptionListGroup>
+                                    {agentCard.defaultInputModes && agentCard.defaultInputModes.length > 0 && (
+                                      <DescriptionListGroup>
+                                        <DescriptionListTerm>Input Modes</DescriptionListTerm>
+                                        <DescriptionListDescription>
+                                          <LabelGroup>
+                                            {agentCard.defaultInputModes.map((mode) => (
+                                              <Label key={mode} isCompact color="blue">
+                                                {mode}
+                                              </Label>
+                                            ))}
+                                          </LabelGroup>
+                                        </DescriptionListDescription>
+                                      </DescriptionListGroup>
+                                    )}
+                                    {agentCard.defaultOutputModes && agentCard.defaultOutputModes.length > 0 && (
+                                      <DescriptionListGroup>
+                                        <DescriptionListTerm>Output Modes</DescriptionListTerm>
+                                        <DescriptionListDescription>
+                                          <LabelGroup>
+                                            {agentCard.defaultOutputModes.map((mode) => (
+                                              <Label key={mode} isCompact color="purple">
+                                                {mode}
+                                              </Label>
+                                            ))}
+                                          </LabelGroup>
+                                        </DescriptionListDescription>
+                                      </DescriptionListGroup>
+                                    )}
+                                  </DescriptionList>
+                                </CardBody>
+                              </Card>
+                            </GridItem>
+
+                            {/* Description */}
+                            {agentCard.description && (
+                              <GridItem md={12}>
+                                <Card isFlat>
+                                  <CardTitle>Description</CardTitle>
+                                  <CardBody>
+                                    <TextContent>
+                                      <Text
+                                        component={TextVariants.p}
+                                        style={{ whiteSpace: 'pre-wrap' }}
+                                      >
+                                        {agentCard.description}
+                                      </Text>
+                                    </TextContent>
+                                  </CardBody>
+                                </Card>
+                              </GridItem>
+                            )}
+
+                            {/* Skills */}
+                            {agentCard.skills && agentCard.skills.length > 0 && (
+                              <GridItem md={12}>
+                                <Card isFlat>
+                                  <CardTitle>Skills</CardTitle>
+                                  <CardBody>
+                                    {agentCard.skills.map((skill) => (
+                                      <Card key={skill.id} isFlat style={{ marginBottom: '12px' }}>
+                                        <CardBody>
+                                          <Flex>
+                                            <FlexItem>
+                                              <Text component={TextVariants.h4}>{skill.name}</Text>
+                                            </FlexItem>
+                                            {skill.tags && skill.tags.length > 0 && (
+                                              <FlexItem>
+                                                <LabelGroup>
+                                                  {skill.tags.map((tag) => (
+                                                    <Label key={tag} isCompact color="cyan">
+                                                      {tag}
+                                                    </Label>
+                                                  ))}
+                                                </LabelGroup>
+                                              </FlexItem>
+                                            )}
+                                          </Flex>
+                                          {skill.description && (
+                                            <Text
+                                              component={TextVariants.p}
+                                              style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}
+                                            >
+                                              {skill.description}
+                                            </Text>
+                                          )}
+                                          {skill.examples && skill.examples.length > 0 && (
+                                            <div style={{ marginTop: '12px' }}>
+                                              <Text component={TextVariants.small}>
+                                                <strong>Examples:</strong>
+                                              </Text>
+                                              <List isPlain style={{ marginTop: '4px' }}>
+                                                {skill.examples.map((example, idx) => (
+                                                  <ListItem key={idx}>
+                                                    <code style={{ fontSize: '0.85em' }}>{example}</code>
+                                                  </ListItem>
+                                                ))}
+                                              </List>
+                                            </div>
+                                          )}
+                                        </CardBody>
+                                      </Card>
+                                    ))}
+                                  </CardBody>
+                                </Card>
+                              </GridItem>
+                            )}
+                          </Grid>
+                        </ExpandableSection>
+                      </>
+                    ) : (
+                      <Alert variant="warning" title="Agent card not available" isInline>
+                        Could not fetch the agent card. The agent may not be responding.
+                      </Alert>
+                    )}
                   </CardBody>
                 </Card>
               </GridItem>
@@ -500,7 +745,16 @@ export const AgentDetailPage: React.FC = () => {
                     fontSize: '0.85em',
                   }}
                 >
-                  {JSON.stringify(agent, null, 2)}
+                  {yaml.dump(
+                    {
+                      ...agent,
+                      metadata: {
+                        ...agent.metadata,
+                        managedFields: undefined,
+                      },
+                    },
+                    { noRefs: true, lineWidth: -1 }
+                  )}
                 </pre>
               </CardBody>
             </Card>
