@@ -52,14 +52,57 @@ This guide covers installation on both local Kind clusters and OpenShift environ
 # Clone the repository
 git clone https://github.com/kagenti/kagenti.git
 cd kagenti
+```
 
-# Configure environment
+#### Ansible-based Installer (Recommended)
+
+Run the newer, Helm-based Ansible installer:
+
+Setup the environment:
+
+```bash
+# From repository root
+cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
+# Edit deployments/envs/.secret_values.yaml with your values
+```
+
+```yaml
+# global secrets:
+global: {}
+
+# component-specific secrets
+charts:
+  kagenti:
+    values:
+      secrets:
+        githubUser: <Your GitHub username>
+        githubToken: <Your GitHub token>
+        openaiApiKey: <(Optional) Your Open-AI API key>
+        slackBotToken: <(Optional) Token for Slack Bot>
+        adminSlackBotToken: <(Optional) Admin Token for Slack Bot>
+        quayUser: <(Optional) Your Quay user for build-from-source>
+        quayToken: <(Optional) Your Quay token for building and pushing images (build-from-source)>
+```
+
+Run the ansible install script:
+
+```bash
+deployments/ansible/run-install.sh --env dev
+```
+
+The Ansible-based installer will create a Kind cluster (when appropriate) and deploy platform components.
+
+#### Legacy - Old Installer (Deprecated)
+
+Configure environment:
+
+```bash
 cp kagenti/installer/app/.env_template kagenti/installer/app/.env
 ```
 
 Edit `kagenti/installer/app/.env`:
 
-```bash
+```shell
 GITHUB_USER=<Your GitHub username>
 GITHUB_TOKEN=<Your GitHub token>
 OPENAI_API_KEY=<Optional: for OpenAI-based agents>
@@ -67,20 +110,7 @@ AGENT_NAMESPACES=<Optional: comma-separated namespaces, e.g., team1,team2>
 SLACK_BOT_TOKEN=<Optional: for Slack tool integration>
 ```
 
-#### Ansible-based Installer (Recommended)
-
-Run the newer, Helm-based Ansible installer:
-
-```bash
-# From repository root
-cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit deployments/envs/.secret_values.yaml with your values
-deployments/ansible/run-install.sh --env dev
-```
-
-The Ansible-based installer will create a Kind cluster (when appropriate) and deploy platform components.
-
-#### Legacy - Old Installer (Deprecated)
+Run the installer:
 
 ```bash
 cd kagenti/installer
