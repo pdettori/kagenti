@@ -84,7 +84,7 @@ charts:
         quayToken: <(Optional) Your Quay token for building and pushing images (build-from-source)>
 ```
 
-Run the ansible install script:
+Run the Ansible install script:
 
 ```bash
 deployments/ansible/run-install.sh --env dev
