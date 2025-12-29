@@ -77,7 +77,7 @@ charts:
       secrets:
         githubUser: <Your GitHub username>
         githubToken: <Your GitHub token>
-        openaiApiKey: <(Optional) Your Open-AI API key>
+        openaiApiKey: <(Optional) Your OpenAI API key>
         slackBotToken: <(Optional) Token for Slack Bot>
         adminSlackBotToken: <(Optional) Admin Token for Slack Bot>
         quayUser: <(Optional) Your Quay user for build-from-source>
