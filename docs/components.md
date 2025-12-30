@@ -332,6 +332,27 @@ A sidecar that validates incoming tokens and transparently exchanges them for do
 | **Token Exchange** | Exchange tokens between audiences ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) |
 | **SSO** | Single sign-on across Kagenti components |
 
+### Authorization Pattern
+
+The Agent and Tool Authorization Pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication:
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│   User   │────▶│ Keycloak │────▶│  Agent   │────▶│   Tool   │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+                      │                │                │
+                      ▼                ▼                ▼
+                 ┌─────────────────────────────────────────┐
+                 │              SPIRE Server               │
+                 │    (Issues short-lived identities)      │
+                 └─────────────────────────────────────────┘
+```
+
+1. **User authenticates** with Keycloak, receives access token
+2. **Agent receives** user context via delegated token
+3. **Agent identity** is attested by SPIRE
+4. **Tool access** uses exchanged tokens with minimal scope
+
 ### End-to-End Authorization Flow
 
 The complete Auth Bridge flow combines all components for zero-trust authentication:
