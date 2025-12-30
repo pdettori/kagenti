@@ -258,7 +258,56 @@ kubectl get route kagenti-ui -n kagenti-system -o jsonpath='{.status.ingress[0].
 
 ## Identity & Auth Bridge
 
+**Repository**: [kagenti/kagenti-extensions/AuthBridge](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)
+
 Kagenti provides a unified framework for identity and authorization in agentic systems, replacing static credentials with dynamic, short-lived tokens. We call this collection of assets **Auth Bridge**.
+
+**Auth Bridge** solves a critical challenge in microservices and agentic architectures: **how can workloads authenticate and communicate securely without pre-provisioned static credentials?**
+
+### Auth Bridge Components
+
+| Component | Purpose | Repository |
+|-----------|---------|------------|
+| **[Client Registration](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge/client-registration)** | Automatic OAuth2/OIDC client provisioning using SPIFFE ID | `AuthBridge/client-registration` |
+| **[AuthProxy](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge/AuthProxy)** | JWT validation and transparent token exchange | `AuthBridge/AuthProxy` |
+| **SPIRE** | Workload identity and attestation | External |
+| **Keycloak** | Identity provider and access management | External |
+
+### Client Registration
+
+Automatically registers Kubernetes workloads as Keycloak clients at pod startup:
+
+- Uses **SPIFFE ID** as client identifier (e.g., `spiffe://localtest.me/ns/team/sa/my-agent`)
+- Eliminates manual client creation and secret distribution
+- Writes credentials to shared volume for application use
+
+### AuthProxy
+
+A sidecar that validates incoming tokens and transparently exchanges them for downstream services:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         CALLER POD                              │
+│  ┌──────────────┐    ┌─────────────────────────────────────┐    │
+│  │              │    │         AuthProxy Sidecar           │    │
+│  │  Application │───►│  1. Validate token (aud: authproxy) │    │
+│  │              │    │  2. Exchange for target audience    │    │
+│  │              │    │  3. Forward with new token          │    │
+│  └──────────────┘    └─────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │   TARGET SERVICE    │
+                         │  (aud: auth-target) │
+                         └─────────────────────┘
+```
+
+**Key Features:**
+- **JWT Validation** using JWKS from Keycloak
+- **OAuth 2.0 Token Exchange** ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693))
+- **Transparent to applications** - handled by Envoy sidecar
+- **Audience scoping** - tokens are scoped to specific services
 
 ### SPIRE (Workload Identity)
 
@@ -279,32 +328,32 @@ Kagenti provides a unified framework for identity and authorization in agentic s
 | Feature | Description |
 |---------|-------------|
 | **User Management** | Create and manage Kagenti users |
-| **Client Registration** | OAuth clients for agents and UI |
-| **Token Exchange** | Exchange SPIRE tokens for Keycloak tokens |
+| **Client Registration** | OAuth clients for agents and UI (automated via Client Registration) |
+| **Token Exchange** | Exchange tokens between audiences ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) |
 | **SSO** | Single sign-on across Kagenti components |
 
-### Authorization Pattern
+### End-to-End Authorization Flow
 
-The Agent and Tool Authorization Pattern replaces static credentials with dynamic SPIRE-managed identities, enforcing least privilege and continuous authentication:
+The complete Auth Bridge flow combines all components for zero-trust authentication:
 
 ```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│   User   │────▶│ Keycloak │────▶│  Agent   │────▶│   Tool   │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-                      │                │                │
-                      ▼                ▼                ▼
-                 ┌─────────────────────────────────────────┐
-                 │              SPIRE Server               │
-                 │    (Issues short-lived identities)      │
-                 └─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  1. SPIFFE Helper obtains SVID from SPIRE Agent                                 │
+│  2. Client Registration registers workload with Keycloak (using SPIFFE ID)      │
+│  3. Caller gets token from Keycloak (audience: "authproxy")                     │
+│  4. Caller sends request to target with token                                   │
+│  5. AuthProxy intercepts, exchanges token (audience: "auth-target")             │
+│  6. Target validates token and returns response                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **User authenticates** with Keycloak, receives access token
-2. **Agent receives** user context via delegated token
-3. **Agent identity** is attested by SPIRE
-4. **Tool access** uses exchanged tokens with minimal scope
+**Security Properties:**
+- **No Static Secrets** - Credentials are dynamically generated at pod startup
+- **Short-Lived Tokens** - JWT tokens expire and must be refreshed
+- **Audience Scoping** - Tokens are scoped to specific audiences, preventing reuse
+- **Transparent to Application** - Token exchange is handled by the sidecar
 
-For detailed overview of Identity and Authorization Patterns, and a hands-on demonstration, see the [Identity Guide](./identity-guide.md).
+For detailed overview of Identity and Authorization Patterns, see the [Identity Guide](./identity-guide.md).
 
 ### Tornjak (SPIRE Management UI)
 

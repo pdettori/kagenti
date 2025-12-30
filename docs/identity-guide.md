@@ -11,6 +11,7 @@ In practice, the Authorization Pattern within the Agentic Platform enables:
 ## 📚 Related Documentation
 
 - **[Kagenti Identity Overview](./2025-10.Kagenti-Identity.pdf)** - High-level architectural concepts
+- **[AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)** - Complete end-to-end installation and demo with SPIFFE, Client Registration, and AuthProxy
 - **[Token Exchange Deep Dive](../kagenti/examples/identity/token_exchange.md)** - Detailed OAuth2 token exchange flows
 - **[Client Registration Examples](../kagenti/examples/identity/keycloak_token_exchange/README.md)** - Practical integration examples
 - **[Personas and Roles](../PERSONAS_AND_ROLES.md#23-security-and-identity-specialist)** - Security and identity specialist persona
@@ -607,6 +608,101 @@ tool_response = requests.post(
 
 ---
 
+## 🌉 AuthBridge Component
+
+The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge) provides a complete, hands-on implementation of Kagenti's identity and authorization patterns. It combines **Client Registration** and **AuthProxy** to demonstrate the full zero-trust authentication flow.
+
+### What AuthBridge Demonstrates
+
+| Capability | Description |
+|------------|-------------|
+| **Automatic Workload Identity** | Pod registers itself with Keycloak using SPIFFE ID |
+| **Token-Based Authentication** | Caller authenticates using `client_credentials` grant |
+| **Transparent Token Exchange** | Sidecar exchanges tokens for correct audience |
+| **Target Service Validation** | Target validates token has correct audience |
+
+### AuthBridge Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  1. SPIFFE Helper obtains SVID from SPIRE Agent                                 │
+│  2. Client Registration extracts SPIFFE ID and registers with Keycloak          │
+│  3. Caller gets token from Keycloak (audience: "authproxy")                     │
+│  4. Caller sends request to auth-target with token                              │
+│  5. Envoy intercepts, Go Processor exchanges token (audience: "auth-target")    │
+│  6. Auth Target validates token and returns "authorized"                        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  SPIRE Agent                    Keycloak                       Auth Target
+       │                            │                               │
+       │  1. SVID                   │                               │
+       ▼                            │                               │
+  ┌─────────┐                       │                               │
+  │ SPIFFE  │  2. Register client   │                               │
+  │ Helper  │──────────────────────►│                               │
+  └─────────┘                       │                               │
+       │                            │                               │
+       ▼                            │                               │
+  ┌─────────┐  3. Get token         │                               │
+  │ Caller  │──────────────────────►│                               │
+  │         │◄──────────────────────│                               │
+  │         │   (aud: authproxy)    │                               │
+  │         │                       │                               │
+  │         │  4. Request + token   │                               │
+  │         │───────────────────────┼──────────────────────────────►│
+  └─────────┘                       │                               │
+       │                            │                               │
+       │      ┌──────────────┐      │                               │
+       └─────►│ Envoy+GoPro  │      │                               │
+              │              │  5. Exchange token                   │
+              │              │─────►│                               │
+              │              │◄─────│                               │
+              │              │   (aud: auth-target)                 │
+              │              │─────────────────────────────────────►│
+              └──────────────┘                              6. Validate & Authorize
+                                                                    │
+                                                               "authorized"
+```
+
+### AuthBridge Components
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| **Client Registration** | Container | Registers workload with Keycloak using SPIFFE ID |
+| **SPIFFE Helper** | Container | Obtains SVID from SPIRE Agent |
+| **AuthProxy** | Sidecar | Validates tokens using JWKS |
+| **Envoy + Go Processor** | Sidecar | Intercepts traffic and exchanges tokens |
+| **Auth Target** | Deployment | Target service that validates exchanged tokens |
+
+### Installation and Hands-On Demo
+
+The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge) provides a complete end-to-end example:
+
+```bash
+# Clone and deploy
+cd AuthBridge
+python setup_keycloak.py           # Configure Keycloak
+kubectl apply -f k8s/authbridge-deployment.yaml  # Deploy demo
+
+# Test
+kubectl exec -it deployment/caller -n authbridge -c caller -- sh
+TOKEN=$(curl -s ... | jq -r '.access_token')
+curl -H "Authorization: Bearer $TOKEN" http://auth-target-service:8081/test
+# Returns: "authorized"
+```
+
+For detailed installation and demo instructions please see The [AuthBridge Demo](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)
+
+### AuthBridge Documentation
+
+For complete documentation, see:
+
+- **[AuthBridge README](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)** - Full demo instructions
+- **[AuthProxy](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge/AuthProxy)** - Token validation and exchange proxy
+- **[Client Registration](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge/client-registration)** - Automatic Keycloak client registration
+
+---
+
 ## 🔍 Troubleshooting & Validation
 
 ### Common Issues and Solutions
@@ -614,6 +710,7 @@ tool_response = requests.post(
 #### 1. SPIRE Agent Not Receiving SVID
 
 **Symptoms:**
+
 ```bash
 kubectl exec -n team deployment/slack-researcher -- ls /opt/
 # Missing: svid.pem, jwt_svid.token
