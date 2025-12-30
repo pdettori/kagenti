@@ -691,7 +691,7 @@ curl -H "Authorization: Bearer $TOKEN" http://auth-target-service:8081/test
 # Returns: "authorized"
 ```
 
-For detailed installation and demo instructions please see The [AuthBridge Demo](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)
+For detailed installation and demo instructions please see the [AuthBridge Demo](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge)
 
 ### AuthBridge Documentation
 
