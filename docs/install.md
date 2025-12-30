@@ -63,13 +63,6 @@ Setup the environment:
 ```bash
 # From repository root
 cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit deployments/envs/.secret_values.yaml with your values
-```
-
-```yaml
-# global secrets:
-global: {}
-
 # component-specific secrets
 charts:
   kagenti:
