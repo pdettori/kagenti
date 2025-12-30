@@ -428,6 +428,7 @@ export const ImportToolPage: React.FC = () => {
                             onClick={() => removeServicePort(index)}
                             aria-label="Remove port"
                             isDisabled={servicePorts.length <= 1}
+                            style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
                           >
                             <TrashIcon />
                           </Button>
@@ -477,6 +478,7 @@ export const ImportToolPage: React.FC = () => {
                             variant="plain"
                             onClick={() => removeEnvVar(index)}
                             aria-label="Remove environment variable"
+                            style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
                           >
                             <TrashIcon />
                           </Button>

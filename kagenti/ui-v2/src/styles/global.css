@@ -355,15 +355,20 @@ body {
   background-color: transparent !important;
 }
 
-/* Plain button (icon buttons) - consistent styling */
+/* Plain button (icon buttons) - theme-aware styling */
 .pf-v5-c-button.pf-m-plain {
-  color: #ffffff !important;
+  color: var(--pf-v5-global--Color--100) !important;
   background-color: transparent !important;
 }
 
 .pf-v5-c-button.pf-m-plain:hover,
 .pf-v5-c-button.pf-m-plain:focus {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--pf-v5-global--BackgroundColor--200) !important;
+}
+
+/* Plain button with danger styling (for delete icons) */
+.pf-v5-c-button.pf-m-plain[style*="danger"] {
+  color: var(--pf-v5-global--danger-color--100) !important;
 }
 
 /* Control button - consistent styling */
@@ -552,6 +557,61 @@ body {
   background-color: var(--pf-v5-c-form-control--BackgroundColor);
   border-color: var(--pf-v5-c-form-control--BorderColor);
   color: var(--pf-v5-c-form-control--Color);
+}
+
+/* Light theme: form inputs need dark text (exclude masthead which is always dark) */
+[data-theme="light"] input:not(.pf-v5-c-masthead input),
+[data-theme="light"] textarea:not(.pf-v5-c-masthead textarea),
+[data-theme="light"] select:not(.pf-v5-c-masthead select),
+[data-theme="light"] .pf-v5-c-form-control:not(.pf-v5-c-masthead .pf-v5-c-form-control),
+[data-theme="light"] .pf-v5-c-text-input-group__text-input:not(.pf-v5-c-masthead .pf-v5-c-text-input-group__text-input),
+[data-theme="light"] .pf-v5-c-select__toggle-text:not(.pf-v5-c-masthead .pf-v5-c-select__toggle-text),
+[data-theme="light"] .pf-v5-c-menu-toggle__text:not(.pf-v5-c-masthead .pf-v5-c-menu-toggle__text) {
+  background-color: #ffffff !important;
+  color: #151515 !important;
+  border-color: #d2d2d2 !important;
+}
+
+/* Masthead elements always use light text (dark background) */
+.pf-v5-c-masthead .pf-v5-c-menu-toggle__text,
+.pf-v5-c-masthead .pf-v5-c-button,
+.pf-v5-c-masthead .pf-v5-c-dropdown__toggle,
+.pf-v5-c-masthead input,
+.pf-v5-c-masthead select {
+  color: #ffffff !important;
+}
+
+/* Masthead button hover - always dark background */
+.pf-v5-c-masthead .pf-v5-c-button:hover,
+.pf-v5-c-masthead .pf-v5-c-button:focus,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle:hover,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Dark theme: form inputs need light text */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] .pf-v5-c-form-control,
+[data-theme="dark"] .pf-v5-c-text-input-group__text-input,
+[data-theme="dark"] .pf-v5-c-select__toggle-text,
+[data-theme="dark"] .pf-v5-c-menu-toggle__text {
+  background-color: #212427 !important;
+  color: #ffffff !important;
+  border-color: #3c3f42 !important;
+}
+
+/* Placeholder text styling */
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #6a6e73 !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #c9c9c9 !important;
 }
 
 /* Form label styling */

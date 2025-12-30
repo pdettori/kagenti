@@ -112,7 +112,7 @@ build-load-ui: build-load-ui-frontend build-load-ui-backend
 	@echo "    --set ui.frontend.tag=$(UI_FRONTEND_TAG) \\"
 	@echo "    --set ui.backend.image=$(UI_BACKEND_REPO) \\"
 	@echo "    --set ui.backend.tag=$(UI_BACKEND_TAG) \\"
-	@echo "    -f <your-values-file>"
+	@echo "    -f charts/kagenti/.secrets.yaml"
 	@echo ""
 
 # Help target for UI v2 builds

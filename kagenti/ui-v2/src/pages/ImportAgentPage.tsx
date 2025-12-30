@@ -124,7 +124,7 @@ export const ImportAgentPage: React.FC = () => {
 
   // Pod configuration
   const [servicePorts, setServicePorts] = useState<ServicePort[]>([
-    { name: 'http', port: 8080, targetPort: 8080, protocol: 'TCP' },
+    { name: 'http', port: 8080, targetPort: 8000, protocol: 'TCP' },
   ]);
   const [showPodConfig, setShowPodConfig] = useState(false);
 
@@ -258,7 +258,7 @@ export const ImportAgentPage: React.FC = () => {
   const addServicePort = () => {
     setServicePorts([
       ...servicePorts,
-      { name: 'http', port: 8080, targetPort: 8080, protocol: 'TCP' },
+      { name: 'http', port: 8080, targetPort: 8000, protocol: 'TCP' },
     ]);
   };
 
@@ -769,7 +769,7 @@ export const ImportAgentPage: React.FC = () => {
                             onPlus={() => updateServicePort(index, 'targetPort', port.targetPort + 1)}
                             onChange={(event) => {
                               const target = event.target as HTMLInputElement;
-                              updateServicePort(index, 'targetPort', parseInt(target.value, 10) || 8080);
+                              updateServicePort(index, 'targetPort', parseInt(target.value, 10) || 8000);
                             }}
                             inputAriaLabel="Target port"
                           />
@@ -804,6 +804,7 @@ export const ImportAgentPage: React.FC = () => {
                             onClick={() => removeServicePort(index)}
                             aria-label="Remove port"
                             isDisabled={servicePorts.length <= 1}
+                            style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
                           >
                             <TrashIcon />
                           </Button>
@@ -926,6 +927,7 @@ export const ImportAgentPage: React.FC = () => {
                               variant="plain"
                               onClick={() => removeEnvVar(index)}
                               aria-label="Remove environment variable"
+                              style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
                             >
                               <TrashIcon />
                             </Button>
