@@ -363,8 +363,8 @@ The complete Auth Bridge flow combines all components for zero-trust authenticat
 │  2. Client Registration registers workload with Keycloak (using SPIFFE ID)      │
 │  3. Caller gets token from Keycloak (audience: "authproxy")                     │
 │  4. Caller sends request to target with token                                   │
-│  5. AuthProxy intercepts, exchanges token (audience: "auth-target")             │
-│  6. Target validates token and returns response                                 │
+│  5. Envoy+GoPro AuthProxy (Go Processor) intercepts, exchanges token            │
+│     (audience: "auth-target")                                                   │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
