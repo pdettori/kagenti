@@ -670,7 +670,7 @@ The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/ma
 |-----------|------|---------|
 | **Client Registration** | Container | Registers workload with Keycloak using SPIFFE ID |
 | **SPIFFE Helper** | Container | Obtains SVID from SPIRE Agent |
-| **AuthProxy** | Sidecar | Validates tokens using JWKS |
+| **AuthProxy** | Sidecar | Validates JWT tokens using JWKS |
 | **Envoy + Go Processor** | Sidecar | Intercepts traffic and exchanges tokens |
 | **Auth Target** | Deployment | Target service that validates exchanged tokens |
 
