@@ -1,47 +1,60 @@
 name: Epic
-description: For tracking a large feature, including how to demo it.
+description: For tracking a large feature
 title: "epic: "
 labels:
   - epic
+
 body:
   - type: textarea
-    id: objective
+    id: problem
     attributes:
-      label: Demo Objective
-      description: Please describe the objective of your demo.
+      label: Problem
+      description: Please describe the problem to be solved and any associated user journeys.
       placeholder: |
-        - [ ] User should be able to ...
-        - [ ] ...
+        - As a <user type>, I want to <do something>, so that I can <accomplish something>.
+        - ...
     validations:
       required: true
 
   - type: textarea
-    id: steps
+    id: design
     attributes:
-      label: Demo Steps
-      description: Please describe the steps for the demo.
+      label: design
+      description: Please include any proposed design to address the problem.
       placeholder: |
-        1. Admin does X
-        1. User does Y
-        1. Everyone is happy :)
+        - Proposed design: ...
 
-  - type: checkboxes
-    id: action-items
+  - type: textarea
+    id: goals-non-goals
     attributes:
-      label: Action Items
-      description: Please check the following
-      options:
-        - label: Scope of the current demo is necessary to fit in the prototype boundaries
-          required: true
-        - label: Contribute to the final demo script and recording
+      label: Goals and non-goals
+      description: Please describe any goals and non-goals of this work. For non-goals, sometimes the scope of work is too large.
+      placeholder: |
+        - Goals: ...
+        - Non-goals: ...
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Success criteria
+      placeholder: |
+        - [ ] (Example) X is integrated with Kagenti
+    validations:
+      required: true
 
   - type: textarea
     id: stories
     attributes:
-      label: Stories
+      label: Stories to be associated with this epic
       placeholder: |
         - [ ] (Example) Add new API group
         - [ ] (Example) Add Widget API type
         - [ ] (Example) Add WidgetController
     validations:
       required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context for the epic here.
