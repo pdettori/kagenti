@@ -630,7 +630,7 @@ The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/ma
 │  3. Caller gets token from Keycloak (audience: "caller's SPIFFE ID")            │
 │  4. Caller sends request to auth-target with token                              │
 │  5. Envoy intercepts,Go Processor validates Token Signature and Isusuer,        │
-│    then it exchanges token (audience: "auth-target")                           │
+│    then it exchanges token (audience: "auth-target")                            │
 │  6. Auth Target validates token and returns "authorized"                        │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
