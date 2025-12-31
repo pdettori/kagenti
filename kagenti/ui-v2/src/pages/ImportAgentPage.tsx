@@ -363,7 +363,7 @@ export const ImportAgentPage: React.FC = () => {
         registryUrl: getRegistryUrl(),
         registrySecret: registryType !== 'local' ? registrySecret : undefined,
         startCommand: showStartCommand ? startCommand : undefined,
-        servicePorts: showPodConfig ? servicePorts : undefined,
+        servicePorts,
       });
     } else {
       // Deploy from existing image
@@ -382,7 +382,7 @@ export const ImportAgentPage: React.FC = () => {
         deploymentMethod: 'image',
         containerImage: fullImage,
         imagePullSecret: imagePullSecret || undefined,
-        servicePorts: showPodConfig ? servicePorts : undefined,
+        servicePorts,
       });
     }
   };

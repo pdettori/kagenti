@@ -97,7 +97,7 @@ class ServicePort(BaseModel):
 
     name: str = "http"
     port: int = 8080
-    targetPort: int = 8080
+    targetPort: int = 8000
     protocol: str = "TCP"
 
 
@@ -509,6 +509,7 @@ def _build_agent_manifest(
         "spec": {
             "description": f"Agent '{request.name}' deployed from UI.",
             "replicas": 1,
+            "servicePorts": service_ports,
             "podTemplateSpec": {
                 "spec": {
                     "containers": [
