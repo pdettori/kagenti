@@ -60,10 +60,10 @@ ui:
     tag: latest
     resources:
       limits:
-        cpu: 200m
+        cpu: 100m
         memory: 128Mi
       requests:
-        cpu: 50m
+        cpu: 25m
         memory: 64Mi
   # Backend configuration
   backend:
@@ -71,11 +71,11 @@ ui:
     tag: latest
     resources:
       limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 100m
+        cpu: 250m
         memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
 
 # ------------------------------------------------------------------
 #  UI OAuth Secret Creator Configuration
@@ -133,11 +133,11 @@ kagenti-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       resources:
         limits:
-          cpu: 300m
-          memory: 512Mi
-        requests:
-          cpu: 100m
+          cpu: 150m
           memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration

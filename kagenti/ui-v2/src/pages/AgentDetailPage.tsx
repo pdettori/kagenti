@@ -108,6 +108,14 @@ export const AgentDetailPage: React.FC = () => {
     queryKey: ['agent', namespace, name],
     queryFn: () => agentService.get(namespace!, name!),
     enabled: !!namespace && !!name,
+    refetchInterval: (query) => {
+      // Poll every 5 seconds if agent is not ready
+      const conditions = query.state.data?.status?.conditions || [];
+      const isReady = conditions.some(
+        (c: StatusCondition) => c.type === 'Ready' && c.status === 'True'
+      );
+      return isReady ? false : 5000;
+    },
   });
 
   // Check if agent was built from source (has buildRef)
