@@ -72,6 +72,16 @@ export const ToolDetailPage: React.FC = () => {
     queryKey: ['tool', namespace, name],
     queryFn: () => toolService.get(namespace!, name!),
     enabled: !!namespace && !!name,
+    refetchInterval: (query) => {
+      // Poll every 5 seconds if tool is not ready
+      const status = query.state.data?.status || {};
+      const phase = status.phase || '';
+      const conditions = status.conditions || [];
+      const isReady = phase === 'Running' || conditions.some(
+        (c: { type: string; status: string }) => c.type === 'Ready' && c.status === 'True'
+      );
+      return isReady ? false : 5000;
+    },
   });
 
   const connectMutation = useMutation({
@@ -116,7 +126,9 @@ export const ToolDetailPage: React.FC = () => {
   const labels = metadata.labels || {};
   const conditions: StatusCondition[] = status.conditions || [];
 
-  const isReady = conditions.some(
+  // MCPServer CRD uses status.phase for ready state, not conditions
+  const phase = status.phase || '';
+  const isReady = phase === 'Running' || conditions.some(
     (c) => c.type === 'Ready' && c.status === 'True'
   );
 

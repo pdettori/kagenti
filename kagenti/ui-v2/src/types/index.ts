@@ -100,6 +100,7 @@ export interface ToolDetail {
     };
   };
   status?: {
+    phase?: string;
     conditions?: Array<{
       type: string;
       status: string;
