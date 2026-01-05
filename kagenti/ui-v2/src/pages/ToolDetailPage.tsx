@@ -52,10 +52,10 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import { ToolboxIcon, PlayIcon } from '@patternfly/react-icons';
+import { ToolboxIcon, PlayIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 
-import { toolService } from '@/services/api';
+import { toolService, configService } from '@/services/api';
 
 interface StatusCondition {
   type: string;
@@ -119,6 +119,12 @@ export const ToolDetailPage: React.FC = () => {
 
   const connectMutation = useMutation({
     mutationFn: () => toolService.connect(namespace!, name!),
+  });
+
+  // Fetch dashboard config for MCP Inspector URL
+  const { data: dashboardConfig } = useQuery({
+    queryKey: ['dashboards'],
+    queryFn: () => configService.getDashboards(),
   });
 
   const invokeMutation = useMutation({
@@ -216,7 +222,20 @@ export const ToolDetailPage: React.FC = () => {
     (c) => c.type === 'Ready' && c.status === 'True'
   );
 
-  const toolUrl = `http://${name}.${namespace}.localtest.me:8080`;
+  // External URL for accessing the tool via HTTPRoute (used by browser)
+  const toolExternalUrl = `http://${name}.localtest.me:8080`;
+
+  // In-cluster URL for MCP server (used by MCP Inspector which runs in-cluster)
+  // ToolHive creates proxy services with pattern: mcp-{name}-proxy on port 8000
+  const mcpInClusterUrl = `http://mcp-${name}-proxy.${namespace}.svc.cluster.local:8000/mcp`;
+
+  // Construct MCP Inspector URL with pre-configured server
+  // MCP Inspector runs in-cluster, so it needs the in-cluster URL
+  const getMcpInspectorUrl = () => {
+    if (!dashboardConfig?.mcpInspector) return null;
+    const encodedServerUrl = encodeURIComponent(mcpInClusterUrl);
+    return `${dashboardConfig.mcpInspector}?serverUrl=${encodedServerUrl}&transport=streamable-http`;
+  };
 
   const toggleToolExpanded = (toolName: string) => {
     setExpandedTools((prev) => ({
@@ -325,7 +344,7 @@ export const ToolDetailPage: React.FC = () => {
                         <DescriptionListTerm>MCP Server URL</DescriptionListTerm>
                         <DescriptionListDescription>
                           <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
-                            {toolUrl}
+                            {toolExternalUrl}
                           </ClipboardCopy>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
@@ -490,6 +509,63 @@ export const ToolDetailPage: React.FC = () => {
                 >
                   {JSON.stringify(tool, null, 2)}
                 </pre>
+              </CardBody>
+            </Card>
+          </Tab>
+
+          <Tab eventKey={4} title={<TabTitleText>MCP Inspector</TabTitleText>}>
+            <Card style={{ marginTop: '16px' }}>
+              <CardTitle>Launch MCP Inspector</CardTitle>
+              <CardBody>
+                <p style={{ marginBottom: '16px' }}>
+                  Open the MCP Inspector to interactively explore and test this MCP server.
+                  The inspector will be pre-configured to connect to this tool's MCP endpoint.
+                </p>
+
+                <DescriptionList isCompact style={{ marginBottom: '24px' }}>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>MCP Server URL (in-cluster)</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
+                        {mcpInClusterUrl}
+                      </ClipboardCopy>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Transport</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <Label color="blue" isCompact>streamable-http</Label>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </DescriptionList>
+
+                {!isReady ? (
+                  <Alert variant="warning" title="Tool not ready" isInline>
+                    The MCP server must be running before you can connect with the inspector.
+                  </Alert>
+                ) : getMcpInspectorUrl() ? (
+                  <Button
+                    variant="primary"
+                    icon={<ExternalLinkAltIcon />}
+                    iconPosition="end"
+                    component="a"
+                    href={getMcpInspectorUrl()!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open MCP Inspector
+                  </Button>
+                ) : (
+                  <Alert variant="info" title="MCP Inspector not configured" isInline>
+                    The MCP Inspector URL is not available. Please check your configuration.
+                  </Alert>
+                )}
+
+                {dashboardConfig?.mcpInspector && (
+                  <p style={{ marginTop: '16px', fontSize: '0.85em', color: 'var(--pf-v5-global--Color--200)' }}>
+                    MCP Inspector: <a href={dashboardConfig.mcpInspector} target="_blank" rel="noopener noreferrer">{dashboardConfig.mcpInspector}</a>
+                  </p>
+                )}
               </CardBody>
             </Card>
           </Tab>
