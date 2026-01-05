@@ -377,15 +377,20 @@ async def create_tool(
 def _get_tool_url(name: str, namespace: str) -> str:
     """Get the URL for an MCP tool server.
 
+    ToolHive creates a proxy service with the naming pattern:
+    - Service name: mcp-{name}-proxy
+    - Port: 8000
+
     Returns different URL formats based on deployment context:
-    - In-cluster: http://{name}.{namespace}.svc.cluster.local:8080
-    - Off-cluster (local dev): http://{name}.{domain}:8080
+    - In-cluster: http://mcp-{name}-proxy.{namespace}.svc.cluster.local:8000
+    - Off-cluster (local dev): http://{name}.{domain}:8080 (via HTTPRoute)
     """
     if settings.is_running_in_cluster:
-        # In-cluster: use Kubernetes service DNS
-        return f"http://{name}.{namespace}.svc.cluster.local:8080"
+        # In-cluster: use ToolHive proxy service DNS
+        # ToolHive creates services named mcp-{name}-proxy on port 8000
+        return f"http://mcp-{name}-proxy.{namespace}.svc.cluster.local:8000"
     else:
-        # Off-cluster: use external domain (e.g., localtest.me)
+        # Off-cluster: use external domain (e.g., localtest.me) via HTTPRoute
         domain = settings.domain_name
         return f"http://{name}.{domain}:8080"
 
@@ -403,6 +408,8 @@ async def connect_to_tool(
     """
     tool_url = _get_tool_url(name, namespace)
     mcp_endpoint = f"{tool_url}/mcp"
+
+    logger.info(f"Connecting to MCP server at {mcp_endpoint}")
 
     exit_stack = AsyncExitStack()
     try:
