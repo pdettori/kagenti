@@ -34,6 +34,15 @@ import {
   Flex,
   FlexItem,
   ExpandableSection,
+  Modal,
+  ModalVariant,
+  Form,
+  FormGroup,
+  TextInput,
+  Switch,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -43,7 +52,7 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import { ToolboxIcon } from '@patternfly/react-icons';
+import { ToolboxIcon, PlayIcon } from '@patternfly/react-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 
 import { toolService } from '@/services/api';
@@ -59,7 +68,25 @@ interface StatusCondition {
 interface MCPToolInfo {
   name: string;
   description?: string;
-  input_schema?: object;
+  input_schema?: JSONSchema;
+}
+
+interface JSONSchema {
+  type?: string;
+  properties?: Record<string, JSONSchemaProperty>;
+  required?: string[];
+}
+
+interface JSONSchemaProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  enum?: unknown[];
+}
+
+interface InvokeResult {
+  content?: Array<{ type: string; text?: string; data?: unknown; value?: string }>;
+  isError?: boolean;
 }
 
 export const ToolDetailPage: React.FC = () => {
@@ -67,6 +94,12 @@ export const ToolDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<string | number>(0);
   const [expandedTools, setExpandedTools] = React.useState<Record<string, boolean>>({});
+
+  // Invoke tool state
+  const [invokeModalOpen, setInvokeModalOpen] = React.useState(false);
+  const [selectedTool, setSelectedTool] = React.useState<MCPToolInfo | null>(null);
+  const [toolArgs, setToolArgs] = React.useState<Record<string, unknown>>({});
+  const [invokeResult, setInvokeResult] = React.useState<InvokeResult | null>(null);
 
   const { data: tool, isLoading, isError, error } = useQuery({
     queryKey: ['tool', namespace, name],
@@ -87,6 +120,57 @@ export const ToolDetailPage: React.FC = () => {
   const connectMutation = useMutation({
     mutationFn: () => toolService.connect(namespace!, name!),
   });
+
+  const invokeMutation = useMutation({
+    mutationFn: ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) =>
+      toolService.invoke(namespace!, name!, toolName, args),
+    onSuccess: (data) => {
+      setInvokeResult(data.result as InvokeResult);
+    },
+  });
+
+  // Open invoke modal for a specific tool
+  const openInvokeModal = (mcpTool: MCPToolInfo) => {
+    setSelectedTool(mcpTool);
+    setInvokeResult(null);
+    // Initialize args with default values from schema
+    const initialArgs: Record<string, unknown> = {};
+    if (mcpTool.input_schema?.properties) {
+      Object.entries(mcpTool.input_schema.properties).forEach(([key, prop]) => {
+        if (prop.default !== undefined) {
+          initialArgs[key] = prop.default;
+        } else if (prop.type === 'boolean') {
+          initialArgs[key] = false;
+        } else if (prop.type === 'number' || prop.type === 'integer') {
+          initialArgs[key] = 0;
+        } else {
+          initialArgs[key] = '';
+        }
+      });
+    }
+    setToolArgs(initialArgs);
+    setInvokeModalOpen(true);
+  };
+
+  // Close invoke modal
+  const closeInvokeModal = () => {
+    setInvokeModalOpen(false);
+    setSelectedTool(null);
+    setToolArgs({});
+    invokeMutation.reset();
+  };
+
+  // Handle tool invocation
+  const handleInvoke = () => {
+    if (selectedTool) {
+      invokeMutation.mutate({ toolName: selectedTool.name, args: toolArgs });
+    }
+  };
+
+  // Update a single argument value
+  const updateArg = (key: string, value: unknown) => {
+    setToolArgs((prev) => ({ ...prev, [key]: value }));
+  };
 
   if (isLoading) {
     return (
@@ -376,9 +460,10 @@ export const ToolDetailPage: React.FC = () => {
                               variant="secondary"
                               size="sm"
                               style={{ marginTop: '12px' }}
-                              isDisabled
+                              icon={<PlayIcon />}
+                              onClick={() => openInvokeModal(mcpTool)}
                             >
-                              Invoke Tool (Coming Soon)
+                              Invoke Tool
                             </Button>
                           </CardBody>
                         </Card>
@@ -410,6 +495,153 @@ export const ToolDetailPage: React.FC = () => {
           </Tab>
         </Tabs>
       </PageSection>
+
+      {/* Invoke Tool Modal */}
+      <Modal
+        variant={ModalVariant.medium}
+        title={`Invoke: ${selectedTool?.name || ''}`}
+        isOpen={invokeModalOpen}
+        onClose={closeInvokeModal}
+        actions={[
+          <Button
+            key="invoke"
+            variant="primary"
+            onClick={handleInvoke}
+            isLoading={invokeMutation.isPending}
+            isDisabled={invokeMutation.isPending}
+            icon={<PlayIcon />}
+          >
+            {invokeMutation.isPending ? 'Invoking...' : 'Invoke'}
+          </Button>,
+          <Button key="cancel" variant="link" onClick={closeInvokeModal}>
+            Close
+          </Button>,
+        ]}
+      >
+        {selectedTool && (
+          <>
+            {selectedTool.description && (
+              <p style={{ marginBottom: '16px', color: 'var(--pf-v5-global--Color--200)' }}>
+                {selectedTool.description}
+              </p>
+            )}
+
+            <Form>
+              {selectedTool.input_schema?.properties &&
+              Object.keys(selectedTool.input_schema.properties).length > 0 ? (
+                Object.entries(selectedTool.input_schema.properties).map(([key, prop]) => {
+                  const isRequired = selectedTool.input_schema?.required?.includes(key);
+                  const propType = prop.type || 'string';
+
+                  return (
+                    <FormGroup
+                      key={key}
+                      label={key}
+                      isRequired={isRequired}
+                      fieldId={`arg-${key}`}
+                    >
+                      {propType === 'boolean' ? (
+                        <Switch
+                          id={`arg-${key}`}
+                          isChecked={toolArgs[key] as boolean}
+                          onChange={(_e, checked) => updateArg(key, checked)}
+                          label="true"
+                          labelOff="false"
+                        />
+                      ) : propType === 'number' || propType === 'integer' ? (
+                        <TextInput
+                          id={`arg-${key}`}
+                          type="number"
+                          value={String(toolArgs[key] || '')}
+                          onChange={(_e, val) => updateArg(key, val ? Number(val) : 0)}
+                        />
+                      ) : prop.enum ? (
+                        <TextInput
+                          id={`arg-${key}`}
+                          value={String(toolArgs[key] || '')}
+                          onChange={(_e, val) => updateArg(key, val)}
+                          placeholder={`Options: ${prop.enum.join(', ')}`}
+                        />
+                      ) : (
+                        <TextInput
+                          id={`arg-${key}`}
+                          value={String(toolArgs[key] || '')}
+                          onChange={(_e, val) => updateArg(key, val)}
+                        />
+                      )}
+                      {prop.description && (
+                        <FormHelperText>
+                          <HelperText>
+                            <HelperTextItem>{prop.description}</HelperTextItem>
+                          </HelperText>
+                        </FormHelperText>
+                      )}
+                    </FormGroup>
+                  );
+                })
+              ) : (
+                <Alert variant="info" title="No arguments required" isInline>
+                  This tool does not require any input arguments.
+                </Alert>
+              )}
+            </Form>
+
+            {/* Error display */}
+            {invokeMutation.isError && (
+              <Alert
+                variant="danger"
+                title="Invocation failed"
+                isInline
+                style={{ marginTop: '16px' }}
+              >
+                {invokeMutation.error instanceof Error
+                  ? invokeMutation.error.message
+                  : 'An unexpected error occurred'}
+              </Alert>
+            )}
+
+            {/* Result display */}
+            {invokeResult && (
+              <div style={{ marginTop: '16px' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '8px' }}>
+                  Result
+                </Title>
+                {invokeResult.isError && (
+                  <Alert variant="warning" title="Tool returned an error" isInline isPlain />
+                )}
+                <pre
+                  style={{
+                    backgroundColor: invokeResult.isError
+                      ? 'var(--pf-v5-global--danger-color--100)'
+                      : 'var(--pf-v5-global--BackgroundColor--200)',
+                    color: invokeResult.isError ? '#fff' : 'inherit',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                    maxHeight: '300px',
+                    fontSize: '0.85em',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {invokeResult.content?.map((item) => {
+                    if (item.type === 'text' && item.text) {
+                      return item.text;
+                    }
+                    if (item.type === 'data' && item.data) {
+                      return JSON.stringify(item.data, null, 2);
+                    }
+                    if (item.value) {
+                      return item.value;
+                    }
+                    return JSON.stringify(item, null, 2);
+                  }).join('\n') || JSON.stringify(invokeResult, null, 2)}
+                </pre>
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
     </>
   );
 };
