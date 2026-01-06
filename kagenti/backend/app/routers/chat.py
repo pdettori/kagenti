@@ -12,7 +12,7 @@ from typing import Optional, List, Any
 from uuid import uuid4
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -143,12 +143,16 @@ async def send_message(
     namespace: str,
     name: str,
     request: ChatRequest,
+    http_request: Request,
 ) -> ChatResponse:
     """
     Send a message to an A2A agent and get the response.
 
     This endpoint sends a message using the A2A protocol and returns
     the agent's response. For streaming agents, use the /stream endpoint.
+
+    Forwards the Authorization header from the client to the agent for
+    authenticated requests.
     """
     agent_url = _get_agent_url(name, namespace)
     session_id = request.session_id or uuid4().hex
@@ -167,12 +171,19 @@ async def send_message(
         },
     }
 
+    # Prepare headers with optional Authorization
+    headers = {"Content-Type": "application/json"}
+    authorization = http_request.headers.get("Authorization")
+    if authorization:
+        headers["Authorization"] = authorization
+        logger.info("Forwarding Authorization header to agent")
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 agent_url,
                 json=message_payload,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
             response.raise_for_status()
             result = response.json()
@@ -270,7 +281,9 @@ def _extract_text_from_parts(parts: list) -> str:
     return content
 
 
-async def _stream_a2a_response(agent_url: str, message: str, session_id: str):
+async def _stream_a2a_response(
+    agent_url: str, message: str, session_id: str, authorization: Optional[str] = None
+):
     """Generator for streaming A2A responses with event metadata."""
     import json
 
@@ -291,13 +304,22 @@ async def _stream_a2a_response(agent_url: str, message: str, session_id: str):
     logger.info(f"Starting A2A stream to {agent_url} with session_id={session_id}")
     logger.debug(f"Message payload: {json.dumps(message_payload, indent=2)}")
 
+    # Prepare headers with optional Authorization
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    if authorization:
+        headers["Authorization"] = authorization
+        logger.info("Forwarding Authorization header to agent")
+
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST",
                 agent_url,
                 json=message_payload,
-                headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+                headers=headers,
             ) as response:
                 response.raise_for_status()
                 logger.info(f"Connected to agent, status={response.status_code}")
@@ -460,18 +482,25 @@ async def stream_message(
     namespace: str,
     name: str,
     request: ChatRequest,
+    http_request: Request,
 ):
     """
     Send a message to an A2A agent and stream the response.
 
     This endpoint uses Server-Sent Events (SSE) to stream the agent's
     response in real-time. Requires an agent that supports streaming.
+
+    Forwards the Authorization header from the client to the agent for
+    authenticated requests.
     """
     agent_url = _get_agent_url(name, namespace)
     session_id = request.session_id or uuid4().hex
 
+    # Extract Authorization header if present
+    authorization = http_request.headers.get("Authorization")
+
     return StreamingResponse(
-        _stream_a2a_response(agent_url, request.message, session_id),
+        _stream_a2a_response(agent_url, request.message, session_id, authorization),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

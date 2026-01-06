@@ -20,6 +20,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 
 import { chatService } from '@/services/api';
 import { EventsPanel, A2AEvent } from './EventsPanel';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -44,6 +45,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
   const [streamingEvents, setStreamingEvents] = useState<A2AEvent[]>([]);
   const [showAgentCard, setShowAgentCard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { getToken } = useAuth();
 
   // Fetch agent card to check capabilities
   const { data: agentCard, isLoading: isLoadingCard, error: cardError } = useQuery({
@@ -97,11 +99,20 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
       setStreamingEvents([]);
 
       try {
+        // Get auth token if available
+        const token = await getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(
           `/api/v1/chat/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/stream`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
               message: messageToSend,
               session_id: sessionId,

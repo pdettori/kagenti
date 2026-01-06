@@ -200,8 +200,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setError(null); // Clear any previous errors
 
         if (authenticated) {
-          setToken(keycloak.token || null);
+          const accessToken = keycloak.token || null;
+          setToken(accessToken);
           setUser(extractUserInfo(keycloak, config.client_id));
+          
+          // Store token in sessionStorage for persistence
+          if (accessToken) {
+            sessionStorage.setItem('kagenti_access_token', accessToken);
+          }
         }
 
         // Set up token refresh
@@ -211,7 +217,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               .updateToken(60) // Refresh if token expires in 60 seconds
               .then((refreshed) => {
                 if (refreshed) {
-                  setToken(keycloak.token || null);
+                  const newToken = keycloak.token || null;
+                  setToken(newToken);
+                  // Update sessionStorage with new token
+                  if (newToken) {
+                    sessionStorage.setItem('kagenti_access_token', newToken);
+                  }
                   console.debug('Token refreshed');
                 }
               })
@@ -281,6 +292,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = useCallback(() => {
     if (!isEnabled || !keycloakRef.current) return;
+    // Clear token from sessionStorage
+    sessionStorage.removeItem('kagenti_access_token');
     keycloakRef.current.logout({
       redirectUri: window.location.origin,
     });
@@ -295,15 +308,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const keycloak = keycloakRef.current;
     if (!keycloak || !keycloak.authenticated) {
-      return null;
+      // Try to restore from sessionStorage if available
+      const storedToken = sessionStorage.getItem('kagenti_access_token');
+      return storedToken || null;
     }
 
     try {
-      await keycloak.updateToken(30);
-      return keycloak.token || null;
+      const refreshed = await keycloak.updateToken(30);
+      const currentToken = keycloak.token || null;
+      
+      // Update sessionStorage if token was refreshed
+      if (refreshed && currentToken) {
+        sessionStorage.setItem('kagenti_access_token', currentToken);
+      }
+      
+      return currentToken;
     } catch {
       console.error('Failed to refresh token');
-      return null;
+      // Try to return stored token as fallback
+      const storedToken = sessionStorage.getItem('kagenti_access_token');
+      return storedToken || null;
     }
   }, [isEnabled]);
 
