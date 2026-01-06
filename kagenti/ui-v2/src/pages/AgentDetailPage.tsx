@@ -3,6 +3,8 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   PageSection,
   Title,
@@ -385,21 +387,6 @@ export const AgentDetailPage: React.FC = () => {
                       <Spinner size="md" aria-label="Loading agent card" />
                     ) : agentCard ? (
                       <>
-                        <Flex style={{ marginBottom: '16px' }}>
-                          <FlexItem>
-                            <Button
-                              variant="link"
-                              isInline
-                              icon={<ExternalLinkAltIcon />}
-                              iconPosition="end"
-                              component="a"
-                              href={`${agentUrl}/.well-known/agent.json`}
-                              target="_blank"
-                            >
-                              View Raw JSON
-                            </Button>
-                          </FlexItem>
-                        </Flex>
                         <ExpandableSection
                           toggleText={isAgentCardExpanded ? 'Hide Agent Card Details' : 'Show Agent Card Details'}
                           isExpanded={isAgentCardExpanded}
@@ -509,13 +496,10 @@ export const AgentDetailPage: React.FC = () => {
                                 <Card isFlat>
                                   <CardTitle>Description</CardTitle>
                                   <CardBody>
-                                    <TextContent>
-                                      <Text
-                                        component={TextVariants.p}
-                                        style={{ whiteSpace: 'pre-wrap' }}
-                                      >
+                                    <TextContent style={{ lineHeight: '1.6' }}>
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                         {agentCard.description}
-                                      </Text>
+                                      </ReactMarkdown>
                                     </TextContent>
                                   </CardBody>
                                 </Card>
@@ -548,12 +532,11 @@ export const AgentDetailPage: React.FC = () => {
                                             )}
                                           </Flex>
                                           {skill.description && (
-                                            <Text
-                                              component={TextVariants.p}
-                                              style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}
-                                            >
-                                              {skill.description}
-                                            </Text>
+                                            <div style={{ marginTop: '8px', lineHeight: '1.6' }}>
+                                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {skill.description}
+                                              </ReactMarkdown>
+                                            </div>
                                           )}
                                           {skill.examples && skill.examples.length > 0 && (
                                             <div style={{ marginTop: '12px' }}>
