@@ -636,6 +636,60 @@ export const AgentDetailPage: React.FC = () => {
                 </GridItem>
               )}
 
+
+            </Grid>
+          </Tab>
+
+          <Tab eventKey={1} title={<TabTitleText>Status</TabTitleText>}>
+            <Grid hasGutter style={{ marginTop: '16px' }}>
+              {/* Agent Runtime Status */}
+              <GridItem md={12}>
+                <Card>
+                  <CardTitle>Agent Status</CardTitle>
+                  <CardBody>
+                    {conditions.length === 0 ? (
+                      <Alert variant="info" title="No status conditions available" isInline />
+                    ) : (
+                      <Table aria-label="Agent status conditions" variant="compact">
+                        <Thead>
+                          <Tr>
+                            <Th>Type</Th>
+                            <Th>Status</Th>
+                            <Th>Reason</Th>
+                            <Th>Message</Th>
+                            <Th>Last Transition</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {conditions.map((condition, index) => (
+                            <Tr key={`${condition.type}-${index}`}>
+                              <Td dataLabel="Type">{condition.type}</Td>
+                              <Td dataLabel="Status">
+                                <Label
+                                  color={condition.status === 'True' ? 'green' : 'red'}
+                                  isCompact
+                                >
+                                  {condition.status}
+                                </Label>
+                              </Td>
+                              <Td dataLabel="Reason">{condition.reason || '-'}</Td>
+                              <Td dataLabel="Message">
+                                {condition.message || '-'}
+                              </Td>
+                              <Td dataLabel="Last Transition">
+                                {condition.lastTransitionTime
+                                  ? new Date(condition.lastTransitionTime).toLocaleString()
+                                  : '-'}
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    )}
+                  </CardBody>
+                </Card>
+              </GridItem>
+
               {/* Build Status - shown when agent was built from source */}
               {buildRefName && (
                 <GridItem md={12}>
@@ -647,6 +701,12 @@ export const AgentDetailPage: React.FC = () => {
                       ) : buildStatus ? (
                         <>
                           <DescriptionList isCompact isHorizontal>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Build Name</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                {buildStatus.name}
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
                             <DescriptionListGroup>
                               <DescriptionListTerm>Phase</DescriptionListTerm>
                               <DescriptionListDescription>
@@ -737,53 +797,6 @@ export const AgentDetailPage: React.FC = () => {
                 </GridItem>
               )}
             </Grid>
-          </Tab>
-
-          <Tab eventKey={1} title={<TabTitleText>Status</TabTitleText>}>
-            <Card style={{ marginTop: '16px' }}>
-              <CardTitle>Status Conditions</CardTitle>
-              <CardBody>
-                {conditions.length === 0 ? (
-                  <Alert variant="info" title="No status conditions available" isInline />
-                ) : (
-                  <Table aria-label="Status conditions" variant="compact">
-                    <Thead>
-                      <Tr>
-                        <Th>Type</Th>
-                        <Th>Status</Th>
-                        <Th>Reason</Th>
-                        <Th>Message</Th>
-                        <Th>Last Transition</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {conditions.map((condition, index) => (
-                        <Tr key={`${condition.type}-${index}`}>
-                          <Td dataLabel="Type">{condition.type}</Td>
-                          <Td dataLabel="Status">
-                            <Label
-                              color={condition.status === 'True' ? 'green' : 'red'}
-                              isCompact
-                            >
-                              {condition.status}
-                            </Label>
-                          </Td>
-                          <Td dataLabel="Reason">{condition.reason || '-'}</Td>
-                          <Td dataLabel="Message">
-                            {condition.message || '-'}
-                          </Td>
-                          <Td dataLabel="Last Transition">
-                            {condition.lastTransitionTime
-                              ? new Date(condition.lastTransitionTime).toLocaleString()
-                              : '-'}
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                )}
-              </CardBody>
-            </Card>
           </Tab>
 
           <Tab eventKey={2} title={<TabTitleText>Chat</TabTitleText>}>
