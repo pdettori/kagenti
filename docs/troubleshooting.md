@@ -173,3 +173,32 @@ Deployed agents may need to be restarted to update the Keycloak client.
 ```shell
 kubectl rollout restart -n <agent-namespace> deployment <agent-deployment e.g. weather-service>
 ```
+
+### Cert-Manager Webhook Errors
+
+When running the kagenti helm chart upgrade, you may encounter an error stating `failed calling webhook "webhook.cert-manager.io" because the x509 certificate has expired.` This occurs when the internal certificates used by cert-manager to communicate with the Kubernetes API server are no longer valid, preventing the validation of resources like Certificates and Issuers.
+
+To resolve this, you must force cert-manager to regenerate its internal CA and certificates by following these steps:
+
+Delete the expired webhook secret:
+
+```shell
+kubectl delete secret cert-manager-webhook-ca -n cert-manager
+```
+
+Restart the cert-manager deployments to trigger the issuance of new certificates:
+
+```shell
+kubectl rollout restart deployment cert-manager -n cert-manager
+kubectl rollout restart deployment cert-manager-webhook -n cert-manager
+kubectl rollout restart deployment cert-manager-cainjector -n cert-manager
+```
+
+Verify the pods are healthy before retrying your Helm command:
+
+```shell
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=60s
+```
+
+Once the pods are back in a Running state with valid certificates, your helm upgrade --install command should complete 
+successfully.
