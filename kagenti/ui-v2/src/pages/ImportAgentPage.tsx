@@ -188,6 +188,22 @@ export const ImportAgentPage: React.FC = () => {
     }
   };
 
+  // Construct default .env URL from git repo info
+  const getDefaultEnvUrl = (): string | undefined => {
+    if (!gitUrl || !gitPath) return undefined;
+
+    // Parse GitHub URL to extract org and repo
+    // Supports: https://github.com/org/repo or https://github.com/org/repo.git
+    const githubMatch = gitUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)(\.git)?/);
+    if (!githubMatch) return undefined;
+
+    const [, org, repo] = githubMatch;
+    const branch = gitBranch || 'main';
+    const path = gitPath.replace(/^\/+|\/+$/g, ''); // Remove leading/trailing slashes
+
+    return `https://raw.githubusercontent.com/${org}/${repo}/refs/heads/${branch}/${path}/.env.openai`;
+  };
+
   // Environment variable handlers
   const addEnvVar = () => {
     setEnvVars([...envVars, { name: '', value: '' }]);
@@ -998,6 +1014,7 @@ export const ImportAgentPage: React.FC = () => {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={handleImportEnvVars}
+        defaultUrl={getDefaultEnvUrl()}
       />
     </>
   );

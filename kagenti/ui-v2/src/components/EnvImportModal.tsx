@@ -1,7 +1,7 @@
 // Copyright 2025 IBM Corp.
 // Licensed under the Apache License, Version 2.0
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalVariant,
@@ -45,23 +45,34 @@ interface EnvImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (envVars: EnvVar[]) => void;
+  defaultUrl?: string;
 }
 
-export const EnvImportModal: React.FC<EnvImportModalProps> = ({ isOpen, onClose, onImport }) => {
-  const [activeTabKey, setActiveTabKey] = useState<string | number>('file');
+export const EnvImportModal: React.FC<EnvImportModalProps> = ({ isOpen, onClose, onImport, defaultUrl }) => {
+  const [activeTabKey, setActiveTabKey] = useState<string | number>(defaultUrl ? 'url' : 'file');
   const [fileContent, setFileContent] = useState<string>('');
   const [fileName, setFileName] = useState('');
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(defaultUrl || '');
   const [previewVars, setPreviewVars] = useState<EnvVar[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isParsed, setIsParsed] = useState(false);
 
-  const resetState = () => {
+  // Update URL and tab when modal opens with a defaultUrl
+  useEffect(() => {
+    if (isOpen && defaultUrl) {
+      setUrl(defaultUrl);
+      setActiveTabKey('url');
+    }
+  }, [isOpen, defaultUrl]);
+
+  const resetState = (preserveUrl = false) => {
     setFileContent('');
     setFileName('');
-    setUrl('');
+    if (!preserveUrl) {
+      setUrl(defaultUrl || '');
+    }
     setPreviewVars([]);
     setWarnings([]);
     setError(null);
