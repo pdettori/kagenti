@@ -19,12 +19,15 @@ import { PaperPlaneIcon } from '@patternfly/react-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 
 import { chatService } from '@/services/api';
+import { EventsPanel, A2AEvent } from './EventsPanel';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  events?: A2AEvent[];
+  isComplete?: boolean;
 }
 
 interface AgentChatProps {
@@ -38,6 +41,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [streamingEvents, setStreamingEvents] = useState<A2AEvent[]>([]);
   const [showAgentCard, setShowAgentCard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +63,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
           role: 'assistant',
           content: response.content,
           timestamp: new Date(),
+          isComplete: true,
         },
       ]);
     },
@@ -67,7 +72,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+  }, [messages, streamingContent, streamingEvents]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isStreaming || sendMessageMutation.isPending) return;
@@ -77,6 +82,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
       role: 'user',
       content: input.trim(),
       timestamp: new Date(),
+      isComplete: true,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -88,6 +94,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
       // Use streaming
       setIsStreaming(true);
       setStreamingContent('');
+      setStreamingEvents([]);
 
       try {
         const response = await fetch(
@@ -109,30 +116,81 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let accumulatedContent = '';
+        const collectedEvents: A2AEvent[] = [];
+        let buffer = ''; // Buffer for incomplete SSE lines
 
         if (reader) {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            // Split on double newline (SSE message separator) or single newline
+            const lines = buffer.split('\n');
+            // Keep the last potentially incomplete line in the buffer
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
                   const data = JSON.parse(line.slice(6));
+                  console.log('[AgentChat] Received SSE data:', data);
 
                   if (data.session_id) {
                     setSessionId(data.session_id);
                   }
 
+                  // Process event if present
+                  if (data.event) {
+                    console.log('[AgentChat] Processing event:', data.event);
+                    const event: A2AEvent = {
+                      id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                      timestamp: new Date(),
+                      type: data.event.type,
+                      taskId: data.event.taskId,
+                      state: data.event.state,
+                      message: data.event.message,
+                      final: data.event.final || data.event.type === 'artifact', // Artifacts are final
+                    };
+
+                    // Add artifact info if present
+                    if (data.event.type === 'artifact') {
+                      event.artifactName = data.event.name;
+                      if (data.content) {
+                        event.artifactContent = data.content;
+                      }
+                    }
+
+                    collectedEvents.push(event);
+                    console.log('[AgentChat] Added event to collection, total events:', collectedEvents.length, event);
+                    setStreamingEvents([...collectedEvents]);
+                  } else {
+                    console.log('[AgentChat] No event field in data, skipping event creation');
+                  }
+
+                  // Accumulate content (for final message)
                   if (data.content) {
-                    accumulatedContent += data.content;
-                    setStreamingContent(accumulatedContent);
+                    // Accumulate content from: final events, non-artifact events, OR artifact events
+                    // Artifacts contain the final answer from the agent
+                    if (!data.event || data.event.final || data.event.type === 'artifact') {
+                      accumulatedContent += data.content;
+                      setStreamingContent(accumulatedContent);
+                    }
                   }
 
                   if (data.error) {
+                    // Add error event
+                    const errorEvent: A2AEvent = {
+                      id: `event-error-${Date.now()}`,
+                      timestamp: new Date(),
+                      type: 'error',
+                      message: data.error,
+                    };
+                    collectedEvents.push(errorEvent);
+                    setStreamingEvents([...collectedEvents]);
+
                     accumulatedContent = `Error: ${data.error}`;
                     setStreamingContent(accumulatedContent);
                   }
@@ -140,23 +198,26 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                   if (data.done) {
                     break;
                   }
-                } catch {
-                  // Ignore parse errors for incomplete chunks
+                } catch (parseError) {
+                  // Log parse errors for debugging (may be incomplete chunks)
+                  console.log('[AgentChat] Parse error for line:', line.slice(0, 200), parseError);
                 }
               }
             }
           }
         }
 
-        // Add the complete message
-        if (accumulatedContent) {
+        // Add the complete message with events
+        if (accumulatedContent || collectedEvents.length > 0) {
           setMessages((prev) => [
             ...prev,
             {
               id: `assistant-${Date.now()}`,
               role: 'assistant',
-              content: accumulatedContent,
+              content: accumulatedContent || 'No response from agent',
               timestamp: new Date(),
+              events: collectedEvents,
+              isComplete: true,
             },
           ]);
         }
@@ -168,11 +229,13 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
             role: 'assistant',
             content: `Error: ${error instanceof Error ? error.message : 'Failed to get response'}`,
             timestamp: new Date(),
+            isComplete: true,
           },
         ]);
       } finally {
         setIsStreaming(false);
         setStreamingContent('');
+        setStreamingEvents([]);
       }
     } else {
       // Use non-streaming
@@ -327,6 +390,14 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                           : 'var(--pf-v5-global--Color--100)',
                     }}
                   >
+                    {/* Events Panel for assistant messages with events */}
+                    {message.role === 'assistant' && message.events && message.events.length > 0 && (
+                      <EventsPanel
+                        events={message.events}
+                        isComplete={message.isComplete ?? true}
+                        defaultExpanded={false}
+                      />
+                    )}
                     <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
                   </div>
                   <div
@@ -341,8 +412,8 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                 </div>
               ))}
 
-              {/* Streaming message */}
-              {isStreaming && streamingContent && (
+              {/* Streaming message with live events */}
+              {isStreaming && (
                 <div
                   style={{
                     marginBottom: '16px',
@@ -359,16 +430,34 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                       backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
                     }}
                   >
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{streamingContent}</div>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '8px',
-                        height: '16px',
-                        backgroundColor: 'var(--pf-v5-global--primary-color--100)',
-                        animation: 'blink 1s infinite',
-                      }}
-                    />
+                    {/* Live events panel */}
+                    {streamingEvents.length > 0 && (
+                      <EventsPanel
+                        events={streamingEvents}
+                        isComplete={false}
+                        defaultExpanded={true}
+                      />
+                    )}
+                    {streamingContent ? (
+                      <div style={{ whiteSpace: 'pre-wrap' }}>
+                        {streamingContent}
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '16px',
+                            backgroundColor: 'var(--pf-v5-global--primary-color--100)',
+                            animation: 'blink 1s infinite',
+                            marginLeft: '2px',
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Spinner size="sm" />
+                        <span>Processing...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
