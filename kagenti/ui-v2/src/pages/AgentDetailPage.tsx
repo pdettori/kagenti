@@ -40,6 +40,15 @@ import {
   TextVariants,
   List,
   ListItem,
+  Modal,
+  ModalVariant,
+  TextInput,
+  Icon,
+  Dropdown,
+  DropdownList,
+  DropdownItem,
+  MenuToggle,
+  MenuToggleElement,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -49,8 +58,12 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import { CubesIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { useQuery } from '@tanstack/react-query';
+import {
+  CubesIcon,
+  ExternalLinkAltIcon,
+  ExclamationTriangleIcon,
+} from '@patternfly/react-icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import yaml from 'js-yaml';
 
 import { agentService, chatService } from '@/services/api';
@@ -101,8 +114,31 @@ interface AgentCard {
 export const AgentDetailPage: React.FC = () => {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<string | number>(0);
   const [isAgentCardExpanded, setIsAgentCardExpanded] = React.useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState('');
+  const [actionsMenuOpen, setActionsMenuOpen] = React.useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => agentService.delete(namespace!, name!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      navigate('/agents');
+    },
+  });
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setDeleteConfirmText('');
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmText === name) {
+      deleteMutation.mutate();
+    }
+  };
 
   const { data: agent, isLoading, isError, error } = useQuery({
     queryKey: ['agent', namespace, name],
@@ -231,6 +267,36 @@ export const AgentDetailPage: React.FC = () => {
                   <Label color="purple">{labels['kagenti.io/framework']}</Label>
                 </FlexItem>
               )}
+              <FlexItem>
+                <Dropdown
+                  isOpen={actionsMenuOpen}
+                  onSelect={() => setActionsMenuOpen(false)}
+                  onOpenChange={(isOpen) => setActionsMenuOpen(isOpen)}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setActionsMenuOpen(!actionsMenuOpen)}
+                      isExpanded={actionsMenuOpen}
+                    >
+                      Actions
+                    </MenuToggle>
+                  )}
+                  popperProps={{ position: 'right' }}
+                >
+                  <DropdownList>
+                    <DropdownItem
+                      key="delete"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        setDeleteModalOpen(true);
+                      }}
+                      isDanger
+                    >
+                      Delete agent
+                    </DropdownItem>
+                  </DropdownList>
+                </Dropdown>
+              </FlexItem>
             </Flex>
           </SplitItem>
         </Split>
@@ -769,6 +835,54 @@ export const AgentDetailPage: React.FC = () => {
           </Tab>
         </Tabs>
       </PageSection>
+
+      {/* Delete Warning Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        titleIconVariant="warning"
+        title="Delete agent?"
+        isOpen={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        actions={[
+          <Button
+            key="delete"
+            variant="danger"
+            onClick={handleDeleteConfirm}
+            isLoading={deleteMutation.isPending}
+            isDisabled={deleteMutation.isPending || deleteConfirmText !== name}
+          >
+            Delete
+          </Button>,
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={handleCloseDeleteModal}
+            isDisabled={deleteMutation.isPending}
+          >
+            Cancel
+          </Button>,
+        ]}
+      >
+        <TextContent>
+          <Text>
+            <Icon status="warning" style={{ marginRight: '8px' }}>
+              <ExclamationTriangleIcon />
+            </Icon>
+            The agent <strong>{name}</strong> will be permanently deleted.
+            This will also delete the associated AgentBuild if one exists.
+          </Text>
+          <Text component="small" style={{ marginTop: '16px', display: 'block' }}>
+            Type <strong>{name}</strong> to confirm deletion:
+          </Text>
+        </TextContent>
+        <TextInput
+          id="delete-confirm-input"
+          value={deleteConfirmText}
+          onChange={(_e, value) => setDeleteConfirmText(value)}
+          aria-label="Confirm agent name"
+          style={{ marginTop: '8px' }}
+        />
+      </Modal>
     </>
   );
 };

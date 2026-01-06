@@ -43,6 +43,14 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Text,
+  TextContent,
+  Icon,
+  Dropdown,
+  DropdownList,
+  DropdownItem,
+  MenuToggle,
+  MenuToggleElement,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -52,8 +60,13 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import { ToolboxIcon, PlayIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import {
+  ToolboxIcon,
+  PlayIcon,
+  ExternalLinkAltIcon,
+  ExclamationTriangleIcon,
+} from '@patternfly/react-icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import yaml from 'js-yaml';
 
 import { toolService, configService } from '@/services/api';
@@ -93,8 +106,31 @@ interface InvokeResult {
 export const ToolDetailPage: React.FC = () => {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<string | number>(0);
   const [expandedTools, setExpandedTools] = React.useState<Record<string, boolean>>({});
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState('');
+  const [actionsMenuOpen, setActionsMenuOpen] = React.useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => toolService.delete(namespace!, name!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tools'] });
+      navigate('/tools');
+    },
+  });
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setDeleteConfirmText('');
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmText === name) {
+      deleteMutation.mutate();
+    }
+  };
 
   // Invoke tool state
   const [invokeModalOpen, setInvokeModalOpen] = React.useState(false);
@@ -278,6 +314,36 @@ export const ToolDetailPage: React.FC = () => {
                 <Label color="blue">
                   {labels['kagenti.io/protocol']?.toUpperCase() || 'MCP'}
                 </Label>
+              </FlexItem>
+              <FlexItem>
+                <Dropdown
+                  isOpen={actionsMenuOpen}
+                  onSelect={() => setActionsMenuOpen(false)}
+                  onOpenChange={(isOpen) => setActionsMenuOpen(isOpen)}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setActionsMenuOpen(!actionsMenuOpen)}
+                      isExpanded={actionsMenuOpen}
+                    >
+                      Actions
+                    </MenuToggle>
+                  )}
+                  popperProps={{ position: 'right' }}
+                >
+                  <DropdownList>
+                    <DropdownItem
+                      key="delete"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        setDeleteModalOpen(true);
+                      }}
+                      isDanger
+                    >
+                      Delete tool
+                    </DropdownItem>
+                  </DropdownList>
+                </Dropdown>
               </FlexItem>
             </Flex>
           </SplitItem>
@@ -727,6 +793,54 @@ export const ToolDetailPage: React.FC = () => {
             )}
           </>
         )}
+      </Modal>
+
+      {/* Delete Warning Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        titleIconVariant="warning"
+        title="Delete tool?"
+        isOpen={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        actions={[
+          <Button
+            key="delete"
+            variant="danger"
+            onClick={handleDeleteConfirm}
+            isLoading={deleteMutation.isPending}
+            isDisabled={deleteMutation.isPending || deleteConfirmText !== name}
+          >
+            Delete
+          </Button>,
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={handleCloseDeleteModal}
+            isDisabled={deleteMutation.isPending}
+          >
+            Cancel
+          </Button>,
+        ]}
+      >
+        <TextContent>
+          <Text>
+            <Icon status="warning" style={{ marginRight: '8px' }}>
+              <ExclamationTriangleIcon />
+            </Icon>
+            The tool <strong>{name}</strong> will be permanently deleted.
+            This action cannot be undone.
+          </Text>
+          <Text component="small" style={{ marginTop: '16px', display: 'block' }}>
+            Type <strong>{name}</strong> to confirm deletion:
+          </Text>
+        </TextContent>
+        <TextInput
+          id="delete-confirm-input"
+          value={deleteConfirmText}
+          onChange={(_e, value) => setDeleteConfirmText(value)}
+          aria-label="Confirm tool name"
+          style={{ marginTop: '8px' }}
+        />
       </Modal>
     </>
   );

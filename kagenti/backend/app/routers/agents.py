@@ -283,7 +283,10 @@ async def delete_agent(
     name: str,
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> DeleteResponse:
-    """Delete an agent from the cluster."""
+    """Delete an agent and its associated AgentBuild from the cluster."""
+    messages = []
+
+    # Delete the Agent CR
     try:
         kube.delete_custom_resource(
             group=CRD_GROUP,
@@ -292,12 +295,31 @@ async def delete_agent(
             plural=AGENTS_PLURAL,
             name=name,
         )
-        return DeleteResponse(success=True, message=f"Agent '{name}' deleted")
-
+        messages.append(f"Agent '{name}' deleted")
     except ApiException as e:
         if e.status == 404:
-            return DeleteResponse(success=True, message=f"Agent '{name}' already deleted")
-        raise HTTPException(status_code=e.status, detail=str(e.reason))
+            messages.append(f"Agent '{name}' not found (already deleted)")
+        else:
+            raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    # Also delete the AgentBuild CR if it exists
+    try:
+        kube.delete_custom_resource(
+            group=CRD_GROUP,
+            version=CRD_VERSION,
+            namespace=namespace,
+            plural=AGENTBUILDS_PLURAL,
+            name=name,
+        )
+        messages.append(f"AgentBuild '{name}' deleted")
+    except ApiException as e:
+        if e.status == 404:
+            # AgentBuild doesn't exist, that's fine (might be image-based deployment)
+            pass
+        else:
+            logger.warning(f"Failed to delete AgentBuild '{name}': {e.reason}")
+
+    return DeleteResponse(success=True, message="; ".join(messages))
 
 
 @router.get("/{namespace}/{name}/build", response_model=BuildStatusResponse)
