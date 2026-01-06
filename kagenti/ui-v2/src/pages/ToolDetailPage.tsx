@@ -495,35 +495,7 @@ export const ToolDetailPage: React.FC = () => {
             </Card>
           </Tab>
 
-          <Tab eventKey={3} title={<TabTitleText>YAML</TabTitleText>}>
-            <Card style={{ marginTop: '16px' }}>
-              <CardBody>
-                <pre
-                  style={{
-                    backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
-                    padding: '16px',
-                    borderRadius: '4px',
-                    overflow: 'auto',
-                    maxHeight: '500px',
-                    fontSize: '0.85em',
-                  }}
-                >
-                  {yaml.dump(
-                    {
-                      ...tool,
-                      metadata: {
-                        ...tool.metadata,
-                        managedFields: undefined,
-                      },
-                    },
-                    { noRefs: true, lineWidth: -1 }
-                  )}
-                </pre>
-              </CardBody>
-            </Card>
-          </Tab>
-
-          <Tab eventKey={4} title={<TabTitleText>MCP Inspector</TabTitleText>}>
+          <Tab eventKey={3} title={<TabTitleText>MCP Inspector</TabTitleText>}>
             <Card style={{ marginTop: '16px' }}>
               <CardTitle>Launch MCP Inspector</CardTitle>
               <CardBody>
@@ -576,6 +548,34 @@ export const ToolDetailPage: React.FC = () => {
                     MCP Inspector: <a href={dashboardConfig.mcpInspector} target="_blank" rel="noopener noreferrer">{dashboardConfig.mcpInspector}</a>
                   </p>
                 )}
+              </CardBody>
+            </Card>
+          </Tab>
+
+          <Tab eventKey={4} title={<TabTitleText>YAML</TabTitleText>}>
+            <Card style={{ marginTop: '16px' }}>
+              <CardBody>
+                <pre
+                  style={{
+                    backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
+                    padding: '16px',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                    maxHeight: '500px',
+                    fontSize: '0.85em',
+                  }}
+                >
+                  {yaml.dump(
+                    {
+                      ...tool,
+                      metadata: {
+                        ...tool.metadata,
+                        managedFields: undefined,
+                      },
+                    },
+                    { noRefs: true, lineWidth: -1 }
+                  )}
+                </pre>
               </CardBody>
             </Card>
           </Tab>
