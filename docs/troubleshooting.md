@@ -200,5 +200,5 @@ Verify the pods are healthy before retrying your Helm command:
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=60s
 ```
 
-Once the pods are back in a Running state with valid certificates, your helm upgrade --install command should complete 
-successfully.
+Once the pods are back in a Running state with valid certificates, your `helm upgrade --install` 
+command should complete successfully.
