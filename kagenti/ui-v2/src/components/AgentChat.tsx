@@ -21,6 +21,45 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { chatService } from '@/services/api';
 import { EventsPanel, A2AEvent } from './EventsPanel';
 import { useAuth } from '@/contexts/AuthContext';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Markdown styling for chat messages
+const markdownStyles: React.CSSProperties = {
+  lineHeight: '1.6',
+};
+
+const markdownComponents = {
+  // Style paragraphs
+  p: ({ children }: any) => <p style={{ margin: '0.5em 0' }}>{children}</p>,
+  // Style lists
+  ul: ({ children }: any) => <ul style={{ margin: '0.5em 0', paddingLeft: '1.5em' }}>{children}</ul>,
+  ol: ({ children }: any) => <ol style={{ margin: '0.5em 0', paddingLeft: '1.5em' }}>{children}</ol>,
+  // Style list items
+  li: ({ children }: any) => <li style={{ margin: '0.25em 0' }}>{children}</li>,
+  // Style code blocks
+  code: ({ inline, children }: any) => 
+    inline ? (
+      <code style={{ 
+        backgroundColor: 'var(--pf-v5-global--BackgroundColor--dark-100)',
+        padding: '2px 6px',
+        borderRadius: '3px',
+        fontSize: '0.9em',
+      }}>{children}</code>
+    ) : (
+      <code style={{
+        display: 'block',
+        backgroundColor: 'var(--pf-v5-global--BackgroundColor--dark-100)',
+        padding: '12px',
+        borderRadius: '6px',
+        fontSize: '0.9em',
+        overflowX: 'auto',
+        margin: '0.5em 0',
+      }}>{children}</code>
+    ),
+  // Style strong/bold text
+  strong: ({ children }: any) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+};
 
 interface Message {
   id: string;
@@ -409,7 +448,15 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                         defaultExpanded={false}
                       />
                     )}
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
+                    {message.role === 'assistant' ? (
+                      <div style={markdownStyles}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
+                    )}
                   </div>
                   <div
                     style={{
@@ -450,8 +497,10 @@ export const AgentChat: React.FC<AgentChatProps> = ({ namespace, name }) => {
                       />
                     )}
                     {streamingContent ? (
-                      <div style={{ whiteSpace: 'pre-wrap' }}>
-                        {streamingContent}
+                      <div style={markdownStyles}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                          {streamingContent}
+                        </ReactMarkdown>
                         <span
                           style={{
                             display: 'inline-block',
