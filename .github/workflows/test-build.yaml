@@ -3,6 +3,9 @@ name: TestBuild
 on:
   # run this workflow manually from the Actions tab
   workflow_dispatch:
+  push:
+    branches: 
+    - ui-v2
 
 permissions:
   contents: write
