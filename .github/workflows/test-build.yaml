@@ -1,31 +1,21 @@
 name: TestBuild
 
 on:
-  # run this workflow manually from the Actions tab
-  workflow_dispatch:
-  push:
-    branches: 
-    - ui-v2
+  pull_request:
+    types: [labeled, synchronize] # Triggers when label is added OR code is updated
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: read
   packages: write
-
-env:
-  REGISTRY: ghcr.io
-  REPO: kagenti/kagenti
-  CHARTS_PATH: ./charts
 
 jobs:
   build-and-push:
-    # The type of runner that the job will run on
+    # ONLY run if the PR has the 'run-build' label
+    if: contains(github.event.pull_request.labels.*.name, 'run-build')
     runs-on: ubuntu-latest
-
-    # Grant GITHUB_TOKEN the permissions to write packages
-    permissions:
-      contents: read
-      packages: write
-
+    
     strategy:
       matrix:
         image_config:
@@ -35,26 +25,21 @@ jobs:
             path: ./kagenti    
 
     steps:
-      # 1. Checkout the repository code
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # 2. Set up QEMU for multi-architecture builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 3. Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. Log in to the GitHub Container Registry (ghcr.io)
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Build and push ${{ matrix.image_config.name }}
         uses: docker/build-push-action@v6
@@ -63,5 +48,5 @@ jobs:
           file: ${{ matrix.image_config.path }}/${{ matrix.image_config.name }}/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ github.repository }}/${{ matrix.image_config.name }}:latest
-          labels: test
+          # Always tags as latest for this specific manual workflow
+          tags: ghcr.io/kagenti/kagenti/${{ matrix.image_config.name }}:latest
