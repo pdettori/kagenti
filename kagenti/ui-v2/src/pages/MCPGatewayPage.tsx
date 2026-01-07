@@ -44,7 +44,10 @@ export const MCPGatewayPage: React.FC = () => {
     enabled: false, // Disabled until API is ready
   });
 
-  const mcpInspectorUrl = `http://mcp-inspector.${API_CONFIG.domainName}:8080`;
+  // MCP Gateway in-cluster URL (used by MCP Inspector which runs in-cluster)
+  const mcpGatewayUrl = 'http://mcp-gateway-istio.gateway-system.svc.cluster.local:8080/mcp';
+  const encodedServerUrl = encodeURIComponent(mcpGatewayUrl);
+  const mcpInspectorUrl = `http://mcp-inspector.${API_CONFIG.domainName}:8080?serverUrl=${encodedServerUrl}&transport=streamable-http`;
 
   return (
     <>
