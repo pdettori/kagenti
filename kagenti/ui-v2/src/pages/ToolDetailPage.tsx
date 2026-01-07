@@ -260,7 +260,7 @@ export const ToolDetailPage: React.FC = () => {
   );
 
   // External URL for accessing the tool via HTTPRoute (used by browser)
-  const toolExternalUrl = `http://${name}.localtest.me:8080`;
+  const toolExternalUrl = `http://${name}.${namespace}.localtest.me:8080`;
 
   // In-cluster URL for MCP server (used by MCP Inspector which runs in-cluster)
   // ToolHive creates proxy services with pattern: mcp-{name}-proxy on port 8000

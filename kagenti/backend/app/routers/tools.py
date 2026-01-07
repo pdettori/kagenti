@@ -38,6 +38,7 @@ from app.models.responses import (
     DeleteResponse,
 )
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
+from app.utils.routes import create_route_for_agent_or_tool
 
 
 class EnvVar(BaseModel):
@@ -71,6 +72,8 @@ class CreateToolRequest(BaseModel):
     envVars: Optional[List[EnvVar]] = None
     imagePullSecret: Optional[str] = None
     servicePorts: Optional[List[ServicePort]] = None
+    # HTTPRoute/Route creation
+    createHttpRoute: bool = False
 
 
 class CreateToolResponse(BaseModel):
@@ -352,11 +355,29 @@ async def create_tool(
             body=manifest,
         )
 
+        message = f"Tool '{request.name}' deployment started."
+
+        # Create HTTPRoute/Route if requested
+        # ToolHive creates a proxy service named mcp-{name}-proxy on port 8000
+        if request.createHttpRoute:
+            # ToolHive creates the proxy service with this naming pattern
+            proxy_service_name = f"mcp-{request.name}-proxy"
+            proxy_service_port = 8000
+
+            create_route_for_agent_or_tool(
+                kube=kube,
+                name=request.name,
+                namespace=request.namespace,
+                service_name=proxy_service_name,
+                service_port=proxy_service_port,
+            )
+            message += f" HTTPRoute/Route created for external access."
+
         return CreateToolResponse(
             success=True,
             name=request.name,
             namespace=request.namespace,
-            message=f"Tool '{request.name}' deployment started.",
+            message=message,
         )
 
     except ApiException as e:

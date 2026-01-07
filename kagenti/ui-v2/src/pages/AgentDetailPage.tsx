@@ -229,8 +229,8 @@ export const AgentDetailPage: React.FC = () => {
   );
 
   const gitSource = spec.source?.git;
-  // Agent URL for off-cluster access (namespace is not included in URL)
-  const agentUrl = `http://${name}.localtest.me:8080`;
+  // Agent URL for off-cluster access (includes namespace for HTTPRoute routing)
+  const agentUrl = `http://${name}.${namespace}.localtest.me:8080`;
 
   return (
     <>

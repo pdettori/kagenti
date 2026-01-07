@@ -29,6 +29,7 @@ import {
   NumberInput,
   Grid,
   GridItem,
+  Checkbox,
 } from '@patternfly/react-core';
 import { TrashIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import { useMutation } from '@tanstack/react-query';
@@ -73,6 +74,9 @@ export const ImportToolPage: React.FC = () => {
   // Environment variables
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [showEnvVars, setShowEnvVars] = useState(false);
+
+  // HTTPRoute/Route creation
+  const [createHttpRoute, setCreateHttpRoute] = useState(false);
 
   // Validation state
   const [validated, setValidated] = useState<Record<string, 'success' | 'error' | 'default'>>({});
@@ -185,6 +189,7 @@ export const ImportToolPage: React.FC = () => {
       envVars: envVars.filter((ev) => ev.name && ev.value),
       imagePullSecret: imagePullSecret || undefined,
       servicePorts: showPodConfig ? servicePorts : undefined,
+      createHttpRoute,
     });
   };
 
@@ -332,6 +337,16 @@ export const ImportToolPage: React.FC = () => {
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
+              </FormGroup>
+
+              {/* HTTPRoute/Route Creation */}
+              <FormGroup fieldId="createHttpRoute">
+                <Checkbox
+                  id="createHttpRoute"
+                  label="Enable external access to the tool endpoint"
+                  isChecked={createHttpRoute}
+                  onChange={(_e, checked) => setCreateHttpRoute(checked)}
+                />
               </FormGroup>
 
               {/* Pod Configuration */}

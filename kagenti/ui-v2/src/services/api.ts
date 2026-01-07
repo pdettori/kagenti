@@ -145,6 +145,8 @@ export const agentService = {
       targetPort: number;
       protocol: string;
     }>;
+    // HTTPRoute/Route creation
+    createHttpRoute?: boolean;
   }): Promise<{ name: string; status: string }> {
     return apiFetch('/agents', {
       method: 'POST',
@@ -242,6 +244,8 @@ export const toolService = {
       targetPort: number;
       protocol: string;
     }>;
+    // HTTPRoute/Route creation
+    createHttpRoute?: boolean;
   }): Promise<{ name: string; status: string }> {
     return apiFetch('/tools', {
       method: 'POST',

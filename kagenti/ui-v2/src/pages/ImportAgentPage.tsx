@@ -30,6 +30,7 @@ import {
   NumberInput,
   Grid,
   GridItem,
+  Checkbox,
 } from '@patternfly/react-core';
 import { TrashIcon, PlusCircleIcon, UploadIcon } from '@patternfly/react-icons';
 import { useMutation } from '@tanstack/react-query';
@@ -132,6 +133,9 @@ export const ImportAgentPage: React.FC = () => {
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [showEnvVars, setShowEnvVars] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+
+  // HTTPRoute/Route creation
+  const [createHttpRoute, setCreateHttpRoute] = useState(false);
 
   // Validation state
   const [validated, setValidated] = useState<Record<string, 'success' | 'error' | 'default'>>({});
@@ -380,6 +384,7 @@ export const ImportAgentPage: React.FC = () => {
         registrySecret: registryType !== 'local' ? registrySecret : undefined,
         startCommand: showStartCommand ? startCommand : undefined,
         servicePorts,
+        createHttpRoute,
       });
     } else {
       // Deploy from existing image
@@ -399,6 +404,7 @@ export const ImportAgentPage: React.FC = () => {
         containerImage: fullImage,
         imagePullSecret: imagePullSecret || undefined,
         servicePorts,
+        createHttpRoute,
       });
     }
   };
@@ -724,6 +730,16 @@ export const ImportAgentPage: React.FC = () => {
                     <FormSelectOption key={fw.value} value={fw.value} label={fw.label} />
                   ))}
                 </FormSelect>
+              </FormGroup>
+
+              {/* HTTPRoute/Route Creation */}
+              <FormGroup fieldId="createHttpRoute">
+                <Checkbox
+                  id="createHttpRoute"
+                  label="Enable external access to the agent endpoint"
+                  isChecked={createHttpRoute}
+                  onChange={(_e, checked) => setCreateHttpRoute(checked)}
+                />
               </FormGroup>
 
               {/* Pod Configuration */}

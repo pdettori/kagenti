@@ -46,6 +46,7 @@ from app.models.responses import (
     DeleteResponse,
 )
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
+from app.utils.routes import create_route_for_agent_or_tool
 
 
 class SecretKeyRef(BaseModel):
@@ -128,6 +129,9 @@ class CreateAgentRequest(BaseModel):
 
     # Pod configuration
     servicePorts: Optional[List[ServicePort]] = None
+
+    # HTTPRoute/Route creation
+    createHttpRoute: bool = False
 
 
 class CreateAgentResponse(BaseModel):
@@ -605,6 +609,10 @@ async def create_agent(
     - 'source': Build from git repository using AgentBuild CRD + Agent CRD with buildRef
     - 'image': Deploy from existing container image using Agent CRD
     """
+    logger.info(
+        f"Creating agent '{request.name}' in namespace '{request.namespace}', "
+        f"createHttpRoute={request.createHttpRoute}"
+    )
     try:
         if request.deploymentMethod == "image":
             # Deploy from existing container image using Agent CRD
@@ -623,6 +631,22 @@ async def create_agent(
                 body=agent_manifest,
             )
             message = f"Agent '{request.name}' deployment started."
+
+            # Create HTTPRoute/Route if requested
+            if request.createHttpRoute:
+                service_port = (
+                    request.servicePorts[0].port
+                    if request.servicePorts
+                    else DEFAULT_IN_CLUSTER_PORT
+                )
+                create_route_for_agent_or_tool(
+                    kube=kube,
+                    name=request.name,
+                    namespace=request.namespace,
+                    service_name=request.name,
+                    service_port=service_port,
+                )
+                message += f" HTTPRoute/Route created for external access."
 
         else:
             # Build from source: create both AgentBuild and Agent CRs
@@ -658,6 +682,22 @@ async def create_agent(
             )
 
             message = f"Agent '{request.name}' build started. The agent will be deployed automatically once the build completes."
+
+            # Create HTTPRoute/Route if requested
+            if request.createHttpRoute:
+                service_port = (
+                    request.servicePorts[0].port
+                    if request.servicePorts
+                    else DEFAULT_IN_CLUSTER_PORT
+                )
+                create_route_for_agent_or_tool(
+                    kube=kube,
+                    name=request.name,
+                    namespace=request.namespace,
+                    service_name=request.name,
+                    service_port=service_port,
+                )
+                message += f" HTTPRoute/Route created for external access."
 
         return CreateAgentResponse(
             success=True,
