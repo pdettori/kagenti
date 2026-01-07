@@ -186,6 +186,56 @@ def create_openshift_route(
             raise
 
 
+def route_exists(
+    kube: KubernetesService,
+    name: str,
+    namespace: str,
+) -> bool:
+    """
+    Check if an HTTPRoute or Route exists for the given resource.
+
+    Args:
+        kube: Kubernetes service instance
+        name: Name of the route
+        namespace: Namespace for the route
+
+    Returns:
+        True if HTTPRoute or Route exists, False otherwise
+    """
+    platform = detect_platform(kube)
+
+    try:
+        if platform == "openshift":
+            # Check for OpenShift Route
+            kube.get_custom_resource(
+                group="route.openshift.io",
+                version="v1",
+                namespace=namespace,
+                plural="routes",
+                name=name,
+            )
+            return True
+        else:
+            # Check for HTTPRoute
+            kube.get_custom_resource(
+                group="gateway.networking.k8s.io",
+                version="v1",
+                namespace=namespace,
+                plural="httproutes",
+                name=name,
+            )
+            return True
+    except ApiException as e:
+        if e.status == 404:
+            return False
+        # For other errors, log and return False
+        logger.warning(f"Error checking route existence: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Unexpected error checking route existence: {e}")
+        return False
+
+
 def create_route_for_agent_or_tool(
     kube: KubernetesService,
     name: str,

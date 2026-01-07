@@ -46,7 +46,7 @@ from app.models.responses import (
     DeleteResponse,
 )
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
-from app.utils.routes import create_route_for_agent_or_tool
+from app.utils.routes import create_route_for_agent_or_tool, route_exists
 
 
 class SecretKeyRef(BaseModel):
@@ -279,6 +279,17 @@ async def get_agent(
                 detail=f"Agent '{name}' not found in namespace '{namespace}'",
             )
         raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.get("/{namespace}/{name}/route-status")
+async def get_agent_route_status(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> dict:
+    """Check if an HTTPRoute or Route exists for the agent."""
+    exists = route_exists(kube, name, namespace)
+    return {"hasRoute": exists}
 
 
 @router.delete("/{namespace}/{name}", response_model=DeleteResponse)

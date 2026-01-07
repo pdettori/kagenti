@@ -186,6 +186,22 @@ export const AgentDetailPage: React.FC = () => {
     enabled: !!namespace && !!name && isAgentReady,
   });
 
+  // Check if an HTTPRoute/Route exists for this agent
+  const { data: routeStatusData } = useQuery({
+    queryKey: ['agent-route-status', namespace, name],
+    queryFn: async () => {
+      try {
+        return await agentService.getRouteStatus(namespace!, name!);
+      } catch (error) {
+        console.warn('Failed to check route status:', error);
+        return { hasRoute: false };
+      }
+    },
+    enabled: !!namespace && !!name,
+    retry: false,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
   if (isLoading) {
     return (
       <PageSection>
@@ -229,8 +245,16 @@ export const AgentDetailPage: React.FC = () => {
   );
 
   const gitSource = spec.source?.git;
-  // Agent URL for off-cluster access (includes namespace for HTTPRoute routing)
-  const agentUrl = `http://${name}.${namespace}.localtest.me:8080`;
+
+  // If route check fails or is loading, default to false (in-cluster URL is safer default)
+  const hasRoute = routeStatusData?.hasRoute ?? false;
+
+  // Determine the appropriate URL based on route existence
+  // External URL: http://{name}.{namespace}.localtest.me:8080 (via HTTPRoute)
+  // In-cluster URL: http://{name}.{namespace}.svc.cluster.local:8000
+  const agentUrl = hasRoute
+    ? `http://${name}.${namespace}.localtest.me:8080`
+    : `http://${name}.${namespace}.svc.cluster.local:8000`;
 
   return (
     <>

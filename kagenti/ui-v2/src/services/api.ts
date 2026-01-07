@@ -112,6 +112,12 @@ export const agentService = {
     );
   },
 
+  async getRouteStatus(namespace: string, name: string): Promise<{ hasRoute: boolean }> {
+    return apiFetch<{ hasRoute: boolean }>(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/route-status`
+    );
+  },
+
   async create(data: {
     name: string;
     namespace: string;
@@ -227,6 +233,12 @@ export const toolService = {
     return apiFetch(
       `/tools/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
       { method: 'DELETE' }
+    );
+  },
+
+  async getRouteStatus(namespace: string, name: string): Promise<{ hasRoute: boolean }> {
+    return apiFetch<{ hasRoute: boolean }>(
+      `/tools/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/route-status`
     );
   },
 

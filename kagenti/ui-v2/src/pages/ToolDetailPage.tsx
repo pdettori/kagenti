@@ -164,6 +164,22 @@ export const ToolDetailPage: React.FC = () => {
     queryFn: () => configService.getDashboards(),
   });
 
+  // Check if an HTTPRoute/Route exists for this tool
+  const { data: routeStatusData } = useQuery({
+    queryKey: ['tool-route-status', namespace, name],
+    queryFn: async () => {
+      try {
+        return await toolService.getRouteStatus(namespace!, name!);
+      } catch (error) {
+        console.warn('Failed to check route status:', error);
+        return { hasRoute: false };
+      }
+    },
+    enabled: !!namespace && !!name,
+    retry: false,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
   const invokeMutation = useMutation({
     mutationFn: ({ toolName, args }: { toolName: string; args: Record<string, unknown> }) =>
       toolService.invoke(namespace!, name!, toolName, args),
@@ -259,8 +275,15 @@ export const ToolDetailPage: React.FC = () => {
     (c) => c.type === 'Ready' && c.status === 'True'
   );
 
-  // External URL for accessing the tool via HTTPRoute (used by browser)
-  const toolExternalUrl = `http://${name}.${namespace}.localtest.me:8080`;
+  // If route check fails or is loading, default to false (in-cluster URL is safer default)
+  const hasRoute = routeStatusData?.hasRoute ?? false;
+
+  // Determine the appropriate URL based on route existence
+  // External URL: http://{name}.{namespace}.localtest.me:8080 (via HTTPRoute)
+  // In-cluster URL: http://mcp-{name}-proxy.{namespace}.svc.cluster.local:8000
+  const toolExternalUrl = hasRoute
+    ? `http://${name}.${namespace}.localtest.me:8080`
+    : `http://mcp-${name}-proxy.${namespace}.svc.cluster.local:8000`;
 
   // In-cluster URL for MCP server (used by MCP Inspector which runs in-cluster)
   // ToolHive creates proxy services with pattern: mcp-{name}-proxy on port 8000
