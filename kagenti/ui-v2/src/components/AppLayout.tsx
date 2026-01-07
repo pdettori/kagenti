@@ -20,6 +20,7 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  ToolbarGroup,
   Button,
   Avatar,
   Dropdown,
@@ -237,61 +238,63 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <MastheadContent>
         <Toolbar isFullHeight isStatic>
           <ToolbarContent>
-            <ToolbarItem>
-              <Dropdown
-                isOpen={isThemeDropdownOpen}
-                onSelect={() => setIsThemeDropdownOpen(false)}
-                onOpenChange={(isOpen) => setIsThemeDropdownOpen(isOpen)}
-                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                  <MenuToggle
-                    ref={toggleRef}
-                    variant="plain"
-                    onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
-                    isExpanded={isThemeDropdownOpen}
-                    aria-label="Theme selector"
-                  >
-                    {getThemeIcon()}
-                  </MenuToggle>
-                )}
-              >
-                <DropdownList>
-                  <DropdownItem
-                    key="auto"
-                    icon={<AdjustIcon />}
-                    onClick={() => handleThemeChange('auto')}
-                    description="Follow system preference"
-                  >
-                    System default {mode === 'auto' && '✓'}
-                  </DropdownItem>
-                  <DropdownItem
-                    key="light"
-                    icon={<SunIcon />}
-                    onClick={() => handleThemeChange('light')}
-                  >
-                    Light {mode === 'light' && '✓'}
-                  </DropdownItem>
-                  <DropdownItem
-                    key="dark"
-                    icon={<MoonIcon />}
-                    onClick={() => handleThemeChange('dark')}
-                  >
-                    Dark {mode === 'dark' && '✓'}
-                  </DropdownItem>
-                </DropdownList>
-              </Dropdown>
-            </ToolbarItem>
-            <ToolbarItem>
-              <Button
-                variant="plain"
-                aria-label="Help"
-                onClick={() =>
-                  window.open('https://kagenti.github.io/.github/', '_blank')
-                }
-              >
-                <QuestionCircleIcon />
-              </Button>
-            </ToolbarItem>
-            {renderUserToggle()}
+            <ToolbarGroup align={{ default: 'alignRight' }}>
+              <ToolbarItem>
+                <Dropdown
+                  isOpen={isThemeDropdownOpen}
+                  onSelect={() => setIsThemeDropdownOpen(false)}
+                  onOpenChange={(isOpen) => setIsThemeDropdownOpen(isOpen)}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      variant="plain"
+                      onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
+                      isExpanded={isThemeDropdownOpen}
+                      aria-label="Theme selector"
+                    >
+                      {getThemeIcon()}
+                    </MenuToggle>
+                  )}
+                >
+                  <DropdownList>
+                    <DropdownItem
+                      key="auto"
+                      icon={<AdjustIcon />}
+                      onClick={() => handleThemeChange('auto')}
+                      description="Follow system preference"
+                    >
+                      System default {mode === 'auto' && '✓'}
+                    </DropdownItem>
+                    <DropdownItem
+                      key="light"
+                      icon={<SunIcon />}
+                      onClick={() => handleThemeChange('light')}
+                    >
+                      Light {mode === 'light' && '✓'}
+                    </DropdownItem>
+                    <DropdownItem
+                      key="dark"
+                      icon={<MoonIcon />}
+                      onClick={() => handleThemeChange('dark')}
+                    >
+                      Dark {mode === 'dark' && '✓'}
+                    </DropdownItem>
+                  </DropdownList>
+                </Dropdown>
+              </ToolbarItem>
+              <ToolbarItem>
+                <Button
+                  variant="plain"
+                  aria-label="Help"
+                  onClick={() =>
+                    window.open('https://kagenti.github.io/.github/', '_blank')
+                  }
+                >
+                  <QuestionCircleIcon />
+                </Button>
+              </ToolbarItem>
+              {renderUserToggle()}
+            </ToolbarGroup>
           </ToolbarContent>
         </Toolbar>
       </MastheadContent>
