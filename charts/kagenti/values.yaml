@@ -56,7 +56,7 @@ ui:
   url: http://kagenti-ui.localtest.me:8080
   # Frontend (UI v2) configuration
   frontend:
-    image: ghcr.io/kagenti/kagenti-ui-v2
+    image: ghcr.io/kagenti/kagenti/ui-v2
     tag: latest
     resources:
       limits:
@@ -67,7 +67,7 @@ ui:
         memory: 64Mi
   # Backend configuration
   backend:
-    image: ghcr.io/kagenti/kagenti-backend
+    image: ghcr.io/kagenti/kagenti/backend
     tag: latest
     resources:
       limits:
