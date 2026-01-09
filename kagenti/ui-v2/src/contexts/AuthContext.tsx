@@ -176,19 +176,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ...(config.redirect_uri && { redirectUri: config.redirect_uri }),
         }).catch((initError) => {
           console.error('Keycloak init rejected with error:', initError);
+
+          // Handle case where initError is undefined (e.g., 401 on token endpoint)
+          if (initError === undefined) {
+            console.error('Keycloak init failed with undefined error - likely a 401 on token endpoint');
+            console.error('This usually means:');
+            console.error('  1. Client secret mismatch between UI config and Keycloak');
+            console.error('  2. Client not configured for the correct access type in Keycloak');
+            console.error('  3. Redirect URI mismatch');
+            throw new Error('Keycloak authentication failed. Check Keycloak client configuration.');
+          }
+
           console.error('Error details:', {
-            message: initError.message,
-            error: initError.error,
-            error_description: initError.error_description,
+            message: initError?.message,
+            error: initError?.error,
+            error_description: initError?.error_description,
             fullError: JSON.stringify(initError, null, 2),
           });
-          
+
           // If it's a timeout on silent check, it's not critical - just means no existing session
-          if (initError.error && typeof initError.error === 'string' && initError.error.toLowerCase().includes('iframe')) {
+          if (initError?.error && typeof initError.error === 'string' && initError.error.toLowerCase().includes('iframe')) {
             console.warn('Silent SSO check failed (iframe timeout), continuing without existing session');
             return false; // Return false for authenticated, don't throw
           }
-          
+
           throw initError;
         });
 

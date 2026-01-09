@@ -81,8 +81,8 @@ ui:
 #  UI OAuth Secret Creator Configuration
 # ------------------------------------------------------------------
 uiOAuthSecret:
-  image: ghcr.io/kagenti/kagenti/ui-oauth-secret
-  #image: quay.io/pdettori/ui-oauth-secret
+  #image: ghcr.io/kagenti/kagenti/ui-oauth-secret
+  image: quay.io/pdettori/ui-oauth-secret
   tag: latest
   # When true, mount the in-cluster serviceaccount CA 
   # into the ui-oauth-secret job via the SSL_CERT_FILE environment variable.
