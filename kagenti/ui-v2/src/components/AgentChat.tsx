@@ -37,11 +37,12 @@ const markdownComponents = {
   ol: ({ children }: any) => <ol style={{ margin: '0.5em 0', paddingLeft: '1.5em' }}>{children}</ol>,
   // Style list items
   li: ({ children }: any) => <li style={{ margin: '0.25em 0' }}>{children}</li>,
-  // Style code blocks
-  code: ({ inline, children }: any) => 
+  // Style code blocks - use theme-aware CSS variables
+  code: ({ inline, children }: any) =>
     inline ? (
-      <code style={{ 
-        backgroundColor: 'var(--pf-v5-global--BackgroundColor--dark-100)',
+      <code style={{
+        backgroundColor: 'var(--kagenti-code-bg)',
+        color: 'var(--kagenti-code-color)',
         padding: '2px 6px',
         borderRadius: '3px',
         fontSize: '0.9em',
@@ -49,7 +50,8 @@ const markdownComponents = {
     ) : (
       <code style={{
         display: 'block',
-        backgroundColor: 'var(--pf-v5-global--BackgroundColor--dark-100)',
+        backgroundColor: 'var(--kagenti-code-bg)',
+        color: 'var(--kagenti-code-color)',
         padding: '12px',
         borderRadius: '6px',
         fontSize: '0.9em',

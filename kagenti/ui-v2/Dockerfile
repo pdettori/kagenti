@@ -38,6 +38,8 @@ RUN addgroup -g 1001 -S appgroup && \
     touch /var/run/nginx.pid && \
     chown -R appuser:appgroup /var/run/nginx.pid
 
+USER 1001
+
 # Expose port
 EXPOSE 8080
 
