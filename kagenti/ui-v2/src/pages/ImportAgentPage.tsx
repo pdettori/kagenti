@@ -118,6 +118,15 @@ export const ImportAgentPage: React.FC = () => {
   const [registryNamespace, setRegistryNamespace] = useState('');
   const [registrySecret, setRegistrySecret] = useState('');
 
+  // Update registry secret default when registry type changes
+  React.useEffect(() => {
+    if (registryType !== 'local') {
+      setRegistrySecret(`${registryType}-registry-secret`);
+    } else {
+      setRegistrySecret('');
+    }
+  }, [registryType]);
+
   // Deploy from image state
   const [containerImage, setContainerImage] = useState('');
   const [imageTag, setImageTag] = useState('latest');
