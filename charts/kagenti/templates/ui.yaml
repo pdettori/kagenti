@@ -71,11 +71,6 @@ spec:
           echo "ERROR: OAuth secret not ready after $MAX_ATTEMPTS attempts. Proceeding anyway but authentication may not work."
           exit 0
       {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
-        runAsGroup: 1001
-        fsGroup: 1001
       containers:
         - name: backend
           image: "{{ .Values.ui.backend.image }}:{{ .Values.ui.backend.tag }}"
@@ -203,11 +198,6 @@ spec:
         app.kubernetes.io/name: kagenti-ui
         app.kubernetes.io/component: frontend
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
-        runAsGroup: 1001
-        fsGroup: 1001
       containers:
         - name: frontend
           image: "{{ .Values.ui.frontend.image }}:{{ .Values.ui.frontend.tag }}"
@@ -236,6 +226,16 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+          - mountPath: /var/cache/nginx
+            name: cache
+          - mountPath: /var/run
+            name: var-run
+      volumes:
+      - emptyDir: {}
+        name: cache
+      - emptyDir: {}
+        name: var-run
 ---
 # Frontend Service
 apiVersion: v1
