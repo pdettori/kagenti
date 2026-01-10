@@ -8,7 +8,7 @@ Provides endpoints for chatting with A2A agents using the Agent-to-Agent protoco
 """
 
 import logging
-from typing import Optional, List, Any
+from typing import Optional, List
 from uuid import uuid4
 
 import httpx

@@ -9,7 +9,6 @@ Supports JWT token validation with Keycloak.
 
 import logging
 from typing import Optional, List
-from functools import lru_cache
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials

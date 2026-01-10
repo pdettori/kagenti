@@ -6,7 +6,6 @@ Utility functions for creating HTTPRoutes (Kubernetes) and Routes (OpenShift).
 """
 
 import logging
-from typing import Optional
 
 from kubernetes.client import ApiException
 

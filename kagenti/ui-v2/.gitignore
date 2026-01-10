@@ -10,6 +10,10 @@ dist/
 # TypeScript build info
 *.tsbuildinfo
 
+# Compiled vite config (keep only vite.config.ts)
+vite.config.js
+vite.config.d.ts
+
 # Environment files (local overrides)
 .env.local
 .env.*.local
