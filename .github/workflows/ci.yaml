@@ -59,4 +59,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          cd kagenti/tests && uv run pytest -q
+          uv sync --extra test && cd kagenti/tests && uv run pytest -q
