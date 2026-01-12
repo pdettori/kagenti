@@ -1,6 +1,6 @@
 .PHONY: lint
 lint:
-	cd kagenti/backend && uv run pylint app/
+	cd kagenti/backend && uv sync --extra dev && uv run pylint app/
 
 # Define variables
 KIND_CLUSTER_NAME := kagenti

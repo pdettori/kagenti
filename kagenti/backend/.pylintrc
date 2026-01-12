@@ -29,6 +29,8 @@ extension-pkg-whitelist=pydantic
 # W0718: broad-exception-caught (acceptable in error handlers)
 # C0116: missing-function-docstring (property methods)
 # W0603: global-statement (used for singleton pattern)
+# E1101: no-member (false positives with async generators)
+# C0103: invalid-name (private module-level variables)
 disable=
     E0401,
     R0903,
@@ -51,7 +53,9 @@ disable=
     C0415,
     W0718,
     C0116,
-    W0603
+    W0603,
+    E1101,
+    C0103
 
 [FORMAT]
 # Maximum number of characters on a single line.
