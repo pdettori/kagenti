@@ -22,11 +22,6 @@ Here's a breakdown of the sections:
 You should also open the Agent Platform Demo Dashboard as instructed in the [Connect to the Kagenti UI](./demos.md#connect-to-the-kagenti-ui) section.
 
 ---
-## Set Up
-To properly set up the UI: 
-1. Change directory to the `kagenti/ui` folder
-1. Run `./scripts/ui-dev-build.sh` to rebuild and roll out the UI image
-
 
 ## Import New Agent
 

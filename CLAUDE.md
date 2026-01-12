@@ -20,8 +20,8 @@ discovery services.
 ```text
 kagenti/
 ├── kagenti/                    # Main Python package
-│   ├── ui/                     # Streamlit dashboard (see
-│   │                             kagenti/ui/README.md)
+│   ├── ui-v2/                  # Web UI (React frontend + FastAPI backend)
+│   ├── backend/                # FastAPI backend for UI
 │   ├── installer/              # CLI installer tool
 │   │   ├── app/
 │   │   │   ├── cli.py          # Typer CLI entry point
@@ -65,26 +65,34 @@ kagenti/
 
 ## Core Components
 
-### 1. Kagenti UI (`kagenti/ui/`)
+### 1. Kagenti UI (`kagenti/ui-v2/` and `kagenti/backend/`)
 
-- **Technology**: Streamlit multi-page app
+- **Technology**: React (PatternFly) frontend + FastAPI backend
 
 - **Purpose**: Web dashboard for managing agents/tools
 
-- **Entry Point**: `Home.py`
+- **Frontend Entry Point**: `src/main.tsx`
 
-- **Pages**: Agent Catalog, Tool Catalog, Observability, Import
-  Agent/Tool, Admin
+- **Backend Entry Point**: `app/main.py`
 
-- **Key Files**:
+- **Pages**: Home, Agent Catalog, Tool Catalog, MCP Gateway,
+  Observability, Import Agent/Tool, Admin
 
-  - `lib/kube.py` - Kubernetes API integration
+- **Key Frontend Files**:
 
-  - `lib/a2a_utils.py` - A2A protocol client
+  - `src/pages/` - React page components
 
-  - `lib/mcp_client.py` - MCP protocol client
+  - `src/services/api.ts` - API client
 
-  - `lib/constants.py` - Configuration constants
+  - `src/contexts/AuthContext.tsx` - Keycloak authentication
+
+- **Key Backend Files**:
+
+  - `app/routers/` - FastAPI route handlers
+
+  - `app/services/kubernetes.py` - Kubernetes API integration
+
+  - `app/core/config.py` - Configuration settings
 
 ### 2. Installer (`kagenti/installer/`)
 
@@ -167,10 +175,16 @@ kagenti/
 ### Running the UI Locally
 
 ```bash
-cd kagenti/ui
+# Run the backend
+cd kagenti/backend
 uv sync
-uv run streamlit run Home.py
-# Access at http://localhost:8501
+uv run uvicorn app.main:app --reload --port 8000
+
+# Run the frontend (in a separate terminal)
+cd kagenti/ui-v2
+npm install
+npm run dev
+# Access at http://localhost:5173
 ```
 
 ### Running the Installer
