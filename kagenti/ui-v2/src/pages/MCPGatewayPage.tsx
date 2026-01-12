@@ -31,7 +31,7 @@ import {
 } from '@patternfly/react-icons';
 import { useQuery } from '@tanstack/react-query';
 
-import { API_CONFIG } from '@/services/api';
+import { configService } from '@/services/api';
 
 export const MCPGatewayPage: React.FC = () => {
   // Placeholder query - will be replaced with actual API call
@@ -44,10 +44,22 @@ export const MCPGatewayPage: React.FC = () => {
     enabled: false, // Disabled until API is ready
   });
 
+  // Fetch dashboard config for MCP Inspector URL
+  const { data: dashboardConfig, isLoading: isConfigLoading } = useQuery({
+    queryKey: ['dashboards'],
+    queryFn: () => configService.getDashboards(),
+  });
+
   // MCP Gateway in-cluster URL (used by MCP Inspector which runs in-cluster)
   const mcpGatewayUrl = 'http://mcp-gateway-istio.gateway-system.svc.cluster.local:8080/mcp';
   const encodedServerUrl = encodeURIComponent(mcpGatewayUrl);
-  const mcpInspectorUrl = `http://mcp-inspector.${API_CONFIG.domainName}:8080?serverUrl=${encodedServerUrl}&transport=streamable-http`;
+
+  // Build MCP Inspector URL using config from backend
+  const getMcpInspectorUrl = () => {
+    if (!dashboardConfig?.mcpInspector) return null;
+    return `${dashboardConfig.mcpInspector}?serverUrl=${encodedServerUrl}&transport=streamable-http`;
+  };
+  const mcpInspectorUrl = getMcpInspectorUrl();
 
   return (
     <>
@@ -154,22 +166,31 @@ export const MCPGatewayPage: React.FC = () => {
                 <Text component="p">
                   Browse and test MCP tools registered with the gateway using the MCP Inspector interface.
                 </Text>
-                <Text
-                  component="small"
-                  style={{ color: '#6a6e73', marginTop: '8px', display: 'block' }}
-                >
-                  {mcpInspectorUrl}
-                </Text>
+                {isConfigLoading ? (
+                  <Skeleton width="80%" style={{ marginTop: '8px' }} />
+                ) : mcpInspectorUrl ? (
+                  <Text
+                    component="small"
+                    style={{ color: '#6a6e73', marginTop: '8px', display: 'block' }}
+                  >
+                    {mcpInspectorUrl}
+                  </Text>
+                ) : (
+                  <Alert variant="warning" title="MCP Inspector not configured" isInline style={{ marginTop: '8px' }}>
+                    The MCP Inspector URL is not available. Please check your configuration.
+                  </Alert>
+                )}
               </CardBody>
               <CardFooter>
                 <Button
                   variant="primary"
                   component="a"
-                  href={mcpInspectorUrl}
+                  href={mcpInspectorUrl || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   icon={<ExternalLinkAltIcon />}
                   iconPosition="end"
+                  isDisabled={isConfigLoading || !mcpInspectorUrl}
                 >
                   Open MCP Inspector
                 </Button>

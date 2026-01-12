@@ -70,6 +70,9 @@ class DashboardConfigResponse(BaseModel):
     traces: str
     network: str
     mcpInspector: str
+    mcpProxy: str
+    keycloakConsole: str
+    domainName: str
 
 
 class MCPToolInfo(BaseModel):

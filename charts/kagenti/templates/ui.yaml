@@ -1,4 +1,23 @@
 {{- if and .Values.components.ui.enabled }}
+{{- if not .Values.openshift }}
+# ConfigMap for dashboard URLs (non-OpenShift only)
+# In OpenShift, this ConfigMap is created by the ui-routes-job
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.ui.configmap }}
+  namespace: "{{ .Values.ui.namespace }}"
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+data:
+  DOMAIN_NAME: "{{ .Values.ui.domainName }}"
+  TRACES_DASHBOARD_URL: "http://phoenix.{{ .Values.ui.domainName }}:8080"
+  NETWORK_TRAFFIC_DASHBOARD_URL: "http://kiali.{{ .Values.ui.domainName }}:8080"
+  MCP_INSPECTOR_URL: "http://mcp-inspector.{{ .Values.ui.domainName }}:8080"
+  MCP_PROXY_FULL_ADDRESS: "http://mcp-proxy.{{ .Values.ui.domainName }}:8080"
+  KEYCLOAK_CONSOLE_URL: "http://keycloak.{{ .Values.ui.domainName }}:8080/admin/master/console/"
+---
+{{- end }}
 # Backend Service Account
 apiVersion: v1
 kind: ServiceAccount
@@ -83,9 +102,44 @@ spec:
             - name: DEBUG
               value: "false"
             - name: DOMAIN_NAME
-              value: "localtest.me"
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "DOMAIN_NAME"
+                  optional: true
             - name: ENABLE_AUTH
               value: "{{ .Values.ui.auth.enabled }}"
+            # Dashboard URLs from ConfigMap (populated by ui-routes-job)
+            - name: TRACES_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "TRACES_DASHBOARD_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: NETWORK_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "NETWORK_TRAFFIC_DASHBOARD_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: MCP_INSPECTOR_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MCP_INSPECTOR_URL"
+                  optional: {{ (not .Values.openshift) }}
+            - name: MCP_PROXY_FULL_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MCP_PROXY_FULL_ADDRESS"
+                  optional: {{ (not .Values.openshift) }}
+            - name: KEYCLOAK_CONSOLE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "KEYCLOAK_CONSOLE_URL"
+                  optional: {{ (not .Values.openshift) }}
             {{- if .Values.uiOAuthSecret.useServiceAccountCA }}
             - name: SSL_CERT_FILE
               valueFrom:

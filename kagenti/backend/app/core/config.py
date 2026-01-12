@@ -55,10 +55,12 @@ class Settings(BaseSettings):
     enabled_namespace_label_key: str = "kagenti-enabled"
     enabled_namespace_label_value: str = "true"
 
-    # External service URLs
+    # External service URLs (read from ConfigMap via environment variables)
     traces_dashboard_url: str = ""
     network_dashboard_url: str = ""
     mcp_inspector_url: str = ""
+    mcp_proxy_full_address: str = ""
+    keycloak_console_url: str = ""
 
     # Authentication settings - from kagenti-ui-oauth-secret
     enable_auth: bool = False  # Set to True to enable Keycloak auth

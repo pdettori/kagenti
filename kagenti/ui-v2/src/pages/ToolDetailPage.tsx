@@ -279,10 +279,11 @@ export const ToolDetailPage: React.FC = () => {
   const hasRoute = routeStatusData?.hasRoute ?? false;
 
   // Determine the appropriate URL based on route existence
-  // External URL: http://{name}.{namespace}.localtest.me:8080 (via HTTPRoute)
+  // External URL: http://{name}.{namespace}.{domainName}:8080 (via HTTPRoute)
   // In-cluster URL: http://mcp-{name}-proxy.{namespace}.svc.cluster.local:8000
+  const domainName = dashboardConfig?.domainName || 'localtest.me';
   const toolExternalUrl = hasRoute
-    ? `http://${name}.${namespace}.localtest.me:8080`
+    ? `http://${name}.${namespace}.${domainName}:8080`
     : `http://mcp-${name}-proxy.${namespace}.svc.cluster.local:8000`;
 
   // In-cluster URL for MCP server (used by MCP Inspector which runs in-cluster)

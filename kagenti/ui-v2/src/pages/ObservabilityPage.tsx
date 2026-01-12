@@ -25,7 +25,7 @@ import {
 } from '@patternfly/react-icons';
 import { useQuery } from '@tanstack/react-query';
 
-import { configService, API_CONFIG } from '@/services/api';
+import { configService } from '@/services/api';
 
 interface DashboardCardProps {
   title: string;
@@ -89,9 +89,10 @@ export const ObservabilityPage: React.FC = () => {
     queryFn: () => configService.getDashboards(),
   });
 
-  // Fallback URLs using domain config
-  const tracesUrl = dashboards?.traces || `http://phoenix.${API_CONFIG.domainName}:8080`;
-  const networkUrl = dashboards?.network || `http://kiali.${API_CONFIG.domainName}:8080`;
+  // Use URLs from backend config (which reads from ConfigMap environment variables)
+  // The backend provides fallback URLs if the ConfigMap values are not set
+  const tracesUrl = dashboards?.traces || '';
+  const networkUrl = dashboards?.network || '';
 
   return (
     <>

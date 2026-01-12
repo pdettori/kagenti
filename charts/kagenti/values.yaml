@@ -49,6 +49,8 @@ agentNamespaces:
 # ------------------------------------------------------------------
 ui:
   configmap: kagenti-ui-config
+  # Domain name for constructing service URLs (non-OpenShift only)
+  domainName: localtest.me
   auth:
     enabled: true
   namespace: kagenti-system

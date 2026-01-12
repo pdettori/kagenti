@@ -33,7 +33,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts';
-import { API_CONFIG } from '@/services/api';
+import { configService } from '@/services/api';
 
 // Auth status API service
 async function getAuthStatus(): Promise<{
@@ -58,10 +58,17 @@ export const AdminPage: React.FC = () => {
     queryFn: getAuthStatus,
   });
 
-  // Build Keycloak admin console URL
-  const keycloakBaseUrl = authStatus?.keycloak_url || `http://keycloak.${API_CONFIG.domainName}:8080`;
+  // Fetch dashboard config for Keycloak console URL
+  const { data: dashboardConfig } = useQuery({
+    queryKey: ['dashboards'],
+    queryFn: () => configService.getDashboards(),
+  });
+
+  // Build Keycloak admin console URL from dashboard config or auth status
+  const keycloakBaseUrl = authStatus?.keycloak_url || dashboardConfig?.keycloakConsole?.replace(/\/admin\/.*$/, '') || '';
   const realm = authStatus?.realm || 'master';
-  const keycloakAdminUrl = `${keycloakBaseUrl}/admin/${realm}/console/`;
+  // Prefer keycloakConsole from config (which comes from ConfigMap), fallback to constructed URL
+  const keycloakAdminUrl = dashboardConfig?.keycloakConsole || `${keycloakBaseUrl}/admin/${realm}/console/`;
 
   return (
     <>

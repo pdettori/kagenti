@@ -292,14 +292,22 @@ export const toolService = {
 };
 
 /**
+ * Dashboard configuration response from backend
+ */
+export interface DashboardConfig {
+  traces: string;
+  network: string;
+  mcpInspector: string;
+  mcpProxy: string;
+  keycloakConsole: string;
+  domainName: string;
+}
+
+/**
  * Config service
  */
 export const configService = {
-  async getDashboards(): Promise<{
-    traces: string;
-    network: string;
-    mcpInspector: string;
-  }> {
+  async getDashboards(): Promise<DashboardConfig> {
     return apiFetch('/config/dashboards');
   },
 };
