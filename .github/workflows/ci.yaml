@@ -57,6 +57,5 @@ jobs:
             exit 1
           }
 
-      - name: Test with pytest
-        run: |
-          uv sync --extra test && cd kagenti/tests && uv run pytest -q
+      # Note: E2E tests are run in the kind-e2e-kagenti-operator.yaml workflow
+      # which has a full Kubernetes cluster with Kagenti deployed
