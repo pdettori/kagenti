@@ -37,11 +37,13 @@ The Kagenti organization consists of the following repositories:
 ```
 kagenti/
 ├── kagenti/
-│   ├── ui/                    # Streamlit dashboard
-│   │   ├── Home.py            # Entry point
-│   │   ├── pages/             # Multi-page app (Agents, Tools, Admin, etc.)
-│   │   └── lib/               # Utilities (kube.py, a2a_utils.py, mcp_client.py)
-│   ├── installer/             # CLI installer (Typer-based)
+│   ├── ui-v2/                 # React (PatternFly) frontend
+│   │   ├── src/pages/         # Page components
+│   │   └── src/services/      # API client
+│   ├── backend/               # FastAPI backend for UI
+│   │   ├── app/routers/       # API route handlers
+│   │   └── app/services/      # Kubernetes integration
+│   ├── installer/             # CLI installer (Typer-based, deprecated)
 │   │   ├── app/cli.py         # CLI entry point
 │   │   └── app/components/    # Component installers (istio, keycloak, spire...)
 │   ├── auth/                  # OAuth secret generation utilities
@@ -68,8 +70,11 @@ cd kagenti/installer
 uv run kagenti-installer
 
 # Run UI locally
-cd kagenti/ui
-uv run streamlit run Home.py
+cd kagenti/backend
+uv run uvicorn app.main:app --reload --port 8000
+# In a separate terminal:
+cd kagenti/ui-v2
+npm run dev
 
 # Lint
 make lint
@@ -383,7 +388,7 @@ kagenti.io/framework: LangGraph | CrewAI | AG2 | Python
 kagenti-enabled: "true"
 
 # Created by
-app.kubernetes.io/created-by: kagenti-operator | streamlit-ui
+app.kubernetes.io/created-by: kagenti-operator | kagenti-ui
 ```
 
 ---

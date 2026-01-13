@@ -182,7 +182,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **Description**: Developers who build and maintain the Kagenti user interface and dashboard.
 
-**Primary Repository**: [kagenti](https://github.com/kagenti/kagenti) (UI components in `kagenti/ui/`)
+**Primary Repository**: [kagenti](https://github.com/kagenti/kagenti) (UI components in `kagenti/ui-v2/` and `kagenti/backend/`)
 
 **Key Responsibilities**:
 
@@ -194,7 +194,8 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **Technical Skills**:
 
-- Python (Streamlit framework)
+- TypeScript/React (PatternFly UI framework)
+- Python (FastAPI for backend)
 - Frontend development and UI/UX design
 - REST API integration
 - OAuth2/OIDC authentication flows
@@ -202,7 +203,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 **Getting Started**:
 
 1. Clone [kagenti](https://github.com/kagenti/kagenti) repository
-2. Navigate to `kagenti/ui/` directory
+2. Navigate to `kagenti/ui-v2/` (frontend) and `kagenti/backend/` (API) directories
 3. Study existing UI components and architecture
 4. Set up local development environment
 5. Test UI changes with local Kagenti deployment

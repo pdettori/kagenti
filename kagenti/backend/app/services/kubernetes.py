@@ -15,7 +15,6 @@ import kubernetes.config
 from kubernetes.client import ApiException
 from kubernetes.config import ConfigException
 
-from app.core.config import settings
 from app.core.constants import ENABLED_NAMESPACE_LABEL_KEY, ENABLED_NAMESPACE_LABEL_VALUE
 
 logger = logging.getLogger(__name__)

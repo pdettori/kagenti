@@ -220,19 +220,27 @@ For detailed gateway configuration, see [MCP Gateway Instructions](./gateway.md)
 
 ## Kagenti UI
 
-**Location**: `kagenti/ui/`
+**Location**: `kagenti/ui-v2/`
 
-A Streamlit-based dashboard for managing agents and tools.
+A modern web dashboard built with React ([PatternFly](https://www.patternfly.org/get-started/develop/) frontend and FastAPI backend for managing agents and tools.
+
+### Architecture
+
+| Component | Technology | Description |
+|-----------|------------|-------------|
+| **Frontend** | React + PatternFly | Single-page application served by nginx |
+| **Backend** | FastAPI + Python | REST API for Kubernetes interactions |
 
 ### Features
 
 | Feature | Description |
 |---------|-------------|
-| **Agent Import** | Import A2A agents from any framework via Git URL |
-| **Tool Deployment** | Deploy MCP tools directly from source |
+| **Agent Import** | Import A2A agents from any framework via Git URL or container image |
+| **Tool Deployment** | Deploy MCP tools directly from source or container image |
 | **Interactive Testing** | Chat interface to test agent capabilities |
-| **Monitoring** | View traces, logs, and network traffic |
-| **Authentication** | Keycloak-based login/logout |
+| **Monitoring** | View traces, logs, and network traffic via Phoenix and Kiali |
+| **Authentication** | Keycloak-based login/logout with OAuth2 |
+| **MCP Gateway** | Browse and test MCP tools via MCP Inspector |
 
 ### Pages
 
@@ -241,8 +249,9 @@ A Streamlit-based dashboard for managing agents and tools.
 | Home | Overview and quick actions |
 | Agents | List, import, and manage agents |
 | Tools | List, import, and manage MCP tools |
+| MCP Gateway | View MCP Gateway status and launch MCP Inspector |
+| Observability | Access Phoenix traces and Kiali network dashboards |
 | Admin | Keycloak and system configuration |
-| Traces | Phoenix-based observability |
 
 ### Access
 
