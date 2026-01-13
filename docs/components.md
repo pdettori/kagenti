@@ -222,7 +222,7 @@ For detailed gateway configuration, see [MCP Gateway Instructions](./gateway.md)
 
 **Location**: `kagenti/ui-v2/`
 
-A modern web dashboard built with React (PatternFly) frontend and FastAPI backend for managing agents and tools.
+A modern web dashboard built with React ([PatternFly](https://www.patternfly.org/get-started/develop/) frontend and FastAPI backend for managing agents and tools.
 
 ### Architecture
 
