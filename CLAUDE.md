@@ -22,14 +22,6 @@ kagenti/
 ├── kagenti/                    # Main Python package
 │   ├── ui-v2/                  # Web UI (React frontend + FastAPI backend)
 │   ├── backend/                # FastAPI backend for UI
-│   ├── installer/              # CLI installer tool
-│   │   ├── app/
-│   │   │   ├── cli.py          # Typer CLI entry point
-│   │   │   ├── cluster.py      # Kind cluster management
-│   │   │   ├── components/     # Component installers (istio,
-│   │   │   │                     keycloak, spire, etc.)
-│   │   │   └── resources/      # Kubernetes YAML manifests
-│   │   └── pyproject.toml
 │   ├── auth/                   # Authentication utilities
 │   │   ├── agent-oauth-secret/ # Agent OAuth secret generation
 │   │   ├── ui-oauth-secret/    # UI OAuth secret generation
@@ -94,29 +86,25 @@ kagenti/
 
   - `app/core/config.py` - Configuration settings
 
-### 2. Installer (`kagenti/installer/`)
+### 2. Ansible Installer (`deployments/ansible/`)
 
-- **Technology**: Python CLI with Typer
+- **Technology**: Ansible playbooks with Helm charts
 
-- **Purpose**: Deploy Kagenti platform to Kind/Kubernetes
+- **Purpose**: Deploy Kagenti platform to Kind/Kubernetes/OpenShift
 
-- **Entry Point (deprecated)**: `uv run kagenti-installer` — use the
-  Ansible-based installer `deployments/ansible/run-install.sh`
-  (recommended)
+- **Entry Point**: `deployments/ansible/run-install.sh --env dev`
 
-- **Key Components** (in `app/components/`):
+- **Key Files**:
 
-  - `istio.py` - Istio Ambient mesh
+  - `installer-playbook.yml` - Main Ansible playbook
 
-  - `keycloak.py` - Identity management
+  - `roles/kagenti_installer/` - Ansible role for installation
 
-  - `spire.py` - SPIRE/SPIFFE workload identity
+  - `../envs/dev_values.yaml` - Development environment values
 
-  - `operator.py` - Kagenti platform operator
+  - `../envs/ocp_values.yaml` - OpenShift environment values
 
-  - `mcp_gateway.py` - MCP Gateway deployment
-
-  - `ui.py` - UI deployment
+  - `../envs/.secret_values.yaml` - Secret configuration (not committed)
 
 ### 3. Platform Operator (external repo)
 
@@ -194,19 +182,8 @@ npm run dev
 cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
 # Edit deployments/envs/.secret_values.yaml with your values
 deployments/ansible/run-install.sh --env dev
+# Use --help for additional options
 ```
-
-Legacy (deprecated):
-
-```bash
-cd kagenti/installer
-cp app/.env_template app/.env
-# Edit .env with GITHUB_USER, GITHUB_TOKEN
-# Deprecated: legacy uv-based installer
-uv run kagenti-installer
-uv run kagenti-installer --help  # View options
-```
-
 
 ## Kubernetes Resources
 
@@ -288,7 +265,7 @@ Default credentials: `admin` / `admin`
 
 ### Python
 
-- Python ≥3.11 for UI, ≥3.9 for installer
+- Python ≥3.11 for backend
 
 - Package manager: `uv`
 

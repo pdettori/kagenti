@@ -656,8 +656,7 @@
 # TODO: Move spiffe-helper-config ConfigMap creation to kagenti-operator or toolhive operator.
 # Toolhive-created StatefulSets expect this ConfigMap to exist for the spiffe-helper sidecar,
 # but neither the Toolhive operator nor the kagenti operator creates it.
-# The kagenti CLI installer creates it in kagenti/installer/app/components/agents.py,
-# but the Ansible installer doesn't. For now, we create it in each agent namespace.
+# For now, we create it in each agent namespace.
 - name: Create spiffe-helper-config ConfigMap in agent namespaces
   block:
     - name: Apply spiffe-helper-config ConfigMap

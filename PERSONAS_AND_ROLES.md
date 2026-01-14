@@ -216,11 +216,11 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **Description**: Administrators responsible for deploying, managing, and operating the Kagenti platform infrastructure.
 
-**Primary Repository**: [kagenti](https://github.com/kagenti/kagenti) (installer and UI)
+**Primary Repository**: [kagenti](https://github.com/kagenti/kagenti) (Ansible installer and UI)
 
 **Key Responsibilities**:
 
-- Deploy Kagenti platform using the Ansible-based installer (`deployments/ansible/run-install.sh --env dev`). The legacy `uv run kagenti-installer` is deprecated.
+- Deploy Kagenti platform using the Ansible-based installer (`deployments/ansible/run-install.sh --env dev`).
 - Manage platform component lifecycle:
   - **Core Components**: registry, tekton, cert-manager, operator, istio, spire
   - **Gateway Components**: mcp-gateway, ingress-gateway, shared-gateway-access
@@ -232,14 +232,14 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **Tools Used**:
 
-- `kagenti-installer` CLI tool (deprecated; prefer the Ansible-based installer)
+- Ansible-based installer (`deployments/ansible/run-install.sh`)
 - Kubernetes CLI tools (`kubectl`)
 - Kagenti UI dashboard
 - Observability dashboards (Kiali, Phoenix, MCP Inspector)
 
 **Getting Started**:
 
-1. Install Kagenti using the Ansible-based installer: `deployments/ansible/run-install.sh --env dev` (legacy: `uv run kagenti-installer`)
+1. Install Kagenti using the Ansible-based installer: `deployments/ansible/run-install.sh --env dev`
 2. Configure cluster components as needed
 3. Set up monitoring and observability
 4. Enable agent and tool namespaces with proper labels
