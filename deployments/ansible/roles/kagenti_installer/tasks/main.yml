@@ -527,7 +527,8 @@
           | combine((global_values_merged | default({})), recursive=True)
           | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
           | combine((secret_values.get('global', {}) | default({})), recursive=True)
-          | combine({'openshift': enable_openshift}, recursive=True) }}
+          | combine({'openshift': enable_openshift}, recursive=True)
+          | combine({'ui': {'frontend': {'tag': kagenti_latest_tag}, 'backend': {'tag': kagenti_latest_tag}}}, recursive=True) }}
       values_files: >
         {{ (global_value_files | default([]) | list) +
           (((charts['kagenti'] | default({}))['values_files'] | default([])) | list)
