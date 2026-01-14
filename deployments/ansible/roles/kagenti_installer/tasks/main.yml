@@ -524,6 +524,7 @@
       timeout: "{{ helm_wait_timeout }}s"
       values: >-
         {{ (((charts['kagenti'] | default({})).get('values')) | default({}))
+          | combine({'ui': {'frontend': {'tag': kagenti_latest_tag}, 'backend': {'tag': kagenti_latest_tag}}}, recursive=True)
           | combine((global_values_merged | default({})), recursive=True)
           | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
           | combine((secret_values.get('global', {}) | default({})), recursive=True)

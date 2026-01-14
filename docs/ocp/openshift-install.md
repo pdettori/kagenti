@@ -101,12 +101,12 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    This chart includes Kagenti software components and configurations.
 
    ```shell
-   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
+   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set ui.frontend.tag=$LATEST_TAG --set ui.backend.tag=$LATEST_TAG
    ```
    **Important**: When using OpenShift CA, we have to disable it as trusted cert:
 
    ```shell
-   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
+   helm upgrade --install --create-namespace -n kagenti-system -f .secrets.yaml kagenti oci://ghcr.io/kagenti/kagenti/kagenti --version $LATEST_TAG --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set ui.frontend.tag=$LATEST_TAG --set ui.backend.tag=$LATEST_TAG --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
    ```
 
 ### Installing from Repo
@@ -170,12 +170,12 @@ To start, ensure your `kubectl` or `oc` is configured to point to your OpenShift
    Install the kagenti chart as follows:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.frontend.tag=${LATEST_TAG} --set ui.backend.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa
    ```
    **Important**: When using OpenShift CA, we have to disable it as trusted cert:
 
    ```shell
-   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
+   helm upgrade --install kagenti ./charts/kagenti/ -n kagenti-system --create-namespace -f ./charts/kagenti/.secrets.yaml --set ui.frontend.tag=${LATEST_TAG} --set ui.backend.tag=${LATEST_TAG} --set agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa --set uiOAuthSecret.useServiceAccountCA=false --set agentOAuthSecret.useServiceAccountCA=false
    ```
 
 ## Using the new ansible-based installer

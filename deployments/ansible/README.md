@@ -191,7 +191,23 @@ Save the file in a place of your choice (for example, `deployments/envs/.values_
 
 ```shell
  ./deployments/ansible/run-install.sh --env ocp --env-file ./deployments/envs/.values_override.yaml
-``` 
+```
+
+### Setting UI Image Tags
+
+For OpenShift and other deployments, the Ansible installer automatically determines the latest tag from the GitHub repository and sets it for both the frontend and backend UI images. This ensures you're always using the correct version that matches your Kagenti release.
+
+If you need to override this behavior and use a specific version, you can add the following to your override file or environment values file:
+
+```yaml
+charts:
+  kagenti:
+    values:
+      ui:
+        frontend:
+          tag: "v0.5.0"  # Replace with your desired version
+        backend:
+          tag: "v0.5.0"  # Replace with your desired version
 
 ## Notes / tips
 - Chart paths referenced in the values are relative to the `deployments/ansible`
