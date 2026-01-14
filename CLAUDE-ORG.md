@@ -16,7 +16,7 @@ The Kagenti organization consists of the following repositories:
 
 | Repository | Language | Description |
 |------------|----------|-------------|
-| **[kagenti](https://github.com/kagenti/kagenti)** | Python | Main installer, UI dashboard, and documentation |
+| **[kagenti](https://github.com/kagenti/kagenti)** | Python | UI dashboard, Ansible installer, and documentation |
 | **[kagenti-operator](https://github.com/kagenti/kagenti-operator)** | Go | Kubernetes operator for agent/tool lifecycle management |
 | **[mcp-gateway](https://github.com/kagenti/mcp-gateway)** | Go | Envoy-based MCP Gateway for tool federation |
 | **[agent-examples](https://github.com/kagenti/agent-examples)** | Python | Sample agents and tools for the platform |
@@ -31,7 +31,7 @@ The Kagenti organization consists of the following repositories:
 
 ### 1. kagenti (Main Repository)
 
-**Purpose**: Primary entry point containing the installer, web UI, and documentation.
+**Purpose**: Primary entry point containing the web UI, Ansible installer, and documentation.
 
 **Key Components**:
 ```
@@ -43,31 +43,23 @@ kagenti/
 │   ├── backend/               # FastAPI backend for UI
 │   │   ├── app/routers/       # API route handlers
 │   │   └── app/services/      # Kubernetes integration
-│   ├── installer/             # CLI installer (Typer-based, deprecated)
-│   │   ├── app/cli.py         # CLI entry point
-│   │   └── app/components/    # Component installers (istio, keycloak, spire...)
 │   ├── auth/                  # OAuth secret generation utilities
 │   ├── tests/e2e/             # End-to-end tests
 │   └── examples/              # Example configurations
 ├── charts/                    # Helm charts (kagenti, kagenti-deps)
 ├── deployments/
-│   ├── ansible/               # Ansible playbooks
+│   ├── ansible/               # Ansible playbooks for installation
 │   └── envs/                  # Environment-specific values
 └── docs/                      # Documentation
 ```
 
 **Commands**:
 ```bash
-# Recommended: Run the Ansible-based installer (default)
+# Run the Ansible-based installer
 # From repository root
 cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
 # Edit deployments/envs/.secret_values.yaml with your values
 deployments/ansible/run-install.sh --env dev
-
-# Legacy (deprecated):
-cd kagenti/installer
-# Deprecated: uv-based installer
-uv run kagenti-installer
 
 # Run UI locally
 cd kagenti/backend
@@ -316,7 +308,7 @@ GET  /sse                       # Server-sent events (legacy)
 ## Development Setup
 
 ### Prerequisites
-- Python ≥3.11 (UI), ≥3.9 (installer)
+- Python ≥3.11 (backend)
 - Go ≥1.21 (operators, gateway)
 - Docker/Podman
 - Kind, kubectl, Helm
@@ -328,20 +320,12 @@ GET  /sse                       # Server-sent events (legacy)
 git clone https://github.com/kagenti/kagenti.git
 cd kagenti
 
-# Configure
-cp kagenti/installer/app/.env_template kagenti/installer/app/.env
-# Edit .env with GITHUB_USER, GITHUB_TOKEN
-
-# Install platform (recommended: Ansible-based)
-# From repository root
+# Configure secrets
 cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit deployments/envs/.secret_values.yaml with your values
-deployments/ansible/run-install.sh --env dev
+# Edit .secret_values.yaml with your values
 
-# Legacy (deprecated):
-cd kagenti/installer
-# Deprecated: uv-based installer
-uv run kagenti-installer
+# Install platform using Ansible-based installer
+deployments/ansible/run-install.sh --env dev
 ```
 
 ### Access URLs (Kind)

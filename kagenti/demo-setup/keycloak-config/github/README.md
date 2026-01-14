@@ -56,7 +56,7 @@ The script assumes the existence of:
 
 ## Instructions
 
-Recommended: run the Ansible-based installer
+Run the Ansible-based installer:
 
 ```sh
 cp deployments/envs/secret_values.yaml.example \
@@ -65,14 +65,7 @@ cp deployments/envs/secret_values.yaml.example \
 deployments/ansible/run-install.sh --env dev
 ```
 
-Legacy (deprecated):
-
-```sh
-cd kagenti/installer
-uv run kagenti-installer
-```
-
-The legacy uv-based `kagenti-installer` is deprecated.
+Then set the Keycloak admin username:
 
 ```sh
 export KEYCLOAK_ADMIN_USERNAME=admin

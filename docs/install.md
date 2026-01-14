@@ -2,8 +2,6 @@
 
 This guide covers installation on both local Kind clusters and OpenShift environments.
 
-**Important:** The Ansible-based Helm installer (deployments/ansible/run-install.sh) is the recommended and default installer for Kagenti. The legacy `kagenti-installer` (uv-based Kind installer) is deprecated and will be removed in a future release. See [kagenti/installer/DEPRECATION.md](../kagenti/installer/DEPRECATION.md) for migration notes and timelines.
-
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -85,67 +83,10 @@ deployments/ansible/run-install.sh --env dev
 
 The Ansible-based installer will create a Kind cluster (when appropriate) and deploy platform components.
 
-#### Legacy - Old Installer (Deprecated)
-
-Configure environment:
-
-```bash
-cp kagenti/installer/app/.env_template kagenti/installer/app/.env
-```
-
-Edit `kagenti/installer/app/.env`:
-
-```shell
-GITHUB_USER=<Your GitHub username>
-GITHUB_TOKEN=<Your GitHub token>
-OPENAI_API_KEY=<Optional: for OpenAI-based agents>
-AGENT_NAMESPACES=<Optional: comma-separated namespaces, e.g., team1,team2>
-SLACK_BOT_TOKEN=<Optional: for Slack tool integration>
-```
-
-Run the installer:
-
-```bash
-cd kagenti/installer
-# Legacy (deprecated): uv-based installer
-uv run kagenti-installer
-```
-
-If the legacy installer fails due to an `exceeded its progress deadline` issue, you can try logging in and re-running the legacy installer (deprecated):
-
-```shell
-docker login -u <username>
-uv run kagenti-installer --preload-images --skip-install registry --skip-install tekton
-```
-Prefer the Ansible installer for repeatable runs; see `deployments/ansible/README.md` for troubleshooting and image preloading guidance.
-
-#### Legacy Installer Options
-
-```bash
-# Using the legacy uv-based installer (deprecated):
-# Silent mode (non-interactive)
-uv run kagenti-installer --silent
-
-# Use existing cluster (skip Kind creation)
-uv run kagenti-installer --use-existing-cluster
-
-# Skip specific components
-uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
-
-# Show all options
-uv run kagenti-installer --help
-
-# Recommended: use the Ansible installer and its options. See deployments/ansible/README.md
-```
-
 ### Using an Existing Kubernetes Cluster
 
-If you have an existing cluster, and want to install there Kagenti, 
-we recommend proceeding with the Ansible-based installer:
-
-#### Ansible-Based Installer for Existing Cluster (Recommended)
-
-Run a newer, Helm-based installer using Ansible:
+If you have an existing cluster and want to install Kagenti there,
+use the Ansible-based installer:
 
 ```bash
 # Copy and configure secrets
@@ -168,31 +109,6 @@ ansible-playbook -i localhost, -c local deployments/ansible/installer-playbook.y
 ```
 
 Note: The wrapper provides convenience features (path resolution for env/secret files, a `uv`-based venv runner, and a Helm v4 compatibility check). When running Ansible directly, ensure `helm` is v3.x since Helm v4 is incompatible with the Ansible Helm integration used by the playbook.
-
-#### Legacy, Old Installer for Existing Cluster (Deprecated)
-
-```bash
-# Legacy (deprecated):
-uv run kagenti-installer --use-existing-cluster
-```
-
-This will:
-
-- Skip Kind and Docker dependency checks
-- Use the cluster from your `KUBECONFIG`
-- Skip kind-specific operations (image preloading)
-- Deploy all platform components
-
-Ensure `KUBECONFIG` points to a cluster with admin privileges.
-
-**Note:** When using an existing cluster, the registry component is automatically skipped as it's primarily designed for kind clusters that have been initialized with a specific configuration.
-
-To skip installation of the specific component e.g. keycloak and SPIRE, issue:
-
-```shell
-# Legacy (deprecated):
-uv run kagenti-installer --skip-install keycloak --skip-install spire --skip-install mcp_gateway
-```
 
 ---
 
