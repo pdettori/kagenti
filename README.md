@@ -6,11 +6,22 @@
 ![Issues](https://img.shields.io/github/issues/kagenti/kagenti)
 ![Pull Requests](https://img.shields.io/github/issues-pr/kagenti/kagenti)
 
-**Kagenti** is a cloud-native middleware providing a *framework-neutral*, *scalable* and *secure* platform for deploying and orchestrating AI agents through a standardized REST API.
+**Kagenti** is a cloud-native middleware providing a *framework-neutral*, *scalable*, and *secure* platform for deploying and orchestrating AI agents through standardized agent communication protocols (A2A, MCP).
 
 | Included Services: |  |
 |--------------------|--------|
-| - Authentication and Authorization<br>- Trusted identity<br>- Deployment<br>- Configuration<br>- Scaling<br>- Fault-tolerance<br>- Checkpointing<br>- Discovery of agents and tools<br>- Persistence | <img src="banner.png" width="400"/> |
+| - Zero-Trust Security Architecture<br>- Authentication and Authorization<br>- Trusted workload identity (SPIRE)<br>- Deployment and Configuration<br>- Scaling and Fault-tolerance<br>- Discovery of agents and tools<br>- State Persistence | <img src="banner.png" width="400"/> |
+
+## Why Kagenti?
+
+Despite the extensive variety of frameworks available for developing agent-based applications (LangGraph, CrewAI, AG2, etc.), there is a distinct lack of standardized methods for deploying and operating agent code in production environments. Agents are adept at reasoning, planning, and interacting with tools, but their full potential is often limited by:
+
+- **Deployment Complexity** - Each framework requires custom deployment scripts and infrastructure
+- **Security Gaps** - No standardized approach to authentication, authorization, and workload identity
+- **Protocol Fragmentation** - Agents and tools use different communication patterns
+- **Operational Overhead** - Scaling, monitoring, and lifecycle management require custom solutions
+
+Kagenti addresses these challenges by enhancing existing agent frameworks with production-ready, framework-neutral infrastructure.
 
 ## Core Components
 
