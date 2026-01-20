@@ -1,4 +1,4 @@
-name: Kind PR Test
+name: E2E Kind
 
 on:
   pull_request:
