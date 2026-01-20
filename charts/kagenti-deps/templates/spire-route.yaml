@@ -6,6 +6,13 @@ metadata:
   name: {{ .Values.spire.namespace }}
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
+{{- if .Values.openshift }}
+    # Pod Security Standards labels for OpenShift
+    # Required for SPIFFE CSI driver to mount workload API sockets
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+{{- end }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

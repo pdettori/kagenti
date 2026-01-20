@@ -452,8 +452,51 @@
           Detected Version: {{ ocp_version | default('Unable to detect') }}
           Major: {{ ocp_version_major | default('N/A') }}
           Minor: {{ ocp_version_minor | default('N/A') }}
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # OpenShift Trust Domain Detection for SPIRE/ZTWIM
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ZTWIM uses the OpenShift "apps" subdomain as its Trust Domain by default.
+    # We detect this from the DNS cluster resource and pass it to the Helm chart.
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    - name: Detect OpenShift apps domain for SPIRE trust domain
+      shell: |
+        BASE_DOMAIN=$(kubectl get dns cluster -o jsonpath='{.spec.baseDomain}' 2>/dev/null)
+        if [ -n "$BASE_DOMAIN" ]; then
+          echo "apps.${BASE_DOMAIN}"
+        else
+          echo ""
+        fi
+      args:
+        executable: /bin/bash
+      register: ocp_trust_domain_raw
+      failed_when: false
+      changed_when: false
+
+    - name: Set OpenShift trust domain fact
+      set_fact:
+        ocp_trust_domain: "{{ ocp_trust_domain_raw.stdout | trim }}"
+      when: ocp_trust_domain_raw.stdout | trim | length > 0
+
+    - name: Display detected trust domain
+      debug:
+        msg: |
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      when: ocp_version is defined
+          OpenShift Trust Domain Detection
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Trust Domain: {{ ocp_trust_domain }}
+          This will be used for SPIRE/ZTWIM configuration.
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      when: ocp_trust_domain is defined and ocp_trust_domain | length > 0
+
+    - name: Warn if trust domain could not be detected
+      debug:
+        msg: |
+          ⚠️  WARNING: Could not detect OpenShift trust domain from DNS cluster resource.
+          SPIRE/ZTWIM will use the default trust domain from values file.
+          To set manually, add to your values: spire.trustDomain: "apps.<your-base-domain>"
+      when: ocp_trust_domain is not defined or ocp_trust_domain | length == 0
 
     - name: Check SPIRE/ZTWIM version compatibility
       set_fact:
@@ -606,6 +649,13 @@
       set_fact:
         kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'ocpVersion': ocp_version}, recursive=True) }}"
       when: ocp_version is defined and ocp_version | trim | length > 0
+
+    # Set SPIRE trust domain from detected OpenShift apps domain
+    # This follows the ZTWIM convention of using apps.<baseDomain> as trust domain
+    - name: Add SPIRE trust domain override
+      set_fact:
+        kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'spire': {'trustDomain': ocp_trust_domain}}, recursive=True) }}"
+      when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
 
     - name: Add cert-manager skip override
       set_fact:
@@ -1113,6 +1163,29 @@
     - (charts['kagenti'] | default({})).get('chart') is search(local_chart_path_regex)
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
 
+# Build OpenShift-specific overrides for kagenti chart
+# This sets the SPIFFE prefix using the detected trust domain
+- name: Build OpenShift overrides for kagenti chart
+  block:
+    - name: Initialize kagenti overrides
+      set_fact:
+        kagenti_openshift_overrides: {}
+
+    # Set agentOAuthSecret.spiffePrefix to use the detected trust domain
+    # This follows the convention: spiffe://<trust-domain>/sa
+    - name: Add agentOAuthSecret.spiffePrefix override
+      set_fact:
+        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'agentOAuthSecret': {'spiffePrefix': 'spiffe://' + ocp_trust_domain + '/sa'}}, recursive=True) }}"
+      when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
+
+    - name: Debug kagenti OpenShift overrides
+      debug:
+        msg: "Kagenti OpenShift overrides: {{ kagenti_openshift_overrides }}"
+      when: kagenti_openshift_overrides | length > 0
+  when:
+    - enable_openshift | default(false)
+    - (charts['kagenti'] | default({})).get('enabled', false) | bool
+
 - name: Install/upgrade Kagenti chart and print instructions
   block:
   # Delete old OAuth secret jobs BEFORE Helm install to allow fresh job creation.
@@ -1152,7 +1225,8 @@
           | combine((global_values_merged | default({})), recursive=True)
           | combine((((secret_values.get('charts', {}) | default({})).get('kagenti', {}) ).get('values', {})) , recursive=True)
           | combine((secret_values.get('global', {}) | default({})), recursive=True)
-          | combine({'openshift': enable_openshift}, recursive=True) }}
+          | combine({'openshift': enable_openshift}, recursive=True)
+          | combine((kagenti_openshift_overrides | default({})), recursive=True) }}
       values_files: >
         {{ (global_value_files | default([]) | list) +
           (((charts['kagenti'] | default({}))['values_files'] | default([])) | list)

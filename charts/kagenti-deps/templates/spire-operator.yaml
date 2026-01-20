@@ -65,6 +65,13 @@ metadata:
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
     istio-discovery: enabled
+{{- if .Values.openshift }}
+    # Pod Security Standards labels for OpenShift
+    # Required for SPIFFE CSI driver to mount workload API sockets
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+{{- end }}
   annotations:
     helm.sh/resource-policy: keep
 ---

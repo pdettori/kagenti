@@ -151,11 +151,25 @@ kubectl patch network.operator.openshift.io cluster --type=merge -p '{"spec":{"d
 
 ## Configure Trust Domain
 
-Zero Trust Workload Identity Manager (ZTWIM) utilizes the OpenShift "apps" subdomain as its Trust Domain by default. Set the `DOMAIN` environment variable based on this property:
+Zero Trust Workload Identity Manager (ZTWIM) utilizes the OpenShift "apps" subdomain as its Trust Domain by default.
+
+### Using the Ansible Installer (Automatic)
+
+The Ansible installer **automatically detects** the trust domain from the OpenShift DNS cluster configuration. No manual configuration is required - the installer will:
+
+1. Query the DNS cluster resource for the base domain
+2. Construct the trust domain as `apps.<baseDomain>`
+3. Pass it to both kagenti-deps (`spire.trustDomain`) and kagenti (`agentOAuthSecret.spiffePrefix`) charts
+
+### Manual Helm Chart Installation
+
+If installing manually with Helm charts, set the `DOMAIN` environment variable:
 
 ```shell
 export DOMAIN=apps.$(kubectl get dns cluster -o jsonpath='{ .spec.baseDomain }')
 ```
+
+Then pass it to the helm commands as shown in the installation sections below.
 
 ## Installing the Helm Chart
 
