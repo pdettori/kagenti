@@ -1,4 +1,5 @@
-{{- if and .Values.components.spire.enabled (not .Values.openshift) }}
+{{- /* Create SPIRE routes for Kubernetes or when using Helm chart on OpenShift (OCP < 4.19) */}}
+{{- if and .Values.components.spire.enabled (or (not .Values.openshift) .Values.useSpireHelmChart) }}
 apiVersion: v1
 kind: Namespace
 metadata:

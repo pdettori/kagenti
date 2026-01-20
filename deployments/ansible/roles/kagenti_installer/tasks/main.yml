@@ -217,10 +217,17 @@
     - toolhiveOperator.enabled | default(false)
 
 #
-#  Spire (Helm-based for Kubernetes, skip on OpenShift where ZTWIM operator is used)
+#  Spire (Helm-based for Kubernetes, or OpenShift < 4.19 where ZTWIM operator is not available)
 #
 - name: Install SPIRE via Helm charts
   block:
+    - name: Display SPIRE Helm installation info
+      debug:
+        msg: |
+          Installing SPIRE via Helm charts
+          Reason: {{ spire_install_reason | default('Non-OpenShift Kubernetes cluster') }}
+      when: use_spire_helm_chart | default(false)
+
     - name: Install spire-crds via helm
       kubernetes.core.helm:
         release_name: spire-crds
@@ -253,7 +260,9 @@
       retries: 3
       delay: 15
       until: spire_result is not failed
-  when: (charts.spire.enabled | default(false)) and not (enable_openshift | default(false))
+  when: >
+    (charts.spire.enabled | default(false)) and
+    (not (enable_openshift | default(false)) or (use_spire_helm_chart | default(false)))
 
 #
 #  Gateway API
@@ -300,7 +309,7 @@
 # to avoid conflicts with existing OperatorGroups and Subscriptions.
 - name: Detect already-installed OLM operators on OpenShift
   block:
-    - name: Check if cert-manager operator is already installed via OLM
+    - name: Check if cert-manager operator is already installed via OLM (Succeeded state)
       shell: >-
         kubectl get csv -n cert-manager-operator -o json 2>/dev/null |
         jq -e '.items[] | select(.status.phase == "Succeeded")' > /dev/null 2>&1 &&
@@ -309,6 +318,17 @@
       args:
         executable: /bin/bash
       register: cert_manager_olm_check
+      failed_when: false
+      changed_when: false
+
+    - name: Check if cert-manager OLM resources exist but are stuck/conflicting
+      shell: >-
+        kubectl get subscription -n cert-manager-operator -o name 2>/dev/null | grep -q . &&
+        ! (kubectl get csv -n cert-manager-operator -o json 2>/dev/null |
+           jq -e '.items[] | select(.status.phase == "Succeeded")' > /dev/null 2>&1)
+      args:
+        executable: /bin/bash
+      register: cert_manager_olm_stuck_check
       failed_when: false
       changed_when: false
 
@@ -325,15 +345,202 @@
     - name: Set cert-manager skip fact
       set_fact:
         skip_cert_manager_operator: "{{ cert_manager_olm_check.rc == 0 or cert_manager_existing_check.rc == 0 }}"
+        cert_manager_olm_stuck: "{{ cert_manager_olm_stuck_check.rc == 0 }}"
+        cert_manager_from_tekton: "{{ cert_manager_existing_check.rc == 0 and cert_manager_olm_check.rc != 0 }}"
 
     - name: Debug cert-manager detection
       debug:
         msg: >-
           cert-manager already installed: {{ skip_cert_manager_operator }}
-          (OLM operator: {{ cert_manager_olm_check.rc == 0 }},
+          (OLM operator succeeded: {{ cert_manager_olm_check.rc == 0 }},
+          OLM resources stuck: {{ cert_manager_olm_stuck | default(false) }},
           existing install e.g. Tekton/OpenShift Pipelines: {{ cert_manager_existing_check.rc == 0 }}).
           Will skip cert-manager operator installation and use existing.
       when: skip_cert_manager_operator | default(false)
+
+    # Clean up stuck/conflicting cert-manager OLM resources when a working cert-manager exists elsewhere
+    # This handles reinstall scenarios where:
+    # 1. Previous install created OLM subscription for cert-manager operator
+    # 2. Tekton/OpenShift Pipelines installed its own cert-manager
+    # 3. OLM cert-manager CSV is stuck in Pending due to conflict
+    - name: Clean up conflicting cert-manager OLM resources
+      block:
+        - name: Display cert-manager cleanup notice
+          debug:
+            msg: |
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              ℹ️  CLEANING UP CONFLICTING CERT-MANAGER OLM RESOURCES
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+              Detected: cert-manager OLM operator subscription exists but CSV is not Succeeded
+              Reason: Likely conflict with Tekton/OpenShift Pipelines cert-manager
+
+              A working cert-manager installation was found (installed by Tekton/OpenShift Pipelines).
+              Removing conflicting OLM resources to use the existing cert-manager.
+
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        - name: Delete cert-manager OLM Subscription
+          kubernetes.core.k8s:
+            api_version: operators.coreos.com/v1alpha1
+            kind: Subscription
+            name: cert-manager
+            namespace: cert-manager-operator
+            state: absent
+          failed_when: false
+
+        - name: Delete all CSVs in cert-manager-operator namespace
+          shell: kubectl delete csv --all -n cert-manager-operator --ignore-not-found
+          args:
+            executable: /bin/bash
+          failed_when: false
+
+        - name: Delete cert-manager OperatorGroup
+          kubernetes.core.k8s:
+            api_version: operators.coreos.com/v1
+            kind: OperatorGroup
+            name: cert-manager-operator
+            namespace: cert-manager-operator
+            state: absent
+          failed_when: false
+
+        - name: Wait for OLM cleanup to complete
+          pause:
+            seconds: 5
+      when:
+        - cert_manager_olm_stuck | default(false)
+        - cert_manager_from_tekton | default(false)
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # OpenShift Version Detection for SPIRE/ZTWIM Compatibility
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ZTWIM (Zero Trust Workload Identity Manager) operator requires OCP 4.19+
+    # This check detects the OpenShift version and auto-disables SPIRE if incompatible
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    - name: Detect OpenShift cluster version
+      shell: |
+        # Try multiple methods to get OCP version
+        if command -v oc &> /dev/null; then
+          # Method 1: oc version (most reliable)
+          oc version -o json 2>/dev/null | jq -r '.openshiftVersion // empty' && exit 0
+        fi
+        # Method 2: ClusterVersion resource
+        kubectl get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null && exit 0
+        # Method 3: Check for version in cluster info
+        kubectl version --short 2>/dev/null | grep -oP 'Server Version: v\K[0-9]+\.[0-9]+' && exit 0
+        # If all methods fail, return empty
+        echo ""
+      args:
+        executable: /bin/bash
+      register: ocp_version_raw
+      failed_when: false
+      changed_when: false
+
+    - name: Parse OpenShift version
+      set_fact:
+        ocp_version: "{{ ocp_version_raw.stdout | trim }}"
+        ocp_version_major: "{{ (ocp_version_raw.stdout | trim | regex_search('^([0-9]+)\\.([0-9]+)', '\\1', '\\2'))[0] | default('0') | int }}"
+        ocp_version_minor: "{{ (ocp_version_raw.stdout | trim | regex_search('^([0-9]+)\\.([0-9]+)', '\\1', '\\2'))[1] | default('0') | int }}"
+      when: ocp_version_raw.stdout | trim | length > 0
+
+    - name: Display detected OpenShift version
+      debug:
+        msg: |
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          OpenShift Version Detection
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Detected Version: {{ ocp_version | default('Unable to detect') }}
+          Major: {{ ocp_version_major | default('N/A') }}
+          Minor: {{ ocp_version_minor | default('N/A') }}
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      when: ocp_version is defined
+
+    - name: Check SPIRE/ZTWIM version compatibility
+      set_fact:
+        spire_version_compatible: >-
+          {{ (ocp_version_major | int == 4 and ocp_version_minor | int >= 19) or
+             (ocp_version_major | int > 4) }}
+      when: 
+        - ocp_version is defined
+        - ocp_version_major is defined
+        - ocp_version_minor is defined
+
+    - name: Use SPIRE Helm chart on older OpenShift versions
+      block:
+        - name: Display SPIRE Helm chart fallback notice
+          debug:
+            msg: |
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              ℹ️  USING SPIRE HELM CHART (OCP < 4.19)
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+              Current OpenShift Version: {{ ocp_version }}
+              ZTWIM Operator Requires: 4.19.0 or higher
+
+              The ZTWIM (Zero Trust Workload Identity Manager) operator is only available
+              on OpenShift 4.19+. On older versions, SPIRE will be installed using the
+              upstream Helm charts instead.
+
+              ACTION: Installing SPIRE via Helm charts (same as non-OpenShift Kubernetes)
+
+              Note: For full OLM-managed SPIRE, upgrade to OpenShift 4.19+
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        - name: Set facts to use SPIRE Helm chart instead of ZTWIM operator
+          set_fact:
+            skip_spire_operator: true
+            use_spire_helm_chart: true
+            spire_install_method: "helm-chart"
+            spire_install_reason: "OpenShift version {{ ocp_version }} < 4.19.0 (using Helm chart fallback)"
+      when:
+        - spire_version_compatible is defined
+        - not (spire_version_compatible | bool)
+        - (charts['kagenti-deps'].values.components.spire.enabled | default(false)) | bool
+
+    - name: Confirm SPIRE compatibility
+      debug:
+        msg: |
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ✓ SPIRE/ZTWIM Version Check Passed
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          OpenShift Version: {{ ocp_version }}
+          ZTWIM operator is supported on this cluster version.
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      when:
+        - spire_version_compatible is defined
+        - spire_version_compatible | bool
+        - (charts['kagenti-deps'].values.components.spire.enabled | default(false)) | bool
+
+    # Handle case when OpenShift version detection fails
+    # Fall back to Helm chart installation since we can't verify ZTWIM compatibility
+    - name: Handle version detection failure for SPIRE
+      block:
+        - name: Display version detection failure warning
+          debug:
+            msg: |
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              ⚠️  UNABLE TO DETECT OPENSHIFT VERSION
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+              Cannot verify OpenShift version for SPIRE/ZTWIM compatibility.
+              The ZTWIM operator requires OpenShift 4.19.0 or higher.
+
+              ACTION: Installing SPIRE via Helm charts as fallback.
+
+              Note: If you're running OCP 4.19+, you can manually install ZTWIM operator
+              after verifying your version with: oc version
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        - name: Set facts to use SPIRE Helm chart due to version detection failure
+          set_fact:
+            skip_spire_operator: true
+            use_spire_helm_chart: true
+            spire_install_method: "helm-chart"
+            spire_install_reason: "Unable to detect OpenShift version - using Helm chart fallback"
+      when:
+        - ocp_version is not defined or (ocp_version | trim | length == 0)
+        - (charts['kagenti-deps'].values.components.spire.enabled | default(false)) | bool
+
 
     - name: Check if SPIRE/ZTWIM operator is already installed
       shell: >-
@@ -347,13 +554,18 @@
       failed_when: false
       changed_when: false
 
-    - name: Set SPIRE operator skip fact
+    - name: Set SPIRE operator skip fact (preserve version check result)
       set_fact:
-        skip_spire_operator: "{{ spire_operator_check.rc == 0 }}"
+        # Preserve skip_spire_operator if already set to true by version check
+        # Otherwise, set based on whether SPIRE operator is already installed
+        skip_spire_operator: "{{ skip_spire_operator | default(false) or spire_operator_check.rc == 0 }}"
 
     - name: Debug SPIRE operator detection
       debug:
-        msg: "SPIRE/ZTWIM operator already installed (not by Helm): {{ skip_spire_operator }}"
+        msg: >-
+          SPIRE skip decision: {{ skip_spire_operator }}
+          (version incompatible: {{ spire_disabled_reason | default('N/A') }},
+          already installed: {{ spire_operator_check.rc == 0 }})
       when: skip_spire_operator | default(false)
 
     - name: Check if OpenShift Builds operator is already installed
@@ -388,15 +600,32 @@
       set_fact:
         kagenti_deps_operator_overrides: {}
 
+    # Pass detected OCP version to Helm chart to bypass cluster lookup during helm diff/template
+    # This is necessary because helm diff uses helm template which can't do cluster lookups
+    - name: Add detected OCP version to overrides
+      set_fact:
+        kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'ocpVersion': ocp_version}, recursive=True) }}"
+      when: ocp_version is defined and ocp_version | trim | length > 0
+
     - name: Add cert-manager skip override
       set_fact:
         kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'components': {'certManager': {'enabled': false}}}, recursive=True) }}"
       when: skip_cert_manager_operator | default(false)
 
-    - name: Add SPIRE operator skip override
+    # When using SPIRE Helm chart (OCP < 4.19), set useSpireHelmChart flag
+    # This tells kagenti-deps to skip ZTWIM operator but keeps SPIRE "enabled" for other dependencies
+    - name: Add SPIRE Helm chart override (for OCP < 4.19)
+      set_fact:
+        kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'useSpireHelmChart': true}, recursive=True) }}"
+      when: use_spire_helm_chart | default(false)
+
+    # When SPIRE operator should be completely skipped (not using Helm chart either)
+    - name: Add SPIRE operator skip override (disable completely)
       set_fact:
         kagenti_deps_operator_overrides: "{{ kagenti_deps_operator_overrides | combine({'components': {'spire': {'enabled': false}}}, recursive=True) }}"
-      when: skip_spire_operator | default(false)
+      when:
+        - skip_spire_operator | default(false)
+        - not (use_spire_helm_chart | default(false))
 
     - name: Add OpenShift Builds operator skip override
       set_fact:
@@ -461,36 +690,105 @@
         kubectl get csv -n cert-manager-operator
         -o jsonpath='{.items[?(@.spec.displayName=="cert-manager Operator for Red Hat OpenShift")].status.phase}'
       register: cert_manager_csv_status
-      retries: 60
+      retries: 30
       delay: 10
       until: cert_manager_csv_status.stdout == "Succeeded"
+      failed_when: false
       changed_when: false
+
+    - name: Display cert-manager CSV status on failure
+      debug:
+        msg: |
+          Cert-manager CSV failed to reach 'Succeeded' state after 5 minutes.
+          Current status: {{ cert_manager_csv_status.stdout | default('Unknown') }}
+          
+          Troubleshooting steps:
+          1. Check operator logs: kubectl logs -n cert-manager-operator -l app=cert-manager-operator
+          2. Check CSV details: kubectl describe csv -n cert-manager-operator
+          3. Verify operator subscription: kubectl get subscription -n cert-manager-operator
+      when: cert_manager_csv_status.stdout != "Succeeded"
+
+    - name: Fail if CSV did not succeed
+      fail:
+        msg: "Cert-manager operator CSV failed to reach 'Succeeded' state. See troubleshooting steps above."
+      when: cert_manager_csv_status.stdout != "Succeeded"
 
     - name: Wait for Certificate CRD to be available
       command: kubectl get crd certificates.cert-manager.io
       register: cert_crd_check
-      retries: 30
+      retries: 20
       delay: 10
       until: cert_crd_check.rc == 0
+      failed_when: false
       changed_when: false
+
+    - name: Display Certificate CRD status on failure
+      debug:
+        msg: |
+          Certificate CRD failed to become available after 3.3 minutes.
+          Check cert-manager operator status: kubectl get pods -n cert-manager-operator
+      when: cert_crd_check.rc != 0
+
+    - name: Fail if Certificate CRD not available
+      fail:
+        msg: "Certificate CRD not available. Check cert-manager operator installation."
+      when: cert_crd_check.rc != 0
 
     - name: Wait for Issuer CRD to be available
       command: kubectl get crd issuers.cert-manager.io
       register: issuer_crd_check
-      retries: 30
+      retries: 20
       delay: 10
       until: issuer_crd_check.rc == 0
+      failed_when: false
       changed_when: false
+
+    - name: Display Issuer CRD status on failure
+      debug:
+        msg: |
+          Issuer CRD failed to become available after 3.3 minutes.
+          Check cert-manager operator status: kubectl get pods -n cert-manager-operator
+      when: issuer_crd_check.rc != 0
+
+    - name: Fail if Issuer CRD not available
+      fail:
+        msg: "Issuer CRD not available. Check cert-manager operator installation."
+      when: issuer_crd_check.rc != 0
 
     - name: Wait for cert-manager webhook to be ready
       command: >-
         kubectl wait --for=condition=Available deployment
         -l app.kubernetes.io/name=cert-manager
-        -n cert-manager --timeout=300s
+        -n cert-manager --timeout=180s
       register: cert_manager_webhook_ready
-      retries: 3
-      delay: 30
+      retries: 2
+      delay: 20
       until: cert_manager_webhook_ready.rc == 0
+      failed_when: false
+      changed_when: false
+
+    - name: Check webhook pod status on failure
+      command: kubectl get pods -n cert-manager -l app.kubernetes.io/name=cert-manager
+      register: webhook_pods
+      when: cert_manager_webhook_ready.rc != 0
+      changed_when: false
+
+    - name: Display webhook failure diagnostics
+      debug:
+        msg: |
+          Cert-manager webhook failed to become ready after 3 minutes.
+          
+          Pod status:
+          {{ webhook_pods.stdout }}
+          
+          Check logs with:
+          kubectl logs -n cert-manager -l app.kubernetes.io/name=cert-manager --tail=50
+      when: cert_manager_webhook_ready.rc != 0
+
+    - name: Fail if webhook not ready
+      fail:
+        msg: "Cert-manager webhook failed to become ready. See diagnostics above."
+      when: cert_manager_webhook_ready.rc != 0
   when:
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('certManager', {}).get('enabled', false) | bool

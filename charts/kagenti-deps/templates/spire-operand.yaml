@@ -1,4 +1,4 @@
-{{- if and .Values.components.spire.enabled .Values.openshift }}
+{{- if and .Values.components.spire.enabled .Values.openshift (not .Values.useSpireHelmChart) }}
 apiVersion: operator.openshift.io/v1alpha1
 kind: SpiffeCSIDriver
 metadata:
