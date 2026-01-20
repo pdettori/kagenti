@@ -1,5 +1,18 @@
-# Kagenti minimal installation configuration
+# Kagenti minimal installation configuration for OpenShift
 # Auth is enabled in this config
+#
+# ⚠️  IMPORTANT VERSION REQUIREMENTS ⚠️
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SPIRE/ZTWIM (Zero Trust Workload Identity Manager) requires OpenShift 4.19+
+#
+# If your cluster is running OCP < 4.19:
+#   - Set components.spire.enabled to 'false' in kagenti-deps section (line 36)
+#   - The Ansible installer will auto-detect and disable SPIRE on older versions
+#   - See docs/ocp/openshift-install.md for upgrade instructions
+#
+# To check your OpenShift version:
+#   oc version
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ####################################################################
 # Toolhive - MCP server operator (must be at root level for Ansible installer)
@@ -34,8 +47,13 @@ charts:
         otel:
           enabled: true
         spire:
-          enabled: false  # Use Helm-based SPIRE instead of OLM (ZTWIM not available on all OCP versions)
+          # ⚠️  REQUIRES OpenShift 4.19 or higher
+          # The ZTWIM (Zero Trust Workload Identity Manager) operator is only available on OCP 4.19+
+          # For OCP < 4.19: Set this to 'false' or the Ansible installer will auto-disable it
+          enabled: true  # Use ZTWIM operator for OCP 4.19+
         tekton:
+          enabled: true
+        shipwright:
           enabled: true
         toolhiveCRDs:
           enabled: true
@@ -85,10 +103,8 @@ charts:
     enabled: true
 
   ####################################################################
-  # spire - Use Helm charts (ZTWIM operator not available on all OCP versions)
+  # spire - On OpenShift, ZTWIM operator is used (configured in kagenti-deps)
+  # Helm-based SPIRE is automatically skipped on OpenShift
   ####################################################################
   spire:
-    enabled: true
-    values:
-      global:
-        openshift: true
+    enabled: false  # Helm SPIRE disabled; ZTWIM operator used via kagenti-deps

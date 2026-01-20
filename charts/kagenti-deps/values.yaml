@@ -1,5 +1,11 @@
 # Global settings
 openshift: true
+# OpenShift version (e.g., "4.20.8") - if provided, skips cluster lookup for version detection
+# This is useful when helm diff/template can't access the cluster for lookups
+ocpVersion: ""
+# Set to true to skip ZTWIM operator installation even on OpenShift
+# Used when installing SPIRE via Helm charts (e.g., OCP < 4.19 where ZTWIM is not available)
+useSpireHelmChart: false
 
 domain: localtest.me
 
@@ -24,6 +30,8 @@ components:
   spire:
     enabled: true
   tekton:
+    enabled: true
+  shipwright:
     enabled: true
   toolhiveCRDs:
     enabled: true
@@ -90,6 +98,13 @@ istio:
 httpGateway:
   name: http
   namespace: "kagenti-system"
+# ------------------------------------------------------------------
+#  Shipwright / OpenShift Builds Configuration
+# ------------------------------------------------------------------
+shipwright:
+  namespace: openshift-builds
+  channel: latest
+
 # ------------------------------------------------------------------
 #  Cert Manager Configuration
 # ------------------------------------------------------------------
