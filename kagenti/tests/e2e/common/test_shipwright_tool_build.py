@@ -11,7 +11,6 @@ using the Shipwright build system.
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
 
 # Note: These tests are designed to run against a mock Kubernetes cluster
 # or can be adapted for real cluster testing with proper fixtures.
