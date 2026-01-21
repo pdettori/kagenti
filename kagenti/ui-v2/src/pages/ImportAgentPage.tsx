@@ -128,8 +128,7 @@ export const ImportAgentPage: React.FC = () => {
     }
   }, [registryType]);
 
-  // Shipwright build configuration
-  const [useShipwright, setUseShipwright] = useState(true);
+  // Shipwright build configuration (always enabled for source builds)
   const [buildStrategy, setBuildStrategy] = useState('buildah-insecure-push');
   const [dockerfile, setDockerfile] = useState('Dockerfile');
   const [buildTimeout, setBuildTimeout] = useState('15m');
@@ -164,7 +163,8 @@ export const ImportAgentPage: React.FC = () => {
     onSuccess: () => {
       const finalName = name || getNameFromPath();
       // Navigate to build progress page if using Shipwright for source builds
-      if (deploymentMethod === 'source' && useShipwright) {
+      // Always navigate to build page for source builds (Shipwright)
+      if (deploymentMethod === 'source') {
         navigate(`/agents/${namespace}/${finalName}/build`);
       } else {
         navigate(`/agents/${namespace}/${finalName}`);
@@ -408,15 +408,13 @@ export const ImportAgentPage: React.FC = () => {
     if (deploymentMethod === 'source') {
       const finalPath = gitPath || selectedExample;
 
-      // Build Shipwright configuration
-      const shipwrightConfig: ShipwrightBuildConfig | undefined = useShipwright
-        ? {
-            buildStrategy,
-            dockerfile,
-            buildTimeout,
-            buildArgs: buildArgs.filter((arg) => arg.trim() !== ''),
-          }
-        : undefined;
+      // Build Shipwright configuration (always used for source builds)
+      const shipwrightConfig: ShipwrightBuildConfig = {
+        buildStrategy,
+        dockerfile,
+        buildTimeout,
+        buildArgs: buildArgs.filter((arg) => arg.trim() !== ''),
+      };
 
       createMutation.mutate({
         name: finalName,
@@ -435,8 +433,8 @@ export const ImportAgentPage: React.FC = () => {
         startCommand: showStartCommand ? startCommand : undefined,
         servicePorts,
         createHttpRoute,
-        // Shipwright build configuration
-        useShipwright,
+        // Shipwright build configuration (always enabled)
+        useShipwright: true,
         shipwrightConfig,
       });
     } else {
@@ -699,18 +697,8 @@ export const ImportAgentPage: React.FC = () => {
                     Build Configuration
                   </Title>
 
-                  <FormGroup fieldId="useShipwright">
-                    <Checkbox
-                      id="useShipwright"
-                      label="Use Shipwright for container builds (recommended)"
-                      description="Shipwright provides a more efficient and flexible container build system"
-                      isChecked={useShipwright}
-                      onChange={(_e, checked) => setUseShipwright(checked)}
-                    />
-                  </FormGroup>
-
-                  {useShipwright && (
-                    <>
+                  {/* Shipwright is always used for source builds */}
+                  <>
                       <FormGroup label="Build Strategy" fieldId="buildStrategy">
                         <BuildStrategySelector
                           value={buildStrategy}
@@ -800,7 +788,6 @@ export const ImportAgentPage: React.FC = () => {
                         </Card>
                       </ExpandableSection>
                     </>
-                  )}
 
                   {/* Start Command Override */}
                   <ExpandableSection

@@ -498,7 +498,12 @@ async def delete_agent(
     return DeleteResponse(success=True, message="; ".join(messages))
 
 
-@router.get("/{namespace}/{name}/build", response_model=BuildStatusResponse)
+@router.get(
+    "/{namespace}/{name}/build",
+    response_model=BuildStatusResponse,
+    deprecated=True,
+    summary="Get AgentBuild status (deprecated)",
+)
 async def get_agent_build_status(
     namespace: str,
     name: str,
@@ -506,9 +511,16 @@ async def get_agent_build_status(
 ) -> BuildStatusResponse:
     """Get the build status for an agent.
 
+    **DEPRECATED**: This endpoint is for legacy AgentBuild/Tekton builds.
+    New builds should use Shipwright. Use the `/shipwright-build-info` endpoint instead.
+
     Returns the AgentBuild resource status including conditions,
     phase, and image information.
     """
+    logger.warning(
+        f"Deprecated endpoint called: get_agent_build_status for '{name}' in '{namespace}'. "
+        "AgentBuild is deprecated, use Shipwright builds instead."
+    )
     try:
         build = kube.get_custom_resource(
             group=CRD_GROUP,
@@ -952,6 +964,10 @@ def _build_agent_build_manifest(request: CreateAgentRequest) -> dict:
     Build an AgentBuild CRD manifest for building from source.
 
     Uses the Tekton pipeline to build the agent from git.
+
+    .. deprecated::
+        This function is deprecated. Use `_build_shipwright_build_manifest` instead.
+        AgentBuild/Tekton pipeline will be removed in a future version.
     """
     cleaned_url = _strip_protocol(request.gitUrl) if request.gitUrl else ""
     registry_url = request.registryUrl or "registry.cr-system.svc.cluster.local:5000"
@@ -1376,6 +1392,12 @@ async def create_agent(
 
         else:
             # Build from source using AgentBuild CRD + Tekton pipeline (legacy)
+            # DEPRECATED: This flow is deprecated. Use Shipwright builds instead.
+            logger.warning(
+                f"DEPRECATED: Creating AgentBuild for '{request.name}' in '{request.namespace}'. "
+                "AgentBuild/Tekton pipeline is deprecated. Use useShipwright=True for new builds."
+            )
+
             if not request.gitUrl or not request.gitPath:
                 raise HTTPException(
                     status_code=400,

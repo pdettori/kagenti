@@ -275,153 +275,216 @@ const mutation = useMutation({
 
 ---
 
-## Stage 3: Build Status Polling & Agent Creation
+## Stage 3: Build Progress Page & Auto-Finalization
 
-**Objective**: Implement BuildRun status tracking and automatic Agent creation upon build completion.
+**Objective**: Implement a dedicated Build Progress page that tracks BuildRun status and automatically creates the Agent upon build completion.
 
-### 3.1 Add BuildRun Status Types
+### 3.1 Store Agent Config in Build Annotations
+
+**Problem**: When using Shipwright, the Agent CRD is not created until the build completes. We need to preserve the user's agent configuration (protocol, framework, HTTPRoute, env vars, etc.) during the build.
+
+**Solution**: Store agent configuration in the Shipwright Build's annotations.
+
+**File**: `kagenti/backend/app/routers/agents.py`
+
+In `_build_shipwright_build_manifest()`:
+```python
+# Build agent configuration to store in annotation
+agent_config = {
+    "protocol": request.protocol,
+    "framework": request.framework,
+    "createHttpRoute": request.createHttpRoute,
+    "registrySecret": request.registrySecret,
+}
+if request.envVars:
+    agent_config["envVars"] = [ev.model_dump(exclude_none=True) for ev in request.envVars]
+if request.servicePorts:
+    agent_config["servicePorts"] = [sp.model_dump() for sp in request.servicePorts]
+
+# Add to Build manifest
+manifest["metadata"]["annotations"] = {
+    "kagenti.io/agent-config": json.dumps(agent_config),
+}
+```
+
+### 3.2 Add Comprehensive Build Info Endpoint
 
 **File**: `kagenti/backend/app/routers/agents.py`
 
 ```python
-class BuildRunPhase(str, Enum):
-    PENDING = "Pending"
-    RUNNING = "Running"
-    SUCCEEDED = "Succeeded"
-    FAILED = "Failed"
-
-class BuildRunStatusResponse(BaseModel):
+class ShipwrightBuildInfoResponse(BaseModel):
+    """Combined Build and BuildRun status with agent config."""
+    # Build info
     name: str
     namespace: str
-    buildName: str
-    phase: BuildRunPhase
-    startTime: Optional[str] = None
-    completionTime: Optional[str] = None
-    outputImage: Optional[str] = None  # Populated on success
-    failureMessage: Optional[str] = None  # Populated on failure
-    conditions: List[BuildStatusCondition]
+    buildRegistered: bool
+    outputImage: str
+    strategy: str
+    gitUrl: str
+    gitRevision: str
+    contextDir: str
+
+    # Latest BuildRun info
+    hasBuildRun: bool
+    buildRunName: Optional[str] = None
+    buildRunPhase: Optional[str] = None  # Pending, Running, Succeeded, Failed
+    buildRunStartTime: Optional[str] = None
+    buildRunCompletionTime: Optional[str] = None
+    buildRunOutputImage: Optional[str] = None
+    buildRunOutputDigest: Optional[str] = None
+    buildRunFailureMessage: Optional[str] = None
+
+    # Agent configuration from annotations
+    agentConfig: Optional[AgentConfigFromBuild] = None
+
+@router.get("/{namespace}/{name}/shipwright-build-info")
+async def get_shipwright_build_info(...) -> ShipwrightBuildInfoResponse:
+    """Get full Shipwright Build info including agent config and BuildRun status."""
 ```
 
-### 3.2 Implement Status Endpoint
+### 3.3 Finalize Build Endpoint
 
 **File**: `kagenti/backend/app/routers/agents.py`
 
 ```python
-@router.get("/{namespace}/{name}/shipwright-buildrun")
-async def get_shipwright_buildrun_status(
+@router.post("/{namespace}/{name}/finalize-shipwright-build")
+async def finalize_shipwright_build(
     namespace: str,
     name: str,
-    kube: KubernetesService = Depends(get_kubernetes_service),
-) -> BuildRunStatusResponse:
-    """Get the latest BuildRun status for an agent build."""
-    # List BuildRuns with label selector for the agent name
-    # Return the most recent one's status
-    # Extract output image from status.output.digest
-    pass
-```
-
-### 3.3 Add Agent Creation After Build
-
-**File**: `kagenti/backend/app/routers/agents.py`
-
-Add endpoint to create Agent after build succeeds:
-```python
-@router.post("/{namespace}/{name}/finalize-build")
-async def finalize_build_and_create_agent(
-    namespace: str,
-    name: str,
-    request: FinalizeAgentRequest,  # Contains original agent config
+    request: FinalizeShipwrightBuildRequest,  # All fields optional
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> CreateAgentResponse:
-    """Create Agent CRD after Shipwright build completes successfully."""
-    # 1. Get BuildRun status, verify success
+    """Create Agent CRD after Shipwright build completes successfully.
+
+    Reads agent configuration from Build annotations if not provided in request.
+    """
+    # 1. Get latest BuildRun, verify success
     # 2. Extract output image from BuildRun status
-    # 3. Create Agent CRD with direct image reference
-    # 4. Optionally create HTTPRoute
-    pass
+    # 3. Read agent config from Build annotations
+    # 4. Merge request with stored config (request takes precedence)
+    # 5. Create Agent CRD with built image
+    # 6. Create HTTPRoute if createHttpRoute is true
+    # 7. Add kagenti.io/shipwright-build annotation to Agent
 ```
 
-### 3.4 Frontend Build Progress Component
+### 3.4 Build Progress Page
 
-**File**: `kagenti/ui-v2/src/components/BuildProgress.tsx`
+**File**: `kagenti/ui-v2/src/pages/BuildProgressPage.tsx`
 
-Create a component to show build progress:
+A dedicated page at `/agents/:namespace/:name/build` that:
+- Polls build info every 5 seconds using `shipwrightService.getBuildInfo()`
+- Shows progress bar with phase (Pending → Running → Succeeded/Failed)
+- Displays build details (strategy, duration, BuildRun name)
+- Shows source configuration (Git URL, revision, context dir, output image)
+- Shows agent configuration that will be applied (protocol, framework, HTTPRoute, etc.)
+- **Auto-finalizes** when build succeeds (calls `finalizeBuild()`)
+- Redirects to agent detail page after successful finalization
+- Shows retry button on build failure
+
 ```typescript
-interface BuildProgressProps {
-  namespace: string;
-  name: string;
-  onComplete: (image: string) => void;
-  onError: (error: string) => void;
-}
-
-export const BuildProgress: React.FC<BuildProgressProps> = ({
-  namespace,
-  name,
-  onComplete,
-  onError,
-}) => {
-  // Poll BuildRun status every 5 seconds
-  // Show progress indicator with phase
-  // Show logs link (optional)
-  // Call onComplete when succeeded
-  // Call onError when failed
-};
+// Auto-finalize when build succeeds
+useEffect(() => {
+  if (buildInfo?.buildRunPhase === 'Succeeded' && !isAutoFinalizing) {
+    setIsAutoFinalizing(true);
+    finalizeMutation.mutate();
+  }
+}, [buildInfo?.buildRunPhase]);
 ```
 
-### 3.5 Update Import Flow
+### 3.5 Smart Navigation Flow
 
-**File**: `kagenti/ui-v2/src/pages/ImportAgentPage.tsx`
+**Files**:
+- `kagenti/ui-v2/src/App.tsx` - Add route for `/agents/:namespace/:name/build`
+- `kagenti/ui-v2/src/pages/ImportAgentPage.tsx` - Navigate to build page after submission
+- `kagenti/ui-v2/src/pages/AgentDetailPage.tsx` - Redirect to build page if build exists but agent doesn't
 
-Two-phase import flow:
-1. **Submit**: Create Build + BuildRun, navigate to progress page
-2. **Progress Page**: Poll status, show progress, create Agent on completion
+**Import Flow**:
+1. User submits form → Creates Build + BuildRun
+2. Navigate to `/agents/{namespace}/{name}/build`
+3. Build Progress page polls status
+4. On success → Auto-finalize → Redirect to `/agents/{namespace}/{name}`
 
-Or single-page flow with modal:
-1. **Submit**: Create Build + BuildRun
-2. **Show Modal**: Display build progress
-3. **On Success**: Create Agent automatically, close modal, show success
+**Direct Navigation Handling**:
+- If user navigates to `/agents/{namespace}/{name}` while build is in progress:
+  - Check if Agent exists → If not, check for Shipwright Build
+  - If Build exists → Redirect to `/agents/{namespace}/{name}/build`
+  - If no Build → Show "Agent not found" error
+
+### 3.6 Agent Detail Page - Shipwright Build Status
+
+**File**: `kagenti/ui-v2/src/pages/AgentDetailPage.tsx`
+
+For agents built with Shipwright (have `kagenti.io/shipwright-build` annotation):
+- Fetch and display Shipwright Build status on the Status tab
+- Show Build info (name, strategy, output image, Git source)
+- Show latest BuildRun info (phase, duration, output image with digest)
 
 ---
 
 ## Stage 4: Cleanup and Migration
 
-**Objective**: Remove AgentBuild dependency and ensure smooth transition.
+**Objective**: Deprecate AgentBuild, enforce Shipwright for new builds, and update documentation.
 
-### 4.1 Add Feature Flag
+### 4.1 Feature Flag (Already Implemented)
 
 **File**: `kagenti/backend/app/core/config.py`
 
 ```python
 class Settings(BaseSettings):
-    # ...existing settings...
-
-    # Build system configuration
-    use_shipwright_builds: bool = True  # Feature flag for Shipwright
-    default_build_strategy: str = "buildah-insecure-push"
+    use_shipwright_builds: bool = True
+    shipwright_default_strategy: str = "buildah-insecure-push"
+    shipwright_default_timeout: str = "15m"
 ```
 
 ### 4.2 Backend Deprecation
 
 **File**: `kagenti/backend/app/routers/agents.py`
 
-1. Add deprecation warning to AgentBuild endpoints
-2. Keep AgentBuild support for existing builds (read-only)
-3. Log warning when AgentBuild is used
+**Implemented changes:**
+1. Marked `get_agent_build_status` endpoint as deprecated using FastAPI's `deprecated=True`
+2. Added warning log when deprecated endpoint is called
+3. Added warning log when AgentBuild creation is attempted (useShipwright=False)
+4. Added deprecation docstring to `_build_agent_build_manifest()` function
+5. Updated `delete_agent` to also delete Shipwright Build and BuildRuns
+
+```python
+@router.get(
+    "/{namespace}/{name}/build",
+    response_model=BuildStatusResponse,
+    deprecated=True,
+    summary="Get AgentBuild status (deprecated)",
+)
+async def get_agent_build_status(...):
+    """DEPRECATED: Use /shipwright-build-info endpoint instead."""
+    logger.warning("Deprecated endpoint called: get_agent_build_status...")
+```
 
 ### 4.3 UI Migration
 
 **File**: `kagenti/ui-v2/src/pages/ImportAgentPage.tsx`
 
-1. Default to Shipwright for all new builds
-2. Remove AgentBuild-specific UI elements
-3. Keep backward compatibility for viewing existing AgentBuild status
+**Implemented changes:**
+1. Removed "Use Shipwright" checkbox - Shipwright is now always used for source builds
+2. Removed `useShipwright` state variable
+3. Form submission always sets `useShipwright: true`
+4. Kept backward compatibility for viewing existing AgentBuild status on Agent detail page
 
 ### 4.4 Documentation Updates
 
-Update documentation:
-- `docs/install.md`: Add Shipwright requirements
-- `docs/new-agent.md`: Update build instructions
-- `docs/components.md`: Document Shipwright integration
+**Updated files:**
+
+**`docs/components.md`:**
+- Added "Container Build Systems" section comparing Shipwright vs AgentBuild
+- Documented Shipwright build flow and ClusterBuildStrategies
+- Added Shipwright Build YAML example
+- Marked AgentBuild example as deprecated
+
+**`docs/new-agent.md`:**
+- Added "Step 5: Configure Build Options" for Shipwright settings
+- Documented build strategy auto-selection based on registry type
+- Documented advanced build options (Dockerfile, timeout, build args)
+- Updated to describe Build Progress page flow
+- Updated Troubleshooting section with Shipwright-specific commands
 
 ---
 

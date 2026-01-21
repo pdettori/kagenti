@@ -127,9 +127,40 @@ When Kagenti imports this `.env` entry it will add an env var to the generated C
 4. Under "select protocol", specify an agent-to-agent communication protocol: A2A or ACP. Note: ACP is being deprecated.
 5. Under "Specify Source Subfolder" type the name of the subfolder of your Git repo where the agent code can be found.
 
-## Step 5: Build New Agent
+## Step 5: Configure Build Options (Source Builds Only)
 
-Press the "Build New Agent" button. There will be continual status updates in the UI as the deployment progresses and completes.
+When building from source, you can configure additional build options:
+
+### Build Strategy
+
+Kagenti uses [Shipwright](https://shipwright.io) to build container images. The build strategy is automatically selected based on your registry:
+
+| Registry Type | Strategy | Description |
+|--------------|----------|-------------|
+| Internal (Kind cluster) | `buildah-insecure-push` | For registries without TLS |
+| External (quay.io, ghcr.io, docker.io) | `buildah` | For registries with TLS |
+
+You can override the strategy in the "Build Configuration" section if needed.
+
+### Advanced Build Options
+
+Expand "Advanced Build Options" to configure:
+- **Dockerfile path** - Default is `Dockerfile` in the context directory
+- **Build timeout** - Default is 15 minutes
+- **Build arguments** - Optional build-time variables (KEY=value format)
+
+## Step 6: Build New Agent
+
+Press the "Build New Agent" button. You will be redirected to a **Build Progress** page that shows:
+- Build phase (Pending → Running → Succeeded/Failed)
+- Build duration
+- Source configuration details
+- Agent configuration that will be applied
+
+Once the build succeeds, Kagenti automatically:
+1. Creates the Agent CR with the built image
+2. Creates an HTTPRoute for external access (if enabled)
+3. Redirects you to the Agent detail page
 
 ## Testing agents
 
@@ -141,9 +172,42 @@ Press the "Build New Agent" button. There will be continual status updates in th
 
 If you encounter issues during agent deployment, you can troubleshoot by inspecting the Kubernetes artifacts produced during the deployment process.
 
-* The custom resource created is called a `Component`.
-* The `Component` creates a `Deployment`, which in turn creates pods that belong to the deployment of the agent.
-* You can tail the logs of the pods to troubleshoot any errors.
-* If the agent fails to deploy, there will be artifact pods in the namespace for building and deploying the agent; you may inspect those logs.
+### Build Issues (Source Builds)
+
+When building from source, Kagenti creates Shipwright resources:
+
+```bash
+# Check Shipwright Build status
+kubectl get builds -n <namespace>
+kubectl describe build <agent-name> -n <namespace>
+
+# Check BuildRun status and logs
+kubectl get buildruns -n <namespace>
+kubectl describe buildrun <buildrun-name> -n <namespace>
+
+# View build pod logs
+kubectl logs -n <namespace> -l build.shipwright.io/name=<agent-name>
+```
+
+Common build issues:
+- **Registry authentication** - Ensure registry secrets are configured correctly
+- **Dockerfile not found** - Check the Dockerfile path matches your repository structure
+- **Build timeout** - Increase timeout in Advanced Build Options for large images
+
+### Deployment Issues
+
+* The `Agent` custom resource manages the agent deployment
+* The `Agent` creates a `Deployment`, which in turn creates pods
+* You can tail the logs of the pods to troubleshoot any errors
+
+```bash
+# Check Agent status
+kubectl get agents -n <namespace>
+kubectl describe agent <agent-name> -n <namespace>
+
+# Check pod status and logs
+kubectl get pods -n <namespace> -l kagenti.io/type=agent
+kubectl logs -n <namespace> <pod-name>
+```
 
 By following these steps and troubleshooting tips, you can successfully import and deploy your new agent into the platform.
