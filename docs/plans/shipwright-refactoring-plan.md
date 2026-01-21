@@ -21,8 +21,8 @@ This plan outlines the refactoring of the Kagenti UI to trigger container image 
 | Phase | Stages | Description |
 |-------|--------|-------------|
 | **Phase 1: Agent Builds** | Stages 1-5 | ✅ Shipwright builds for agents (completed) |
-| **Phase 2: Shared Infrastructure** | Stage 6 | Extract common build utilities |
-| **Phase 3: Tool Builds** | Stages 7-9 | Add Shipwright builds for tools |
+| **Phase 2: Shared Infrastructure** | Stage 6 | ✅ Extract common build utilities (completed) |
+| **Phase 3: Tool Builds** | Stages 7-9 | ✅ Add Shipwright builds for tools (completed) |
 
 ### Key Resources
 
@@ -1390,19 +1390,19 @@ kubectl apply -f "$REPO_ROOT/kagenti/examples/tools/weather_tool_shipwright.yaml
 | 4 | Cleanup and Migration | Stages 1-3 | ✅ Complete |
 | 5 | Testing and Validation | Stages 1-4 | ✅ Complete |
 
-### Phase 2: Shared Infrastructure
+### Phase 2: Shared Infrastructure (Completed ✅)
 
-| Stage | Description | Dependencies | Estimated Effort |
-|-------|-------------|--------------|------------------|
-| 6 | Extract Common Build Utilities | Stages 1-5 | Medium |
+| Stage | Description | Dependencies | Status |
+|-------|-------------|--------------|--------|
+| 6 | Extract Common Build Utilities | Stages 1-5 | ✅ Complete |
 
-### Phase 3: Tool Builds
+### Phase 3: Tool Builds (Completed ✅)
 
-| Stage | Description | Dependencies | Estimated Effort |
-|-------|-------------|--------------|------------------|
-| 7 | Tool Build Backend Support | Stage 6 | Medium |
-| 8 | Tool Build Frontend Support | Stages 6, 7 | Medium |
-| 9 | Tool Build Testing and CI | Stages 7, 8 | Medium |
+| Stage | Description | Dependencies | Status |
+|-------|-------------|--------------|--------|
+| 7 | Tool Build Backend Support | Stage 6 | ✅ Complete |
+| 8 | Tool Build Frontend Support | Stages 6, 7 | ✅ Complete |
+| 9 | Tool Build Testing and CI | Stages 7, 8 | ✅ Complete |
 
 ---
 
