@@ -35,9 +35,10 @@ import {
 import { TrashIcon, PlusCircleIcon, UploadIcon } from '@patternfly/react-icons';
 import { useMutation } from '@tanstack/react-query';
 
-import { agentService } from '@/services/api';
+import { agentService, ShipwrightBuildConfig } from '@/services/api';
 import { NamespaceSelector } from '@/components/NamespaceSelector';
 import { EnvImportModal } from '@/components/EnvImportModal';
+import { BuildStrategySelector } from '@/components/BuildStrategySelector';
 
 // Example agent subfolders from the original UI
 const AGENT_EXAMPLES = [
@@ -127,6 +128,14 @@ export const ImportAgentPage: React.FC = () => {
     }
   }, [registryType]);
 
+  // Shipwright build configuration
+  const [useShipwright, setUseShipwright] = useState(true);
+  const [buildStrategy, setBuildStrategy] = useState('buildah-insecure-push');
+  const [dockerfile, setDockerfile] = useState('Dockerfile');
+  const [buildTimeout, setBuildTimeout] = useState('15m');
+  const [buildArgs, setBuildArgs] = useState<string[]>([]);
+  const [showBuildConfig, setShowBuildConfig] = useState(false);
+
   // Deploy from image state
   const [containerImage, setContainerImage] = useState('');
   const [imageTag, setImageTag] = useState('latest');
@@ -153,7 +162,13 @@ export const ImportAgentPage: React.FC = () => {
     mutationFn: (data: Parameters<typeof agentService.create>[0]) =>
       agentService.create(data),
     onSuccess: () => {
-      navigate(`/agents/${namespace}/${name || getNameFromPath()}`);
+      const finalName = name || getNameFromPath();
+      // Navigate to build progress page if using Shipwright for source builds
+      if (deploymentMethod === 'source' && useShipwright) {
+        navigate(`/agents/${namespace}/${finalName}/build`);
+      } else {
+        navigate(`/agents/${namespace}/${finalName}`);
+      }
     },
   });
 
@@ -307,6 +322,21 @@ export const ImportAgentPage: React.FC = () => {
     setServicePorts(updated);
   };
 
+  // Build argument handlers
+  const addBuildArg = () => {
+    setBuildArgs([...buildArgs, '']);
+  };
+
+  const removeBuildArg = (index: number) => {
+    setBuildArgs(buildArgs.filter((_, i) => i !== index));
+  };
+
+  const updateBuildArg = (index: number, value: string) => {
+    const updated = [...buildArgs];
+    updated[index] = value;
+    setBuildArgs(updated);
+  };
+
   const getRegistryUrl = () => {
     const registry = REGISTRY_OPTIONS.find((r) => r.value === registryType);
     if (!registry) return '';
@@ -377,6 +407,17 @@ export const ImportAgentPage: React.FC = () => {
 
     if (deploymentMethod === 'source') {
       const finalPath = gitPath || selectedExample;
+
+      // Build Shipwright configuration
+      const shipwrightConfig: ShipwrightBuildConfig | undefined = useShipwright
+        ? {
+            buildStrategy,
+            dockerfile,
+            buildTimeout,
+            buildArgs: buildArgs.filter((arg) => arg.trim() !== ''),
+          }
+        : undefined;
+
       createMutation.mutate({
         name: finalName,
         namespace,
@@ -394,6 +435,9 @@ export const ImportAgentPage: React.FC = () => {
         startCommand: showStartCommand ? startCommand : undefined,
         servicePorts,
         createHttpRoute,
+        // Shipwright build configuration
+        useShipwright,
+        shipwrightConfig,
       });
     } else {
       // Deploy from existing image
@@ -645,6 +689,116 @@ export const ImportAgentPage: React.FC = () => {
                       >
                         Ensure the registry secret exists in the target namespace with push credentials.
                       </Alert>
+                    </>
+                  )}
+
+                  <Divider style={{ margin: '24px 0' }} />
+
+                  {/* Shipwright Build Configuration */}
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: '16px' }}>
+                    Build Configuration
+                  </Title>
+
+                  <FormGroup fieldId="useShipwright">
+                    <Checkbox
+                      id="useShipwright"
+                      label="Use Shipwright for container builds (recommended)"
+                      description="Shipwright provides a more efficient and flexible container build system"
+                      isChecked={useShipwright}
+                      onChange={(_e, checked) => setUseShipwright(checked)}
+                    />
+                  </FormGroup>
+
+                  {useShipwright && (
+                    <>
+                      <FormGroup label="Build Strategy" fieldId="buildStrategy">
+                        <BuildStrategySelector
+                          value={buildStrategy}
+                          onChange={setBuildStrategy}
+                          registryType={registryType}
+                        />
+                      </FormGroup>
+
+                      <ExpandableSection
+                        toggleText="Advanced Build Options"
+                        isExpanded={showBuildConfig}
+                        onToggle={() => setShowBuildConfig(!showBuildConfig)}
+                      >
+                        <Card isFlat style={{ marginTop: '8px' }}>
+                          <CardBody>
+                            <FormGroup label="Dockerfile Path" fieldId="dockerfile">
+                              <TextInput
+                                id="dockerfile"
+                                value={dockerfile}
+                                onChange={(_e, value) => setDockerfile(value)}
+                                placeholder="Dockerfile"
+                              />
+                              <FormHelperText>
+                                <HelperText>
+                                  <HelperTextItem>
+                                    Path to the Dockerfile relative to the source context
+                                  </HelperTextItem>
+                                </HelperText>
+                              </FormHelperText>
+                            </FormGroup>
+
+                            <FormGroup label="Build Timeout" fieldId="buildTimeout">
+                              <TextInput
+                                id="buildTimeout"
+                                value={buildTimeout}
+                                onChange={(_e, value) => setBuildTimeout(value)}
+                                placeholder="15m"
+                              />
+                              <FormHelperText>
+                                <HelperText>
+                                  <HelperTextItem>
+                                    Maximum time for the build (e.g., "15m", "1h")
+                                  </HelperTextItem>
+                                </HelperText>
+                              </FormHelperText>
+                            </FormGroup>
+
+                            <FormGroup label="Build Arguments" fieldId="buildArgs">
+                              {buildArgs.map((arg, index) => (
+                                <Split hasGutter key={index} style={{ marginBottom: '8px' }}>
+                                  <SplitItem isFilled>
+                                    <TextInput
+                                      aria-label="Build argument"
+                                      value={arg}
+                                      onChange={(_e, value) => updateBuildArg(index, value)}
+                                      placeholder="KEY=value"
+                                    />
+                                  </SplitItem>
+                                  <SplitItem>
+                                    <Button
+                                      variant="plain"
+                                      onClick={() => removeBuildArg(index)}
+                                      aria-label="Remove build argument"
+                                      style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
+                                    >
+                                      <TrashIcon />
+                                    </Button>
+                                  </SplitItem>
+                                </Split>
+                              ))}
+                              <Button
+                                variant="link"
+                                icon={<PlusCircleIcon />}
+                                onClick={addBuildArg}
+                              >
+                                Add Build Argument
+                              </Button>
+                              <FormHelperText>
+                                <HelperText>
+                                  <HelperTextItem>
+                                    Build-time variables passed to the Dockerfile (KEY=value format)
+                                  </HelperTextItem>
+                                </HelperText>
+                              </FormHelperText>
+                            </FormGroup>
+                          </CardBody>
+                        </Card>
+                      </ExpandableSection>
                     </>
                   )}
 

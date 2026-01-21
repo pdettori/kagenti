@@ -8,6 +8,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { AgentCatalogPage } from './pages/AgentCatalogPage';
 import { AgentDetailPage } from './pages/AgentDetailPage';
+import { BuildProgressPage } from './pages/BuildProgressPage';
 import { ToolCatalogPage } from './pages/ToolCatalogPage';
 import { ToolDetailPage } from './pages/ToolDetailPage';
 import { MCPGatewayPage } from './pages/MCPGatewayPage';
@@ -40,6 +41,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ImportAgentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/agents/:namespace/:name/build"
+          element={
+            <ProtectedRoute>
+              <BuildProgressPage />
             </ProtectedRoute>
           }
         />

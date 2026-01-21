@@ -68,7 +68,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import yaml from 'js-yaml';
 
-import { agentService, chatService } from '@/services/api';
+import { agentService, chatService, shipwrightService, ShipwrightBuildInfo } from '@/services/api';
 import { AgentChat } from '@/components/AgentChat';
 
 interface StatusCondition {
@@ -156,10 +156,29 @@ export const AgentDetailPage: React.FC = () => {
     },
   });
 
-  // Check if agent was built from source (has buildRef)
+  // Check for Shipwright Build if agent is not found
+  // This handles the case where a build is in progress but Agent CRD doesn't exist yet
+  const { data: shipwrightBuildInfo, isLoading: isShipwrightBuildLoading } = useQuery({
+    queryKey: ['shipwrightBuildInfo', namespace, name],
+    queryFn: () => shipwrightService.getBuildInfo(namespace!, name!),
+    enabled: !!namespace && !!name && isError && !isLoading,
+    retry: false, // Don't retry if build doesn't exist
+  });
+
+  // Redirect to build page if a Shipwright Build exists but Agent doesn't
+  React.useEffect(() => {
+    if (isError && !isLoading && shipwrightBuildInfo && shipwrightBuildInfo.buildRegistered) {
+      navigate(`/agents/${namespace}/${name}/build`, { replace: true });
+    }
+  }, [isError, isLoading, shipwrightBuildInfo, namespace, name, navigate]);
+
+  // Check if agent was built from source (has buildRef for AgentBuild)
   const buildRefName = agent?.spec?.imageSource?.buildRef?.name;
 
-  // Fetch build status if agent has a buildRef
+  // Check if agent was built with Shipwright (has annotation)
+  const shipwrightBuildName = agent?.metadata?.annotations?.['kagenti.io/shipwright-build'];
+
+  // Fetch AgentBuild status if agent has a buildRef
   const { data: buildStatus, isLoading: isBuildStatusLoading } = useQuery<BuildStatus>({
     queryKey: ['agentBuild', namespace, buildRefName],
     queryFn: () => agentService.getBuildStatus(namespace!, buildRefName!),
@@ -171,6 +190,13 @@ export const AgentDetailPage: React.FC = () => {
       }
       return false;
     },
+  });
+
+  // Fetch Shipwright build info if agent has shipwright annotation
+  const { data: shipwrightBuildStatus, isLoading: isShipwrightBuildStatusLoading } = useQuery<ShipwrightBuildInfo>({
+    queryKey: ['shipwrightBuildStatus', namespace, shipwrightBuildName],
+    queryFn: () => shipwrightService.getBuildInfo(namespace!, shipwrightBuildName!),
+    enabled: !!namespace && !!shipwrightBuildName && !!agent,
   });
 
   // Check if agent is ready to fetch agent card
@@ -213,6 +239,29 @@ export const AgentDetailPage: React.FC = () => {
   }
 
   if (isError || !agent) {
+    // Show loading while checking for Shipwright build
+    if (isShipwrightBuildLoading) {
+      return (
+        <PageSection>
+          <div className="kagenti-loading-center">
+            <Spinner size="lg" aria-label="Checking for build..." />
+          </div>
+        </PageSection>
+      );
+    }
+
+    // If a Shipwright build exists, the useEffect will redirect
+    // Show empty state only if no build exists
+    if (shipwrightBuildInfo?.buildRegistered) {
+      return (
+        <PageSection>
+          <div className="kagenti-loading-center">
+            <Spinner size="lg" aria-label="Redirecting to build page..." />
+          </div>
+        </PageSection>
+      );
+    }
+
     return (
       <PageSection>
         <EmptyState>
@@ -796,6 +845,154 @@ export const AgentDetailPage: React.FC = () => {
                         <Alert
                           variant="info"
                           title="Build information not available"
+                          isInline
+                        />
+                      )}
+                    </CardBody>
+                  </Card>
+                </GridItem>
+              )}
+
+              {/* Shipwright Build Status - shown when agent was built with Shipwright */}
+              {shipwrightBuildName && (
+                <GridItem md={12}>
+                  <Card>
+                    <CardTitle>Shipwright Build Status</CardTitle>
+                    <CardBody>
+                      {isShipwrightBuildStatusLoading ? (
+                        <Spinner size="md" aria-label="Loading Shipwright build status" />
+                      ) : shipwrightBuildStatus ? (
+                        <>
+                          <DescriptionList isCompact isHorizontal>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Build Name</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                {shipwrightBuildStatus.name}
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Build Registered</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                <Label
+                                  color={shipwrightBuildStatus.buildRegistered ? 'green' : 'red'}
+                                  isCompact
+                                >
+                                  {shipwrightBuildStatus.buildRegistered ? 'Yes' : 'No'}
+                                </Label>
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Build Strategy</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                <Label isCompact color="blue">{shipwrightBuildStatus.strategy}</Label>
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Output Image</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                <code style={{ fontSize: '0.85em' }}>
+                                  {shipwrightBuildStatus.outputImage}
+                                </code>
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Git URL</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                <code style={{ fontSize: '0.85em' }}>
+                                  {shipwrightBuildStatus.gitUrl}
+                                </code>
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Git Revision</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                {shipwrightBuildStatus.gitRevision}
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                            {shipwrightBuildStatus.contextDir && (
+                              <DescriptionListGroup>
+                                <DescriptionListTerm>Context Directory</DescriptionListTerm>
+                                <DescriptionListDescription>
+                                  {shipwrightBuildStatus.contextDir}
+                                </DescriptionListDescription>
+                              </DescriptionListGroup>
+                            )}
+                          </DescriptionList>
+
+                          {/* BuildRun Status */}
+                          {shipwrightBuildStatus.hasBuildRun && (
+                            <>
+                              <Title headingLevel="h4" size="md" style={{ marginTop: '24px', marginBottom: '16px' }}>
+                                Latest BuildRun
+                              </Title>
+                              <DescriptionList isCompact isHorizontal>
+                                <DescriptionListGroup>
+                                  <DescriptionListTerm>BuildRun Name</DescriptionListTerm>
+                                  <DescriptionListDescription>
+                                    {shipwrightBuildStatus.buildRunName}
+                                  </DescriptionListDescription>
+                                </DescriptionListGroup>
+                                <DescriptionListGroup>
+                                  <DescriptionListTerm>Phase</DescriptionListTerm>
+                                  <DescriptionListDescription>
+                                    <Label
+                                      color={
+                                        shipwrightBuildStatus.buildRunPhase === 'Succeeded'
+                                          ? 'green'
+                                          : shipwrightBuildStatus.buildRunPhase === 'Failed'
+                                            ? 'red'
+                                            : 'blue'
+                                      }
+                                    >
+                                      {shipwrightBuildStatus.buildRunPhase}
+                                    </Label>
+                                  </DescriptionListDescription>
+                                </DescriptionListGroup>
+                                {shipwrightBuildStatus.buildRunStartTime && (
+                                  <DescriptionListGroup>
+                                    <DescriptionListTerm>Started</DescriptionListTerm>
+                                    <DescriptionListDescription>
+                                      {new Date(shipwrightBuildStatus.buildRunStartTime).toLocaleString()}
+                                    </DescriptionListDescription>
+                                  </DescriptionListGroup>
+                                )}
+                                {shipwrightBuildStatus.buildRunCompletionTime && (
+                                  <DescriptionListGroup>
+                                    <DescriptionListTerm>Completed</DescriptionListTerm>
+                                    <DescriptionListDescription>
+                                      {new Date(shipwrightBuildStatus.buildRunCompletionTime).toLocaleString()}
+                                    </DescriptionListDescription>
+                                  </DescriptionListGroup>
+                                )}
+                                {shipwrightBuildStatus.buildRunOutputImage && (
+                                  <DescriptionListGroup>
+                                    <DescriptionListTerm>Output Image</DescriptionListTerm>
+                                    <DescriptionListDescription>
+                                      <code style={{ fontSize: '0.85em' }}>
+                                        {shipwrightBuildStatus.buildRunOutputImage}
+                                        {shipwrightBuildStatus.buildRunOutputDigest && (
+                                          <>@{shipwrightBuildStatus.buildRunOutputDigest.substring(0, 20)}...</>
+                                        )}
+                                      </code>
+                                    </DescriptionListDescription>
+                                  </DescriptionListGroup>
+                                )}
+                                {shipwrightBuildStatus.buildRunPhase === 'Failed' && shipwrightBuildStatus.buildRunFailureMessage && (
+                                  <DescriptionListGroup>
+                                    <DescriptionListTerm>Error</DescriptionListTerm>
+                                    <DescriptionListDescription>
+                                      <Alert variant="danger" isInline isPlain title={shipwrightBuildStatus.buildRunFailureMessage} />
+                                    </DescriptionListDescription>
+                                  </DescriptionListGroup>
+                                )}
+                              </DescriptionList>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <Alert
+                          variant="info"
+                          title="Shipwright build information not available"
                           isInline
                         />
                       )}

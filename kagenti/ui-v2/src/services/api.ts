@@ -153,7 +153,10 @@ export const agentService = {
     }>;
     // HTTPRoute/Route creation
     createHttpRoute?: boolean;
-  }): Promise<{ name: string; status: string }> {
+    // Shipwright build configuration
+    useShipwright?: boolean;
+    shipwrightConfig?: ShipwrightBuildConfig;
+  }): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
     return apiFetch('/agents', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -209,6 +212,187 @@ export const agentService = {
       method: 'POST',
       body: JSON.stringify({ url }),
     });
+  },
+};
+
+/**
+ * Shipwright build types
+ */
+export interface ShipwrightBuildConfig {
+  buildStrategy: string;
+  dockerfile: string;
+  buildArgs?: string[];
+  buildTimeout: string;
+}
+
+export interface ClusterBuildStrategy {
+  name: string;
+  description?: string;
+}
+
+export interface ShipwrightBuildStatus {
+  name: string;
+  namespace: string;
+  registered: boolean;
+  reason?: string;
+  message?: string;
+}
+
+export interface ShipwrightBuildRunStatus {
+  name: string;
+  namespace: string;
+  buildName: string;
+  phase: 'Pending' | 'Running' | 'Succeeded' | 'Failed';
+  startTime?: string;
+  completionTime?: string;
+  outputImage?: string;
+  outputDigest?: string;
+  failureMessage?: string;
+  conditions: Array<{
+    type: string;
+    status: string;
+    reason?: string;
+    message?: string;
+    lastTransitionTime?: string;
+  }>;
+}
+
+export interface AgentConfigFromBuild {
+  protocol: string;
+  framework: string;
+  createHttpRoute: boolean;
+  registrySecret?: string;
+  envVars?: Array<{
+    name: string;
+    value?: string;
+    valueFrom?: {
+      secretKeyRef?: { name: string; key: string };
+      configMapKeyRef?: { name: string; key: string };
+    };
+  }>;
+  servicePorts?: Array<{
+    name: string;
+    port: number;
+    targetPort: number;
+    protocol: string;
+  }>;
+}
+
+export interface ShipwrightBuildInfo {
+  // Build info
+  name: string;
+  namespace: string;
+  buildRegistered: boolean;
+  buildReason?: string;
+  buildMessage?: string;
+  outputImage: string;
+  strategy: string;
+  gitUrl: string;
+  gitRevision: string;
+  contextDir: string;
+
+  // Latest BuildRun info
+  hasBuildRun: boolean;
+  buildRunName?: string;
+  buildRunPhase?: 'Pending' | 'Running' | 'Succeeded' | 'Failed';
+  buildRunStartTime?: string;
+  buildRunCompletionTime?: string;
+  buildRunOutputImage?: string;
+  buildRunOutputDigest?: string;
+  buildRunFailureMessage?: string;
+
+  // Agent configuration from annotations
+  agentConfig?: AgentConfigFromBuild;
+}
+
+/**
+ * Shipwright build service
+ */
+export const shipwrightService = {
+  /**
+   * List available ClusterBuildStrategies
+   */
+  async listBuildStrategies(): Promise<ClusterBuildStrategy[]> {
+    const response = await apiFetch<{ strategies: ClusterBuildStrategy[] }>(
+      '/agents/build-strategies'
+    );
+    return response.strategies;
+  },
+
+  /**
+   * Get Shipwright Build status
+   */
+  async getBuildStatus(namespace: string, name: string): Promise<ShipwrightBuildStatus> {
+    return apiFetch<ShipwrightBuildStatus>(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-build`
+    );
+  },
+
+  /**
+   * Get latest Shipwright BuildRun status
+   */
+  async getBuildRunStatus(namespace: string, name: string): Promise<ShipwrightBuildRunStatus> {
+    return apiFetch<ShipwrightBuildRunStatus>(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-buildrun`
+    );
+  },
+
+  /**
+   * Get full Shipwright Build info including agent config and BuildRun status
+   */
+  async getBuildInfo(namespace: string, name: string): Promise<ShipwrightBuildInfo> {
+    return apiFetch<ShipwrightBuildInfo>(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-build-info`
+    );
+  },
+
+  /**
+   * Trigger a new BuildRun for an existing Build
+   */
+  async triggerBuildRun(
+    namespace: string,
+    name: string
+  ): Promise<{ success: boolean; buildRunName: string; message: string }> {
+    return apiFetch(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-buildrun`,
+      { method: 'POST' }
+    );
+  },
+
+  /**
+   * Finalize a Shipwright build by creating the Agent
+   */
+  async finalizeBuild(
+    namespace: string,
+    name: string,
+    data: {
+      protocol?: string;
+      framework?: string;
+      envVars?: Array<{
+        name: string;
+        value?: string;
+        valueFrom?: {
+          secretKeyRef?: { name: string; key: string };
+          configMapKeyRef?: { name: string; key: string };
+        };
+      }>;
+      servicePorts?: Array<{
+        name: string;
+        port: number;
+        targetPort: number;
+        protocol: string;
+      }>;
+      createHttpRoute?: boolean;
+      imagePullSecret?: string;
+    }
+  ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
+    return apiFetch(
+      `/agents/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/finalize-shipwright-build`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
   },
 };
 
