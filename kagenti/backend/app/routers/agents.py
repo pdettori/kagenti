@@ -407,7 +407,14 @@ async def delete_agent(
     name: str,
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> DeleteResponse:
-    """Delete an agent and its associated AgentBuild from the cluster."""
+    """Delete an agent and its associated builds from the cluster.
+
+    This deletes:
+    - Agent CR
+    - AgentBuild CR (if exists, for Tekton-based builds)
+    - Shipwright Build CR (if exists)
+    - Shipwright BuildRun CRs (if exist)
+    """
     messages = []
 
     # Delete the Agent CR
@@ -426,7 +433,7 @@ async def delete_agent(
         else:
             raise HTTPException(status_code=e.status, detail=str(e.reason))
 
-    # Also delete the AgentBuild CR if it exists
+    # Delete the AgentBuild CR if it exists (Tekton-based builds)
     try:
         kube.delete_custom_resource(
             group=CRD_GROUP,
@@ -438,10 +445,55 @@ async def delete_agent(
         messages.append(f"AgentBuild '{name}' deleted")
     except ApiException as e:
         if e.status == 404:
-            # AgentBuild doesn't exist, that's fine (might be image-based deployment)
+            # AgentBuild doesn't exist, that's fine (might be image-based or Shipwright deployment)
             pass
         else:
             logger.warning(f"Failed to delete AgentBuild '{name}': {e.reason}")
+
+    # Delete Shipwright BuildRuns associated with the build
+    try:
+        buildruns = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+        for buildrun in buildruns:
+            buildrun_name = buildrun.get("metadata", {}).get("name")
+            if buildrun_name:
+                try:
+                    kube.delete_custom_resource(
+                        group=SHIPWRIGHT_CRD_GROUP,
+                        version=SHIPWRIGHT_CRD_VERSION,
+                        namespace=namespace,
+                        plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                        name=buildrun_name,
+                    )
+                    messages.append(f"BuildRun '{buildrun_name}' deleted")
+                except ApiException as e:
+                    if e.status != 404:
+                        logger.warning(f"Failed to delete BuildRun '{buildrun_name}': {e.reason}")
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning(f"Failed to list BuildRuns for '{name}': {e.reason}")
+
+    # Delete the Shipwright Build CR if it exists
+    try:
+        kube.delete_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+        messages.append(f"Shipwright Build '{name}' deleted")
+    except ApiException as e:
+        if e.status == 404:
+            # Shipwright Build doesn't exist, that's fine (might be image-based or Tekton deployment)
+            pass
+        else:
+            logger.warning(f"Failed to delete Shipwright Build '{name}': {e.reason}")
 
     return DeleteResponse(success=True, message="; ".join(messages))
 
