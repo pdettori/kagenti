@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     toolhive_crd_version: str = "v1alpha1"
     toolhive_mcp_plural: str = "mcpservers"
 
+    # Shipwright build settings
+    use_shipwright_builds: bool = True  # Use Shipwright instead of AgentBuild/Tekton
+    shipwright_default_strategy: str = "buildah-insecure-push"  # Default for dev
+    shipwright_default_timeout: str = "15m"
+
     # Label settings
     kagenti_label_prefix: str = "kagenti.io/"
     enabled_namespace_label_key: str = "kagenti-enabled"

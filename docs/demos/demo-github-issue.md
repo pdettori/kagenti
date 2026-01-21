@@ -74,10 +74,11 @@ To deploy the GitHub Issue Agent:
 
 ## Import New Tool
 
-To deploy the tool:
+To deploy the tool using Shipwright:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
 1. Select the same `<namespace>` as used for the agent.
+1. Select "Build from source" as the deployment method.
 1. In the **Select Environment Variable Sets** section, select `Import .env File` button, then provide:
    - GitHub Repository URL: `https://github.com/kagenti/agent-examples/`
    - Path to .env file: `mcp/github_tool/.env.template`
@@ -92,6 +93,8 @@ To deploy the tool:
 1. Under **Specify Source Subfolder**:
    - Select: `mcp/github_tool`
 1. Click **Build & Deploy New Tool** button.
+
+You will be redirected to a **Build Progress** page where you can monitor the Shipwright build. Once the build succeeds, the MCPServer will be created automatically.
 
 ---
 

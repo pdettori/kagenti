@@ -92,10 +92,29 @@ The Kubernetes Platform Operator facilitates the deployment and configuration of
 | Feature | Description |
 |---------|-------------|
 | **Agent Deployment** | Deploy agents from source code or container images |
-| **Build Automation** | Build agent containers using Tekton pipelines |
+| **Build Automation** | Build agent containers using Shipwright (recommended) or Tekton pipelines |
 | **Lifecycle Management** | Handle agent updates, rollbacks, and scaling |
 | **Configuration Management** | Manage environment variables, secrets, and config maps |
 | **Multi-Namespace Support** | Deploy agents to isolated team namespaces |
+
+### Container Build Systems
+
+Kagenti supports two container build systems:
+
+| System | Status | Description |
+|--------|--------|-------------|
+| **Shipwright** | Recommended | Cloud-native build framework using Buildah. Supports `buildah` (for external registries with TLS) and `buildah-insecure-push` (for internal registries without TLS) strategies. |
+| **AgentBuild/Tekton** | Deprecated | Legacy build system using Tekton pipelines. Will be removed in a future version. |
+
+**Shipwright Build Flow:**
+1. UI creates a Shipwright `Build` CR with source configuration
+2. UI creates a `BuildRun` CR to trigger the build
+3. UI polls `BuildRun` status until completion
+4. On success, UI creates the `Agent` CR with the built image
+
+**ClusterBuildStrategies:**
+- `buildah-insecure-push` - For internal registries without TLS (dev/Kind clusters)
+- `buildah` - For external registries with TLS (quay.io, ghcr.io, docker.io)
 
 ### Custom Resources
 
@@ -119,7 +138,7 @@ spec:
 ```
 
 ```yaml
-# AgentBuild - Triggers a build from source
+# AgentBuild - Triggers a build from source (DEPRECATED - use Shipwright instead)
 apiVersion: agent.kagenti.dev/v1alpha1
 kind: AgentBuild
 metadata:
@@ -129,6 +148,29 @@ spec:
     git:
       url: https://github.com/kagenti/agent-examples
       path: agents/weather-service
+```
+
+```yaml
+# Shipwright Build - Recommended for building from source
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: weather-service
+  labels:
+    kagenti.io/type: agent
+    kagenti.io/protocol: a2a
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/kagenti/agent-examples
+      revision: main
+    contextDir: a2a/weather_service
+  strategy:
+    name: buildah-insecure-push  # or "buildah" for external registries
+    kind: ClusterBuildStrategy
+  output:
+    image: registry.cr-system.svc.cluster.local:5000/weather-service:v0.0.1
 ```
 
 ### Architecture
@@ -215,6 +257,55 @@ spec:
 ```
 
 For detailed gateway configuration, see [MCP Gateway Instructions](./gateway.md).
+
+### MCP Tool Builds with Shipwright
+
+Similar to agents, MCP tools can be built from source using Shipwright. The build process is the same:
+
+1. UI creates a Shipwright `Build` CR with source configuration
+2. UI creates a `BuildRun` CR to trigger the build
+3. UI polls `BuildRun` status until completion
+4. On success, UI creates the `MCPServer` CR with the built image
+
+```yaml
+# Shipwright Build for MCP Tool
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: weather-tool
+  labels:
+    kagenti.io/type: tool
+    kagenti.io/protocol: streamable_http
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/kagenti/agent-examples
+      revision: main
+    contextDir: mcp/weather_tool
+  strategy:
+    name: buildah-insecure-push
+    kind: ClusterBuildStrategy
+  output:
+    image: registry.cr-system.svc.cluster.local:5000/weather-tool:v0.0.1
+```
+
+```yaml
+# MCPServer - Deployed after successful build
+apiVersion: toolhive.io/v1alpha1
+kind: MCPServer
+metadata:
+  name: weather-tool
+  labels:
+    kagenti.io/type: tool
+    kagenti.io/built-by: shipwright
+spec:
+  image: registry.cr-system.svc.cluster.local:5000/weather-tool:v0.0.1
+  protocol: streamable_http
+  replicas: 1
+```
+
+For detailed tool deployment instructions, see [Importing a New Tool](./new-tool.md).
 
 ---
 
@@ -485,3 +576,4 @@ POST /mcp    # MCP JSON-RPC messages
 - [Identity, Security, and Auth Bridge](./identity-guide.md)
 - [MCP Gateway Instructions](./gateway.md)
 - [New Agent Guide](./new-agent.md)
+- [New Tool Guide](./new-tool.md)

@@ -5,8 +5,9 @@
 Tool API endpoints.
 """
 
+import json
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from contextlib import AsyncExitStack
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -30,6 +31,12 @@ from app.core.constants import (
     DEFAULT_RESOURCE_LIMITS,
     DEFAULT_RESOURCE_REQUESTS,
     DEFAULT_ENV_VARS,
+    # Shipwright constants
+    SHIPWRIGHT_CRD_GROUP,
+    SHIPWRIGHT_CRD_VERSION,
+    SHIPWRIGHT_BUILDS_PLURAL,
+    SHIPWRIGHT_BUILDRUNS_PLURAL,
+    DEFAULT_INTERNAL_REGISTRY,
 )
 from app.models.responses import (
     ToolSummary,
@@ -37,7 +44,24 @@ from app.models.responses import (
     ResourceLabels,
     DeleteResponse,
 )
+from app.models.shipwright import (
+    ResourceType,
+    ShipwrightBuildConfig,
+    BuildSourceConfig,
+    BuildOutputConfig,
+    BuildStatusCondition,
+    ResourceConfigFromBuild,
+)
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
+from app.services.shipwright import (
+    build_shipwright_build_manifest,
+    build_shipwright_buildrun_manifest,
+    extract_resource_config_from_build,
+    get_latest_buildrun,
+    extract_buildrun_info,
+    is_build_succeeded,
+    get_output_image_from_buildrun,
+)
 from app.utils.routes import create_route_for_agent_or_tool, route_exists
 
 
@@ -60,20 +84,76 @@ class ServicePort(BaseModel):
 class CreateToolRequest(BaseModel):
     """Request to create a new MCP tool.
 
-    Tools are deployed from existing container images using the MCPServer CRD.
-    Unlike agents, tools do not support building from source.
+    Tools can be deployed from:
+    1. Existing container images (deploymentMethod="image")
+    2. Source code via Shipwright build (deploymentMethod="source")
     """
 
     name: str
     namespace: str
-    containerImage: str  # Required: full image URL with tag
     protocol: str = "streamable_http"
     framework: str = "Python"
     envVars: Optional[List[EnvVar]] = None
-    imagePullSecret: Optional[str] = None
     servicePorts: Optional[List[ServicePort]] = None
+
+    # Deployment method: "image" (existing) or "source" (Shipwright build)
+    deploymentMethod: str = "image"
+
+    # For image deployment (existing)
+    containerImage: Optional[str] = None
+    imagePullSecret: Optional[str] = None
+
+    # For source build (Shipwright)
+    gitUrl: Optional[str] = None
+    gitRevision: str = "main"
+    contextDir: Optional[str] = None
+    registryUrl: Optional[str] = None
+    registrySecret: Optional[str] = None
+    imageTag: str = "v0.0.1"
+    shipwrightConfig: Optional[ShipwrightBuildConfig] = None
+
     # HTTPRoute/Route creation
     createHttpRoute: bool = False
+
+
+class FinalizeToolBuildRequest(BaseModel):
+    """Request to finalize a tool Shipwright build by creating the MCPServer."""
+
+    protocol: Optional[str] = None
+    framework: Optional[str] = None
+    envVars: Optional[List[EnvVar]] = None
+    servicePorts: Optional[List[ServicePort]] = None
+    createHttpRoute: Optional[bool] = None
+    imagePullSecret: Optional[str] = None
+
+
+class ToolShipwrightBuildInfoResponse(BaseModel):
+    """Full Shipwright Build information for tools."""
+
+    # Build info
+    name: str
+    namespace: str
+    buildRegistered: bool
+    buildReason: Optional[str] = None
+    buildMessage: Optional[str] = None
+    outputImage: str
+    strategy: str
+    gitUrl: str
+    gitRevision: str
+    contextDir: str
+
+    # Latest BuildRun info (if any)
+    hasBuildRun: bool = False
+    buildRunName: Optional[str] = None
+    buildRunPhase: Optional[str] = None  # Pending, Running, Succeeded, Failed
+    buildRunStartTime: Optional[str] = None
+    buildRunCompletionTime: Optional[str] = None
+    buildRunOutputImage: Optional[str] = None
+    buildRunOutputDigest: Optional[str] = None
+    buildRunFailureMessage: Optional[str] = None
+
+    # Tool configuration from annotations
+    toolConfig: Optional[ResourceConfigFromBuild] = None
 
 
 class CreateToolResponse(BaseModel):
@@ -139,6 +219,74 @@ def _extract_labels(labels: dict) -> ResourceLabels:
         protocol=labels.get("kagenti.io/protocol"),
         framework=labels.get("kagenti.io/framework"),
         type=labels.get("kagenti.io/type"),
+    )
+
+
+def _build_tool_shipwright_build_manifest(request: CreateToolRequest) -> dict:
+    """
+    Build a Shipwright Build CRD manifest for building a tool from source.
+
+    This is a wrapper around the shared build_shipwright_build_manifest function
+    that converts CreateToolRequest to the shared function's parameters.
+    """
+    # Determine registry URL
+    registry_url = request.registryUrl or DEFAULT_INTERNAL_REGISTRY
+
+    # Build source config
+    source_config = BuildSourceConfig(
+        gitUrl=request.gitUrl or "",
+        gitRevision=request.gitRevision,
+        contextDir=request.contextDir or ".",
+    )
+
+    # Build output config
+    output_config = BuildOutputConfig(
+        registry=registry_url,
+        imageName=request.name,
+        imageTag=request.imageTag,
+        pushSecretName=request.registrySecret,
+    )
+
+    # Build resource configuration to store in annotation
+    resource_config: Dict[str, Any] = {
+        "protocol": request.protocol,
+        "framework": request.framework,
+        "createHttpRoute": request.createHttpRoute,
+        "registrySecret": request.registrySecret,
+    }
+    # Add env vars if present
+    if request.envVars:
+        resource_config["envVars"] = [ev.model_dump() for ev in request.envVars]
+    # Add service ports if present
+    if request.servicePorts:
+        resource_config["servicePorts"] = [sp.model_dump() for sp in request.servicePorts]
+
+    return build_shipwright_build_manifest(
+        name=request.name,
+        namespace=request.namespace,
+        resource_type=ResourceType.TOOL,
+        source_config=source_config,
+        output_config=output_config,
+        build_config=request.shipwrightConfig,
+        resource_config=resource_config,
+        protocol=request.protocol,
+        framework=request.framework,
+    )
+
+
+def _build_tool_shipwright_buildrun_manifest(
+    build_name: str, namespace: str, labels: Optional[Dict[str, str]] = None
+) -> dict:
+    """
+    Build a Shipwright BuildRun CRD manifest to trigger a tool build.
+
+    This is a wrapper around the shared build_shipwright_buildrun_manifest function.
+    """
+    return build_shipwright_buildrun_manifest(
+        build_name=build_name,
+        namespace=namespace,
+        resource_type=ResourceType.TOOL,
+        labels=labels,
     )
 
 
@@ -238,7 +386,50 @@ async def delete_tool(
     name: str,
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> DeleteResponse:
-    """Delete a tool from the cluster."""
+    """Delete a tool and associated Shipwright resources from the cluster."""
+    deleted_resources = []
+
+    # Delete BuildRuns first (they reference the Build)
+    try:
+        buildruns = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+        for buildrun in buildruns:
+            br_name = buildrun.get("metadata", {}).get("name")
+            if br_name:
+                try:
+                    kube.delete_custom_resource(
+                        group=SHIPWRIGHT_CRD_GROUP,
+                        version=SHIPWRIGHT_CRD_VERSION,
+                        namespace=namespace,
+                        plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                        name=br_name,
+                    )
+                    deleted_resources.append(f"BuildRun/{br_name}")
+                except ApiException:
+                    pass  # Ignore individual BuildRun deletion errors
+    except ApiException:
+        pass  # Ignore if BuildRuns not found
+
+    # Delete Shipwright Build
+    try:
+        kube.delete_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+        deleted_resources.append(f"Build/{name}")
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning(f"Failed to delete Shipwright Build '{name}': {e}")
+
+    # Delete MCPServer
     try:
         kube.delete_custom_resource(
             group=TOOLHIVE_CRD_GROUP,
@@ -247,12 +438,21 @@ async def delete_tool(
             plural=TOOLHIVE_MCP_PLURAL,
             name=name,
         )
-        return DeleteResponse(success=True, message=f"Tool '{name}' deleted")
-
+        deleted_resources.append(f"MCPServer/{name}")
     except ApiException as e:
         if e.status == 404:
-            return DeleteResponse(success=True, message=f"Tool '{name}' already deleted")
-        raise HTTPException(status_code=e.status, detail=str(e.reason))
+            # MCPServer not found is OK - might only have a Build
+            pass
+        else:
+            raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    if deleted_resources:
+        return DeleteResponse(
+            success=True,
+            message=f"Tool '{name}' deleted. Resources: {', '.join(deleted_resources)}",
+        )
+    else:
+        return DeleteResponse(success=True, message=f"Tool '{name}' already deleted")
 
 
 def _build_mcpserver_manifest(request: CreateToolRequest) -> dict:
@@ -344,52 +544,110 @@ async def create_tool(
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> CreateToolResponse:
     """
-    Create a new MCP tool by submitting an MCPServer CRD.
+    Create a new MCP tool.
 
-    Tools are deployed from existing container images using the ToolHive
-    MCPServer CRD. Unlike agents, tools do not support building from source.
+    Supports two deployment methods:
+    1. "image" - Deploy from existing container image (MCPServer CRD)
+    2. "source" - Build from source using Shipwright, then deploy
+
+    For source builds, creates a Shipwright Build + BuildRun and returns.
+    The MCPServer is created later via the finalize-shipwright-build endpoint.
     """
-    if not request.containerImage:
-        raise HTTPException(
-            status_code=400,
-            detail="containerImage is required for tool deployment",
-        )
-
-    manifest = _build_mcpserver_manifest(request)
-
     try:
-        kube.create_custom_resource(
-            group=TOOLHIVE_CRD_GROUP,
-            version=TOOLHIVE_CRD_VERSION,
-            namespace=request.namespace,
-            plural=TOOLHIVE_MCP_PLURAL,
-            body=manifest,
-        )
+        if request.deploymentMethod == "source":
+            # Source build using Shipwright
+            if not request.gitUrl:
+                raise HTTPException(
+                    status_code=400,
+                    detail="gitUrl is required for source deployment",
+                )
 
-        message = f"Tool '{request.name}' deployment started."
+            # Step 1: Create Shipwright Build CR
+            build_manifest = _build_tool_shipwright_build_manifest(request)
+            kube.create_custom_resource(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=request.namespace,
+                plural=SHIPWRIGHT_BUILDS_PLURAL,
+                body=build_manifest,
+            )
+            logger.info(
+                f"Created Shipwright Build '{request.name}' for tool in namespace '{request.namespace}'"
+            )
 
-        # Create HTTPRoute/Route if requested
-        # ToolHive creates a proxy service named mcp-{name}-proxy on port 8000
-        if request.createHttpRoute:
-            # ToolHive creates the proxy service with this naming pattern
-            proxy_service_name = f"mcp-{request.name}-proxy"
-            proxy_service_port = 8000
+            # Step 2: Create BuildRun CR to trigger the build
+            build_labels = build_manifest.get("metadata", {}).get("labels", {})
+            buildrun_manifest = _build_tool_shipwright_buildrun_manifest(
+                build_name=request.name,
+                namespace=request.namespace,
+                labels=build_labels,
+            )
+            created_buildrun = kube.create_custom_resource(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=request.namespace,
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                body=buildrun_manifest,
+            )
+            buildrun_name = created_buildrun.get("metadata", {}).get("name", "")
+            logger.info(
+                f"Created Shipwright BuildRun '{buildrun_name}' for tool in namespace '{request.namespace}'"
+            )
 
-            create_route_for_agent_or_tool(
-                kube=kube,
+            message = (
+                f"Shipwright build started for tool '{request.name}'. "
+                f"BuildRun: {buildrun_name}. "
+                f"Monitor progress at /tools/{request.namespace}/{request.name}/build"
+            )
+
+            return CreateToolResponse(
+                success=True,
                 name=request.name,
                 namespace=request.namespace,
-                service_name=proxy_service_name,
-                service_port=proxy_service_port,
+                message=message,
             )
-            message += f" HTTPRoute/Route created for external access."
 
-        return CreateToolResponse(
-            success=True,
-            name=request.name,
-            namespace=request.namespace,
-            message=message,
-        )
+        else:
+            # Image deployment (existing flow)
+            if not request.containerImage:
+                raise HTTPException(
+                    status_code=400,
+                    detail="containerImage is required for image deployment",
+                )
+
+            manifest = _build_mcpserver_manifest(request)
+
+            kube.create_custom_resource(
+                group=TOOLHIVE_CRD_GROUP,
+                version=TOOLHIVE_CRD_VERSION,
+                namespace=request.namespace,
+                plural=TOOLHIVE_MCP_PLURAL,
+                body=manifest,
+            )
+
+            message = f"Tool '{request.name}' deployment started."
+
+            # Create HTTPRoute/Route if requested
+            # ToolHive creates a proxy service named mcp-{name}-proxy on port 8000
+            if request.createHttpRoute:
+                proxy_service_name = f"mcp-{request.name}-proxy"
+                proxy_service_port = 8000
+
+                create_route_for_agent_or_tool(
+                    kube=kube,
+                    name=request.name,
+                    namespace=request.namespace,
+                    service_name=proxy_service_name,
+                    service_port=proxy_service_port,
+                )
+                message += " HTTPRoute/Route created for external access."
+
+            return CreateToolResponse(
+                success=True,
+                name=request.name,
+                namespace=request.namespace,
+                message=message,
+            )
 
     except ApiException as e:
         if e.status == 409:
@@ -400,9 +658,395 @@ async def create_tool(
         if e.status == 404:
             raise HTTPException(
                 status_code=404,
-                detail="MCPServer CRD not found. Is ToolHive installed?",
+                detail="MCPServer CRD or Shipwright CRDs not found. Is ToolHive/Shipwright installed?",
             )
         logger.error(f"Failed to create tool: {e}")
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+# Shipwright Build Endpoints for Tools
+
+
+@router.get(
+    "/{namespace}/{name}/shipwright-build-info",
+    response_model=ToolShipwrightBuildInfoResponse,
+)
+async def get_tool_shipwright_build_info(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> ToolShipwrightBuildInfoResponse:
+    """Get full Shipwright Build information including tool config and BuildRun status.
+
+    This endpoint provides all the information needed for the build progress page:
+    - Build configuration and status
+    - Latest BuildRun status
+    - Tool configuration stored in annotations
+    """
+    try:
+        # Get the Build resource
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        metadata = build.get("metadata", {})
+        spec = build.get("spec", {})
+        status = build.get("status", {})
+
+        # Extract build info
+        source = spec.get("source", {})
+        git_info = source.get("git", {})
+        strategy = spec.get("strategy", {})
+        output = spec.get("output", {})
+
+        # Parse tool config from annotations using shared utility
+        tool_config = extract_resource_config_from_build(build, ResourceType.TOOL)
+
+        # Build response with basic build info
+        response = ToolShipwrightBuildInfoResponse(
+            name=metadata.get("name", name),
+            namespace=metadata.get("namespace", namespace),
+            buildRegistered=status.get("registered", False),
+            buildReason=status.get("reason"),
+            buildMessage=status.get("message"),
+            outputImage=output.get("image", ""),
+            strategy=strategy.get("name", ""),
+            gitUrl=git_info.get("url", ""),
+            gitRevision=git_info.get("revision", ""),
+            contextDir=source.get("contextDir", ""),
+            toolConfig=tool_config,
+        )
+
+        # Try to get the latest BuildRun
+        try:
+            items = kube.list_custom_resources(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=namespace,
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                label_selector=f"kagenti.io/build-name={name}",
+            )
+
+            if items:
+                latest_buildrun = get_latest_buildrun(items)
+                if latest_buildrun:
+                    buildrun_info = extract_buildrun_info(latest_buildrun)
+
+                    response.hasBuildRun = True
+                    response.buildRunName = buildrun_info["name"]
+                    response.buildRunPhase = buildrun_info["phase"]
+                    response.buildRunStartTime = buildrun_info["startTime"]
+                    response.buildRunCompletionTime = buildrun_info["completionTime"]
+                    response.buildRunOutputImage = buildrun_info["outputImage"]
+                    response.buildRunOutputDigest = buildrun_info["outputDigest"]
+                    response.buildRunFailureMessage = buildrun_info["failureMessage"]
+
+        except ApiException as e:
+            # BuildRun not found is OK, just means no build has been triggered
+            if e.status != 404:
+                logger.warning(f"Failed to get BuildRun for build '{name}': {e}")
+
+        return response
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Shipwright Build '{name}' not found in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.post("/{namespace}/{name}/shipwright-buildrun")
+async def create_tool_buildrun(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> dict:
+    """Trigger a new BuildRun for an existing Shipwright Build.
+
+    This endpoint creates a new BuildRun CR that references the existing Build.
+    Use this to retry a failed build or trigger a new build after source changes.
+    """
+    try:
+        # Verify the Build exists
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        # Get labels from the Build to propagate to BuildRun
+        build_labels = build.get("metadata", {}).get("labels", {})
+        buildrun_labels = {
+            k: v
+            for k, v in build_labels.items()
+            if k.startswith("kagenti.io/") or k.startswith("app.kubernetes.io/")
+        }
+
+        # Create BuildRun manifest
+        buildrun_manifest = _build_tool_shipwright_buildrun_manifest(
+            build_name=name,
+            namespace=namespace,
+            labels=buildrun_labels,
+        )
+
+        # Create the BuildRun
+        created_buildrun = kube.create_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            body=buildrun_manifest,
+        )
+
+        return {
+            "success": True,
+            "buildRunName": created_buildrun.get("metadata", {}).get("name"),
+            "namespace": namespace,
+            "buildName": name,
+            "message": "BuildRun created successfully",
+        }
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Build '{name}' not found in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.post("/{namespace}/{name}/finalize-shipwright-build", response_model=CreateToolResponse)
+async def finalize_tool_shipwright_build(
+    namespace: str,
+    name: str,
+    request: FinalizeToolBuildRequest,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> CreateToolResponse:
+    """Create MCPServer CRD after Shipwright build completes successfully.
+
+    This endpoint:
+    1. Gets the latest BuildRun and verifies it succeeded
+    2. Extracts the output image from BuildRun status
+    3. Reads tool config from Build annotations
+    4. Creates MCPServer CRD with the built image
+    5. Creates HTTPRoute if createHttpRoute is true
+    6. Adds kagenti.io/shipwright-build annotation to MCPServer
+    """
+    try:
+        # Get the Build resource
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        # Get the latest BuildRun
+        buildruns = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+
+        if not buildruns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No BuildRun found for Build '{name}'. Run a build first.",
+            )
+
+        latest_buildrun = get_latest_buildrun(buildruns)
+        if not latest_buildrun:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No BuildRun found for Build '{name}'. Run a build first.",
+            )
+
+        # Verify build succeeded
+        if not is_build_succeeded(latest_buildrun):
+            buildrun_info = extract_buildrun_info(latest_buildrun)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Build not succeeded. Current phase: {buildrun_info['phase']}. "
+                f"Error: {buildrun_info.get('failureMessage', 'N/A')}",
+            )
+
+        # Get output image from BuildRun or Build
+        output_image, output_digest = get_output_image_from_buildrun(
+            latest_buildrun, fallback_build=build
+        )
+        if not output_image:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not determine output image from BuildRun",
+            )
+
+        # Include digest in image reference if available
+        if output_digest:
+            image_with_digest = f"{output_image}@{output_digest}"
+        else:
+            image_with_digest = output_image
+
+        # Extract tool config from Build annotations
+        tool_config = extract_resource_config_from_build(build, ResourceType.TOOL)
+        if tool_config:
+            tool_config_dict = tool_config.model_dump()
+        else:
+            tool_config_dict = {}
+
+        # Apply request overrides
+        protocol = request.protocol or tool_config_dict.get("protocol", "streamable_http")
+        framework = request.framework or tool_config_dict.get("framework", "Python")
+        create_http_route = (
+            request.createHttpRoute
+            if request.createHttpRoute is not None
+            else tool_config_dict.get("createHttpRoute", False)
+        )
+
+        # Build env vars
+        env_vars = list(DEFAULT_ENV_VARS)
+        if request.envVars:
+            for ev in request.envVars:
+                env_vars.append({"name": ev.name, "value": ev.value})
+        elif tool_config_dict.get("envVars"):
+            for ev in tool_config_dict["envVars"]:
+                env_vars.append({"name": ev.get("name"), "value": ev.get("value", "")})
+
+        # Build service ports
+        if request.servicePorts:
+            port = request.servicePorts[0].port
+            target_port = request.servicePorts[0].targetPort
+        elif tool_config_dict.get("servicePorts"):
+            ports = tool_config_dict["servicePorts"]
+            port = ports[0].get("port", DEFAULT_IN_CLUSTER_PORT)
+            target_port = ports[0].get("targetPort", DEFAULT_IN_CLUSTER_PORT)
+        else:
+            port = DEFAULT_IN_CLUSTER_PORT
+            target_port = DEFAULT_IN_CLUSTER_PORT
+
+        # Build MCPServer manifest
+        manifest = {
+            "apiVersion": f"{TOOLHIVE_CRD_GROUP}/{TOOLHIVE_CRD_VERSION}",
+            "kind": "MCPServer",
+            "metadata": {
+                "name": name,
+                "namespace": namespace,
+                "labels": {
+                    APP_KUBERNETES_IO_CREATED_BY: KAGENTI_UI_CREATOR_LABEL,
+                    KAGENTI_TYPE_LABEL: RESOURCE_TYPE_TOOL,
+                    KAGENTI_PROTOCOL_LABEL: protocol,
+                    KAGENTI_FRAMEWORK_LABEL: framework,
+                },
+                "annotations": {
+                    "kagenti.io/shipwright-build": name,
+                },
+            },
+            "spec": {
+                "image": image_with_digest,
+                "transport": "streamable-http",
+                "port": port,
+                "targetPort": target_port,
+                "proxyPort": DEFAULT_IN_CLUSTER_PORT,
+                "podTemplateSpec": {
+                    "spec": {
+                        "serviceAccountName": name,
+                        "securityContext": {
+                            "runAsNonRoot": True,
+                            "seccompProfile": {"type": "RuntimeDefault"},
+                        },
+                        "volumes": [
+                            {"name": "cache", "emptyDir": {}},
+                            {"name": "tmp-dir", "emptyDir": {}},
+                        ],
+                        "containers": [
+                            {
+                                "name": "mcp",
+                                "securityContext": {
+                                    "allowPrivilegeEscalation": False,
+                                    "capabilities": {"drop": ["ALL"]},
+                                    "runAsUser": 1000,
+                                },
+                                "resources": {
+                                    "limits": DEFAULT_RESOURCE_LIMITS,
+                                    "requests": DEFAULT_RESOURCE_REQUESTS,
+                                },
+                                "env": env_vars,
+                                "volumeMounts": [
+                                    {
+                                        "name": "cache",
+                                        "mountPath": "/app/.cache",
+                                        "readOnly": False,
+                                    },
+                                    {"name": "tmp-dir", "mountPath": "/tmp", "readOnly": False},
+                                ],
+                            }
+                        ],
+                    },
+                },
+            },
+        }
+
+        # Add image pull secrets if specified
+        if request.imagePullSecret or tool_config_dict.get("registrySecret"):
+            secret_name = request.imagePullSecret or tool_config_dict.get("registrySecret")
+            manifest["spec"]["podTemplateSpec"]["spec"]["imagePullSecrets"] = [
+                {"name": secret_name}
+            ]
+
+        # Create MCPServer
+        kube.create_custom_resource(
+            group=TOOLHIVE_CRD_GROUP,
+            version=TOOLHIVE_CRD_VERSION,
+            namespace=namespace,
+            plural=TOOLHIVE_MCP_PLURAL,
+            body=manifest,
+        )
+        logger.info(f"Created MCPServer '{name}' in namespace '{namespace}' from Shipwright build")
+
+        message = f"Tool '{name}' created from Shipwright build."
+
+        # Create HTTPRoute if requested
+        if create_http_route:
+            proxy_service_name = f"mcp-{name}-proxy"
+            proxy_service_port = 8000
+
+            create_route_for_agent_or_tool(
+                kube=kube,
+                name=name,
+                namespace=namespace,
+                service_name=proxy_service_name,
+                service_port=proxy_service_port,
+            )
+            message += " HTTPRoute/Route created for external access."
+
+        return CreateToolResponse(
+            success=True,
+            name=name,
+            namespace=namespace,
+            message=message,
+        )
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Shipwright Build '{name}' not found in namespace '{namespace}'",
+            )
+        if e.status == 409:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Tool '{name}' already exists in namespace '{namespace}'",
+            )
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 

@@ -48,10 +48,11 @@ To deploy the Image Agent:
 
 ## Import New Tool
 
-To deploy the Image Tool:
+To deploy the Image Tool using Shipwright:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
 1. Select the same `<namespace>` as used for the agent.
+1. Select "Build from source" as the deployment method.
 1. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
 1. Choose the `main` branch or your preferred branch.
@@ -59,6 +60,8 @@ To deploy the Image Tool:
 1. Under **Specify Source Subfolder**:
    - Select: `mcp/image_tool`
 1. Click **Build & Deploy New Tool** to deploy.
+
+You will be redirected to a **Build Progress** page where you can monitor the Shipwright build. Once the build succeeds, the MCPServer will be created automatically.
 
 ---
 

@@ -8,8 +8,10 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { AgentCatalogPage } from './pages/AgentCatalogPage';
 import { AgentDetailPage } from './pages/AgentDetailPage';
+import { BuildProgressPage } from './pages/BuildProgressPage';
 import { ToolCatalogPage } from './pages/ToolCatalogPage';
 import { ToolDetailPage } from './pages/ToolDetailPage';
+import { ToolBuildProgressPage } from './pages/ToolBuildProgressPage';
 import { MCPGatewayPage } from './pages/MCPGatewayPage';
 import { AIGatewayPage } from './pages/AIGatewayPage';
 import { GatewayPoliciesPage } from './pages/GatewayPoliciesPage';
@@ -44,6 +46,14 @@ function App() {
           }
         />
         <Route
+          path="/agents/:namespace/:name/build"
+          element={
+            <ProtectedRoute>
+              <BuildProgressPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/agents/:namespace/:name"
           element={
             <ProtectedRoute>
@@ -64,6 +74,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ImportToolPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tools/:namespace/:name/build"
+          element={
+            <ProtectedRoute>
+              <ToolBuildProgressPage />
             </ProtectedRoute>
           }
         />

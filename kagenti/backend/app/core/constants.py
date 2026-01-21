@@ -46,6 +46,29 @@ PYTHON_VERSION = "3.13"
 OPERATOR_NS = "kagenti-system"
 GIT_USER_SECRET_NAME = "github-token-secret"
 
+# Shipwright CRD Definitions (shipwright.io)
+SHIPWRIGHT_CRD_GROUP = "shipwright.io"
+SHIPWRIGHT_CRD_VERSION = "v1beta1"
+SHIPWRIGHT_BUILDS_PLURAL = "builds"
+SHIPWRIGHT_BUILDRUNS_PLURAL = "buildruns"
+SHIPWRIGHT_CLUSTER_BUILD_STRATEGIES_PLURAL = "clusterbuildstrategies"
+
+# Shipwright defaults
+SHIPWRIGHT_GIT_SECRET_NAME = "github-shipwright-secret"
+SHIPWRIGHT_DEFAULT_DOCKERFILE = "Dockerfile"
+SHIPWRIGHT_DEFAULT_TIMEOUT = "15m"
+SHIPWRIGHT_DEFAULT_RETENTION_SUCCEEDED = 3
+SHIPWRIGHT_DEFAULT_RETENTION_FAILED = 3
+
+# Shipwright build strategies
+# For internal registries without TLS (dev/kind clusters)
+SHIPWRIGHT_STRATEGY_INSECURE = "buildah-insecure-push"
+# For external registries with TLS (quay.io, ghcr.io, docker.io)
+SHIPWRIGHT_STRATEGY_SECURE = "buildah"
+
+# Default internal registry URL (for dev/kind clusters)
+DEFAULT_INTERNAL_REGISTRY = "registry.cr-system.svc.cluster.local:5000"
+
 # Default resource limits
 DEFAULT_RESOURCE_LIMITS = {"cpu": "500m", "memory": "1Gi"}
 DEFAULT_RESOURCE_REQUESTS = {"cpu": "100m", "memory": "256Mi"}

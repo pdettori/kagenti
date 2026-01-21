@@ -38,7 +38,15 @@ from app.core.constants import (
     OPERATOR_NS,
     GIT_USER_SECRET_NAME,
     PYTHON_VERSION,
+    # Shipwright constants
+    SHIPWRIGHT_CRD_GROUP,
+    SHIPWRIGHT_CRD_VERSION,
+    SHIPWRIGHT_BUILDS_PLURAL,
+    SHIPWRIGHT_BUILDRUNS_PLURAL,
+    SHIPWRIGHT_CLUSTER_BUILD_STRATEGIES_PLURAL,
+    DEFAULT_INTERNAL_REGISTRY,
 )
+from app.core.config import settings
 from app.models.responses import (
     AgentSummary,
     AgentListResponse,
@@ -47,6 +55,29 @@ from app.models.responses import (
 )
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
 from app.utils.routes import create_route_for_agent_or_tool, route_exists
+from app.models.shipwright import (
+    ResourceType,
+    ShipwrightBuildConfig,
+    BuildSourceConfig,
+    BuildOutputConfig,
+    BuildStatusCondition,
+    ClusterBuildStrategyInfo,
+    ClusterBuildStrategiesResponse,
+    ShipwrightBuildStatusResponse,
+    ShipwrightBuildRunStatusResponse,
+    ResourceConfigFromBuild,
+    ShipwrightBuildInfoResponse,
+)
+from app.services.shipwright import (
+    build_shipwright_build_manifest,
+    build_shipwright_buildrun_manifest,
+    parse_buildrun_phase,
+    extract_resource_config_from_build,
+    get_latest_buildrun,
+    extract_buildrun_info,
+    is_build_succeeded,
+    get_output_image_from_buildrun,
+)
 
 
 class SecretKeyRef(BaseModel):
@@ -133,6 +164,10 @@ class CreateAgentRequest(BaseModel):
     # HTTPRoute/Route creation
     createHttpRoute: bool = False
 
+    # Shipwright build configuration
+    useShipwright: bool = True  # Use Shipwright instead of AgentBuild/Tekton
+    shipwrightConfig: Optional[ShipwrightBuildConfig] = None
+
 
 class CreateAgentResponse(BaseModel):
     """Response after creating an agent."""
@@ -141,16 +176,6 @@ class CreateAgentResponse(BaseModel):
     name: str
     namespace: str
     message: str
-
-
-class BuildStatusCondition(BaseModel):
-    """Build status condition."""
-
-    type: str
-    status: str
-    reason: Optional[str] = None
-    message: Optional[str] = None
-    lastTransitionTime: Optional[str] = None
 
 
 class BuildStatusResponse(BaseModel):
@@ -164,6 +189,38 @@ class BuildStatusResponse(BaseModel):
     imageTag: Optional[str] = None
     startTime: Optional[str] = None
     completionTime: Optional[str] = None
+
+
+class AgentShipwrightBuildInfoResponse(BaseModel):
+    """Full Shipwright Build information for agents.
+
+    This is an agent-specific wrapper that includes agentConfig for backwards compatibility.
+    """
+
+    # Build info
+    name: str
+    namespace: str
+    buildRegistered: bool
+    buildReason: Optional[str] = None
+    buildMessage: Optional[str] = None
+    outputImage: str
+    strategy: str
+    gitUrl: str
+    gitRevision: str
+    contextDir: str
+
+    # Latest BuildRun info (if any)
+    hasBuildRun: bool = False
+    buildRunName: Optional[str] = None
+    buildRunPhase: Optional[str] = None  # Pending, Running, Succeeded, Failed
+    buildRunStartTime: Optional[str] = None
+    buildRunCompletionTime: Optional[str] = None
+    buildRunOutputImage: Optional[str] = None
+    buildRunOutputDigest: Optional[str] = None
+    buildRunFailureMessage: Optional[str] = None
+
+    # Agent configuration from annotations (agent-specific)
+    agentConfig: Optional[ResourceConfigFromBuild] = None
 
 
 logger = logging.getLogger(__name__)
@@ -298,7 +355,14 @@ async def delete_agent(
     name: str,
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> DeleteResponse:
-    """Delete an agent and its associated AgentBuild from the cluster."""
+    """Delete an agent and its associated builds from the cluster.
+
+    This deletes:
+    - Agent CR
+    - AgentBuild CR (if exists, for Tekton-based builds)
+    - Shipwright Build CR (if exists)
+    - Shipwright BuildRun CRs (if exist)
+    """
     messages = []
 
     # Delete the Agent CR
@@ -317,7 +381,7 @@ async def delete_agent(
         else:
             raise HTTPException(status_code=e.status, detail=str(e.reason))
 
-    # Also delete the AgentBuild CR if it exists
+    # Delete the AgentBuild CR if it exists (Tekton-based builds)
     try:
         kube.delete_custom_resource(
             group=CRD_GROUP,
@@ -329,15 +393,65 @@ async def delete_agent(
         messages.append(f"AgentBuild '{name}' deleted")
     except ApiException as e:
         if e.status == 404:
-            # AgentBuild doesn't exist, that's fine (might be image-based deployment)
+            # AgentBuild doesn't exist, that's fine (might be image-based or Shipwright deployment)
             pass
         else:
             logger.warning(f"Failed to delete AgentBuild '{name}': {e.reason}")
 
+    # Delete Shipwright BuildRuns associated with the build
+    try:
+        buildruns = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+        for buildrun in buildruns:
+            buildrun_name = buildrun.get("metadata", {}).get("name")
+            if buildrun_name:
+                try:
+                    kube.delete_custom_resource(
+                        group=SHIPWRIGHT_CRD_GROUP,
+                        version=SHIPWRIGHT_CRD_VERSION,
+                        namespace=namespace,
+                        plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                        name=buildrun_name,
+                    )
+                    messages.append(f"BuildRun '{buildrun_name}' deleted")
+                except ApiException as e:
+                    if e.status != 404:
+                        logger.warning(f"Failed to delete BuildRun '{buildrun_name}': {e.reason}")
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning(f"Failed to list BuildRuns for '{name}': {e.reason}")
+
+    # Delete the Shipwright Build CR if it exists
+    try:
+        kube.delete_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+        messages.append(f"Shipwright Build '{name}' deleted")
+    except ApiException as e:
+        if e.status == 404:
+            # Shipwright Build doesn't exist, that's fine (might be image-based or Tekton deployment)
+            pass
+        else:
+            logger.warning(f"Failed to delete Shipwright Build '{name}': {e.reason}")
+
     return DeleteResponse(success=True, message="; ".join(messages))
 
 
-@router.get("/{namespace}/{name}/build", response_model=BuildStatusResponse)
+@router.get(
+    "/{namespace}/{name}/build",
+    response_model=BuildStatusResponse,
+    deprecated=True,
+    summary="Get AgentBuild status (deprecated)",
+)
 async def get_agent_build_status(
     namespace: str,
     name: str,
@@ -345,9 +459,16 @@ async def get_agent_build_status(
 ) -> BuildStatusResponse:
     """Get the build status for an agent.
 
+    **DEPRECATED**: This endpoint is for legacy AgentBuild/Tekton builds.
+    New builds should use Shipwright. Use the `/shipwright-build-info` endpoint instead.
+
     Returns the AgentBuild resource status including conditions,
     phase, and image information.
     """
+    logger.warning(
+        f"Deprecated endpoint called: get_agent_build_status for '{name}' in '{namespace}'. "
+        "AgentBuild is deprecated, use Shipwright builds instead."
+    )
     try:
         build = kube.get_custom_resource(
             group=CRD_GROUP,
@@ -411,6 +532,341 @@ async def get_agent_build_status(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
+@router.get("/build-strategies", response_model=ClusterBuildStrategiesResponse)
+async def list_build_strategies(
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> ClusterBuildStrategiesResponse:
+    """List available ClusterBuildStrategies for Shipwright builds.
+
+    Returns the list of ClusterBuildStrategy resources available in the cluster.
+    """
+    try:
+        response = kube.list_cluster_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            plural=SHIPWRIGHT_CLUSTER_BUILD_STRATEGIES_PLURAL,
+        )
+
+        strategy_list = []
+        for strategy in response.get("items", []):
+            metadata = strategy.get("metadata", {})
+            spec = strategy.get("spec", {})
+            # Get description from annotations or spec
+            annotations = metadata.get("annotations", {})
+            description = annotations.get("description") or spec.get("description")
+
+            strategy_list.append(
+                ClusterBuildStrategyInfo(
+                    name=metadata.get("name", ""),
+                    description=description,
+                )
+            )
+
+        return ClusterBuildStrategiesResponse(strategies=strategy_list)
+
+    except ApiException as e:
+        logger.error(f"Failed to list ClusterBuildStrategies: {e}")
+        raise HTTPException(
+            status_code=e.status,
+            detail=f"Failed to list build strategies: {e.reason}",
+        )
+
+
+@router.get("/{namespace}/{name}/shipwright-build", response_model=ShipwrightBuildStatusResponse)
+async def get_shipwright_build_status(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> ShipwrightBuildStatusResponse:
+    """Get the Shipwright Build status for an agent.
+
+    Returns the Build resource status including whether it's registered
+    and ready for BuildRuns.
+    """
+    try:
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        metadata = build.get("metadata", {})
+        status = build.get("status", {})
+
+        # Check if build is registered (strategy validated)
+        registered = status.get("registered", False)
+        reason = status.get("reason")
+        message = status.get("message")
+
+        return ShipwrightBuildStatusResponse(
+            name=metadata.get("name", name),
+            namespace=metadata.get("namespace", namespace),
+            registered=registered,
+            reason=reason,
+            message=message,
+        )
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Shipwright Build '{name}' not found in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.get(
+    "/{namespace}/{name}/shipwright-buildrun",
+    response_model=ShipwrightBuildRunStatusResponse,
+)
+async def get_shipwright_buildrun_status(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> ShipwrightBuildRunStatusResponse:
+    """Get the latest Shipwright BuildRun status for an agent build.
+
+    Lists BuildRuns with label selector for the build name and returns
+    the most recent one's status.
+    """
+    try:
+        # List BuildRuns with label selector for this build
+        items = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+
+        if not items:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No BuildRuns found for build '{name}' in namespace '{namespace}'",
+            )
+
+        # Sort by creation timestamp and get the most recent
+        items.sort(
+            key=lambda x: x.get("metadata", {}).get("creationTimestamp", ""),
+            reverse=True,
+        )
+        latest_buildrun = items[0]
+
+        metadata = latest_buildrun.get("metadata", {})
+        status = latest_buildrun.get("status", {})
+        spec = latest_buildrun.get("spec", {})
+
+        # Extract conditions
+        conditions = []
+        for cond in status.get("conditions", []):
+            conditions.append(
+                BuildStatusCondition(
+                    type=cond.get("type", ""),
+                    status=cond.get("status", ""),
+                    reason=cond.get("reason"),
+                    message=cond.get("message"),
+                    lastTransitionTime=cond.get("lastTransitionTime"),
+                )
+            )
+
+        # Determine phase from conditions
+        phase = "Pending"
+        failure_message = None
+        for cond in conditions:
+            if cond.type == "Succeeded":
+                if cond.status == "True":
+                    phase = "Succeeded"
+                elif cond.status == "False":
+                    phase = "Failed"
+                    failure_message = cond.message
+                else:
+                    phase = "Running"
+                break
+
+        # Get output image info
+        output = status.get("output", {})
+        output_image = output.get("image")
+        output_digest = output.get("digest")
+
+        return ShipwrightBuildRunStatusResponse(
+            name=metadata.get("name", ""),
+            namespace=metadata.get("namespace", namespace),
+            buildName=spec.get("build", {}).get("name", name),
+            phase=phase,
+            startTime=status.get("startTime"),
+            completionTime=status.get("completionTime"),
+            outputImage=output_image,
+            outputDigest=output_digest,
+            failureMessage=failure_message,
+            conditions=conditions,
+        )
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"BuildRun not found for build '{name}' in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.post("/{namespace}/{name}/shipwright-buildrun")
+async def trigger_shipwright_buildrun(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> Dict[str, Any]:
+    """Trigger a new Shipwright BuildRun for an existing Build.
+
+    Creates a new BuildRun resource to start a build execution.
+    """
+    try:
+        # First verify the Build exists
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        # Get labels from the Build to propagate to BuildRun
+        build_labels = build.get("metadata", {}).get("labels", {})
+        buildrun_labels = {
+            k: v
+            for k, v in build_labels.items()
+            if k.startswith("kagenti.io/") or k.startswith("app.kubernetes.io/")
+        }
+
+        # Create BuildRun manifest
+        buildrun_manifest = _build_agent_shipwright_buildrun_manifest(
+            build_name=name,
+            namespace=namespace,
+            labels=buildrun_labels,
+        )
+
+        # Create the BuildRun
+        created_buildrun = kube.create_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            body=buildrun_manifest,
+        )
+
+        return {
+            "success": True,
+            "buildRunName": created_buildrun.get("metadata", {}).get("name"),
+            "namespace": namespace,
+            "buildName": name,
+            "message": "BuildRun created successfully",
+        }
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Build '{name}' not found in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+@router.get(
+    "/{namespace}/{name}/shipwright-build-info",
+    response_model=AgentShipwrightBuildInfoResponse,
+)
+async def get_shipwright_build_info(
+    namespace: str,
+    name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> AgentShipwrightBuildInfoResponse:
+    """Get full Shipwright Build information including agent config and BuildRun status.
+
+    This endpoint provides all the information needed for the build progress page:
+    - Build configuration and status
+    - Latest BuildRun status
+    - Agent configuration stored in annotations
+    """
+    try:
+        # Get the Build resource
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+
+        metadata = build.get("metadata", {})
+        spec = build.get("spec", {})
+        status = build.get("status", {})
+
+        # Extract build info
+        source = spec.get("source", {})
+        git_info = source.get("git", {})
+        strategy = spec.get("strategy", {})
+        output = spec.get("output", {})
+
+        # Parse agent config from annotations using shared utility
+        agent_config = extract_resource_config_from_build(build, ResourceType.AGENT)
+
+        # Build response with basic build info
+        response = AgentShipwrightBuildInfoResponse(
+            name=metadata.get("name", name),
+            namespace=metadata.get("namespace", namespace),
+            buildRegistered=status.get("registered", False),
+            buildReason=status.get("reason"),
+            buildMessage=status.get("message"),
+            outputImage=output.get("image", ""),
+            strategy=strategy.get("name", ""),
+            gitUrl=git_info.get("url", ""),
+            gitRevision=git_info.get("revision", ""),
+            contextDir=source.get("contextDir", ""),
+            agentConfig=agent_config,
+        )
+
+        # Try to get the latest BuildRun
+        try:
+            items = kube.list_custom_resources(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=namespace,
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                label_selector=f"kagenti.io/build-name={name}",
+            )
+
+            if items:
+                latest_buildrun = get_latest_buildrun(items)
+                if latest_buildrun:
+                    buildrun_info = extract_buildrun_info(latest_buildrun)
+
+                    response.hasBuildRun = True
+                    response.buildRunName = buildrun_info["name"]
+                    response.buildRunPhase = buildrun_info["phase"]
+                    response.buildRunStartTime = buildrun_info["startTime"]
+                    response.buildRunCompletionTime = buildrun_info["completionTime"]
+                    response.buildRunOutputImage = buildrun_info["outputImage"]
+                    response.buildRunOutputDigest = buildrun_info["outputDigest"]
+                    response.buildRunFailureMessage = buildrun_info["failureMessage"]
+
+        except ApiException as e:
+            # BuildRun not found is OK, just means no build has been triggered
+            if e.status != 404:
+                logger.warning(f"Failed to get BuildRun for build '{name}': {e}")
+
+        return response
+
+    except ApiException as e:
+        if e.status == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Shipwright Build '{name}' not found in namespace '{namespace}'",
+            )
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
 def _strip_protocol(url: str) -> str:
     """Remove protocol prefix from URL."""
     if url.startswith("https://"):
@@ -425,6 +881,10 @@ def _build_agent_build_manifest(request: CreateAgentRequest) -> dict:
     Build an AgentBuild CRD manifest for building from source.
 
     Uses the Tekton pipeline to build the agent from git.
+
+    .. deprecated::
+        This function is deprecated. Use `_build_agent_shipwright_build_manifest` instead.
+        AgentBuild/Tekton pipeline will be removed in a future version.
     """
     cleaned_url = _strip_protocol(request.gitUrl) if request.gitUrl else ""
     registry_url = request.registryUrl or "registry.cr-system.svc.cluster.local:5000"
@@ -473,6 +933,74 @@ def _build_agent_build_manifest(request: CreateAgentRequest) -> dict:
         manifest["spec"]["buildOutput"]["imageRepoCredentials"] = {"name": request.registrySecret}
 
     return manifest
+
+
+def _build_agent_shipwright_build_manifest(request: CreateAgentRequest) -> dict:
+    """
+    Build a Shipwright Build CRD manifest for building an agent from source.
+
+    This is a wrapper around the shared build_shipwright_build_manifest function
+    that converts CreateAgentRequest to the shared function's parameters.
+    """
+    # Determine registry URL
+    registry_url = request.registryUrl or DEFAULT_INTERNAL_REGISTRY
+
+    # Build source config
+    source_config = BuildSourceConfig(
+        gitUrl=request.gitUrl,
+        gitRevision=request.gitBranch,
+        contextDir=request.gitPath or ".",
+    )
+
+    # Build output config
+    output_config = BuildOutputConfig(
+        registry=registry_url,
+        imageName=request.name,
+        imageTag=request.imageTag,
+        pushSecretName=request.registrySecret,
+    )
+
+    # Build resource configuration to store in annotation
+    resource_config: Dict[str, Any] = {
+        "protocol": request.protocol,
+        "framework": request.framework,
+        "createHttpRoute": request.createHttpRoute,
+        "registrySecret": request.registrySecret,
+    }
+    # Add env vars if present
+    if request.envVars:
+        resource_config["envVars"] = [ev.model_dump(exclude_none=True) for ev in request.envVars]
+    # Add service ports if present
+    if request.servicePorts:
+        resource_config["servicePorts"] = [sp.model_dump() for sp in request.servicePorts]
+
+    return build_shipwright_build_manifest(
+        name=request.name,
+        namespace=request.namespace,
+        resource_type=ResourceType.AGENT,
+        source_config=source_config,
+        output_config=output_config,
+        build_config=request.shipwrightConfig,
+        resource_config=resource_config,
+        protocol=request.protocol,
+        framework=request.framework,
+    )
+
+
+def _build_agent_shipwright_buildrun_manifest(
+    build_name: str, namespace: str, labels: Optional[Dict[str, str]] = None
+) -> dict:
+    """
+    Build a Shipwright BuildRun CRD manifest to trigger an agent build.
+
+    This is a wrapper around the shared build_shipwright_buildrun_manifest function.
+    """
+    return build_shipwright_buildrun_manifest(
+        build_name=build_name,
+        namespace=namespace,
+        resource_type=ResourceType.AGENT,
+        labels=labels,
+    )
 
 
 def _build_agent_manifest(
@@ -617,12 +1145,14 @@ async def create_agent(
     Create a new agent.
 
     Supports two deployment methods:
-    - 'source': Build from git repository using AgentBuild CRD + Agent CRD with buildRef
+    - 'source': Build from git repository
+      - With useShipwright=True (default): Uses Shipwright Build + BuildRun
+      - With useShipwright=False: Uses AgentBuild CRD + Tekton pipeline
     - 'image': Deploy from existing container image using Agent CRD
     """
     logger.info(
         f"Creating agent '{request.name}' in namespace '{request.namespace}', "
-        f"createHttpRoute={request.createHttpRoute}"
+        f"createHttpRoute={request.createHttpRoute}, useShipwright={request.useShipwright}"
     )
     try:
         if request.deploymentMethod == "image":
@@ -659,8 +1189,66 @@ async def create_agent(
                 )
                 message += f" HTTPRoute/Route created for external access."
 
+        elif request.useShipwright and settings.use_shipwright_builds:
+            # Build from source using Shipwright Build + BuildRun
+            if not request.gitUrl:
+                raise HTTPException(
+                    status_code=400,
+                    detail="gitUrl is required for source deployment",
+                )
+
+            # Step 1: Create Shipwright Build CR
+            build_manifest = _build_agent_shipwright_build_manifest(request)
+            kube.create_custom_resource(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=request.namespace,
+                plural=SHIPWRIGHT_BUILDS_PLURAL,
+                body=build_manifest,
+            )
+            logger.info(
+                f"Created Shipwright Build '{request.name}' in namespace '{request.namespace}'"
+            )
+
+            # Step 2: Create BuildRun CR to trigger the build
+            # Get labels from the Build manifest to propagate to BuildRun
+            build_labels = build_manifest.get("metadata", {}).get("labels", {})
+            buildrun_manifest = _build_agent_shipwright_buildrun_manifest(
+                build_name=request.name,
+                namespace=request.namespace,
+                labels=build_labels,
+            )
+            created_buildrun = kube.create_custom_resource(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=request.namespace,
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                body=buildrun_manifest,
+            )
+            buildrun_name = created_buildrun.get("metadata", {}).get("name", "")
+            logger.info(
+                f"Created Shipwright BuildRun '{buildrun_name}' in namespace '{request.namespace}'"
+            )
+
+            message = (
+                f"Shipwright build started for agent '{request.name}'. "
+                f"BuildRun: '{buildrun_name}'. "
+                f"Poll the build status and create the Agent after the build completes."
+            )
+
+            # Note: For Shipwright builds, HTTPRoute is NOT created here.
+            # It will be created when the Agent is finalized after build completion.
+            if request.createHttpRoute:
+                message += " HTTPRoute will be created after the build completes."
+
         else:
-            # Build from source: create both AgentBuild and Agent CRs
+            # Build from source using AgentBuild CRD + Tekton pipeline (legacy)
+            # DEPRECATED: This flow is deprecated. Use Shipwright builds instead.
+            logger.warning(
+                f"DEPRECATED: Creating AgentBuild for '{request.name}' in '{request.namespace}'. "
+                "AgentBuild/Tekton pipeline is deprecated. Use useShipwright=True for new builds."
+            )
+
             if not request.gitUrl or not request.gitPath:
                 raise HTTPException(
                     status_code=400,
@@ -729,6 +1317,233 @@ async def create_agent(
                 detail="Agent CRD not found. Is the kagenti-operator installed?",
             )
         logger.error(f"Failed to create agent: {e}")
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+
+class FinalizeShipwrightBuildRequest(BaseModel):
+    """Request to finalize a Shipwright build and create the Agent.
+
+    All fields are optional. If not provided, the values stored in the Build's
+    kagenti.io/agent-config annotation will be used.
+    """
+
+    # These fields mirror CreateAgentRequest for Agent creation
+    # All optional - will use values from Build annotation if not provided
+    protocol: Optional[str] = None
+    framework: Optional[str] = None
+    envVars: Optional[List[EnvVar]] = None
+    servicePorts: Optional[List[ServicePort]] = None
+    createHttpRoute: Optional[bool] = None
+    imagePullSecret: Optional[str] = None
+
+
+@router.post("/{namespace}/{name}/finalize-shipwright-build", response_model=CreateAgentResponse)
+async def finalize_shipwright_build(
+    namespace: str,
+    name: str,
+    request: FinalizeShipwrightBuildRequest,
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> CreateAgentResponse:
+    """
+    Finalize a Shipwright build by creating the Agent CRD.
+
+    This endpoint should be called after the Shipwright BuildRun completes successfully.
+    It retrieves the output image from the BuildRun status and creates the Agent CRD.
+
+    Agent configuration can be provided in the request body, or it will be read from
+    the Build's kagenti.io/agent-config annotation (stored during build creation).
+    """
+    logger.info(f"Finalizing Shipwright build '{name}' in namespace '{namespace}'")
+
+    try:
+        # Step 1: Get the latest BuildRun status to get the output image
+        items = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={name}",
+        )
+
+        if not items:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No BuildRuns found for build '{name}' in namespace '{namespace}'",
+            )
+
+        # Sort by creation timestamp and get the most recent
+        items.sort(
+            key=lambda x: x.get("metadata", {}).get("creationTimestamp", ""),
+            reverse=True,
+        )
+        latest_buildrun = items[0]
+        buildrun_status = latest_buildrun.get("status", {})
+
+        # Check if build succeeded
+        conditions = buildrun_status.get("conditions", [])
+        build_succeeded = False
+        failure_message = None
+        for cond in conditions:
+            if cond.get("type") == "Succeeded":
+                if cond.get("status") == "True":
+                    build_succeeded = True
+                else:
+                    failure_message = cond.get("message", "Build failed")
+                break
+
+        if not build_succeeded:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Build has not succeeded yet. Status: {failure_message or 'In progress'}",
+            )
+
+        # Get the output image from BuildRun status
+        output = buildrun_status.get("output", {})
+        output_image = output.get("image")
+        output_digest = output.get("digest")
+
+        if not output_image:
+            # Fallback: try to get image from Build spec
+            build = kube.get_custom_resource(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace=namespace,
+                plural=SHIPWRIGHT_BUILDS_PLURAL,
+                name=name,
+            )
+            output_image = build.get("spec", {}).get("output", {}).get("image")
+
+        if not output_image:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not determine output image from build",
+            )
+
+        # If we have a digest, use it for immutable image reference
+        container_image = f"{output_image}@{output_digest}" if output_digest else output_image
+
+        # Step 2: Get Build resource for labels and stored agent config
+        build = kube.get_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=name,
+        )
+        build_metadata = build.get("metadata", {})
+        build_labels = build_metadata.get("labels", {})
+        build_annotations = build_metadata.get("annotations", {})
+
+        # Parse stored agent config from Build annotations
+        stored_config: Dict[str, Any] = {}
+        agent_config_json = build_annotations.get("kagenti.io/agent-config")
+        if agent_config_json:
+            try:
+                stored_config = json.loads(agent_config_json)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse agent config from Build annotation: {e}")
+
+        # Merge request with stored config (request values take precedence)
+        final_protocol = (
+            request.protocol
+            if request.protocol is not None
+            else stored_config.get("protocol", "a2a")
+        )
+        final_framework = (
+            request.framework
+            if request.framework is not None
+            else stored_config.get("framework", "LangGraph")
+        )
+        final_create_route = (
+            request.createHttpRoute
+            if request.createHttpRoute is not None
+            else stored_config.get("createHttpRoute", False)
+        )
+        final_registry_secret = (
+            request.imagePullSecret
+            if request.imagePullSecret is not None
+            else stored_config.get("registrySecret")
+        )
+
+        # For envVars and servicePorts, use request if provided, otherwise use stored config
+        final_env_vars = request.envVars
+        if final_env_vars is None and "envVars" in stored_config:
+            # Convert stored dict format back to EnvVar objects
+            final_env_vars = [EnvVar(**ev) for ev in stored_config["envVars"]]
+
+        final_service_ports = request.servicePorts
+        if final_service_ports is None and "servicePorts" in stored_config:
+            # Convert stored dict format back to ServicePort objects
+            final_service_ports = [ServicePort(**sp) for sp in stored_config["servicePorts"]]
+
+        # Step 3: Create Agent CRD with the built image
+        # Build a CreateAgentRequest-like object for _build_agent_manifest
+        agent_request = CreateAgentRequest(
+            name=name,
+            namespace=namespace,
+            protocol=final_protocol,
+            framework=final_framework,
+            deploymentMethod="image",
+            containerImage=container_image,
+            imagePullSecret=final_registry_secret,
+            envVars=final_env_vars,
+            servicePorts=final_service_ports,
+            createHttpRoute=final_create_route,
+        )
+
+        agent_manifest = _build_agent_manifest(agent_request)
+        # Add additional labels from Build
+        agent_manifest["metadata"]["labels"].update(
+            {k: v for k, v in build_labels.items() if k.startswith("kagenti.io/")}
+        )
+        # Add annotation to link to Shipwright Build
+        agent_manifest["metadata"]["annotations"] = {
+            "kagenti.io/shipwright-build": name,
+        }
+
+        kube.create_custom_resource(
+            group=CRD_GROUP,
+            version=CRD_VERSION,
+            namespace=namespace,
+            plural=AGENTS_PLURAL,
+            body=agent_manifest,
+        )
+        logger.info(
+            f"Created Agent '{name}' with image '{container_image}' in namespace '{namespace}'"
+        )
+
+        message = f"Agent '{name}' created successfully with image '{output_image}'."
+
+        # Step 4: Create HTTPRoute/Route if requested (use merged config value)
+        if final_create_route:
+            service_port = (
+                final_service_ports[0].port if final_service_ports else DEFAULT_IN_CLUSTER_PORT
+            )
+            create_route_for_agent_or_tool(
+                kube=kube,
+                name=name,
+                namespace=namespace,
+                service_name=name,
+                service_port=service_port,
+            )
+            message += " HTTPRoute/Route created for external access."
+
+        return CreateAgentResponse(
+            success=True,
+            name=name,
+            namespace=namespace,
+            message=message,
+        )
+
+    except HTTPException:
+        raise
+    except ApiException as e:
+        if e.status == 409:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Agent '{name}' already exists in namespace '{namespace}'",
+            )
+        logger.error(f"Failed to finalize build: {e}")
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
