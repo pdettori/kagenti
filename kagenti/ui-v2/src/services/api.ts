@@ -429,20 +429,31 @@ export const toolService = {
   async create(data: {
     name: string;
     namespace: string;
-    containerImage: string;
     protocol: string;
     framework: string;
     envVars?: Array<{ name: string; value: string }>;
-    imagePullSecret?: string;
     servicePorts?: Array<{
       name: string;
       port: number;
       targetPort: number;
       protocol: string;
     }>;
+    // Deployment method
+    deploymentMethod?: 'image' | 'source';
+    // Image deployment fields
+    containerImage?: string;
+    imagePullSecret?: string;
+    // Source build fields
+    gitUrl?: string;
+    gitRevision?: string;
+    contextDir?: string;
+    registryUrl?: string;
+    registrySecret?: string;
+    imageTag?: string;
+    shipwrightConfig?: ShipwrightBuildConfig;
     // HTTPRoute/Route creation
     createHttpRoute?: boolean;
-  }): Promise<{ name: string; status: string }> {
+  }): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
     return apiFetch('/tools', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -470,6 +481,104 @@ export const toolService = {
       {
         method: 'POST',
         body: JSON.stringify({ tool_name: toolName, arguments: args }),
+      }
+    );
+  },
+};
+
+/**
+ * Tool Shipwright build info (similar to agent build info but for tools)
+ */
+export interface ToolShipwrightBuildInfo {
+  // Build info
+  name: string;
+  namespace: string;
+  buildRegistered: boolean;
+  buildReason?: string;
+  buildMessage?: string;
+  outputImage: string;
+  strategy: string;
+  gitUrl: string;
+  gitRevision: string;
+  contextDir: string;
+
+  // Latest BuildRun info
+  hasBuildRun: boolean;
+  buildRunName?: string;
+  buildRunPhase?: 'Pending' | 'Running' | 'Succeeded' | 'Failed';
+  buildRunStartTime?: string;
+  buildRunCompletionTime?: string;
+  buildRunOutputImage?: string;
+  buildRunOutputDigest?: string;
+  buildRunFailureMessage?: string;
+
+  // Tool configuration from annotations
+  toolConfig?: {
+    protocol: string;
+    framework: string;
+    createHttpRoute: boolean;
+    registrySecret?: string;
+    envVars?: Array<{ name: string; value: string }>;
+    servicePorts?: Array<{
+      name: string;
+      port: number;
+      targetPort: number;
+      protocol: string;
+    }>;
+  };
+}
+
+/**
+ * Tool Shipwright build service
+ */
+export const toolShipwrightService = {
+  /**
+   * Get full Shipwright Build info including tool config and BuildRun status
+   */
+  async getBuildInfo(namespace: string, name: string): Promise<ToolShipwrightBuildInfo> {
+    return apiFetch<ToolShipwrightBuildInfo>(
+      `/tools/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-build-info`
+    );
+  },
+
+  /**
+   * Trigger a new BuildRun for an existing Build
+   */
+  async triggerBuildRun(
+    namespace: string,
+    name: string
+  ): Promise<{ success: boolean; buildRunName: string; message: string }> {
+    return apiFetch(
+      `/tools/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/shipwright-buildrun`,
+      { method: 'POST' }
+    );
+  },
+
+  /**
+   * Finalize a Shipwright build by creating the MCPServer
+   */
+  async finalizeBuild(
+    namespace: string,
+    name: string,
+    data: {
+      protocol?: string;
+      framework?: string;
+      envVars?: Array<{ name: string; value: string }>;
+      servicePorts?: Array<{
+        name: string;
+        port: number;
+        targetPort: number;
+        protocol: string;
+      }>;
+      createHttpRoute?: boolean;
+      imagePullSecret?: string;
+    }
+  ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
+    return apiFetch(
+      `/tools/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/finalize-shipwright-build`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
       }
     );
   },

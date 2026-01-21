@@ -30,17 +30,44 @@ import {
   Grid,
   GridItem,
   Checkbox,
+  Radio,
 } from '@patternfly/react-core';
 import { TrashIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import { useMutation } from '@tanstack/react-query';
 
-import { toolService } from '@/services/api';
+import { toolService, ShipwrightBuildConfig } from '@/services/api';
 import { NamespaceSelector } from '@/components/NamespaceSelector';
+import { BuildStrategySelector } from '@/components/BuildStrategySelector';
 
 const PROTOCOLS = [
   { value: 'streamable_http', label: 'Streamable HTTP' },
   { value: 'sse', label: 'Server-Sent Events (SSE)' },
 ];
+
+// Example MCP tool subfolders
+const TOOL_EXAMPLES = [
+  { value: '', label: 'Select an example...' },
+  { value: 'mcp/weather_tool', label: 'Weather Tool' },
+  { value: 'mcp/flight_tool', label: 'Flight Tool' },
+  { value: 'mcp/github_tool', label: 'GitHub Tool' },
+  { value: 'mcp/image_tool', label: 'Image Tool' },
+  { value: 'mcp/movie_tool', label: 'Movie Tool' },
+  { value: 'mcp/reservation_tool', label: 'Reservation Tool' },
+  { value: 'mcp/slack_tool', label: 'Slack Tool' },
+  { value: 'mcp/cloud_storage_tool', label: 'Cloud Storage Tool' },
+];
+
+const REGISTRY_OPTIONS = [
+  { value: 'local', label: 'Local Registry (In-Cluster)', url: 'registry.cr-system.svc.cluster.local:5000' },
+  { value: 'quay', label: 'Quay.io', url: 'quay.io' },
+  { value: 'dockerhub', label: 'Docker Hub', url: 'docker.io' },
+  { value: 'github', label: 'GitHub Container Registry', url: 'ghcr.io' },
+];
+
+const DEFAULT_REPO_URL = 'https://github.com/kagenti/agent-examples';
+const DEFAULT_BRANCH = 'main';
+
+type DeploymentMethod = 'source' | 'image';
 
 interface EnvVar {
   name: string;
@@ -57,12 +84,44 @@ interface ServicePort {
 export const ImportToolPage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Deployment method
+  const [deploymentMethod, setDeploymentMethod] = useState<DeploymentMethod>('image');
+
   // Form state
   const [namespace, setNamespace] = useState('team1');
   const [name, setName] = useState('');
-  const [containerImage, setContainerImage] = useState('');
-  const [imageTag, setImageTag] = useState('latest');
   const [protocol, setProtocol] = useState('streamable_http');
+
+  // Build from source state
+  const [gitUrl, setGitUrl] = useState(DEFAULT_REPO_URL);
+  const [gitBranch, setGitBranch] = useState(DEFAULT_BRANCH);
+  const [gitPath, setGitPath] = useState('');
+  const [selectedExample, setSelectedExample] = useState('');
+
+  // Registry configuration (for build from source)
+  const [registryType, setRegistryType] = useState('local');
+  const [registryNamespace, setRegistryNamespace] = useState('');
+  const [registrySecret, setRegistrySecret] = useState('');
+  const [imageTag, setImageTag] = useState('v0.0.1');
+
+  // Update registry secret default when registry type changes
+  React.useEffect(() => {
+    if (registryType !== 'local') {
+      setRegistrySecret(`${registryType}-registry-secret`);
+    } else {
+      setRegistrySecret('');
+    }
+  }, [registryType]);
+
+  // Shipwright build configuration
+  const [buildStrategy, setBuildStrategy] = useState('buildah-insecure-push');
+  const [dockerfile, setDockerfile] = useState('Dockerfile');
+  const [buildTimeout, setBuildTimeout] = useState('15m');
+  const [buildArgs, setBuildArgs] = useState<string[]>([]);
+  const [showBuildConfig, setShowBuildConfig] = useState(false);
+
+  // Deploy from image state
+  const [containerImage, setContainerImage] = useState('');
   const [imagePullSecret, setImagePullSecret] = useState('');
 
   // Pod configuration
@@ -85,15 +144,69 @@ export const ImportToolPage: React.FC = () => {
     mutationFn: (data: Parameters<typeof toolService.create>[0]) =>
       toolService.create(data),
     onSuccess: () => {
-      navigate(`/tools/${namespace}/${name || getNameFromImage()}`);
+      const finalName = name || getNameFromPath();
+      // Navigate to build progress page for source builds
+      if (deploymentMethod === 'source') {
+        navigate(`/tools/${namespace}/${finalName}/build`);
+      } else {
+        navigate(`/tools/${namespace}/${finalName}`);
+      }
     },
   });
+
+  const getNameFromPath = () => {
+    if (deploymentMethod === 'image') {
+      // Extract name from image URL
+      if (!containerImage) return '';
+      const parts = containerImage.split('/');
+      const imageName = parts[parts.length - 1].split(':')[0];
+      return imageName.replace(/_/g, '-').toLowerCase();
+    }
+    // Extract name from git path
+    const path = gitPath || selectedExample;
+    if (!path) return '';
+    const parts = path.split('/');
+    return parts[parts.length - 1].replace(/_/g, '-').toLowerCase();
+  };
 
   const getNameFromImage = () => {
     if (!containerImage) return '';
     const parts = containerImage.split('/');
     const imageName = parts[parts.length - 1].split(':')[0];
     return imageName.replace(/_/g, '-').toLowerCase();
+  };
+
+  const handleExampleChange = (value: string) => {
+    setSelectedExample(value);
+    if (value) {
+      setGitPath(value);
+      const parts = value.split('/');
+      const autoName = parts[parts.length - 1].replace(/_/g, '-').toLowerCase();
+      if (!name) {
+        setName(autoName);
+      }
+    }
+  };
+
+  const handlePathChange = (value: string) => {
+    setGitPath(value);
+    setSelectedExample('');
+    // Auto-generate name from path
+    if (value && !name) {
+      const parts = value.split('/');
+      const autoName = parts[parts.length - 1].replace(/_/g, '-').toLowerCase();
+      setName(autoName);
+    }
+  };
+
+  // Build registry URL from configuration
+  const getRegistryUrl = () => {
+    const registry = REGISTRY_OPTIONS.find((r) => r.value === registryType);
+    if (!registry) return '';
+    if (registryType === 'local') {
+      return registry.url;
+    }
+    return registryNamespace ? `${registry.url}/${registryNamespace}` : registry.url;
   };
 
   const handleImageChange = (value: string) => {
@@ -147,7 +260,7 @@ export const ImportToolPage: React.FC = () => {
     let isValid = true;
 
     // Name validation
-    const finalName = name || getNameFromImage();
+    const finalName = name || getNameFromPath();
     if (!finalName) {
       newValidated.name = 'error';
       isValid = false;
@@ -158,12 +271,39 @@ export const ImportToolPage: React.FC = () => {
       newValidated.name = 'success';
     }
 
-    // Container image validation
-    if (!containerImage) {
-      newValidated.containerImage = 'error';
-      isValid = false;
+    if (deploymentMethod === 'source') {
+      // Git URL validation
+      if (!gitUrl) {
+        newValidated.gitUrl = 'error';
+        isValid = false;
+      } else {
+        newValidated.gitUrl = 'success';
+      }
+
+      // Git path validation
+      const finalPath = gitPath || selectedExample;
+      if (!finalPath) {
+        newValidated.gitPath = 'error';
+        isValid = false;
+      } else {
+        newValidated.gitPath = 'success';
+      }
+
+      // Registry namespace validation for external registries
+      if (registryType !== 'local' && !registryNamespace) {
+        newValidated.registryNamespace = 'error';
+        isValid = false;
+      } else {
+        newValidated.registryNamespace = 'success';
+      }
     } else {
-      newValidated.containerImage = 'success';
+      // Container image validation for image deployment
+      if (!containerImage) {
+        newValidated.containerImage = 'error';
+        isValid = false;
+      } else {
+        newValidated.containerImage = 'success';
+      }
     }
 
     setValidated(newValidated);
@@ -177,20 +317,51 @@ export const ImportToolPage: React.FC = () => {
       return;
     }
 
-    const finalName = name || getNameFromImage();
-    const fullImage = imageTag ? `${containerImage}:${imageTag}` : containerImage;
+    const finalName = name || getNameFromPath();
 
-    createMutation.mutate({
-      name: finalName,
-      namespace,
-      containerImage: fullImage,
-      protocol,
-      framework: 'Python',
-      envVars: envVars.filter((ev) => ev.name && ev.value),
-      imagePullSecret: imagePullSecret || undefined,
-      servicePorts: showPodConfig ? servicePorts : undefined,
-      createHttpRoute,
-    });
+    if (deploymentMethod === 'source') {
+      // Build Shipwright configuration
+      const shipwrightConfig: ShipwrightBuildConfig = {
+        buildStrategy,
+        dockerfile,
+        buildTimeout,
+        buildArgs: buildArgs.filter((arg) => arg.trim()),
+      };
+
+      createMutation.mutate({
+        name: finalName,
+        namespace,
+        protocol,
+        framework: 'Python',
+        deploymentMethod: 'source',
+        gitUrl,
+        gitRevision: gitBranch,
+        contextDir: gitPath || selectedExample,
+        registryUrl: getRegistryUrl(),
+        registrySecret: registrySecret || undefined,
+        imageTag,
+        shipwrightConfig,
+        envVars: envVars.filter((ev) => ev.name && ev.value),
+        servicePorts: showPodConfig ? servicePorts : undefined,
+        createHttpRoute,
+      });
+    } else {
+      // Image deployment
+      const fullImage = imageTag ? `${containerImage}:${imageTag}` : containerImage;
+
+      createMutation.mutate({
+        name: finalName,
+        namespace,
+        deploymentMethod: 'image',
+        containerImage: fullImage,
+        protocol,
+        framework: 'Python',
+        envVars: envVars.filter((ev) => ev.name && ev.value),
+        imagePullSecret: imagePullSecret || undefined,
+        servicePorts: showPodConfig ? servicePorts : undefined,
+        createHttpRoute,
+      });
+    }
   };
 
   return (
@@ -199,22 +370,12 @@ export const ImportToolPage: React.FC = () => {
         <TextContent>
           <Title headingLevel="h1">Import New Tool</Title>
           <Text component="p">
-            Deploy an MCP tool from an existing container image.
+            Build from source or deploy an existing container image as an MCP tool.
           </Text>
         </TextContent>
       </PageSection>
 
       <PageSection>
-        <Alert
-          variant="info"
-          title="Tools are deployed from container images"
-          isInline
-          style={{ marginBottom: '16px' }}
-        >
-          Unlike agents, MCP tools are deployed directly from pre-built container images.
-          Building from source is not supported for tools.
-        </Alert>
-
         <Card>
           <CardTitle>Tool Configuration</CardTitle>
           <CardBody>
@@ -260,7 +421,7 @@ export const ImportToolPage: React.FC = () => {
                     <HelperTextItem variant={validated.name === 'error' ? 'error' : 'default'}>
                       {validated.name === 'error'
                         ? 'Name must be lowercase alphanumeric with hyphens'
-                        : 'Leave empty to auto-generate from image name'}
+                        : 'Leave empty to auto-generate from path or image name'}
                     </HelperTextItem>
                   </HelperText>
                 </FormHelperText>
@@ -268,54 +429,307 @@ export const ImportToolPage: React.FC = () => {
 
               <Divider style={{ margin: '24px 0' }} />
 
-              {/* Container Image */}
+              {/* Deployment Method Selection */}
               <Title headingLevel="h3" size="md" style={{ marginBottom: '16px' }}>
-                Container Image
+                Deployment Method
               </Title>
 
-              <FormGroup label="Container Image" isRequired fieldId="containerImage">
-                <TextInput
-                  id="containerImage"
-                  value={containerImage}
-                  onChange={(_e, value) => handleImageChange(value)}
-                  placeholder="quay.io/myorg/my-tool"
-                  validated={validated.containerImage}
+              <FormGroup role="radiogroup" fieldId="deploymentMethod">
+                <Radio
+                  name="deploymentMethod"
+                  label="Deploy from Image"
+                  description="Deploy from an existing container image"
+                  isChecked={deploymentMethod === 'image'}
+                  onChange={() => setDeploymentMethod('image')}
+                  id="deploymentMethod-image"
                 />
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem variant={validated.containerImage === 'error' ? 'error' : 'default'}>
-                      {validated.containerImage === 'error'
-                        ? 'Container image is required'
-                        : 'Full image path without tag (e.g., quay.io/myorg/my-tool)'}
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-              </FormGroup>
-
-              <FormGroup label="Image Tag" fieldId="imageTag">
-                <TextInput
-                  id="imageTag"
-                  value={imageTag}
-                  onChange={(_e, value) => setImageTag(value)}
-                  placeholder="latest"
+                <Radio
+                  name="deploymentMethod"
+                  label="Build from Source"
+                  description="Build container image from source code using Shipwright"
+                  isChecked={deploymentMethod === 'source'}
+                  onChange={() => setDeploymentMethod('source')}
+                  id="deploymentMethod-source"
+                  style={{ marginTop: '8px' }}
                 />
               </FormGroup>
 
-              <FormGroup label="Image Pull Secret" fieldId="imagePullSecret">
-                <TextInput
-                  id="imagePullSecret"
-                  value={imagePullSecret}
-                  onChange={(_e, value) => setImagePullSecret(value)}
-                  placeholder="Leave empty for public images"
-                />
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem>
-                      Kubernetes secret containing credentials for private registries
-                    </HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-              </FormGroup>
+              <Divider style={{ margin: '24px 0' }} />
+
+              {/* Build from Source Configuration */}
+              {deploymentMethod === 'source' && (
+                <>
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: '16px' }}>
+                    Source Code
+                  </Title>
+
+                  <FormGroup label="Git Repository URL" isRequired fieldId="gitUrl">
+                    <TextInput
+                      id="gitUrl"
+                      value={gitUrl}
+                      onChange={(_e, value) => setGitUrl(value)}
+                      placeholder="https://github.com/myorg/my-tools"
+                      validated={validated.gitUrl}
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.gitUrl === 'error' ? 'error' : 'default'}>
+                          {validated.gitUrl === 'error'
+                            ? 'Git URL is required'
+                            : 'HTTPS URL of the Git repository containing your tool'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
+                  <FormGroup label="Branch or Tag" fieldId="gitBranch">
+                    <TextInput
+                      id="gitBranch"
+                      value={gitBranch}
+                      onChange={(_e, value) => setGitBranch(value)}
+                      placeholder="main"
+                    />
+                  </FormGroup>
+
+                  <FormGroup label="Example Tools" fieldId="selectedExample">
+                    <FormSelect
+                      id="selectedExample"
+                      value={selectedExample}
+                      onChange={(_e, value) => handleExampleChange(value)}
+                    >
+                      {TOOL_EXAMPLES.map((example) => (
+                        <FormSelectOption
+                          key={example.value}
+                          value={example.value}
+                          label={example.label}
+                        />
+                      ))}
+                    </FormSelect>
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem>
+                          Select a pre-configured example or enter a custom path below
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
+                  <FormGroup label="Source Subfolder" isRequired fieldId="gitPath">
+                    <TextInput
+                      id="gitPath"
+                      value={gitPath}
+                      onChange={(_e, value) => handlePathChange(value)}
+                      placeholder="mcp/my_tool"
+                      validated={validated.gitPath}
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.gitPath === 'error' ? 'error' : 'default'}>
+                          {validated.gitPath === 'error'
+                            ? 'Source subfolder is required'
+                            : 'Path to the tool directory within the repository'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
+                  <Divider style={{ margin: '24px 0' }} />
+
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: '16px' }}>
+                    Container Registry
+                  </Title>
+
+                  <FormGroup label="Registry" fieldId="registryType">
+                    <FormSelect
+                      id="registryType"
+                      value={registryType}
+                      onChange={(_e, value) => setRegistryType(value)}
+                    >
+                      {REGISTRY_OPTIONS.map((registry) => (
+                        <FormSelectOption
+                          key={registry.value}
+                          value={registry.value}
+                          label={registry.label}
+                        />
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+
+                  {registryType !== 'local' && (
+                    <FormGroup label="Registry Namespace" isRequired fieldId="registryNamespace">
+                      <TextInput
+                        id="registryNamespace"
+                        value={registryNamespace}
+                        onChange={(_e, value) => setRegistryNamespace(value)}
+                        placeholder="myorg"
+                        validated={validated.registryNamespace}
+                      />
+                      <FormHelperText>
+                        <HelperText>
+                          <HelperTextItem variant={validated.registryNamespace === 'error' ? 'error' : 'default'}>
+                            {validated.registryNamespace === 'error'
+                              ? 'Registry namespace is required for external registries'
+                              : 'Your username or organization name in the registry'}
+                          </HelperTextItem>
+                        </HelperText>
+                      </FormHelperText>
+                    </FormGroup>
+                  )}
+
+                  <FormGroup label="Registry Secret" fieldId="registrySecret">
+                    <TextInput
+                      id="registrySecret"
+                      value={registrySecret}
+                      onChange={(_e, value) => setRegistrySecret(value)}
+                      placeholder="Leave empty for public registries"
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem>
+                          Kubernetes secret containing registry credentials
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
+                  <FormGroup label="Image Tag" fieldId="imageTag">
+                    <TextInput
+                      id="imageTag"
+                      value={imageTag}
+                      onChange={(_e, value) => setImageTag(value)}
+                      placeholder="v0.0.1"
+                    />
+                  </FormGroup>
+
+                  <Divider style={{ margin: '24px 0' }} />
+
+                  {/* Build Configuration */}
+                  <ExpandableSection
+                    toggleText="Build Configuration (Advanced)"
+                    isExpanded={showBuildConfig}
+                    onToggle={() => setShowBuildConfig(!showBuildConfig)}
+                  >
+                    <Card isFlat style={{ marginTop: '8px' }}>
+                      <CardBody>
+                        <FormGroup label="Build Strategy" fieldId="buildStrategy">
+                          <BuildStrategySelector
+                            value={buildStrategy}
+                            onChange={setBuildStrategy}
+                            registryType={registryType}
+                          />
+                        </FormGroup>
+
+                        <FormGroup label="Dockerfile" fieldId="dockerfile">
+                          <TextInput
+                            id="dockerfile"
+                            value={dockerfile}
+                            onChange={(_e, value) => setDockerfile(value)}
+                            placeholder="Dockerfile"
+                          />
+                        </FormGroup>
+
+                        <FormGroup label="Build Timeout" fieldId="buildTimeout">
+                          <TextInput
+                            id="buildTimeout"
+                            value={buildTimeout}
+                            onChange={(_e, value) => setBuildTimeout(value)}
+                            placeholder="15m"
+                          />
+                        </FormGroup>
+
+                        <FormGroup label="Build Arguments" fieldId="buildArgs">
+                          {buildArgs.map((arg, index) => (
+                            <Split hasGutter key={index} style={{ marginBottom: '8px' }}>
+                              <SplitItem isFilled>
+                                <TextInput
+                                  aria-label="Build argument"
+                                  value={arg}
+                                  onChange={(_e, value) => {
+                                    const updated = [...buildArgs];
+                                    updated[index] = value;
+                                    setBuildArgs(updated);
+                                  }}
+                                  placeholder="KEY=VALUE"
+                                />
+                              </SplitItem>
+                              <SplitItem>
+                                <Button
+                                  variant="plain"
+                                  onClick={() => setBuildArgs(buildArgs.filter((_, i) => i !== index))}
+                                  aria-label="Remove build argument"
+                                  style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
+                                >
+                                  <TrashIcon />
+                                </Button>
+                              </SplitItem>
+                            </Split>
+                          ))}
+                          <Button
+                            variant="link"
+                            icon={<PlusCircleIcon />}
+                            onClick={() => setBuildArgs([...buildArgs, ''])}
+                          >
+                            Add Build Argument
+                          </Button>
+                        </FormGroup>
+                      </CardBody>
+                    </Card>
+                  </ExpandableSection>
+                </>
+              )}
+
+              {/* Deploy from Image Configuration */}
+              {deploymentMethod === 'image' && (
+                <>
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: '16px' }}>
+                    Container Image
+                  </Title>
+
+                  <FormGroup label="Container Image" isRequired fieldId="containerImage">
+                    <TextInput
+                      id="containerImage"
+                      value={containerImage}
+                      onChange={(_e, value) => handleImageChange(value)}
+                      placeholder="quay.io/myorg/my-tool"
+                      validated={validated.containerImage}
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.containerImage === 'error' ? 'error' : 'default'}>
+                          {validated.containerImage === 'error'
+                            ? 'Container image is required'
+                            : 'Full image path without tag (e.g., quay.io/myorg/my-tool)'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+
+                  <FormGroup label="Image Tag" fieldId="imageTagImage">
+                    <TextInput
+                      id="imageTagImage"
+                      value={imageTag}
+                      onChange={(_e, value) => setImageTag(value)}
+                      placeholder="latest"
+                    />
+                  </FormGroup>
+
+                  <FormGroup label="Image Pull Secret" fieldId="imagePullSecret">
+                    <TextInput
+                      id="imagePullSecret"
+                      value={imagePullSecret}
+                      onChange={(_e, value) => setImagePullSecret(value)}
+                      placeholder="Leave empty for public images"
+                    />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem>
+                          Kubernetes secret containing credentials for private registries
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  </FormGroup>
+                </>
+              )}
 
               <Divider style={{ margin: '24px 0' }} />
 
@@ -518,7 +932,13 @@ export const ImportToolPage: React.FC = () => {
                   isLoading={createMutation.isPending}
                   isDisabled={createMutation.isPending}
                 >
-                  {createMutation.isPending ? 'Deploying...' : 'Deploy Tool'}
+                  {createMutation.isPending
+                    ? deploymentMethod === 'source'
+                      ? 'Starting Build...'
+                      : 'Deploying...'
+                    : deploymentMethod === 'source'
+                      ? 'Build & Deploy Tool'
+                      : 'Deploy Tool'}
                 </Button>
                 <Button variant="link" onClick={() => navigate('/tools')}>
                   Cancel
