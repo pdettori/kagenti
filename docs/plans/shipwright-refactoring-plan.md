@@ -490,26 +490,81 @@ async def get_agent_build_status(...):
 
 ## Stage 5: Testing and Validation
 
-### 5.1 Backend Unit Tests
+### 5.1 Backend Unit Tests ✅
 
 **File**: `kagenti/backend/tests/test_shipwright.py`
 
-Test cases:
-- Build manifest generation (dev registry, external registry)
-- BuildRun manifest generation
-- Build strategy selection logic
-- Status parsing
+**Implemented 33 unit tests covering:**
 
-### 5.2 Integration Tests
+1. **Build manifest generation (11 tests)**
+   - Default values for build manifest
+   - Build name and namespace
+   - Git source configuration
+   - Build strategy selection based on registry type
+   - Custom build strategy override
+   - Dockerfile path configuration
+   - Build arguments
+   - Build timeout
+   - Output image configuration
+   - Push secret inclusion
+   - Agent config annotation storage
 
-**File**: `kagenti/tests/e2e/test_shipwright_build.py`
+2. **BuildRun manifest generation (3 tests)**
+   - Default BuildRun structure
+   - Label propagation
+   - Build name reference
 
-Test cases:
-- Create Build + BuildRun for internal registry
-- Create Build + BuildRun for external registry (quay.io)
-- Poll BuildRun status until completion
-- Create Agent after successful build
-- Handle build failures gracefully
+3. **Build strategy selection logic (4 tests)**
+   - Internal registry → `buildah-insecure-push`
+   - External quay.io → `buildah`
+   - External ghcr.io → `buildah`
+   - Manual override respected
+
+4. **Model validation (2 tests)**
+   - ShipwrightBuildConfig default values
+   - Custom configuration values
+
+5. **BuildRun phase detection (6 tests)**
+   - Pending state
+   - Running state
+   - Succeeded state
+   - Failed state
+   - Unknown state handling
+   - Missing status handling
+
+6. **Agent config parsing (4 tests)**
+   - Parse config from annotations
+   - Handle missing annotations
+   - Handle empty annotations
+   - Handle malformed JSON
+
+7. **Response model (3 tests)**
+   - Build info response structure
+   - Response with BuildRun info
+   - Response with agent config
+
+### 5.2 Integration Tests ✅
+
+**File**: `kagenti/tests/e2e/common/test_shipwright_build.py`
+
+**Implemented tests covering:**
+
+1. **Shipwright availability tests**
+   - `test_shipwright_crds_installed` - Verify Shipwright CRDs present
+   - `test_build_strategies_exist` - Verify expected ClusterBuildStrategies available
+
+2. **Build lifecycle tests**
+   - `test_create_build` - Verify Build CRD creation
+   - `test_create_buildrun` - Verify BuildRun triggers build
+   - `test_buildrun_status_progression` - Verify status updates
+
+3. **Annotation tests**
+   - `test_agent_config_in_annotations` - Verify agent config storage in Build annotations
+
+**Test fixtures:**
+- `k8s_custom_client` - CustomObjectsApi for CRD operations
+- `shipwright_available` - Check if Shipwright is installed
+- `cleanup_build` - Automatic cleanup of test resources
 
 ### 5.3 Manual Testing Checklist
 
