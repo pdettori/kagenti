@@ -77,6 +77,8 @@ It is deployed in the `kagenti-system` namespace.
 
 - **Waypoint Egress Gateway**: manages external communication with outside services or networks, ensuring secure egress traffic from the mesh. A Waypoint is part of the Istio Ambient data plane and acts as a proxy enabling traffic management policies such as routing, load balancing, and retries. Egress gateways enable the implementation of policies for external tool calls, serving as a key enforcement point.
 
+- **Shipwright Build System**: [Shipwright](https://shipwright.io) is a cloud-native build framework for building container images directly in Kubernetes. Kagenti uses Shipwright to build both agents and MCP tools from source code. Shipwright supports multiple build strategies including `buildah` for external registries with TLS and `buildah-insecure-push` for internal registries without TLS verification.
+
  
 ### Agents
 

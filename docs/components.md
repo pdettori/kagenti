@@ -258,6 +258,55 @@ spec:
 
 For detailed gateway configuration, see [MCP Gateway Instructions](./gateway.md).
 
+### MCP Tool Builds with Shipwright
+
+Similar to agents, MCP tools can be built from source using Shipwright. The build process is the same:
+
+1. UI creates a Shipwright `Build` CR with source configuration
+2. UI creates a `BuildRun` CR to trigger the build
+3. UI polls `BuildRun` status until completion
+4. On success, UI creates the `MCPServer` CR with the built image
+
+```yaml
+# Shipwright Build for MCP Tool
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: weather-tool
+  labels:
+    kagenti.io/type: tool
+    kagenti.io/protocol: streamable_http
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/kagenti/agent-examples
+      revision: main
+    contextDir: mcp/weather_tool
+  strategy:
+    name: buildah-insecure-push
+    kind: ClusterBuildStrategy
+  output:
+    image: registry.cr-system.svc.cluster.local:5000/weather-tool:v0.0.1
+```
+
+```yaml
+# MCPServer - Deployed after successful build
+apiVersion: toolhive.io/v1alpha1
+kind: MCPServer
+metadata:
+  name: weather-tool
+  labels:
+    kagenti.io/type: tool
+    kagenti.io/built-by: shipwright
+spec:
+  image: registry.cr-system.svc.cluster.local:5000/weather-tool:v0.0.1
+  protocol: streamable_http
+  replicas: 1
+```
+
+For detailed tool deployment instructions, see [Importing a New Tool](./new-tool.md).
+
 ---
 
 ## Kagenti UI
@@ -527,3 +576,4 @@ POST /mcp    # MCP JSON-RPC messages
 - [Identity, Security, and Auth Bridge](./identity-guide.md)
 - [MCP Gateway Instructions](./gateway.md)
 - [New Agent Guide](./new-agent.md)
+- [New Tool Guide](./new-tool.md)

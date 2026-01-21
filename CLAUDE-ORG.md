@@ -88,7 +88,9 @@ Manages complex multi-component applications through:
 #### Kagenti Operator (`kagenti-operator/`)
 Legacy operator with:
 - **Agent CR**: Agent deployment and lifecycle
-- **AgentBuild CR**: Build orchestration via Tekton
+- **AgentBuild CR**: Build orchestration (deprecated - use Shipwright instead)
+
+**Note**: Container image builds are now handled by Shipwright Build/BuildRun CRDs directly, triggered by the Kagenti UI. The operator manages the resulting Agent and MCPServer CRDs after builds complete.
 
 **Key Files**:
 ```
@@ -100,18 +102,48 @@ kagenti-operator/
 │   ├── internal/
 │   │   ├── controller/           # Reconciliation logic
 │   │   ├── deployer/             # Deployment strategies (K8s, Helm, OLM)
-│   │   ├── builder/              # Tekton pipeline management
 │   │   └── webhook/              # Admission webhooks
 │   └── config/
 │       ├── crd/bases/            # CRD YAML definitions
-│       ├── samples/              # Example CRs
-│       └── tekton/               # Build pipeline templates
+│       └── samples/              # Example CRs
 ├── kagenti-operator/
 │   ├── api/v1alpha1/
 │   │   ├── agent_types.go
-│   │   └── agentbuild_types.go
+│   │   └── agentbuild_types.go   # Deprecated - use Shipwright
 │   └── internal/controller/
 └── charts/                       # Helm charts for both operators
+```
+
+**Container Image Builds (Shipwright)**:
+```yaml
+# Shipwright Build - Defines how to build container image from source
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: weather-service
+  labels:
+    kagenti.io/type: agent  # or "tool"
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/kagenti/agent-examples
+      revision: main
+    contextDir: a2a/weather_service
+  strategy:
+    name: buildah-insecure-push  # or "buildah" for external registries
+    kind: ClusterBuildStrategy
+  output:
+    image: registry.cr-system.svc.cluster.local:5000/weather-service:v0.0.1
+
+# Shipwright BuildRun - Triggers the build
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+metadata:
+  generateName: weather-service-run-
+spec:
+  build:
+    name: weather-service
 ```
 
 **CRDs**:
@@ -297,7 +329,7 @@ GET  /sse                       # Server-sent events (legacy)
 | **Istio Ambient** | Service mesh (mTLS, traffic mgmt) | `istio-system` |
 | **SPIRE/SPIFFE** | Workload identity | `zero-trust-workload-identity-manager` |
 | **Keycloak** | OAuth/OIDC identity provider | `keycloak` |
-| **Tekton** | CI/CD pipelines | `tekton-pipelines` |
+| **Shipwright** | Container image builds for agents/tools | `shipwright-build` |
 | **Kubernetes Gateway API** | Ingress routing | `kagenti-system` |
 | **Phoenix** | LLM observability/tracing | `kagenti-system` |
 | **Kiali** | Service mesh visualization | `kagenti-system` |
@@ -349,7 +381,7 @@ Default credentials: `admin` / `admin`
 | `gateway-system` | MCP Gateway (Envoy proxy) |
 | `mcp-system` | MCP broker/controller |
 | `keycloak` | Keycloak server |
-| `tekton-pipelines` | Tekton pipeline runtime |
+| `shipwright-build` | Shipwright build system |
 | `zero-trust-workload-identity-manager` | SPIRE/SPIFFE |
 | `istio-system` | Istio control plane |
 | `team1`, `team2`, ... | Agent deployment namespaces |
@@ -373,6 +405,15 @@ kagenti-enabled: "true"
 
 # Created by
 app.kubernetes.io/created-by: kagenti-operator | kagenti-ui
+
+# Shipwright build labels
+kagenti.io/build-name: <build-name>      # Links BuildRun to Build
+kagenti.io/shipwright-build: <build-name> # Links Agent/MCPServer to its Build
+kagenti.io/built-by: shipwright          # Indicates resource was built from source
+
+# Shipwright build annotations
+kagenti.io/agent-config: <json>          # Agent config stored during build
+kagenti.io/tool-config: <json>           # Tool config stored during build
 ```
 
 ---
@@ -460,10 +501,12 @@ kubectl get platforms -A
 kubectl describe platform <name> -n <namespace>
 ```
 
-### View Tekton Builds
+### View Shipwright Builds
 ```bash
-kubectl get pipelineruns -A
-kubectl logs -n <namespace> <pipelinerun-pod>
+kubectl get builds -A
+kubectl get buildruns -A
+kubectl describe build <name> -n <namespace>
+kubectl logs -n <namespace> -l build.shipwright.io/name=<build-name>
 ```
 
 ### Traces

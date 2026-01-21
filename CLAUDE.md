@@ -153,7 +153,7 @@ kagenti/
 | Istio Ambient | Service mesh (mTLS, traffic management) | `istio-system` |
 | SPIRE | Workload identity (SPIFFE) | `zero-trust-workload-identity-manager` |
 | Keycloak | OAuth/OIDC identity provider | `keycloak` |
-| Tekton | CI/CD pipelines for agent builds | `tekton-pipelines` |
+| Shipwright | Container image builds for agents/tools | `shipwright-build` |
 | Kubernetes Gateway API | Ingress routing | `kagenti-system` |
 | Phoenix | LLM observability/tracing | `kagenti-system` |
 | Kiali | Service mesh visualization | `kagenti-system` |
@@ -217,6 +217,12 @@ spec:
 - `kagenti.io/framework`: `LangGraph`, `CrewAI`, `Python`, etc.
 
 - `kagenti-enabled: "true"`: Marks namespace for agent deployment
+
+- `kagenti.io/build-name`: Name of the Shipwright Build that created this resource
+
+- `kagenti.io/shipwright-build`: `"true"` - marks resources created from Shipwright builds
+
+- `kagenti.io/built-by`: `shipwright` - indicates the build system used
 
 ### Namespaces
 
@@ -324,19 +330,29 @@ test MCP tools through the gateway.
 
 2. Use UI "Import New Agent" or apply Component CRD
 
-3. Agent builds automatically via Tekton pipeline
+3. Agent builds automatically via Shipwright Build/BuildRun
 
-4. Access via HTTPRoute at `<agent-name>.localtest.me:8080`
+4. Build Progress page shows status (Pending → Running → Succeeded)
+
+5. Agent CRD created automatically after successful build
+
+6. Access via HTTPRoute at `<agent-name>.localtest.me:8080`
 
 ### Adding a New MCP Tool
 
 1. Create MCP server following MCP protocol
 
-2. Use UI "Import New Tool" or apply Component CRD
+2. Use UI "Import New Tool" with "Build from source" option
 
-3. Tool registers with MCP Gateway automatically
+3. Tool builds automatically via Shipwright Build/BuildRun
 
-4. Access via MCP Gateway or direct HTTPRoute
+4. Build Progress page shows status (Pending → Running → Succeeded)
+
+5. MCPServer CRD created automatically after successful build
+
+6. Tool registers with MCP Gateway automatically
+
+7. Access via MCP Gateway or direct HTTPRoute
 
 ### Debugging
 

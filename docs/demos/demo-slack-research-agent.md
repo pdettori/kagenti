@@ -120,20 +120,23 @@ To log in and import agents you can use the [default credentials](../install.md#
 
 To import tools you can use the [default credentials](../install.md#default-credentials)
 
-To deploy the Slack Tool:
+To deploy the Slack Tool using Shipwright:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
 2. Select the same `<namespace>` as used for the agent.
-3. In the **Select Environment Variable Sets** section, select:
+3. Select "Build from source" as the deployment method.
+4. In the **Select Environment Variable Sets** section, select:
    - `mcp-slack-config`
    - `mcp-slack-auth-config`
-4. Use the same source repository:
+5. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
-5. Choose the `main` branch or your preferred branch.
-6. Set **Select Protocol** to `streamable-http`.
-7. Under **Specify Source Subfolder**:
+6. Choose the `main` branch or your preferred branch.
+7. Set **Select Protocol** to `streamable-http`.
+8. Under **Specify Source Subfolder**:
    - Select: `mcp/slack_tool`
-8. Click **Build & Deploy New Tool** button.
+9. Click **Build & Deploy New Tool** button.
+
+You will be redirected to a **Build Progress** page where you can monitor the Shipwright build. Once the build succeeds, the MCPServer will be created automatically.
 
 ---
 

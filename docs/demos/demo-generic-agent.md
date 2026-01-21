@@ -50,11 +50,12 @@ To deploy the Generic Agent:
 
 ## Import New Tool
 
-To deploy the Movie Tool:
+To deploy the Movie Tool using Shipwright:
 
 1. Go to [OMDB's website](https://www.omdbapi.com/) and apply for a free API key
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in Kagenti's UI.
 1. Select the same `<namespace>` as used for the agent.
+1. Select "Build from source" as the deployment method.
 1. Under [**Environment Variable**](http://kagenti-ui.localtest.me:8080/Import_New_Agent#environment-variables), add the following environment variable:
    - Click `Add Environment Variable`
    - Under `Name` put `OMDB_API_KEY` and under `Value` put your OMDB API key
@@ -66,10 +67,13 @@ To deploy the Movie Tool:
    - Select: `mcp/movie_tool`
 1. Click **Build & Deploy New Tool** to deploy.
 
-To deploy the Flight Tool:
+You will be redirected to a **Build Progress** page where you can monitor the Shipwright build.
+
+To deploy the Flight Tool using Shipwright:
 
 1. Navigate to [Import New Tool](http://kagenti-ui.localtest.me:8080/Import_New_Tool#import-new-tool) in the UI.
 1. Select the same `<namespace>` as used for the agent.
+1. Select "Build from source" as the deployment method.
 1. Use the same source repository:
    <https://github.com/kagenti/agent-examples>
 1. Choose the `main` branch or your preferred branch.
@@ -77,6 +81,8 @@ To deploy the Flight Tool:
 1. Under **Specify Source Subfolder**:
    - Select: `mcp/flight_tool`
 1. Click **Build & Deploy New Tool** to deploy.
+
+You will be redirected to a **Build Progress** page where you can monitor the Shipwright build. Once builds succeed, the MCPServer resources will be created automatically.
 
 ---
 
