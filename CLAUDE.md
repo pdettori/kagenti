@@ -185,6 +185,26 @@ deployments/ansible/run-install.sh --env dev
 # Use --help for additional options
 ```
 
+### Testing Helm Chart Changes Directly
+
+When testing Helm chart changes without running the full Ansible installer:
+
+```bash
+# For OpenShift - use chart-specific secrets file
+helm upgrade kagenti charts/kagenti -n kagenti-system \
+  -f deployments/envs/ocp_values.yaml \
+  -f charts/kagenti/.secrets.yaml
+
+# For Kind/Kubernetes development
+helm upgrade kagenti charts/kagenti -n kagenti-system \
+  -f deployments/envs/dev_values.yaml \
+  -f charts/kagenti/.secrets.yaml
+```
+
+**Important**: The Helm charts use `charts/kagenti/.secrets.yaml` for secrets,
+which has a different format than `deployments/envs/.secret_values.yaml` used
+by the Ansible installer. Do not mix these files.
+
 ## Kubernetes Resources
 
 ### Custom Resource Definitions (CRDs)

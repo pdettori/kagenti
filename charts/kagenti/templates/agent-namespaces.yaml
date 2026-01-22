@@ -196,12 +196,12 @@ data:
       }
     ]
 {{- if $.Values.openshift }}
-{{- if not (lookup "rbac.authorization.k8s.io/v1" "RoleBinding" . "pipeline-privileged-scc") }}
 ---
 # ——————————————————————————————————————————————————————————————————————————————
 #  SCC RoleBinding for Pipeline SA in Namespace: {{ . }}
 #  Grants privileged SCC to the pipeline service account for buildah builds.
 #  Buildah requires SETUID/SETGID capabilities which only privileged SCC provides.
+#  Note: RoleBindings are idempotent - safe to apply even if already exists.
 # ——————————————————————————————————————————————————————————————————————————————
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -218,7 +218,6 @@ subjects:
   - kind: ServiceAccount
     name: pipeline
     namespace: {{ . }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
