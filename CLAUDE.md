@@ -185,28 +185,25 @@ deployments/ansible/run-install.sh --env dev
 # Use --help for additional options
 ```
 
-## Kubernetes Resources
+### Testing Helm Chart Changes Directly
 
-### Custom Resource Definitions (CRDs)
+When testing Helm chart changes without running the full Ansible installer:
 
-```yaml
-# Agent/Tool deployment via Component CRD
-apiVersion: kagenti.operator.dev/v1alpha1
-kind: Component
-metadata:
-  name: weather-service
-  namespace: team1
-  labels:
-    kagenti.io/type: agent  # or "tool"
-    kagenti.io/protocol: a2a  # or "mcp"
-spec:
-  source:
-    git:
-      url: https://github.com/kagenti/agent-examples
-      path: a2a/weather_service
-  image:
-    tag: v0.0.1
+```bash
+# For OpenShift - use chart-specific secrets file
+helm upgrade kagenti charts/kagenti -n kagenti-system \
+  -f charts/kagenti/.secrets.yaml
+
+# For Kind/Kubernetes development
+helm upgrade kagenti charts/kagenti -n kagenti-system \
+  -f charts/kagenti/.secrets.yaml
 ```
+
+**Important**: The Helm charts use `charts/kagenti/.secrets.yaml` for secrets,
+which has a different format than `deployments/envs/.secret_values.yaml` used
+by the Ansible installer. Do not mix these files.
+
+## Kubernetes Resources
 
 ### Important Labels
 
