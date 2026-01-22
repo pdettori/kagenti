@@ -328,6 +328,13 @@ rules:
   - apiGroups: ["toolhive.stacklok.dev"]
     resources: ["mcpservers"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Shipwright build resources for building agents and tools from source
+  - apiGroups: ["shipwright.io"]
+    resources: ["builds", "buildruns"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["shipwright.io"]
+    resources: ["clusterbuildstrategies"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
