@@ -77,6 +77,7 @@ interface StatusCondition {
   reason?: string;
   message?: string;
   lastTransitionTime?: string;
+  last_transition_time?: string; // snake_case from K8s API
 }
 
 interface BuildStatus {
@@ -148,11 +149,11 @@ export const AgentDetailPage: React.FC = () => {
     enabled: !!namespace && !!name,
     refetchInterval: (query) => {
       // Poll every 5 seconds if agent is not ready
-      const conditions = query.state.data?.status?.conditions || [];
-      const isReady = conditions.some(
-        (c: StatusCondition) => c.type === 'Ready' && c.status === 'True'
-      );
-      return isReady ? false : 5000;
+      // Use readyStatus from backend (handles Deployment, StatefulSet, Job)
+      // For Jobs: stop polling once Completed or Failed, but continue for Running
+      const readyStatus = query.state.data?.readyStatus;
+      const isStable = readyStatus === 'Ready' || readyStatus === 'Completed' || readyStatus === 'Failed';
+      return isStable ? false : 5000;
     },
   });
 
@@ -200,10 +201,10 @@ export const AgentDetailPage: React.FC = () => {
   });
 
   // Check if agent is ready to fetch agent card
-  const agentConditions = agent?.status?.conditions || [];
-  const isAgentReady = agentConditions.some(
-    (c: StatusCondition) => c.type === 'Ready' && c.status === 'True'
-  );
+  // Use readyStatus from backend (handles Deployment, StatefulSet, Job)
+  // All workload types now use consistent status values: Ready, Progressing, Not Ready, Failed
+  const agentReadyStatus = agent?.readyStatus;
+  const isAgentReady = agentReadyStatus === 'Ready' || agentReadyStatus === 'Progressing';
 
   // Fetch agent card if agent is ready
   const { data: agentCard, isLoading: isAgentCardLoading } = useQuery<AgentCard>({
@@ -289,9 +290,33 @@ export const AgentDetailPage: React.FC = () => {
   const labels = metadata.labels || {};
   const conditions: StatusCondition[] = status.conditions || [];
 
-  const isReady = conditions.some(
-    (c) => c.type === 'Ready' && c.status === 'True'
+  // Use computed readyStatus from backend (handles Deployment, StatefulSet, Job)
+  // Fallback to checking conditions for backward compatibility
+  const readyStatus = agent.readyStatus;
+  // All workload types now use consistent status values: Ready, Progressing, Not Ready, Failed
+  const isRunningOrReady = readyStatus === 'Ready' || readyStatus === 'Progressing';
+  const isReady = isRunningOrReady || conditions.some(
+    (c) => (c.type === 'Ready' || c.type === 'Available') && c.status === 'True'
   );
+
+  // Get service info (new for Deployment-based agents)
+  const serviceInfo = agent.service;
+
+  // Get description from spec (legacy Agent CRD) or annotations (Deployment)
+  const description =
+    spec.description ||
+    metadata.annotations?.['kagenti.io/description'] ||
+    'No description available';
+
+  // Get workload type
+  const workloadType = agent.workloadType || labels['kagenti.io/workload-type'] || 'deployment';
+
+  // Get replica info for Deployments/StatefulSets
+  const replicas = spec.replicas ?? 1;
+  const readyReplicas = status.readyReplicas ?? status.ready_replicas ?? 0;
+  const availableReplicas = status.availableReplicas ?? status.available_replicas ?? 0;
+  // updatedReplicas indicates rolling update progress for StatefulSets
+  const updatedReplicas = status.updatedReplicas ?? status.updated_replicas ?? 0;
 
   const gitSource = spec.source?.git;
 
@@ -326,7 +351,7 @@ export const AgentDetailPage: React.FC = () => {
           </SplitItem>
           <SplitItem>
             <Label color={isReady ? 'green' : 'red'}>
-              {isReady ? 'Ready' : 'Not Ready'}
+              {readyStatus || (isReady ? 'Ready' : 'Not Ready')}
             </Label>
           </SplitItem>
           <SplitItem isFilled />
@@ -405,7 +430,27 @@ export const AgentDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>Description</DescriptionListTerm>
                         <DescriptionListDescription>
-                          {spec.description || 'No description available'}
+                          {description}
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>Workload Type</DescriptionListTerm>
+                        <DescriptionListDescription>
+                          <Label color={workloadType === 'job' ? 'orange' : workloadType === 'statefulset' ? 'gold' : 'grey'} isCompact>
+                            {workloadType.charAt(0).toUpperCase() + workloadType.slice(1)}
+                          </Label>
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>Replicas</DescriptionListTerm>
+                        <DescriptionListDescription>
+                          {readyReplicas}/{replicas} ready
+                          {availableReplicas > 0 && ` (${availableReplicas} available)`}
+                          {workloadType === 'statefulset' && updatedReplicas < replicas && (
+                            <Label color="blue" isCompact style={{ marginLeft: 8 }}>
+                              {updatedReplicas}/{replicas} updated
+                            </Label>
+                          )}
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                       <DescriptionListGroup>
@@ -442,6 +487,37 @@ export const AgentDetailPage: React.FC = () => {
                           </ClipboardCopy>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
+                      {serviceInfo && (
+                        <>
+                          <DescriptionListGroup>
+                            <DescriptionListTerm>Service</DescriptionListTerm>
+                            <DescriptionListDescription>
+                              {serviceInfo.name} ({serviceInfo.type || 'ClusterIP'})
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
+                          <DescriptionListGroup>
+                            <DescriptionListTerm>Cluster IP</DescriptionListTerm>
+                            <DescriptionListDescription>
+                              <code>{serviceInfo.clusterIP || 'N/A'}</code>
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
+                          {serviceInfo.ports && serviceInfo.ports.length > 0 && (
+                            <DescriptionListGroup>
+                              <DescriptionListTerm>Ports</DescriptionListTerm>
+                              <DescriptionListDescription>
+                                <LabelGroup>
+                                  {serviceInfo.ports.map((port, idx) => (
+                                    <Label key={idx} isCompact>
+                                      {port.name ? `${port.name}: ` : ''}
+                                      {port.port}→{port.targetPort}
+                                    </Label>
+                                  ))}
+                                </LabelGroup>
+                              </DescriptionListDescription>
+                            </DescriptionListGroup>
+                          )}
+                        </>
+                      )}
                     </DescriptionList>
                   </CardBody>
                 </Card>
@@ -733,8 +809,8 @@ export const AgentDetailPage: React.FC = () => {
                                 {condition.message || '-'}
                               </Td>
                               <Td dataLabel="Last Transition">
-                                {condition.lastTransitionTime
-                                  ? new Date(condition.lastTransitionTime).toLocaleString()
+                                {(condition.lastTransitionTime || condition.last_transition_time)
+                                  ? new Date((condition.lastTransitionTime || condition.last_transition_time) as string).toLocaleString()
                                   : '-'}
                               </Td>
                             </Tr>
@@ -1038,11 +1114,14 @@ export const AgentDetailPage: React.FC = () => {
                 >
                   {yaml.dump(
                     {
-                      ...agent,
+                      apiVersion: agent.workloadType === 'statefulset' ? 'apps/v1' : agent.workloadType === 'job' ? 'batch/v1' : 'apps/v1',
+                      kind: agent.workloadType === 'statefulset' ? 'StatefulSet' : agent.workloadType === 'job' ? 'Job' : 'Deployment',
                       metadata: {
                         ...agent.metadata,
                         managedFields: undefined,
                       },
+                      spec: agent.spec,
+                      status: agent.status,
                     },
                     { noRefs: true, lineWidth: -1 }
                   )}

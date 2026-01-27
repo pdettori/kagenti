@@ -5,20 +5,90 @@
  * Core type definitions for the Kagenti UI.
  */
 
+// Workload types for agent deployment
+export type WorkloadType = 'deployment' | 'statefulset' | 'job';
+
 // Agent types
 export interface AgentLabels {
   protocol?: string;
   framework?: string;
   type?: string;
+  workloadType?: WorkloadType;
 }
 
 export interface Agent {
   name: string;
   namespace: string;
   description: string;
-  status: 'Ready' | 'Not Ready';
+  status: 'Ready' | 'Not Ready' | 'Progressing';
   labels: AgentLabels;
+  workloadType?: WorkloadType;
   createdAt?: string;
+}
+
+/**
+ * Deployment status structure from Kubernetes.
+ *
+ * This interface supports both camelCase and snake_case field names because:
+ * - snake_case: Returned by the Kubernetes Python client (used in our backend API)
+ * - camelCase: Returned by the raw Kubernetes API (e.g., direct kubectl responses)
+ *
+ * When consuming this data, prefer using a fallback pattern:
+ *   value.readyReplicas || value.ready_replicas
+ */
+export interface DeploymentStatus {
+  replicas?: number;
+  readyReplicas?: number;
+  ready_replicas?: number;
+  availableReplicas?: number;
+  available_replicas?: number;
+  updatedReplicas?: number;
+  updated_replicas?: number;
+  conditions?: Array<{
+    type: string;
+    status: string;
+    reason?: string;
+    message?: string;
+    lastTransitionTime?: string;
+    last_transition_time?: string;
+  }>;
+}
+
+// Service info returned with agent details
+export interface ServiceInfo {
+  name: string;
+  type?: string;
+  clusterIP?: string;
+  ports?: Array<{
+    name?: string;
+    port: number;
+    targetPort?: number | string;
+    protocol?: string;
+  }>;
+}
+
+// Container spec in Deployment
+export interface ContainerSpec {
+  name: string;
+  image: string;
+  imagePullPolicy?: string;
+  env?: Array<{
+    name: string;
+    value?: string;
+    valueFrom?: {
+      secretKeyRef?: { name: string; key: string };
+      configMapKeyRef?: { name: string; key: string };
+    };
+  }>;
+  ports?: Array<{
+    name?: string;
+    containerPort: number;
+    protocol?: string;
+  }>;
+  resources?: {
+    limits?: { cpu?: string; memory?: string };
+    requests?: { cpu?: string; memory?: string };
+  };
 }
 
 export interface AgentDetail {
@@ -30,7 +100,28 @@ export interface AgentDetail {
     creationTimestamp: string;
     uid: string;
   };
+  // Deployment spec structure
   spec: {
+    replicas?: number;
+    selector?: {
+      matchLabels?: Record<string, string>;
+    };
+    template?: {
+      metadata?: {
+        labels?: Record<string, string>;
+      };
+      spec?: {
+        containers?: ContainerSpec[];
+        volumes?: Array<{
+          name: string;
+          emptyDir?: Record<string, unknown>;
+          configMap?: { name: string };
+          secret?: { secretName: string };
+        }>;
+        imagePullSecrets?: Array<{ name: string }>;
+      };
+    };
+    // Legacy Agent CRD fields (for backward compatibility)
     description?: string;
     source?: {
       git?: {
@@ -49,15 +140,13 @@ export interface AgentDetail {
       };
     };
   };
-  status?: {
-    conditions?: Array<{
-      type: string;
-      status: string;
-      reason?: string;
-      message?: string;
-      lastTransitionTime?: string;
-    }>;
-  };
+  status?: DeploymentStatus;
+  // Service info (new)
+  service?: ServiceInfo;
+  // Workload type (new)
+  workloadType?: WorkloadType;
+  // Computed ready status from backend (handles Deployment, StatefulSet, Job)
+  readyStatus?: 'Ready' | 'Not Ready' | 'Progressing' | 'Completed' | 'Failed' | 'Running' | 'Pending' | 'Unknown';
 }
 
 // Tool types

@@ -151,6 +151,9 @@ export const ImportAgentPage: React.FC = () => {
   const [showEnvVars, setShowEnvVars] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
+  // Workload type
+  const [workloadType, setWorkloadType] = useState<'deployment' | 'statefulset' | 'job'>('deployment');
+
   // HTTPRoute/Route creation
   const [createHttpRoute, setCreateHttpRoute] = useState(false);
 
@@ -426,6 +429,8 @@ export const ImportAgentPage: React.FC = () => {
         protocol: 'a2a',
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
+        // Workload type
+        workloadType,
         // Additional fields for build from source
         deploymentMethod: 'source',
         registryUrl: getRegistryUrl(),
@@ -450,6 +455,8 @@ export const ImportAgentPage: React.FC = () => {
         protocol: 'a2a',
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
+        // Workload type
+        workloadType,
         // Additional fields for image deployment
         deploymentMethod: 'image',
         containerImage: fullImage,
@@ -880,6 +887,29 @@ export const ImportAgentPage: React.FC = () => {
                     <FormSelectOption key={fw.value} value={fw.value} label={fw.label} />
                   ))}
                 </FormSelect>
+              </FormGroup>
+
+              {/* Workload Type Selection */}
+              <FormGroup label="Workload Type" fieldId="workloadType">
+                <FormSelect
+                  id="workloadType"
+                  value={workloadType}
+                  onChange={(_e, value) => setWorkloadType(value as 'deployment' | 'statefulset' | 'job')}
+                  aria-label="Workload type selector"
+                >
+                  <FormSelectOption value="deployment" label="Deployment (Recommended)" />
+                  <FormSelectOption value="statefulset" label="StatefulSet" />
+                  <FormSelectOption value="job" label="Job" />
+                </FormSelect>
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      {workloadType === 'deployment' && 'Standard deployment for long-running agents with auto-restart'}
+                      {workloadType === 'statefulset' && 'For stateful agents requiring stable network identity and persistent storage'}
+                      {workloadType === 'job' && 'For batch/one-time agents that run to completion. Note: Jobs may not expose an agent card or support HTTPRoute-based external access.'}
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
               </FormGroup>
 
               {/* HTTPRoute/Route Creation */}
