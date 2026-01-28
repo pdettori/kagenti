@@ -208,6 +208,26 @@
     - enable_openshift | default(false)
     - toolhiveOperator.enabled | default(false)
 
+# After granting SCC, scale deployment to 0 then back to 1 to force pod recreation.
+# This avoids the "old replicas pending termination" issue that rollout restart causes.
+- name: Scale Toolhive operator to 0 to clear stuck pods
+  command: kubectl scale deployment/toolhive-operator -n {{ toolhiveOperator.namespace }} --replicas=0
+  when:
+    - enable_openshift | default(false)
+    - toolhiveOperator.enabled | default(false)
+
+- name: Wait for Toolhive operator scale down
+  command: kubectl rollout status deployment/toolhive-operator -n {{ toolhiveOperator.namespace }} --timeout=60s
+  when:
+    - enable_openshift | default(false)
+    - toolhiveOperator.enabled | default(false)
+
+- name: Scale Toolhive operator back to 1
+  command: kubectl scale deployment/toolhive-operator -n {{ toolhiveOperator.namespace }} --replicas=1
+  when:
+    - enable_openshift | default(false)
+    - toolhiveOperator.enabled | default(false)
+
 - name: Wait for Toolhive operator deployment to be ready on OpenShift
   command: >-
     kubectl rollout status deployment/toolhive-operator
@@ -883,8 +903,159 @@
     - skip_cert_manager_operator | default(false)
     - cert_manager_existing_check.rc == 0
 
+# TODO: Move TektonConfig patching to kagenti-operator
+# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
+# context to know what Tekton settings are needed. The operator should:
+# 1. Check if running on OpenShift (detect TektonConfig CRD)
+# 2. Patch TektonConfig to set pipeline.set-security-context: true
+# 3. This ensures proper fsGroup handling for PVC permissions in build pods
+# For now, we patch it in the installer as a workaround.
+#
+# IMPORTANT: On HyperShift clusters, TektonConfig may be created without
+# proper SCC defaults (spec.platforms.openshift.scc is empty), causing the
+# Tekton operator to crash with nil pointer dereference in rbac.go.
+# We MUST patch the SCC configuration BEFORE waiting for Shipwright, because
+# Shipwright depends on TektonConfig being ready.
+- name: Patch TektonConfig for OpenShift build permissions
+  block:
+    - name: Wait for TektonConfig to exist
+      command: kubectl get tektonconfig config
+      register: tektonconfig_check
+      retries: 30
+      delay: 10
+      until: tektonconfig_check.rc == 0
+      changed_when: false
+
+    # On HyperShift clusters, TektonConfig may be created with empty
+    # spec.platforms.openshift, causing operator crash. Check and patch early.
+    - name: Check if TektonConfig has SCC defaults
+      command: kubectl get tektonconfig config -o jsonpath='{.spec.platforms.openshift.scc.default}'
+      register: tektonconfig_scc_check
+      failed_when: false
+      changed_when: false
+
+    - name: Patch TektonConfig SCC defaults for HyperShift clusters
+      kubernetes.core.k8s:
+        api_version: operator.tekton.dev/v1alpha1
+        kind: TektonConfig
+        name: config
+        definition:
+          spec:
+            platforms:
+              openshift:
+                scc:
+                  default: "pipelines-scc"
+        merge_type: merge
+      retries: 5
+      delay: 10
+      register: tektonconfig_scc_patch
+      until: tektonconfig_scc_patch is not failed
+      when: tektonconfig_scc_check.stdout | default('') | length == 0
+
+    - name: Wait for Tekton operator to recover after SCC patch
+      pause:
+        seconds: 10
+      when: tektonconfig_scc_check.stdout | default('') | length == 0
+
+    - name: Wait for Tekton operator webhook to be ready
+      command: >-
+        kubectl rollout status deployment/tekton-operator-webhook
+        -n openshift-operators --timeout=120s
+      register: tekton_webhook_ready
+      retries: 5
+      delay: 10
+      until: tekton_webhook_ready.rc == 0
+      changed_when: false
+      failed_when: false
+
+    - name: Patch TektonConfig to set security context and pruner
+      kubernetes.core.k8s:
+        api_version: operator.tekton.dev/v1alpha1
+        kind: TektonConfig
+        name: config
+        definition:
+          spec:
+            pipeline:
+              set-security-context: true
+            # Pruner configuration is required by newer Tekton versions.
+            # Without spec.pruner.resources, the webhook validation fails with:
+            # "validation failed: missing field(s): spec.pruner.resources"
+            pruner:
+              resources:
+                - taskrun
+                - pipelinerun
+              keep: 100
+              schedule: "0 8 * * *"
+        merge_type: merge
+      retries: 5
+      delay: 15
+      register: tektonconfig_patch
+      until: tektonconfig_patch is not failed
+
+    # Wait for TektonConfig to become fully Ready before proceeding.
+    # OpenShift Builds operator depends on TektonConfig being ready before
+    # it will deploy Shipwright components. Without this wait, the Builds
+    # operator will be stuck in a retry loop waiting for Tekton.
+    - name: Wait for TektonConfig to be Ready
+      block:
+        - name: Wait for TektonConfig Ready condition
+          command: >-
+            kubectl get tektonconfig config
+            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+          register: tektonconfig_ready_status
+          retries: 60
+          delay: 10
+          until: tektonconfig_ready_status.stdout == "True"
+          changed_when: false
+      rescue:
+        - name: Get TektonConfig full status for debugging
+          command: kubectl get tektonconfig config -o yaml
+          register: tektonconfig_full_status
+          failed_when: false
+
+        - name: Get Tekton operator pod status
+          command: kubectl get pods -n openshift-operators -l app=tekton-operator -o wide
+          register: tekton_operator_pods
+          failed_when: false
+
+        - name: Get Tekton operator logs
+          shell: kubectl logs -n openshift-operators -l app=tekton-operator --tail=100 2>&1 || echo "No logs available"
+          register: tekton_operator_logs
+          failed_when: false
+
+        - name: Get Tekton pipelines controller status
+          command: kubectl get pods -n openshift-pipelines -o wide
+          register: tekton_pipelines_pods
+          failed_when: false
+
+        - name: Display TektonConfig failure diagnostics
+          debug:
+            msg: |
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              TektonConfig Failed to Become Ready
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+              TEKTONCONFIG STATUS:
+              {{ tektonconfig_full_status.stdout | default('unable to get status') }}
+
+              TEKTON OPERATOR PODS:
+              {{ tekton_operator_pods.stdout | default('unable to get pods') }}
+
+              TEKTON OPERATOR LOGS (last 100 lines):
+              {{ tekton_operator_logs.stdout | default('no logs') }}
+
+              TEKTON PIPELINES PODS:
+              {{ tekton_pipelines_pods.stdout | default('unable to get pods') }}
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        - name: Fail with TektonConfig error
+          fail:
+            msg: "TektonConfig did not become Ready after 10 minutes. See diagnostics above."
+  when: enable_openshift | default(false)
+
 # Wait for OpenShift Builds operator to be ready.
 # The operator is installed via OLM subscription in kagenti-deps.
+# The OpenShiftBuild operand CR is created via Helm hook (post-install).
 # Skip if the operator was already installed (detected earlier) or if component is disabled.
 - name: Wait for OpenShift Builds operator on OpenShift
   block:
@@ -898,10 +1069,153 @@
       until: builds_csv_status.stdout == "Succeeded"
       changed_when: false
 
-    - name: Wait for Build CRD to be available
+    - name: Wait for OpenShiftBuild CRD to be available (operator ready)
+      command: kubectl get crd openshiftbuilds.operator.openshift.io
+      register: openshiftbuild_crd_check
+      retries: 30
+      delay: 10
+      until: openshiftbuild_crd_check.rc == 0
+      changed_when: false
+
+    # When skipOpenShiftBuildOperand is set, Ansible creates the operand after the CRD is ready
+    # This is needed on HyperShift/fresh installs where the CRD doesn't exist when Helm runs
+    # Retry on transient API timeouts (common with HyperShift remote control planes)
+    - name: Create OpenShiftBuild operand (skipped if Helm hook created it)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operator.openshift.io/v1alpha1
+          kind: OpenShiftBuild
+          metadata:
+            name: cluster
+          spec:
+            sharedResource:
+              state: Enabled
+            shipwright:
+              build:
+                state: Enabled
+      register: openshiftbuild_create
+      retries: 10
+      delay: 15
+      until: openshiftbuild_create is succeeded
+
+    - name: Check OpenShiftBuild operand status
+      command: kubectl get openshiftbuild cluster -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: openshiftbuild_status
+      retries: 60
+      delay: 10
+      until: openshiftbuild_status.stdout == "True"
+      changed_when: false
+      failed_when: false
+
+    - name: Display OpenShiftBuild operand status
+      debug:
+        msg: "OpenShiftBuild operand status: {{ openshiftbuild_status.stdout | default('not ready') }}"
+      when: openshiftbuild_status.rc != 0 or openshiftbuild_status.stdout != "True"
+
+    # Verify the OpenShiftBuild operand has Shipwright enabled
+    - name: Check OpenShiftBuild operand Shipwright spec
+      command: kubectl get openshiftbuild cluster -o jsonpath='{.spec.shipwright.build.state}'
+      register: openshiftbuild_shipwright_state
+      changed_when: false
+      failed_when: false
+
+    - name: Display OpenShiftBuild Shipwright state
+      debug:
+        msg: |
+          OpenShiftBuild operand Shipwright state: {{ openshiftbuild_shipwright_state.stdout | default('not found') }}
+          Expected: Enabled
+
+    - name: Fail if Shipwright is not enabled in operand
+      fail:
+        msg: |
+          OpenShiftBuild operand does not have Shipwright enabled!
+          Current state: {{ openshiftbuild_shipwright_state.stdout | default('not found') }}
+          This may indicate the Helm hook did not run or the operand was created by another source.
+          Check: kubectl get openshiftbuild cluster -o yaml
+      when: openshiftbuild_shipwright_state.stdout != "Enabled"
+
+    # The Ready condition might be True before Shipwright is fully deployed.
+    # Wait explicitly for Shipwright deployments to be ready.
+    # See: https://docs.openshift.com/builds/1.0/installing/installing-openshift-builds.html
+    - name: Wait for Shipwright build controller deployment to exist
+      command: kubectl get deployment/shipwright-build-controller -n openshift-builds
+      register: shipwright_controller_exists
+      retries: 60
+      delay: 10
+      until: shipwright_controller_exists.rc == 0
+      changed_when: false
+      failed_when: false
+
+    - name: Display Shipwright deployment status on failure
+      shell: |
+        echo "=== OpenShiftBuild operand status ==="
+        kubectl get openshiftbuild cluster -o yaml 2>&1 || echo "Not found"
+        echo ""
+        echo "=== Pods in openshift-builds namespace ==="
+        kubectl get pods -n openshift-builds 2>&1 || echo "None"
+        echo ""
+        echo "=== Deployments in openshift-builds namespace ==="
+        kubectl get deployments -n openshift-builds 2>&1 || echo "None"
+        echo ""
+        echo "=== Events in openshift-builds namespace ==="
+        kubectl get events -n openshift-builds --sort-by='.lastTimestamp' 2>&1 | tail -20 || echo "None"
+        echo ""
+        echo "=== OpenShift Builds operator pod logs ==="
+        kubectl logs -n openshift-builds deployment/openshift-builds-operator -c operator --tail=50 2>&1 || echo "No operator pod"
+        echo ""
+        echo "=== TektonConfig status (Shipwright depends on Tekton) ==="
+        kubectl get tektonconfig config -o jsonpath='{.status.conditions}' 2>&1 | jq . 2>/dev/null || kubectl get tektonconfig config -o yaml 2>&1 || echo "TektonConfig not found"
+        echo ""
+        echo "=== OpenShift Pipelines operator pods ==="
+        kubectl get pods -n openshift-operators -l name=openshift-pipelines-operator 2>&1 || echo "None"
+        echo ""
+        echo "=== OpenShift Pipelines CSV status ==="
+        kubectl get csv -n openshift-operators -l operators.coreos.com/openshift-pipelines-operator-rh.openshift-operators 2>&1 || echo "No Pipelines CSV"
+        echo ""
+        echo "=== Tekton pods in openshift-pipelines ==="
+        kubectl get pods -n openshift-pipelines 2>&1 || echo "None"
+      args:
+        executable: /bin/bash
+      register: shipwright_debug_info
+      when: shipwright_controller_exists.rc != 0
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if Shipwright controller deployment not found
+      fail:
+        msg: |
+          Shipwright build controller deployment not found in openshift-builds namespace.
+          The OpenShift Builds operator may not have deployed Shipwright components.
+
+          Debug info:
+          {{ shipwright_debug_info.stdout | default('No debug info available') }}
+      when: shipwright_controller_exists.rc != 0
+
+    - name: Wait for Shipwright build controller deployment to be ready
+      command: >-
+        kubectl rollout status deployment/shipwright-build-controller
+        -n openshift-builds --timeout=300s
+      register: shipwright_controller_status
+      retries: 5
+      delay: 30
+      until: shipwright_controller_status.rc == 0
+      changed_when: false
+
+    - name: Wait for Shipwright build webhook deployment to be ready
+      command: >-
+        kubectl rollout status deployment/shipwright-build-webhook
+        -n openshift-builds --timeout=300s
+      register: shipwright_webhook_status
+      retries: 5
+      delay: 30
+      until: shipwright_webhook_status.rc == 0
+      changed_when: false
+
+    - name: Wait for Shipwright Build CRD to be available
       command: kubectl get crd builds.shipwright.io
       register: build_crd_check
-      retries: 30
+      retries: 60
       delay: 10
       until: build_crd_check.rc == 0
       changed_when: false
@@ -909,50 +1223,6 @@
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('shipwright', {}).get('enabled', false) | bool
     - not (skip_builds_operator | default(false))
-
-# TODO: Move TektonConfig patching to kagenti-operator
-# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
-# context to know what Tekton settings are needed. The operator should:
-# 1. Check if running on OpenShift (detect TektonConfig CRD)
-# 2. Patch TektonConfig to set pipeline.set-security-context: true
-# 3. This ensures proper fsGroup handling for PVC permissions in build pods
-# For now, we patch it in the installer as a workaround.
-- name: Patch TektonConfig for OpenShift build permissions
-  block:
-    - name: Wait for TektonConfig to exist
-      command: kubectl get tektonconfig config
-      register: tektonconfig_check
-      retries: 30
-      delay: 10
-      until: tektonconfig_check.rc == 0
-      changed_when: false
-
-    - name: Wait for Tekton operator webhook to be ready
-      command: >-
-        kubectl rollout status deployment/tekton-operator-webhook
-        -n openshift-operators --timeout=120s
-      register: tekton_webhook_ready
-      retries: 5
-      delay: 10
-      until: tekton_webhook_ready.rc == 0
-      changed_when: false
-      failed_when: false
-
-    - name: Patch TektonConfig to set security context
-      kubernetes.core.k8s:
-        api_version: operator.tekton.dev/v1alpha1
-        kind: TektonConfig
-        name: config
-        definition:
-          spec:
-            pipeline:
-              set-security-context: true
-        merge_type: merge
-      retries: 5
-      delay: 15
-      register: tektonconfig_patch
-      until: tektonconfig_patch is not failed
-  when: enable_openshift | default(false)
 
 # Configure TektonConfig to use external cert-manager instead of bundled version.
 # OpenShift Pipelines 1.12+ can be configured to use a cluster-wide cert-manager,
@@ -987,10 +1257,7 @@
             params:
               - name: createRbacResource
                 value: "true"
-            # Configure Tekton Results to use external cert-manager if enabled
-            # Note: If Tekton Results requires cert-manager and cannot use external,
-            # consider disabling it: spec.platforms.openshift.pipelinesAsCode.enable: false
-            targetNamespace: openshift-pipelines
+            # Note: targetNamespace is immutable after creation (defaults to openshift-pipelines)
         merge_type: merge
       retries: 3
       delay: 10

@@ -28,8 +28,8 @@ toolhiveOperator:
   namespace: toolhive-system
 
 charts:
-  #################################################################### 
-  # kagenti-deps 
+  ####################################################################
+  # kagenti-deps
   ####################################################################
   kagenti-deps:
     enabled: true
@@ -41,7 +41,7 @@ charts:
         istio:
           enabled: true
         kiali:
-          enabled: true  
+          enabled: true
         keycloak:
           enabled: true
         otel:
@@ -55,20 +55,23 @@ charts:
           enabled: true
         shipwright:
           enabled: true
+          # Skip Helm hook for OpenShiftBuild operand - Ansible creates it after CRD is ready
+          # This is needed on HyperShift/fresh installs where the CRD doesn't exist yet
+          skipOpenShiftBuildOperand: true
         toolhiveCRDs:
           enabled: true
         toolhiveOperator:
           enabled: true
         certManager:
-          enabled: true  
-        gatewayApi:  
+          enabled: true
+        gatewayApi:
           enabled: false
         toolhive:
           enabled: true
 
-  #################################################################### 
-  # kagenti 
-  ####################################################################        
+  ####################################################################
+  # kagenti
+  ####################################################################
   kagenti:
     enabled: true
     values:
@@ -78,15 +81,20 @@ charts:
           enabled: true
         platformOperator:
           enabled: true
+        # Enable platformWebhook for SPIFFE identity injection
+        # Works with ZTWIM operator on OCP 4.19+ via SpiffeCSIDriver
+        # Injects: spiffe-helper sidecar, kagenti-client-registration init container
+        platformWebhook:
+          enabled: true
         ui:
           enabled: true
-        # additional artifacts required by MCP gateway   
+        # additional artifacts required by MCP gateway
         mcpGateway:
           enabled: true
         istio:
-          enabled: false    
-      # configs    
-      ui:      
+          enabled: false
+      # configs
+      ui:
         auth:
           enabled: true
       uiOAuthSecret:
@@ -95,6 +103,10 @@ charts:
         useServiceAccountCA: true
       keycloak:
         url: http://keycloak-service.keycloak:8080
+      # List of agent namespaces for Ansible installer to create internal-registry-secret
+      agentNamespaces:
+        - team1
+        - team2
 
   ####################################################################
   # mcp-gateway chart

@@ -11,12 +11,34 @@ log_step "74" "Deploying weather-service agent via Shipwright + Deployment"
 # Step 1: Build the weather-service image using Shipwright
 # ============================================================================
 
-log_info "Creating Shipwright Build..."
-kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_agent_shipwright_build.yaml"
+# IS_OPENSHIFT is set by env-detect.sh (sourced above)
+# It checks for OpenShift-specific APIs, not just "oc whoami" which works on any cluster
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    log_info "Using OpenShift Shipwright files with internal registry"
+else
+    log_info "Using Kind Shipwright files"
+fi
 
-# Wait for Build to be registered
-run_with_timeout 30 'kubectl get build weather-service -n team1 &> /dev/null' || {
-    log_error "Shipwright Build not created"
+# Clean up previous Build to avoid conflicts
+kubectl delete build weather-service -n team1 --ignore-not-found 2>/dev/null || true
+sleep 2
+log_info "Creating Shipwright Build..."
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_agent_shipwright_build_ocp.yaml"
+else
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_agent_shipwright_build.yaml"
+fi
+
+# Wait for Shipwright Build to be registered (with retry loop)
+# Use full API group to avoid confusion with OpenShift legacy builds
+run_with_timeout 60 'until kubectl get builds.shipwright.io weather-service -n team1 &> /dev/null; do sleep 2; done' || {
+    log_error "Shipwright Build not found after 60 seconds"
+    log_info "Available Shipwright Builds in team1:"
+    kubectl get builds.shipwright.io -n team1 2>&1 || echo "  (none or error)"
+    log_info "Available ClusterBuildStrategies:"
+    kubectl get clusterbuildstrategies.shipwright.io 2>&1 || echo "  (none or error)"
+    log_info "Recent Events in team1:"
+    kubectl get events -n team1 --sort-by='.lastTimestamp' 2>&1 | tail -20 || echo "  (none)"
     exit 1
 }
 log_info "Shipwright Build created"
@@ -54,8 +76,12 @@ log_success "BuildRun completed successfully"
 
 log_info "Creating Deployment and Service..."
 
-# Apply Deployment manifest
-kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_deployment.yaml"
+# Apply Deployment manifest (use OCP-specific file with correct registry on OpenShift)
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_deployment_ocp.yaml"
+else
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_deployment.yaml"
+fi
 
 # Apply Service manifest
 kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_service.yaml"
@@ -82,3 +108,81 @@ kubectl get service weather-service -n team1 || {
 }
 
 log_success "Weather-service deployed via Deployment + Service (operator-independent)"
+
+# WORKAROUND: Fix Service targetPort mismatch
+# The kagenti-operator creates Service with targetPort: 8080, but the agent listens on 8000
+# Patch the Service to use the correct targetPort until the operator is fixed
+# TODO: Remove this workaround once kagenti-operator is fixed to use port from Agent spec
+log_info "Patching Service to use correct targetPort (8000)..."
+kubectl patch svc weather-service -n team1 --type=json \
+    -p '[{"op": "replace", "path": "/spec/ports/0/targetPort", "value": 8000}]' || {
+    log_error "Failed to patch Service targetPort"
+    kubectl get svc weather-service -n team1 -o yaml
+    exit 1
+}
+
+# Create OpenShift Route for the agent (on OpenShift only)
+# The kagenti-operator doesn't create routes automatically - they're created by the UI backend
+# when using the web interface. For E2E tests, we need to create the route manually.
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    log_info "Creating OpenShift Route for weather-service..."
+    cat <<EOF | kubectl apply -f -
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: weather-service
+  namespace: team1
+  annotations:
+    openshift.io/host.generated: "true"
+spec:
+  path: /
+  port:
+    targetPort: 8000
+  to:
+    kind: Service
+    name: weather-service
+  wildcardPolicy: None
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+EOF
+    # Wait for route to be assigned a host
+    for i in {1..30}; do
+        ROUTE_HOST=$(oc get route -n team1 weather-service -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+        if [ -n "$ROUTE_HOST" ]; then
+            log_success "Route created: https://$ROUTE_HOST"
+            break
+        fi
+        echo "[$i/30] Waiting for route host assignment..."
+        sleep 2
+    done
+
+    # Wait for the agent to be ready to serve traffic
+    # The deployment "available" condition doesn't guarantee the app is ready
+    if [ -n "$ROUTE_HOST" ]; then
+        log_info "Waiting for weather-service agent to respond..."
+        AGENT_URL="https://$ROUTE_HOST"
+        for i in {1..60}; do
+            # Try to fetch the agent card (A2A discovery endpoint)
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -k --connect-timeout 5 "$AGENT_URL/.well-known/agent.json" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+                log_success "Agent is ready and responding (HTTP 200)"
+                break
+            elif [ "$HTTP_CODE" = "503" ] || [ "$HTTP_CODE" = "502" ] || [ "$HTTP_CODE" = "000" ]; then
+                echo "[$i/60] Agent not ready yet (HTTP $HTTP_CODE), waiting..."
+                sleep 3
+            else
+                # Got a response, might be 401/403 which still means the agent is up
+                log_success "Agent is responding (HTTP $HTTP_CODE)"
+                break
+            fi
+        done
+        if [ "$HTTP_CODE" = "503" ] || [ "$HTTP_CODE" = "502" ] || [ "$HTTP_CODE" = "000" ]; then
+            log_error "Agent did not become ready after 3 minutes"
+            log_info "Checking pod status:"
+            kubectl get pods -n team1 -l app.kubernetes.io/name=weather-service 2>&1 || true
+            kubectl describe pods -n team1 -l app.kubernetes.io/name=weather-service 2>&1 | tail -30 || true
+            exit 1
+        fi
+    fi
+fi

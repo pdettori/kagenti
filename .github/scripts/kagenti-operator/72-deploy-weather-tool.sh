@@ -7,7 +7,21 @@ source "$SCRIPT_DIR/../lib/k8s-utils.sh"
 
 log_step "72" "Deploying weather-tool via Toolhive"
 
-kubectl apply -f "$REPO_ROOT/kagenti/examples/mcpservers/weather_tool.yaml"
+# IS_OPENSHIFT is set by env-detect.sh (sourced above)
+# It checks for OpenShift-specific APIs, not just "oc whoami" which works on any cluster
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    log_info "Using OpenShift MCPServer with internal registry"
+else
+    log_info "Using Kind MCPServer"
+fi
+
+if [ "$IS_OPENSHIFT" = "true" ]; then
+    # Use OpenShift-specific MCPServer that references the internal registry
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/mcpservers/weather_tool_ocp.yaml"
+else
+    # Use the standard MCPServer for Kind with internal registry
+    kubectl apply -f "$REPO_ROOT/kagenti/examples/mcpservers/weather_tool.yaml"
+fi
 
 # Wait for deployment to exist (but don't wait for it to be ready yet - needs patch first)
 run_with_timeout 300 'until kubectl get deployment weather-tool -n team1 &> /dev/null; do sleep 2; done' || {
