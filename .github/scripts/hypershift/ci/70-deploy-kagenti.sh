@@ -42,17 +42,26 @@ cd "$REPO_ROOT"
 
 # Wait for cluster to be fully ready before deploying
 # HyperShift clusters can take time for all components to initialize
+# Wait for nodes - increased timeout for autoscaling scenarios
+# Autoscaling can take 5-10 minutes to provision new nodes
 echo "Waiting for cluster nodes to be ready..."
-MAX_RETRIES=30
+MAX_RETRIES=60
 RETRY_DELAY=10
 for i in $(seq 1 $MAX_RETRIES); do
-    NOT_READY=$(kubectl get nodes --no-headers 2>/dev/null | grep -v " Ready" | wc -l || echo "999")
-    TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+    # Count nodes that are NOT in Ready status
+    # Use awk to reliably check the STATUS column (2nd column)
+    NOT_READY=$(kubectl get nodes --no-headers 2>/dev/null | awk '$2 != "Ready" {count++} END {print count+0}' || echo "999")
+    TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+    # Validate numeric values to avoid arithmetic errors
+    [[ ! "$NOT_READY" =~ ^[0-9]+$ ]] && NOT_READY=999
+    [[ ! "$TOTAL" =~ ^[0-9]+$ ]] && TOTAL=0
     if [[ "$NOT_READY" == "0" && "$TOTAL" -gt 0 ]]; then
         echo "All $TOTAL nodes are ready"
         break
     fi
-    echo "[$i/$MAX_RETRIES] Waiting for nodes... ($((TOTAL - NOT_READY))/$TOTAL ready)"
+    READY_COUNT=$((TOTAL - NOT_READY))
+    [[ $READY_COUNT -lt 0 ]] && READY_COUNT=0
+    echo "[$i/$MAX_RETRIES] Waiting for nodes... ($READY_COUNT/$TOTAL ready)"
     if [[ $i -eq $MAX_RETRIES ]]; then
         echo "ERROR: Nodes not ready after $((MAX_RETRIES * RETRY_DELAY)) seconds"
         kubectl get nodes
@@ -79,8 +88,8 @@ done
 
 # Use hypershift-full-test.sh with whitelist mode (--include-X flags)
 # This runs: install + agents only
+# Note: CLUSTER_SUFFIX is set by the workflow (e.g., pr594), don't override it
 exec "$REPO_ROOT/.github/scripts/local-setup/hypershift-full-test.sh" \
     --include-kagenti-install \
     --include-agents \
-    --env ocp \
-    ci
+    --env ocp
