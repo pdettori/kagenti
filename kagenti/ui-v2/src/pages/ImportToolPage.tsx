@@ -942,34 +942,36 @@ export const ImportToolPage: React.FC = () => {
                 <Card isFlat style={{ marginTop: '8px' }}>
                   <CardBody>
                     {envVars.map((env, index) => (
-                      <Split hasGutter key={index} style={{ marginBottom: '8px' }}>
-                        <SplitItem isFilled>
-                          <TextInput
-                            aria-label="Environment variable name"
-                            value={env.name}
-                            onChange={(_e, value) => updateEnvVar(index, 'name', value)}
-                            placeholder="VAR_NAME"
-                          />
-                        </SplitItem>
-                        <SplitItem isFilled>
-                          <TextInput
-                            aria-label="Environment variable value"
-                            value={env.value}
-                            onChange={(_e, value) => updateEnvVar(index, 'value', value)}
-                            placeholder="value"
-                          />
-                        </SplitItem>
-                        <SplitItem>
-                          <Button
-                            variant="plain"
-                            onClick={() => removeEnvVar(index)}
-                            aria-label="Remove environment variable"
-                            style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
-                          >
-                            <TrashIcon />
-                          </Button>
-                        </SplitItem>
-                      </Split>
+                      <div key={index} style={{ marginBottom: '8px' }}>
+                        <Split hasGutter>
+                          <SplitItem isFilled>
+                            <TextInput
+                              aria-label="Environment variable name"
+                              value={env.name}
+                              onChange={(_e, value) => updateEnvVar(index, 'name', value)}
+                              placeholder="VAR_NAME"
+                            />
+                          </SplitItem>
+                          <SplitItem isFilled>
+                            <TextInput
+                              aria-label="Environment variable value"
+                              value={env.value}
+                              onChange={(_e, value) => updateEnvVar(index, 'value', value)}
+                              placeholder="value"
+                            />
+                          </SplitItem>
+                          <SplitItem>
+                            <Button
+                              variant="plain"
+                              onClick={() => removeEnvVar(index)}
+                              aria-label="Remove environment variable"
+                              style={{ color: 'var(--pf-v5-global--danger-color--100)' }}
+                            >
+                              <TrashIcon />
+                            </Button>
+                          </SplitItem>
+                        </Split>
+                      </div>
                     ))}
                     <Button
                       variant="link"

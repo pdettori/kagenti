@@ -7,6 +7,7 @@ Agent API endpoints.
 
 import json
 import logging
+import re
 import socket
 import ipaddress
 from datetime import datetime, timezone
@@ -322,9 +323,9 @@ def _is_deployment_ready(resource_data: dict) -> str:
             return "Ready"
 
     # Check replica counts for Deployments
-    replicas = status.get("replicas", 0)
+    replicas = status.get("replicas") or 0
     ready_replicas = status.get("ready_replicas") or status.get("readyReplicas", 0)
-    if replicas > 0 and ready_replicas >= replicas:
+    if 0 < replicas <= ready_replicas:
         return "Ready"
 
     # Fallback: check deploymentStatus.phase for older Agent CRD versions
@@ -350,7 +351,7 @@ def _is_statefulset_ready(resource_data: dict) -> str:
     status = resource_data.get("status", {})
 
     # Check replica counts for StatefulSets
-    replicas = status.get("replicas", 0)
+    replicas = status.get("replicas") or 0
     ready_replicas = status.get("ready_replicas") or status.get("readyReplicas", 0)
 
     if replicas == 0:
@@ -2004,6 +2005,14 @@ def _build_agent_manifest(
             }
         ]
 
+    # Set description based on deployment method
+    if build_ref_name:
+        description = f"Agent '{request.name}' built from source"
+    else:
+        description = (
+            f"Agent '{request.name}' deployed from existing image '{request.containerImage}'"
+        )
+
     manifest = {
         "apiVersion": f"{CRD_GROUP}/{CRD_VERSION}",
         "kind": "Agent",
@@ -2019,7 +2028,7 @@ def _build_agent_manifest(
             },
         },
         "spec": {
-            "description": f"Agent '{request.name}' deployed from UI.",
+            "description": description,
             "replicas": 1,
             "servicePorts": service_ports,
             "podTemplateSpec": {
@@ -3151,6 +3160,16 @@ async def parse_env_file(request: ParseEnvRequest) -> ParseEnvResponse:
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip()
+
+        # Validate environment variable name
+        env_var_pattern = r"^[A-Za-z_][A-Za-z0-9_]*$"
+        if not re.match(env_var_pattern, key):
+            warnings.append(
+                f"Line {line_num}: Invalid variable name '{key}'. "
+                "Name must start with a letter or underscore and contain only "
+                "letters, digits, and underscores."
+            )
+            continue
 
         # Remove quotes if present
         if (value.startswith('"') and value.endswith('"')) or (

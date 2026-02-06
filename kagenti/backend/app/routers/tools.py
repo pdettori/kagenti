@@ -5,7 +5,6 @@
 Tool API endpoints.
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -122,6 +121,7 @@ class CreateToolRequest(BaseModel):
     namespace: str
     protocol: str = "streamable_http"
     framework: str = "Python"
+    description: Optional[str] = None
     envVars: Optional[List[EnvVar]] = None
     servicePorts: Optional[List[ServicePort]] = None
 
@@ -803,6 +803,7 @@ def _build_mcpserver_manifest(request: CreateToolRequest) -> dict:
             },
         },
         "spec": {
+            "description": f"Tool '{request.name}' deployed from existing image '{request.containerImage}'",
             "image": request.containerImage,
             "transport": "streamable-http",
             "port": port,
@@ -1321,6 +1322,13 @@ async def create_tool(
             if request.servicePorts:
                 service_ports = [sp.model_dump() for sp in request.servicePorts]
 
+            # Set description if not provided
+            description = request.description
+            if not description:
+                description = (
+                    f"Tool '{request.name}' deployed from existing image '{request.containerImage}'"
+                )
+
             # Create workload (Deployment or StatefulSet)
             if request.workloadType == WORKLOAD_TYPE_STATEFULSET:
                 # Determine storage size
@@ -1338,7 +1346,7 @@ async def create_tool(
                     service_ports=service_ports,
                     image_pull_secret=request.imagePullSecret,
                     storage_size=storage_size,
-                    description=getattr(request, "description", ""),
+                    description=description,
                 )
                 kube.create_statefulset(request.namespace, workload_manifest)
                 logger.info(
@@ -1355,7 +1363,7 @@ async def create_tool(
                     env_vars=env_vars,
                     service_ports=service_ports,
                     image_pull_secret=request.imagePullSecret,
-                    description=getattr(request, "description", ""),
+                    description=description,
                 )
                 kube.create_deployment(request.namespace, workload_manifest)
                 logger.info(
