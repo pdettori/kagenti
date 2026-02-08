@@ -3,6 +3,8 @@ name: skills
 description: Skill management - create, validate, and improve Claude Code skills
 ---
 
+> 📊 **[View workflow diagram](README.md#skills-meta-workflow)**
+
 # Skills Management
 
 Skills for managing the skill system itself.

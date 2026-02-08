@@ -3,6 +3,8 @@ name: test
 description: Test writing, reviewing, and running for Kagenti - smart router for test workflows
 ---
 
+> 📊 **[View workflow diagram](README.md#test-workflow)**
+
 # Test Skills
 
 Test management for Kagenti: write, review, and run tests.

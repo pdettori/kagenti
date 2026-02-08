@@ -4,6 +4,22 @@ Skills provide guided workflows for Claude Code to operate the Kagenti platform.
 Each skill is a SKILL.md file that teaches Claude how to perform specific tasks
 with copy-pasteable commands and decision trees.
 
+## Table of Contents
+
+- [How Skills Work](#how-skills-work)
+- [Workflow Diagrams](#workflow-diagrams)
+  - [TDD Workflow](#tdd-workflow)
+  - [Test Workflow](#test-workflow)
+  - [RCA Workflow](#rca-workflow)
+  - [CI Workflow](#ci-workflow)
+  - [Skills Meta Workflow](#skills-meta-workflow)
+  - [GitHub Repository Analysis](#github-repository-analysis)
+  - [Deploy & Debug Workflow](#deploy--debug-workflow)
+  - [HyperShift Cluster Lifecycle](#hypershift-cluster-lifecycle-with-mgmt-creds)
+- [Complete Skill Tree](#complete-skill-tree)
+- [Auto-Approve Policy](#auto-approve-policy)
+- [Maintaining This README](#maintaining-this-readme)
+
 ## How Skills Work
 
 - **Invoke**: Use the Skill tool with the skill name (e.g., `tdd:ci`)
@@ -14,14 +30,31 @@ with copy-pasteable commands and decision trees.
 
 ## Workflow Diagrams
 
+### Color Legend
+
+Only skill nodes are colored. Decision points, actions, and labels have no color.
+
+| Color | Category |
+|-------|----------|
+| 🟢 Green | TDD |
+| 🔴 Red-Orange | RCA |
+| 🔵 Blue | CI |
+| 🟣 Purple | Test |
+| 🟠 Orange | Git / Repo |
+| 🔷 Cyan | Kubernetes |
+| 🟤 Brown | Deploy / Kagenti |
+| ⚫ Gray | Skills Meta |
+| 🩷 Pink | GitHub |
+| 🔵 Indigo | HyperShift |
+
 ### TDD Workflow
 
 ```mermaid
 flowchart TD
     START([Task / Bug]) --> TDD{"/tdd"}
-    TDD -->|HyperShift cluster found| HS["tdd:hypershift"]
-    TDD -->|Kind cluster found| KIND["tdd:kind"]
-    TDD -->|No cluster| CI["tdd:ci"]
+    TDD -->|HyperShift cluster found| HS["tdd:hypershift"]:::tdd
+    TDD -->|Kind cluster found| KIND["tdd:kind"]:::tdd
+    TDD -->|No cluster| CI["tdd:ci"]:::tdd
     TDD -->|No cluster, ask user| CREATE{"Create cluster?"}
     CREATE -->|Kind auto-approved| KIND
     CREATE -->|HyperShift needs approval| HS
@@ -35,18 +68,23 @@ flowchart TD
     KIND --> CODE
     CI --> CODE
 
-    CODE --> TESTLOOP["test:write + test:review"]
+    CODE --> TESTLOOP["test:write + test:review"]:::test
     TESTLOOP --> RUN{Run tests}
-    RUN -->|Kind| RUNKIND["test:run-kind"]
-    RUN -->|HyperShift| RUNHS["test:run-hypershift"]
+    RUN -->|Kind| RUNKIND["test:run-kind"]:::test
+    RUN -->|HyperShift| RUNHS["test:run-hypershift"]:::test
     RUNKIND -->|More failures than before| CODE
     RUNHS -->|More failures than before| CODE
-    RUNKIND -->|"Fewer failures (progress!)"| COMMIT["git:commit + git:rebase"]
+    RUNKIND -->|"Fewer failures (progress!)"| COMMIT["git:commit + git:rebase"]:::git
     RUNHS -->|"Fewer failures (progress!)"| COMMIT
     COMMIT --> PUSH[Push to PR]
-    PUSH --> MONITOR["ci:monitoring (wait)"]
+    PUSH --> MONITOR["ci:monitoring"]:::ci
     MONITOR -->|CI passes| DONE([Done])
     MONITOR -->|CI fails| CODE
+
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
+    classDef git fill:#FF9800,stroke:#333,color:white
+    classDef ci fill:#2196F3,stroke:#333,color:white
 ```
 
 ### Test Workflow
@@ -54,23 +92,27 @@ flowchart TD
 ```mermaid
 flowchart TD
     START([Need Tests]) --> TEST{"/test"}
-    TEST -->|Write new tests| WRITE["test:write"]
-    TEST -->|Review quality| REVIEW["test:review"]
-    TEST -->|Run on Kind| RUNKIND["test:run-kind"]
-    TEST -->|Run on HyperShift| RUNHS["test:run-hypershift"]
-    TEST -->|Full TDD loop| TDD["tdd/*"]
+    TEST -->|Write new tests| WRITE["test:write"]:::test
+    TEST -->|Review quality| REVIEW["test:review"]:::test
+    TEST -->|Run on Kind| RUNKIND["test:run-kind"]:::test
+    TEST -->|Run on HyperShift| RUNHS["test:run-hypershift"]:::test
+    TEST -->|Full TDD loop| TDD["tdd/*"]:::tdd
 
     WRITE --> REVIEW
     REVIEW -->|Issues found| WRITE
     REVIEW -->|Clean| RUN{Run where?}
     RUN -->|Kind| RUNKIND
     RUN -->|HyperShift| RUNHS
-    RUNKIND -->|Pass| COMMIT["git:commit"]
+    RUNKIND -->|Pass| COMMIT["git:commit"]:::git
     RUNHS -->|Pass| COMMIT
     RUNKIND -->|Fail| WRITE
     RUNHS -->|Fail| WRITE
-    COMMIT --> REBASE["git:rebase"]
+    COMMIT --> REBASE["git:rebase"]:::git
     REBASE --> PUSH([Push to PR])
+
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
+    classDef git fill:#FF9800,stroke:#333,color:white
 ```
 
 ### RCA Workflow
@@ -78,9 +120,9 @@ flowchart TD
 ```mermaid
 flowchart TD
     FAIL([CI / Test Failure]) --> RCA{"/rca"}
-    RCA -->|CI failure, no cluster| RCACI["rca:ci"]
-    RCA -->|HyperShift cluster available| RCAHS["rca:hypershift"]
-    RCA -->|Kind cluster available| RCAKIND["rca:kind"]
+    RCA -->|CI failure, no cluster| RCACI["rca:ci"]:::rca
+    RCA -->|HyperShift cluster available| RCAHS["rca:hypershift"]:::rca
+    RCA -->|Kind cluster available| RCAKIND["rca:kind"]:::rca
 
     RCACI -->|Inconclusive| NEED{"Need cluster?"}
     NEED -->|Yes| RCAHS
@@ -90,13 +132,17 @@ flowchart TD
     RCAHS --> ROOT
     RCAKIND --> ROOT
 
-    ROOT --> TDD["Switch to tdd:* for fix"]
+    ROOT --> TDD["tdd:*"]:::tdd
     TDD --> DONE([Fixed])
 
-    RCAHS -.->|uses| PODS["k8s:pods"]
-    RCAHS -.->|uses| LOGS["k8s:logs"]
-    RCAHS -.->|uses| HEALTH["k8s:health"]
-    RCAHS -.->|uses| LIVE["k8s:live-debugging"]
+    RCAHS -.->|uses| PODS["k8s:pods"]:::k8s
+    RCAHS -.->|uses| LOGS["k8s:logs"]:::k8s
+    RCAHS -.->|uses| HEALTH["k8s:health"]:::k8s
+    RCAHS -.->|uses| LIVE["k8s:live-debugging"]:::k8s
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef k8s fill:#00BCD4,stroke:#333,color:white
 ```
 
 ### CI Workflow
@@ -104,10 +150,10 @@ flowchart TD
 ```mermaid
 flowchart TD
     PR([PR / Push]) --> CI{"/ci"}
-    CI -->|Check status| STATUS["ci:status"]
-    CI -->|Monitor running| MON["ci:monitoring"]
-    CI -->|Failed, investigate| RCACI["rca:ci"]
-    CI -->|Failed, fix + rerun| TDDCI["tdd:ci"]
+    CI -->|Check status| STATUS["ci:status"]:::ci
+    CI -->|Monitor running| MON["ci:monitoring"]:::ci
+    CI -->|Failed, investigate| RCACI["rca:ci"]:::rca
+    CI -->|Failed, fix + rerun| TDDCI["tdd:ci"]:::tdd
 
     STATUS --> RESULT{Result?}
     RESULT -->|All pass| DONE([Merge])
@@ -117,25 +163,31 @@ flowchart TD
     RCACI --> ROOT[Root Cause]
     ROOT --> TDDCI
     TDDCI -->|CI passes| DONE
+
+    classDef ci fill:#2196F3,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
 ```
 
 ### Skills Meta Workflow
 
 ```mermaid
 flowchart TD
-    START([New / Audit Skills]) --> SCAN["skills:scan"]
-    SCAN -->|New repo| WRITE["skills:write"]
-    SCAN -->|Existing repo| VALIDATE["skills:validate"]
+    START([New / Audit Skills]) --> SCAN["skills:scan"]:::skills
+    SCAN -->|New repo| WRITE["skills:write"]:::skills
+    SCAN -->|Existing repo| VALIDATE["skills:validate"]:::skills
     VALIDATE -->|Issues found| WRITE
-    VALIDATE -->|All pass| REPORT["Generate Report"]
+    VALIDATE -->|All pass| REPORT[Generate Report]
 
     WRITE --> VALIDATE
-    REPORT --> RETRO["skills:retrospective"]
+    REPORT --> RETRO["skills:retrospective"]:::skills
     RETRO -->|Gaps found| WRITE
-    RETRO -->|Skills OK| README["Update README diagrams"]
+    RETRO -->|Skills OK| README[Update README]
 
-    SCAN -.->|generates| SETTINGS["settings.json"]
+    SCAN -.->|generates| SETTINGS[settings.json]
     SCAN -.->|generates| README
+
+    classDef skills fill:#607D8B,stroke:#333,color:white
 ```
 
 ### GitHub Repository Analysis
@@ -143,21 +195,26 @@ flowchart TD
 ```mermaid
 flowchart TD
     START([Repo Health Check]) --> GH{"/github"}
-    GH -->|Weekly summary| WEEK["github:last-week"]
-    GH -->|Triage issues| ISSUES["github:issues"]
-    GH -->|PR health| PRS["github:prs"]
+    GH -->|Weekly summary| WEEK["github:last-week"]:::github
+    GH -->|Triage issues| ISSUES["github:issues"]:::github
+    GH -->|PR health| PRS["github:prs"]:::github
 
     WEEK -->|calls| ISSUES
     WEEK -->|calls| PRS
-    WEEK -->|calls| CISTATUS["ci:status"]
+    WEEK -->|calls| CISTATUS["ci:status"]:::ci
 
-    ISSUES -->|stale/outdated| CLOSE["Close or update issue"]
-    ISSUES -->|blocking| PRIORITY["Flag for immediate action"]
-    PRS -->|ready to merge| REVIEW["Request review"]
-    PRS -->|conflicts| REBASE["git:rebase"]
-    PRS -->|CI failing| RCA["rca:ci"]
+    ISSUES -->|stale/outdated| CLOSE[Close or update issue]
+    ISSUES -->|blocking| PRIORITY[Flag for immediate action]
+    PRS -->|ready to merge| REVIEW[Request review]
+    PRS -->|conflicts| REBASE["git:rebase"]:::git
+    PRS -->|CI failing| RCA["rca:ci"]:::rca
 
-    CLOSE -.->|create updated| REPOISSUE["repo:issue"]
+    CLOSE -.->|create updated| REPOISSUE["repo:issue"]:::git
+
+    classDef github fill:#E91E63,stroke:#333,color:white
+    classDef git fill:#FF9800,stroke:#333,color:white
+    classDef ci fill:#2196F3,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
 ```
 
 ### Deploy & Debug Workflow
@@ -165,41 +222,46 @@ flowchart TD
 ```mermaid
 flowchart TD
     DEPLOY([Deploy Kagenti]) --> TYPE{Platform?}
-    TYPE -->|Kind| KDEPLOY["kagenti:deploy"]
-    TYPE -->|OpenShift| ODEPLOY["kagenti:deploy"]
-    TYPE -->|HyperShift| HSDEPLOY["kagenti:operator"]
+    TYPE -->|Kind| KDEPLOY["kagenti:deploy"]:::deploy
+    TYPE -->|OpenShift| ODEPLOY["kagenti:deploy"]:::deploy
+    TYPE -->|HyperShift| HSDEPLOY["kagenti:operator"]:::deploy
 
-    KDEPLOY --> HEALTH["k8s:health"]
+    KDEPLOY --> HEALTH["k8s:health"]:::k8s
     ODEPLOY --> HEALTH
     HSDEPLOY --> HEALTH
 
     HEALTH -->|Healthy| DONE([Ready])
     HEALTH -->|Issues| DEBUG{Debug}
-    DEBUG -->|Pod issues| PODS["k8s:pods"]
-    DEBUG -->|Log analysis| LOGS["k8s:logs"]
-    DEBUG -->|Helm issues| HELM["helm:debug"]
-    DEBUG -->|UI issues| UI["kagenti:ui-debug"]
-    DEBUG -->|Auth issues| AUTH["auth:keycloak-*"]
-    DEBUG -->|Istio issues| ISTIO["istio:ambient-waypoint"]
-    DEBUG -->|Route issues| ROUTES["openshift:routes"]
+    DEBUG -->|Pod issues| PODS["k8s:pods"]:::k8s
+    DEBUG -->|Log analysis| LOGS["k8s:logs"]:::k8s
+    DEBUG -->|Helm issues| HELM["helm:debug"]:::deploy
+    DEBUG -->|UI issues| UI["kagenti:ui-debug"]:::deploy
+    DEBUG -->|Auth issues| AUTH["auth:keycloak-*"]:::deploy
+    DEBUG -->|Istio issues| ISTIO["istio:ambient-waypoint"]:::deploy
+    DEBUG -->|Route issues| ROUTES["openshift:routes"]:::deploy
 
     PODS --> HEALTH
     LOGS --> HEALTH
     HELM --> HEALTH
+
+    classDef deploy fill:#795548,stroke:#333,color:white
+    classDef k8s fill:#00BCD4,stroke:#333,color:white
 ```
 
 ### HyperShift Cluster Lifecycle (with mgmt creds)
 
 ```mermaid
 flowchart LR
-    SETUP["hypershift:setup"] --> PREFLIGHT["hypershift:preflight"]
-    PREFLIGHT --> QUOTAS["hypershift:quotas"]
-    QUOTAS --> CREATE["hypershift:cluster create"]
+    SETUP["hypershift:setup"]:::hypershift --> PREFLIGHT["hypershift:preflight"]:::hypershift
+    PREFLIGHT --> QUOTAS["hypershift:quotas"]:::hypershift
+    QUOTAS --> CREATE["hypershift:cluster create"]:::hypershift
     CREATE --> USE([Use cluster])
-    USE --> DESTROY["hypershift:cluster destroy"]
+    USE --> DESTROY["hypershift:cluster destroy"]:::hypershift
 
-    CREATE -.->|fails| DEBUG["hypershift:debug"]
+    CREATE -.->|fails| DEBUG["hypershift:debug"]:::hypershift
     DESTROY -.->|stuck| DEBUG
+
+    classDef hypershift fill:#3F51B5,stroke:#333,color:white
 ```
 
 ## Complete Skill Tree

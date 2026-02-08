@@ -3,6 +3,8 @@ name: github
 description: GitHub repository analysis - weekly reports, issue triage, PR health, CI trends
 ---
 
+> 📊 **[View workflow diagram](README.md#github-repository-analysis)**
+
 # GitHub Skills
 
 Repository health analysis, issue triage, and PR management.

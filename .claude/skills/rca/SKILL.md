@@ -3,6 +3,8 @@ name: rca
 description: Root cause analysis workflows - systematic investigation of failures
 ---
 
+> 📊 **[View workflow diagram](README.md#rca-workflow)**
+
 # RCA Skills
 
 Root cause analysis workflows for systematic failure investigation.

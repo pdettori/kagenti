@@ -3,6 +3,8 @@ name: hypershift
 description: Manage HyperShift clusters on AWS for Kagenti testing. Create, destroy, debug clusters and check quotas.
 ---
 
+> 📊 **[View workflow diagram](README.md#hypershift-cluster-lifecycle-with-mgmt-creds)**
+
 # HyperShift Skills
 
 Skills for managing HyperShift (hosted OpenShift) clusters on AWS.

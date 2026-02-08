@@ -3,6 +3,8 @@ name: kagenti
 description: Deploy and manage Kagenti platform, operator, agents, and tools on Kubernetes.
 ---
 
+> 📊 **[View workflow diagram](README.md#deploy--debug-workflow)**
+
 # Kagenti Skills
 
 Skills for deploying and managing the Kagenti platform.

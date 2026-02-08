@@ -309,13 +309,13 @@ curl -k "http://keycloak.localtest.me:8080/realms/master/.well-known/openid-conf
 
 ```bash
 # Check UI deployment
-kubectl get deployment -n kagenti-platform kagenti-ui
+kubectl get deployment -n kagenti-system kagenti-ui
 
 # Check UI pods
-kubectl get pods -n kagenti-platform -l app=kagenti-ui
+kubectl get pods -n kagenti-system -l app=kagenti-ui
 
 # Check UI logs
-kubectl logs -n kagenti-platform deployment/kagenti-ui --tail=50
+kubectl logs -n kagenti-system deployment/kagenti-ui --tail=50
 
 # Access UI
 open http://kagenti-ui.localtest.me:8080

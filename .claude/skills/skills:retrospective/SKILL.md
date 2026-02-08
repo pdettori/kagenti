@@ -249,7 +249,6 @@ docs: Session retrospective skill updates
 
 Based on [session context].
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
 ## Skill Gap Patterns

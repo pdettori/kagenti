@@ -118,7 +118,7 @@
 
       "Bash(cd .worktrees/* && KUBECONFIG=*/clusters/hcp/kagenti-hypershift-custom-*/auth/kubeconfig ./.github/scripts/local-setup/hypershift-full-test.sh:*)",
 
-      "Bash(.worktrees/*/github/scripts/local-setup/hypershift-full-test.sh:*)",
+      "Bash(.worktrees/*/.github/scripts/local-setup/hypershift-full-test.sh:*)",
       "Bash(.github/scripts/local-setup/hypershift-full-test.sh:*)",
       "Bash(.github/scripts/local-setup/kind-full-test.sh:*)",
 

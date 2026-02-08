@@ -3,6 +3,8 @@ name: ci
 description: CI pipeline monitoring, status checks, and PR validation workflows
 ---
 
+> 📊 **[View workflow diagram](README.md#ci-workflow)**
+
 # CI Skills
 
 CI pipeline skills for monitoring and managing GitHub Actions workflows.

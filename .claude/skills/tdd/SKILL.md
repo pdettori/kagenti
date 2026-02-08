@@ -3,6 +3,8 @@ name: tdd
 description: Test-driven development workflows for Kagenti - CI, HyperShift, and Kind
 ---
 
+> 📊 **[View workflow diagram](README.md#tdd-workflow)**
+
 # TDD Skills
 
 Test-driven development workflows for iterative Kagenti development.
