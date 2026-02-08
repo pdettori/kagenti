@@ -53,8 +53,8 @@ logger = logging.getLogger(__name__)
 
 def run_kubectl_with_retry(
     args: List[str],
-    retries: int = 3,
-    initial_delay: float = 2.0,
+    retries: int = 10,
+    initial_delay: float = 5.0,
     timeout: int = 30,
     check: bool = False,
 ) -> subprocess.CompletedProcess:
@@ -330,7 +330,7 @@ print(json.dumps(result))
                     "-c",
                     python_script,
                 ],
-                retries=3,
+                retries=10,
                 timeout=30,
             )
 
@@ -734,7 +734,7 @@ print(json.dumps(result))
                     "-c",
                     python_script,
                 ],
-                retries=3,
+                retries=10,
                 timeout=30,
             )
 
@@ -948,7 +948,7 @@ class TestWeatherAgentTracesInMLflow:
                 WHERE timestamp_ms > EXTRACT(EPOCH FROM NOW() - INTERVAL '2 hours') * 1000;
                 """,
             ],
-            retries=3,
+            retries=10,
             timeout=30,
             check=True,
         )
