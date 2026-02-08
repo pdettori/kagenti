@@ -199,10 +199,31 @@ spec:
           from mlflow_oidc_auth.app import app
           print("App created with /v1/traces endpoint")
 
+          # Gate /v1/traces with 503 until database init completes
+          # This prevents OTEL collector from permanently dropping traces
+          # during the ~100s init window (alembic migrations + user/experiment creation)
+          import threading
+          _db_init_complete = threading.Event()
+
+          from starlette.middleware.base import BaseHTTPMiddleware
+          from starlette.responses import Response
+
+          class InitGateMiddleware(BaseHTTPMiddleware):
+              async def dispatch(self, request, call_next):
+                  if request.url.path.startswith("/v1/traces") and not _db_init_complete.is_set():
+                      return Response(
+                          content="MLflow database initialization in progress",
+                          status_code=503,
+                          headers={"Retry-After": "10"},
+                      )
+                  return await call_next(request)
+
+          app.add_middleware(InitGateMiddleware)
+          print("Added init gate middleware (503 on /v1/traces until DB ready)")
+
           # Initialize database in a background thread after alembic migrations complete
           # The app import triggers alembic migrations lazily, so we must wait for tables
           import os
-          import threading
           import time as time_module
 
           def init_database():
@@ -274,7 +295,14 @@ spec:
 
           # Start database initialization in background thread
           # This allows uvicorn to start serving while we wait for migrations
-          init_thread = threading.Thread(target=init_database, daemon=True)
+          def init_and_signal():
+              try:
+                  init_database()
+              finally:
+                  _db_init_complete.set()
+                  print("Database init complete - /v1/traces endpoint now accepting requests")
+
+          init_thread = threading.Thread(target=init_and_signal, daemon=True)
           init_thread.start()
           print("Started database initialization thread")
 
