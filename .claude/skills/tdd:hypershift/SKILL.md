@@ -54,37 +54,100 @@ KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig \
   --include-test [--pytest-filter "filter"]
 ```
 
-## TDD Iterations
+## TDD Iterations (fastest first)
 
-See **`local:full-test`** skill for complete details on the three TDD iterations:
+**Prefer quick targeted changes over full reinstall.** Full reinstall takes ~25 min. Targeted changes take ~30 seconds.
 
-1. **Iteration 1: Test only** (auto-approved) - Quick test iteration
-2. **Iteration 2: Reinstall + Test** (auto-approved) - Full reinstall cycle
-3. **Iteration 3: Fresh cluster** (requires permission) - Wipe and recreate
+### Iteration 0: Quick patch (seconds)
 
-## Quick Examples
+Patch a ConfigMap, restart a pod, or update a deployment directly:
 
 ```bash
-export CLUSTER=mlflow WORKTREE=mlflow-ci MANAGED_BY_TAG=${MANAGED_BY_TAG:-kagenti-hypershift-custom}
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl rollout restart deployment/otel-collector -n kagenti-system
+```
 
-# Run all tests
-KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig \
-  .worktrees/$WORKTREE/.github/scripts/local-setup/hypershift-full-test.sh $CLUSTER --include-test
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl rollout restart deployment/mlflow -n kagenti-system
+```
 
-# Run specific tests
-KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig \
-  .worktrees/$WORKTREE/.github/scripts/local-setup/hypershift-full-test.sh $CLUSTER \
-  --include-test --pytest-filter "test_agent"
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl delete pod -n team1 -l app.kubernetes.io/name=weather-service
+```
 
-# Agent + observability tests (recommended)
+### Iteration 1: Test only (auto-approved)
+
+```bash
 KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig \
   .worktrees/$WORKTREE/.github/scripts/local-setup/hypershift-full-test.sh $CLUSTER \
   --include-test --pytest-filter "test_agent or test_mlflow"
+```
 
-# Reinstall + test
+### Iteration 2: Rebuild agent images (minutes)
+
+Use OpenShift Builds or Shipwright to rebuild images from dependency repos directly on the cluster:
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig oc start-build weather-tool -n team1 --follow
+```
+
+Or trigger a Shipwright BuildRun for the weather-service:
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl create -f .worktrees/$WORKTREE/kagenti/examples/agents/weather_agent_shipwright_buildrun.yaml
+```
+
+After rebuild, delete the pod to pick up the new image:
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl delete pod -n team1 -l app.kubernetes.io/name=weather-service
+```
+
+### Iteration 3: Full reinstall (last resort, ~25 min)
+
+Only when chart values or CRDs change:
+
+```bash
 KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig \
   .worktrees/$WORKTREE/.github/scripts/local-setup/hypershift-full-test.sh $CLUSTER \
   --include-uninstall --include-install --include-agents --include-test
+```
+
+### Iteration 4: Fresh cluster (requires permission)
+
+Only when the cluster itself is broken:
+
+```bash
+./.github/scripts/hypershift/create-cluster.sh $CLUSTER
+```
+
+## Building Custom Images from Dependency Repos
+
+When debugging issues in agent-examples or kagenti-extensions, build custom images directly on the cluster using Shipwright/OpenShift Builds:
+
+```bash
+# Point build spec to your fork/branch
+# Edit the source in weather_agent_shipwright_build_ocp.yaml:
+#   url: https://github.com/YourFork/agent-examples
+#   revision: your-branch
+
+# Apply and trigger build
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl apply -f .worktrees/$WORKTREE/kagenti/examples/agents/weather_agent_shipwright_build_ocp.yaml
+```
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl create -f .worktrees/$WORKTREE/kagenti/examples/agents/weather_agent_shipwright_buildrun.yaml
+```
+
+Watch the build:
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl get buildrun -n team1 -w
+```
+
+After build succeeds, restart the deployment:
+
+```bash
+KUBECONFIG=~/clusters/hcp/$MANAGED_BY_TAG-$CLUSTER/auth/kubeconfig kubectl rollout restart deployment/weather-service -n team1
 ```
 
 ## Observability Tests Need Fresh Traces
