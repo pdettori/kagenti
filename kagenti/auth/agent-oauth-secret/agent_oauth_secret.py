@@ -404,8 +404,8 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
         try:
             secret_namespace = get_optional_env("KEYCLOAK_NAMESPACE", "keycloak")
             secret_name = "kagenti-test-user"
-            secret_body = kubernetes.client.V1Secret(
-                metadata=kubernetes.client.V1ObjectMeta(
+            secret_body = client.V1Secret(
+                metadata=client.V1ObjectMeta(
                     name=secret_name,
                     namespace=secret_namespace,
                     labels={"app": "kagenti", "kagenti.io/type": "test-credentials"},
@@ -420,7 +420,7 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
             try:
                 v1_api.create_namespaced_secret(secret_namespace, secret_body)
                 typer.echo(f"Created secret '{secret_name}' with test user credentials")
-            except kubernetes.client.exceptions.ApiException as e:
+            except ApiException as e:
                 if e.status == 409:
                     v1_api.replace_namespaced_secret(
                         secret_name, secret_namespace, secret_body
