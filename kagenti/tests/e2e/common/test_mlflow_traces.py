@@ -110,7 +110,7 @@ def run_kubectl_with_retry(
                     f"Retrying in {delay:.1f}s..."
                 )
                 time.sleep(delay)
-                delay *= 2  # Exponential backoff
+                delay = min(delay * 2, 15)  # Exponential backoff, capped at 15s
             else:
                 logger.error(
                     f"kubectl failed after {retries} attempts: {type(e).__name__}"
