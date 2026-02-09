@@ -266,10 +266,13 @@ class KeycloakSetup:
             typer.echo(f'Unexpected error creating realm "{self.realm_name}": {e}')
 
     def create_user(self, username, password: Optional[str] = None):
-        """Create a Keycloak user with the provided password.
+        """Create a Keycloak user and add to mlflow groups.
 
         If `password` is None or empty the function will skip creation and
         emit a warning. This avoids hardcoding default passwords in source.
+
+        The user is added to 'mlflow' and 'mlflow-admin' groups so they can
+        log in to MLflow via mlflow-oidc-auth (which requires group membership).
         """
         if not password:
             typer.secho(
@@ -279,20 +282,47 @@ class KeycloakSetup:
             return
 
         try:
-            self.keycloak_admin.create_user(
+            user_id = self.keycloak_admin.create_user(
                 {
                     "username": username,
                     "firstName": username,
                     "lastName": username,
-                    "email": f"{username}@test.com",
+                    "email": f"{username}@kagenti.dev",
                     "emailVerified": True,
                     "enabled": True,
                     "credentials": [{"value": password, "type": "password"}],
                 }
             )
-            typer.echo(f'Created user "{username}"')
+            typer.echo(f'Created user "{username}" (id: {user_id})')
         except KeycloakPostError:
             typer.echo(f'User "{username}" already exists')
+            # Get existing user ID for group assignment
+            users = self.keycloak_admin.get_users({"username": username})
+            user_id = users[0]["id"] if users else None
+
+        # Add user to mlflow groups (required by mlflow-oidc-auth)
+        if user_id:
+            for group_name in ["mlflow", "mlflow-admin"]:
+                try:
+                    groups = self.keycloak_admin.get_groups({"search": group_name})
+                    matching = [g for g in groups if g["name"] == group_name]
+                    if matching:
+                        self.keycloak_admin.group_user_add(user_id, matching[0]["id"])
+                        typer.echo(f'Added "{username}" to group "{group_name}"')
+                    else:
+                        # Create group if it doesn't exist
+                        group_id = self.keycloak_admin.create_group(
+                            {"name": group_name}
+                        )
+                        self.keycloak_admin.group_user_add(user_id, group_id)
+                        typer.echo(
+                            f'Created group "{group_name}" and added "{username}"'
+                        )
+                except Exception as e:
+                    typer.secho(
+                        f'Warning: Could not add "{username}" to group "{group_name}": {e}',
+                        fg="yellow",
+                    )
 
     def create_client(self, app_name, spiffe_prefix):
         try:
