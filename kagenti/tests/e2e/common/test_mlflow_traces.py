@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 def run_kubectl_with_retry(
     args: List[str],
-    retries: int = 10,
+    retries: int = 5,
     initial_delay: float = 5.0,
     timeout: int = 30,
     check: bool = False,
@@ -330,7 +330,7 @@ print(json.dumps(result))
                     "-c",
                     python_script,
                 ],
-                retries=10,
+                retries=5,
                 timeout=30,
             )
 
@@ -734,7 +734,7 @@ print(json.dumps(result))
                     "-c",
                     python_script,
                 ],
-                retries=10,
+                retries=5,
                 timeout=30,
             )
 
