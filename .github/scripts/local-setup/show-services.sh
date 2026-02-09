@@ -137,8 +137,14 @@ fi
 # =============================================================================
 # Fetch credentials
 # =============================================================================
-KC_USER=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
-KC_PASS=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
+# Keycloak admin (master realm) - for Keycloak admin console
+KC_ADMIN_USER=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
+KC_ADMIN_PASS=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
+
+# App user (demo realm) - for Kagenti UI and MLflow login
+# Created by agent-oauth-secret-job with admin/admin
+APP_USER="admin"
+APP_PASS="admin"
 
 KUBEADMIN_PASS=""
 if [ "$ENV_TYPE" = "hypershift" ]; then
@@ -158,9 +164,10 @@ if [ "$VERBOSE" = "false" ]; then
     echo ""
 
     # Credentials
-    echo -e "${GREEN}Keycloak:${NC}  ${KC_USER} / ${KC_PASS}"
+    echo -e "${GREEN}Kagenti UI & MLflow:${NC}  ${APP_USER} / ${APP_PASS}  ${DIM}(demo realm)${NC}"
+    echo -e "${GREEN}Keycloak Admin:${NC}       ${KC_ADMIN_USER} / ${KC_ADMIN_PASS}  ${DIM}(master realm)${NC}"
     if [ -n "$KUBEADMIN_PASS" ]; then
-        echo -e "${GREEN}kubeadmin:${NC} kubeadmin / ${KUBEADMIN_PASS}"
+        echo -e "${GREEN}kubeadmin:${NC}            kubeadmin / ${KUBEADMIN_PASS}"
     fi
     echo ""
 
@@ -262,9 +269,13 @@ echo -e "${CYAN}        (Services using Keycloak - use credentials below)       
 echo "##########################################################################"
 echo ""
 
-echo -e "${GREEN}Credentials:${NC} ${YELLOW}(sensitive - do not share)${NC}"
-echo "  Username: ${KC_USER}"
-echo "  Password: ${KC_PASS}"
+echo -e "${GREEN}App Login (Kagenti UI & MLflow):${NC} ${YELLOW}(demo realm)${NC}"
+echo "  Username: ${APP_USER}"
+echo "  Password: ${APP_PASS}"
+echo ""
+echo -e "${GREEN}Keycloak Admin:${NC} ${YELLOW}(master realm - admin console only)${NC}"
+echo "  Username: ${KC_ADMIN_USER}"
+echo "  Password: ${KC_ADMIN_PASS}"
 echo ""
 
 echo "---------------------------------------------------------------------------"
