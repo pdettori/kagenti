@@ -142,9 +142,9 @@ KC_ADMIN_USER=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='
 KC_ADMIN_PASS=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
 
 # App user (demo realm) - for Kagenti UI and MLflow login
-# Created by agent-oauth-secret-job with admin/admin
-APP_USER="admin"
-APP_PASS="admin"
+# Created by agent-oauth-secret-job, credentials stored in kagenti-test-user secret
+APP_USER=$($CLI get secret -n keycloak kagenti-test-user -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "admin")
+APP_PASS=$($CLI get secret -n keycloak kagenti-test-user -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A (secret not found)")
 
 KUBEADMIN_PASS=""
 if [ "$ENV_TYPE" = "hypershift" ]; then

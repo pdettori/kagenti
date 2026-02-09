@@ -356,19 +356,52 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
         raise typer.Exit(1)
     setup.create_realm()
 
-    # Optionally create a demo/test user. Controlled by env var
-    # `CREATE_KEYCLOAK_TEST_USER` (defaults to true for backwards compatibility).
+    # Create a test user in the configured realm for UI/MLflow login.
+    # Generates a random password and stores credentials in a K8s secret.
     create_test_user = parse_bool(get_optional_env("CREATE_KEYCLOAK_TEST_USER", "true"))
     if create_test_user:
-        test_user_name = get_optional_env("KEYCLOAK_TEST_USER_NAME", "test-user")
+        test_user_name = get_optional_env("KEYCLOAK_TEST_USER_NAME", "admin")
         test_user_password = get_optional_env("KEYCLOAK_TEST_USER_PASSWORD")
         if not test_user_password:
-            typer.secho(
-                "Environment variable KEYCLOAK_TEST_USER_PASSWORD not set; skipping test user creation",
-                fg="yellow",
+            import secrets as secrets_mod
+
+            test_user_password = secrets_mod.token_urlsafe(16)
+            typer.echo(f"Generated random password for test user '{test_user_name}'")
+
+        setup.create_user(test_user_name, test_user_password)
+
+        # Store test user credentials in a K8s secret for show-services.sh and tests
+        try:
+            secret_namespace = get_optional_env("KEYCLOAK_NAMESPACE", "keycloak")
+            secret_name = "kagenti-test-user"
+            secret_body = kubernetes.client.V1Secret(
+                metadata=kubernetes.client.V1ObjectMeta(
+                    name=secret_name,
+                    namespace=secret_namespace,
+                    labels={"app": "kagenti", "kagenti.io/type": "test-credentials"},
+                ),
+                string_data={
+                    "username": test_user_name,
+                    "password": test_user_password,
+                    "realm": get_optional_env("KEYCLOAK_DEMO_REALM", "demo"),
+                },
+                type="Opaque",
             )
-        else:
-            setup.create_user(test_user_name, test_user_password)
+            try:
+                v1_api.create_namespaced_secret(secret_namespace, secret_body)
+                typer.echo(f"Created secret '{secret_name}' with test user credentials")
+            except kubernetes.client.exceptions.ApiException as e:
+                if e.status == 409:
+                    v1_api.replace_namespaced_secret(
+                        secret_name, secret_namespace, secret_body
+                    )
+                    typer.echo(
+                        f"Updated secret '{secret_name}' with test user credentials"
+                    )
+                else:
+                    raise
+        except Exception as e:
+            typer.secho(f"Warning: Could not store test user secret: {e}", fg="yellow")
     else:
         typer.echo(
             "Skipping creation of Keycloak test user (CREATE_KEYCLOAK_TEST_USER=false)"
