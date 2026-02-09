@@ -48,17 +48,18 @@ if kubectl get deployment mlflow -n kagenti-system &>/dev/null; then
 
         # Check MLflow DB init (experiment + user exist)
         DB_EXP=$(kubectl exec -n kagenti-system postgres-otel-0 -- \
-            psql -U testuser -d mlflow -t -c \
-            "SELECT COUNT(*) FROM experiments WHERE experiment_id = 0;" 2>/dev/null | tr -d ' ' || echo "0")
+            psql -U testuser -d mlflow -t -A -c \
+            "SELECT COUNT(*) FROM experiments WHERE experiment_id = 0;" 2>/dev/null | tr -d '[:space:]' || echo "0")
         DB_USER=$(kubectl exec -n kagenti-system postgres-otel-0 -- \
-            psql -U testuser -d mlflow -t -c \
-            "SELECT COUNT(*) FROM users WHERE username = 'service-account-mlflow';" 2>/dev/null | tr -d ' ' || echo "0")
+            psql -U testuser -d mlflow -t -A -c \
+            "SELECT COUNT(*) FROM users WHERE username = 'service-account-mlflow';" 2>/dev/null | tr -d '[:space:]' || echo "0")
         if [ "$DB_EXP" != "1" ] || [ "$DB_USER" != "1" ]; then
             ISSUES="$ISSUES\n  MLflow DB: experiment=$DB_EXP user=$DB_USER (need both = 1)"
         fi
 
         # Check OTEL collector for export errors — restart if dropping (max 2 restarts)
-        OTEL_DROPS=$(kubectl logs -n kagenti-system deployment/otel-collector --tail=30 2>/dev/null | grep -c "Dropping data" || echo "0")
+        OTEL_DROPS=$(kubectl logs -n kagenti-system deployment/otel-collector --tail=30 2>/dev/null | grep -c "Dropping data" 2>/dev/null || echo "0")
+        OTEL_DROPS=$(echo "$OTEL_DROPS" | tr -d '[:space:]')
         if [ "$OTEL_DROPS" -gt 0 ]; then
             if [ "$OTEL_RESTARTS" -lt 2 ]; then
                 OTEL_RESTARTS=$((OTEL_RESTARTS + 1))
