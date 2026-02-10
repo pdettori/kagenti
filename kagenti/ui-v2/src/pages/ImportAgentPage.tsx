@@ -104,6 +104,7 @@ export const ImportAgentPage: React.FC = () => {
   // Basic info
   const [namespace, setNamespace] = useState('team1');
   const [name, setName] = useState('');
+  const [protocol, setProtocol] = useState('a2a');
   const [framework, setFramework] = useState('LangGraph');
 
   // Build from source state
@@ -426,7 +427,7 @@ export const ImportAgentPage: React.FC = () => {
         gitPath: finalPath,
         gitBranch,
         imageTag: 'v0.0.1',
-        protocol: 'a2a',
+        protocol,
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         // Workload type
@@ -451,7 +452,7 @@ export const ImportAgentPage: React.FC = () => {
         gitPath: '', // Not used for image deployment
         gitBranch: '',
         imageTag,
-        protocol: 'a2a',
+        protocol,
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         // Workload type
@@ -874,6 +875,27 @@ export const ImportAgentPage: React.FC = () => {
               )}
 
               <Divider style={{ margin: '24px 0' }} />
+
+              {/* Protocol Selection */}
+              <FormGroup label="Protocol" fieldId="protocol">
+                <FormSelect
+                  id="protocol"
+                  value={protocol}
+                  onChange={(_e, value) => setProtocol(value)}
+                  aria-label="Protocol selector"
+                >
+                  <FormSelectOption value="a2a" label="A2A (Agent-to-Agent)" />
+                  <FormSelectOption value="mcp" label="MCP (Model Context Protocol)" />
+                  <FormSelectOption value="" label="None" />
+                </FormSelect>
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      Sets the kagenti.io/protocol label on the deployment. A2A agents expose an agent card for discovery.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              </FormGroup>
 
               {/* Framework Selection */}
               <FormGroup label="Framework" fieldId="framework">
