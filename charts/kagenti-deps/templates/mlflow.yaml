@@ -233,8 +233,10 @@ spec:
               if not db_uri:
                   return
 
-              # Wait for alembic migrations to create tables (retry with backoff)
-              max_retries = 30
+              # Wait for alembic migrations to create tables
+              # MLflow has ~50 migrations on fresh DB, can take 2-3 minutes
+              # Use fixed 5s interval (not exponential) to avoid giving up too early
+              max_retries = 60
               for attempt in range(max_retries):
                   try:
                       with psycopg.connect(db_uri) as conn:
@@ -274,9 +276,8 @@ spec:
                               return  # Success
                   except Exception as e:
                       if attempt < max_retries - 1:
-                          sleep_time = min(2 ** attempt, 30)  # Exponential backoff, max 30s
                           print(f"Waiting for database tables (attempt {attempt + 1}/{max_retries}): {e}")
-                          time_module.sleep(sleep_time)
+                          time_module.sleep(5)
                       else:
                           print(f"Warning: Could not initialize database after {max_retries} attempts: {e}")
 
