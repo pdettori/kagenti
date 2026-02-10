@@ -163,11 +163,19 @@ spec:
           export MLFLOW_ARTIFACTS_DESTINATION="/mlflow/artifacts" && \
           export MLFLOW_HOST="0.0.0.0" && \
           export MLFLOW_PORT="5000" && \
-          # Run MLflow database migrations (creates experiments, runs, etc. tables)
-          # Must complete BEFORE the app starts serving
-          echo "Running MLflow database migrations..." && \
+          # Initialize MLflow database (create tables + run alembic upgrades)
+          # Uses _initialize_tables which does create_all() first (safe for fresh DB)
+          # then _upgrade_db() for any pending migrations.
+          # mlflow db upgrade alone fails on fresh DBs (tries ALTER before CREATE)
+          python3 -c "
+          from mlflow.store.db.utils import _initialize_tables, create_sqlalchemy_engine_with_retry
+          import os
+          engine = create_sqlalchemy_engine_with_retry(os.environ['MLFLOW_BACKEND_STORE_URI'])
+          _initialize_tables(engine)
+          print('MLflow database tables created')
+          " && \
           mlflow db upgrade "$MLFLOW_BACKEND_STORE_URI" && \
-          echo "Database migrations complete" && \
+          echo "MLflow database migrations complete" && \
           #
           # WORKAROUND: mlflow-oidc-auth doesn't include MLflow's otel_router
           # which provides the /v1/traces OTLP endpoint for trace ingestion.
