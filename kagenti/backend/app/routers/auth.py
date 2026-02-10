@@ -9,7 +9,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.core.auth import get_current_user, get_required_user, TokenData
+from app.core.auth import get_current_user, get_required_user, require_roles, TokenData, ROLE_VIEWER
 from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -87,7 +87,9 @@ async def get_auth_status(
     )
 
 
-@router.get("/userinfo", response_model=UserInfoResponse)
+@router.get(
+    "/userinfo", response_model=UserInfoResponse, dependencies=[Depends(require_roles(ROLE_VIEWER))]
+)
 async def get_user_info(
     user: TokenData = Depends(get_required_user),
 ) -> UserInfoResponse:
