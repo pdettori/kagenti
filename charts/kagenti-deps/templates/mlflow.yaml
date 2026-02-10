@@ -163,6 +163,11 @@ spec:
           export MLFLOW_ARTIFACTS_DESTINATION="/mlflow/artifacts" && \
           export MLFLOW_HOST="0.0.0.0" && \
           export MLFLOW_PORT="5000" && \
+          # Run MLflow database migrations (creates experiments, runs, etc. tables)
+          # Must complete BEFORE the app starts serving
+          echo "Running MLflow database migrations..." && \
+          mlflow db upgrade "$MLFLOW_BACKEND_STORE_URI" && \
+          echo "Database migrations complete" && \
           #
           # WORKAROUND: mlflow-oidc-auth doesn't include MLflow's otel_router
           # which provides the /v1/traces OTLP endpoint for trace ingestion.
