@@ -10,8 +10,8 @@
 # - Trivy config scan: blocks on IaC misconfigurations (PR-specific)
 #
 # This workflow handles:
-# - Full blocking Trivy fs scan on the merged codebase
-# - Creates GitHub issues if new vulnerabilities are found
+# - Full Trivy fs scan on the merged codebase (never fails)
+# - Uploads SARIF results to GitHub Security tab (code-scanning alerts)
 #
 name: Post-Merge Security Scan
 
@@ -46,7 +46,8 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          # Never fail - results are uploaded to GitHub Security tab (code-scanning)
+          exit-code: '0'
           ignore-unfixed: true
           format: 'table'
 
