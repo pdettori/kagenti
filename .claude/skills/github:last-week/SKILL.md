@@ -17,38 +17,52 @@ Deep weekly analysis of repository health: issue investigation, PR status, CI tr
 
 ## Workflow
 
+### Phase 0: Gather Data (MUST run first)
+
+Run the data gathering script to get a consistent snapshot of all issues, PRs, and CI runs. This prevents stale data from long-running analysis.
+
 ```bash
-mkdir -p /tmp/kagenti/github
+./.github/scripts/reports/weekly-report-data.sh 7 kagenti/kagenti
 ```
 
-### Phase 1: Quick Stats (last 7 days)
+This creates JSON files in `/tmp/kagenti/github/data/`:
+- `merged-prs.json` — PRs merged in the period
+- `open-prs.json` — Currently open PRs (live snapshot)
+- `open-issues.json` — Currently open issues (live snapshot)
+- `new-issues.json` — Issues created in the period
+- `ci-runs.json` — CI runs on main
+- `ci-runs-all.json` — All CI runs
 
-Count merged PRs (headline stat only, no detailed list):
+**IMPORTANT**: All subsequent phases MUST read from these JSON files, NOT re-query `gh`. This ensures consistency — PRs won't change state mid-analysis.
+
+### Phase 1: Quick Stats
+
+Read from the gathered data:
 
 ```bash
-gh pr list --repo kagenti/kagenti --state merged --limit 50 --json mergedAt --jq '[.[] | select(.mergedAt > (now - 7*24*3600 | strftime("%Y-%m-%dT%H:%M:%SZ")))] | length'
+echo "Merged PRs: $(jq length /tmp/kagenti/github/data/merged-prs.json)"
 ```
 
-Count new issues:
-
 ```bash
-gh issue list --repo kagenti/kagenti --state all --limit 50 --json createdAt --jq '[.[] | select(.createdAt > (now - 7*24*3600 | strftime("%Y-%m-%dT%H:%M:%SZ")))] | length'
+echo "Open PRs: $(jq length /tmp/kagenti/github/data/open-prs.json)"
 ```
 
-CI pass rate on main:
+```bash
+echo "Open issues: $(jq length /tmp/kagenti/github/data/open-issues.json)"
+```
 
 ```bash
-gh run list --repo kagenti/kagenti --branch main --limit 20 --json conclusion --jq '[.[] | select(.conclusion == "success")] | length'
+echo "New issues: $(jq length /tmp/kagenti/github/data/new-issues.json)"
 ```
 
 ### Phase 2: Deep Issue Analysis
 
-For EVERY open issue, investigate:
+For EVERY open issue (from `open-issues.json`), investigate:
 
-Get all open issues with full details:
+Read from gathered data (do NOT re-query `gh`):
 
 ```bash
-gh issue list --repo kagenti/kagenti --state open --limit 100 --json number,title,body,labels,createdAt,updatedAt,assignees,comments,author
+cat /tmp/kagenti/github/data/open-issues.json | jq '.[].number'
 ```
 
 For each issue, determine:
@@ -75,10 +89,10 @@ For each issue, determine:
 
 ### Phase 3: Deep PR Analysis
 
-For EVERY open PR, investigate:
+For EVERY open PR (from `open-prs.json`), investigate:
 
 ```bash
-gh pr list --repo kagenti/kagenti --state open --json number,title,author,createdAt,updatedAt,reviewDecision,statusCheckRollup,mergeable,labels,body
+cat /tmp/kagenti/github/data/open-prs.json | jq '.[].number'
 ```
 
 For each PR, determine:
@@ -223,16 +237,17 @@ Write the full report as markdown. Structure:
 - **Trend**: [getting better/worse over time]
 
 ### Root Cause Correlation
-For each failure, check:
-1. Which commit triggered it (merge to main or PR)
-2. What changed in that commit (files touched)
-3. Has this failure pattern happened before
-4. Is there an open issue tracking it
+For each failure, identify candidate PRs merged between last success
+and the failure. Check which files they touched to find likely cause.
 
-## Recommendations
-1. [Highest priority action]
-2. [Second priority]
-...
+## Action Items
+
+Single flat list, ordered by priority. No timescales.
+
+| # | Action | Owner | Priority |
+|---|--------|-------|----------|
+| 1 | [Highest priority action] | [owner] | P0 |
+| 2 | [Next action] | [owner] | P1 |
 ```
 
 Save report:
