@@ -1,6 +1,11 @@
 # Kagenti installation configuration
 
 ####################################################################
+# Domain name - configurable for non-Kind deployments
+####################################################################
+domain: localtest.me
+
+####################################################################
 # Secrets and value files
 ####################################################################
 secrets:
@@ -144,11 +149,11 @@ charts:
             create: true
           ingressControllerType: ""
           clusterName: agent-platform
-          trustDomain: localtest.me
+          trustDomain: "{{ domain | default('localtest.me') }}"
           caSubject:
             country: US
             organization: AgenticPlatformDemo
-            commonName: localtest.me
+            commonName: "{{ domain | default('localtest.me') }}"
 
       spire-server:
         tornjak:
@@ -177,7 +182,7 @@ charts:
           tag: v2.0.0
         ingress:
           enabled: true
-        apiServerURL: http://spire-tornjak-api.localtest.me:8080
+        apiServerURL: "http://spire-tornjak-api.{{ domain | default('localtest.me') }}:8080"
         service:
           type: ClusterIP
           port: 3000

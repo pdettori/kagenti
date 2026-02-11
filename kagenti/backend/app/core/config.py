@@ -9,6 +9,7 @@ import re
 from functools import lru_cache
 from typing import List, Optional
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,12 +33,19 @@ class Settings(BaseSettings):
 
         return os.getenv("KUBERNETES_SERVICE_HOST") is not None
 
-    # CORS settings
+    # CORS settings (domain-based origin added dynamically via validator)
     cors_origins: List[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
-        "http://kagenti-ui.localtest.me:8080",
     ]
+
+    @model_validator(mode="after")
+    def _add_domain_cors_origin(self) -> "Settings":
+        """Add CORS origin based on configured domain_name."""
+        domain_origin = f"http://kagenti-ui.{self.domain_name}:8080"
+        if domain_origin not in self.cors_origins:
+            self.cors_origins.append(domain_origin)
+        return self
 
     # Kubernetes CRD settings
     crd_group: str = "agent.kagenti.dev"

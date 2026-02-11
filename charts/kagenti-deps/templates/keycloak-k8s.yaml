@@ -77,7 +77,7 @@ spec:
             - name: KC_HOSTNAME_STRICT
               value: "false"
             - name: KC_HOSTNAME
-              value: "http://keycloak.localtest.me:8080/"
+              value: "http://keycloak.{{ .Values.domain }}:8080/"
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: "KC_CACHE"

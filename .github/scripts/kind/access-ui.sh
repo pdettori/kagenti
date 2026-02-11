@@ -43,11 +43,13 @@ KEYCLOAK_STATUS=$(kubectl get pods -n keycloak -l app.kubernetes.io/name=keycloa
 KEYCLOAK_USER=$(kubectl get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.username}' 2>/dev/null | base64 -d || echo "N/A")
 KEYCLOAK_PASS=$(kubectl get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "N/A")
 
+DOMAIN_NAME="${DOMAIN_NAME:-${DOMAIN_NAME}}"
+
 echo -e "${BLUE}Keycloak Admin Console:${NC} ${YELLOW}(credentials below - do not share)${NC}"
 echo "  Status:     $KEYCLOAK_STATUS"
 echo -e "  Username:   ${GREEN}$KEYCLOAK_USER${NC}"
 echo -e "  Password:   ${GREEN}$KEYCLOAK_PASS${NC}"
-echo "  Admin URL:  http://keycloak.localtest.me:8080"
+echo "  Admin URL:  http://keycloak.${DOMAIN_NAME}:8080"
 echo "  Port-forward: kubectl port-forward -n keycloak svc/keycloak-service 8080:8080"
 echo ""
 
@@ -56,7 +58,7 @@ UI_STATUS=$(kubectl get pods -n kagenti-system -l app=kagenti-ui -o jsonpath='{.
 echo -e "${BLUE}Kagenti UI:${NC}"
 echo "  Status:   $UI_STATUS"
 echo -e "  Login:    ${GREEN}Use Keycloak credentials above (admin/admin)${NC}"
-echo "  URL:      http://kagenti-ui.localtest.me:8080"
+echo "  URL:      http://kagenti-ui.${DOMAIN_NAME}:8080"
 echo "  Port-forward: kubectl port-forward -n kagenti-system svc/http-istio 8080:80"
 echo ""
 
@@ -119,13 +121,13 @@ echo "  kubectl port-forward -n keycloak svc/keycloak-service 8081:8080 > /tmp/p
 echo ""
 echo "Access Kagenti UI:"
 echo "  1. Ensure port-forward is running (see above)"
-echo "  2. Visit: http://kagenti-ui.localtest.me:8080"
+echo "  2. Visit: http://kagenti-ui.${DOMAIN_NAME}:8080"
 echo -e "  3. Login with: ${GREEN}admin / admin${NC}"
 echo ""
 echo "Troubleshooting 'Restart login cookie not found' error:"
 echo "  - Make sure port-forward is running on port 8080"
-echo "  - Try clearing browser cookies for localtest.me"
-echo "  - Access http://kagenti-ui.localtest.me:8080 (not https)"
+echo "  - Try clearing browser cookies for ${DOMAIN_NAME}"
+echo "  - Access http://kagenti-ui.${DOMAIN_NAME}:8080 (not https)"
 echo "  - Check UI logs: kubectl logs -n kagenti-system deployment/kagenti-ui --tail=50"
 echo ""
 echo "View all pods:"

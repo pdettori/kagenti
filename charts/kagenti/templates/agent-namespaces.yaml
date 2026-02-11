@@ -154,15 +154,15 @@ data:
       },
       {
         "name": "ISSUER",
-        "value": "http://keycloak.localtest.me:8080/realms/master"
+        "value": "{{ $root.Values.keycloak.publicUrl }}/realms/master"
       },
       {
         "name": "JWKS_URI",
-        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
+        "value": "http://keycloak-service.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
       },
       {
         "name": "AUDIENCE",
-        "value": "spiffe://localtest.me/sa/slack-researcher"
+        "value": "{{ $root.Values.agentOAuthSecret.spiffePrefix }}/slack-researcher"
       }
     ]
   mcp-slack-config: |
@@ -176,15 +176,15 @@ data:
     [
       {
         "name": "ISSUER",
-        "value": "http://keycloak.localtest.me:8080/realms/master"
+        "value": "{{ $root.Values.keycloak.publicUrl }}/realms/master"
       },
       {
         "name": "JWKS_URI",
-        "value": "http://keycloak.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
+        "value": "http://keycloak-service.keycloak.svc.cluster.local:8080/realms/master/protocol/openid-connect/certs"
       },
       {
         "name": "AUDIENCE",
-        "value": "spiffe://localtest.me/sa/slack-tool"
+        "value": "{{ $root.Values.agentOAuthSecret.spiffePrefix }}/slack-tool"
       },
       {
         "name": "ADMIN_SLACK_BOT_TOKEN",
@@ -206,7 +206,7 @@ metadata:
   namespace: {{ . }}
 data:
   TOKEN_URL: "http://keycloak-service.keycloak.svc:8080/realms/demo/protocol/openid-connect/token"
-  ISSUER: "http://keycloak.localtest.me:8080/realms/demo"
+  ISSUER: "{{ $root.Values.keycloak.publicUrl }}/realms/demo"
   TARGET_AUDIENCE: "auth-target"
   TARGET_SCOPES: "openid auth-target-aud"
 ---

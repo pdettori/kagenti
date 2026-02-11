@@ -69,7 +69,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import yaml from 'js-yaml';
 
-import { agentService, chatService, shipwrightService, ShipwrightBuildInfo } from '@/services/api';
+import { agentService, chatService, configService, shipwrightService, ShipwrightBuildInfo } from '@/services/api';
 import { AgentChat } from '@/components/AgentChat';
 
 interface StatusCondition {
@@ -202,6 +202,12 @@ export const AgentDetailPage: React.FC = () => {
     staleTime: 30000, // Cache for 30 seconds
   });
 
+  // Fetch dashboard config for domain name
+  const { data: dashboardConfig } = useQuery({
+    queryKey: ['dashboards'],
+    queryFn: () => configService.getDashboards(),
+  });
+
   if (isLoading) {
     return (
       <PageSection>
@@ -297,10 +303,11 @@ export const AgentDetailPage: React.FC = () => {
   const hasRoute = routeStatusData?.hasRoute ?? false;
 
   // Determine the appropriate URL based on route existence
-  // External URL: http://{name}.{namespace}.localtest.me:8080 (via HTTPRoute)
+  // External URL: http://{name}.{namespace}.{domainName}:8080 (via HTTPRoute)
   // In-cluster URL: http://{name}.{namespace}.svc.cluster.local:8000
+  const domainName = dashboardConfig?.domainName || 'localtest.me';
   const agentUrl = hasRoute
-    ? `http://${name}.${namespace}.localtest.me:8080`
+    ? `http://${name}.${namespace}.${domainName}:8080`
     : `http://${name}.${namespace}.svc.cluster.local:8000`;
 
   return (
