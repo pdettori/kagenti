@@ -52,7 +52,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
@@ -97,9 +96,8 @@ jobs:
           # Block strong copyleft licenses that could affect project licensing
           deny-licenses: GPL-3.0, AGPL-3.0
           # Note: Packages without detected license will warn but not fail (default behavior)
-          # Post a comment on the PR showing what was scanned
-          # Note: comment-summary-in-pr requires pull-requests:write which doesn't work on fork PRs
-          comment-summary-in-pr: on-failure
+          # Scan results are shown in the "Show scan results" step below
+          comment-summary-in-pr: never
 
       - name: Show scan results
         if: always()
