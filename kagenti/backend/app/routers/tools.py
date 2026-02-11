@@ -878,6 +878,72 @@ def _build_mcpserver_manifest(request: CreateToolRequest) -> dict:
     return manifest
 
 
+def _build_container_ports(
+    service_ports: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """Build container port entries from service port configuration.
+
+    Args:
+        service_ports: Service port configuration list
+
+    Returns:
+        List of container port dicts for use in pod spec
+    """
+    if not service_ports:
+        return [
+            {
+                "containerPort": DEFAULT_IN_CLUSTER_PORT,
+                "name": "http",
+                "protocol": "TCP",
+            }
+        ]
+
+    ports = []
+    for sp in service_ports:
+        ports.append(
+            {
+                "containerPort": sp.get("targetPort", DEFAULT_IN_CLUSTER_PORT),
+                "name": sp.get("name", "http"),
+                "protocol": sp.get("protocol", "TCP"),
+            }
+        )
+    return ports
+
+
+def _build_service_ports(
+    service_ports: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """Build service port entries from service port configuration.
+
+    Args:
+        service_ports: Service port configuration list
+
+    Returns:
+        List of service port dicts for use in Service spec
+    """
+    if not service_ports:
+        return [
+            {
+                "name": "http",
+                "port": DEFAULT_IN_CLUSTER_PORT,
+                "targetPort": DEFAULT_IN_CLUSTER_PORT,
+                "protocol": "TCP",
+            }
+        ]
+
+    ports = []
+    for sp in service_ports:
+        ports.append(
+            {
+                "name": sp.get("name", "http"),
+                "port": sp.get("port", DEFAULT_IN_CLUSTER_PORT),
+                "targetPort": sp.get("targetPort", DEFAULT_IN_CLUSTER_PORT),
+                "protocol": sp.get("protocol", "TCP"),
+            }
+        )
+    return ports
+
+
 def _build_tool_deployment_manifest(
     name: str,
     namespace: str,
@@ -915,10 +981,8 @@ def _build_tool_deployment_manifest(
     if env_vars:
         all_env_vars.extend(env_vars)
 
-    # Determine target port
-    target_port = DEFAULT_IN_CLUSTER_PORT
-    if service_ports and len(service_ports) > 0:
-        target_port = service_ports[0].get("targetPort", DEFAULT_IN_CLUSTER_PORT)
+    # Build container ports from service_ports
+    container_ports = _build_container_ports(service_ports)
 
     # Build labels - required labels per migration plan
     labels = {
@@ -981,13 +1045,7 @@ def _build_tool_deployment_manifest(
                                 "runAsUser": 1000,
                             },
                             "env": all_env_vars,
-                            "ports": [
-                                {
-                                    "containerPort": target_port,
-                                    "name": "http",
-                                    "protocol": "TCP",
-                                }
-                            ],
+                            "ports": container_ports,
                             "resources": {
                                 "limits": DEFAULT_RESOURCE_LIMITS,
                                 "requests": DEFAULT_RESOURCE_REQUESTS,
@@ -1057,10 +1115,8 @@ def _build_tool_statefulset_manifest(
     if env_vars:
         all_env_vars.extend(env_vars)
 
-    # Determine target port
-    target_port = DEFAULT_IN_CLUSTER_PORT
-    if service_ports and len(service_ports) > 0:
-        target_port = service_ports[0].get("targetPort", DEFAULT_IN_CLUSTER_PORT)
+    # Build container ports from service_ports
+    container_ports = _build_container_ports(service_ports)
 
     # Service name for StatefulSet (must match the headless service)
     service_name = f"{name}{TOOL_SERVICE_SUFFIX}"
@@ -1127,13 +1183,7 @@ def _build_tool_statefulset_manifest(
                                 "runAsUser": 1000,
                             },
                             "env": all_env_vars,
-                            "ports": [
-                                {
-                                    "containerPort": target_port,
-                                    "name": "http",
-                                    "protocol": "TCP",
-                                }
-                            ],
+                            "ports": container_ports,
                             "resources": {
                                 "limits": DEFAULT_RESOURCE_LIMITS,
                                 "requests": DEFAULT_RESOURCE_REQUESTS,
@@ -1193,13 +1243,8 @@ def _build_tool_service_manifest(
     Returns:
         Service manifest dict
     """
-    # Determine ports
-    if service_ports and len(service_ports) > 0:
-        port = service_ports[0].get("port", DEFAULT_IN_CLUSTER_PORT)
-        target_port = service_ports[0].get("targetPort", DEFAULT_IN_CLUSTER_PORT)
-    else:
-        port = DEFAULT_IN_CLUSTER_PORT
-        target_port = DEFAULT_IN_CLUSTER_PORT
+    # Build service port list
+    ports = _build_service_ports(service_ports)
 
     # Service name follows the convention: {name}-mcp
     service_name = f"{name}{TOOL_SERVICE_SUFFIX}"
@@ -1223,14 +1268,7 @@ def _build_tool_service_manifest(
                 KAGENTI_TYPE_LABEL: RESOURCE_TYPE_TOOL,
                 APP_KUBERNETES_IO_NAME: name,
             },
-            "ports": [
-                {
-                    "name": "http",
-                    "port": port,
-                    "targetPort": target_port,
-                    "protocol": "TCP",
-                }
-            ],
+            "ports": ports,
         },
     }
 
