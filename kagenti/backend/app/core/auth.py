@@ -132,10 +132,15 @@ class TokenData:
         self.email = email
         self.roles = roles
         self.raw_token = raw_token
+        # Cache effective roles (with hierarchy expansion) at init time
+        # to avoid recomputing on every has_role() call
+        self._effective_roles = get_effective_roles(roles)
 
     def has_role(self, role: str) -> bool:
         """
         Check if user has a specific role, considering role hierarchy.
+
+        Uses cached effective roles computed at initialization.
 
         Args:
             role: The role to check for
@@ -143,8 +148,7 @@ class TokenData:
         Returns:
             True if user has the role directly or via hierarchy inheritance
         """
-        effective_roles = get_effective_roles(self.roles)
-        return role in effective_roles
+        return role in self._effective_roles
 
 
 async def validate_token(token: str) -> TokenData:
