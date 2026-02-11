@@ -48,10 +48,10 @@ link() {
 detect_environment() {
     if [ -n "${MANAGED_BY_TAG:-}" ]; then
         echo "hypershift"
+    elif kubectl config current-context 2>/dev/null | grep -q "^kind-"; then
+        echo "kind"
     elif command -v oc &>/dev/null && oc whoami &>/dev/null 2>&1; then
         echo "openshift"
-    elif command -v kubectl &>/dev/null && kubectl get namespace default &>/dev/null 2>&1; then
-        echo "kind"
     else
         echo "unknown"
     fi
@@ -141,10 +141,9 @@ fi
 KC_ADMIN_USER=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
 KC_ADMIN_PASS=$($CLI get secret -n keycloak keycloak-initial-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A")
 
-# App user (demo realm) - for Kagenti UI and MLflow login
-# Created by agent-oauth-secret-job, credentials stored in kagenti-test-user secret
-APP_USER=$($CLI get secret -n keycloak kagenti-test-user -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "admin")
-APP_PASS=$($CLI get secret -n keycloak kagenti-test-user -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "N/A (secret not found)")
+# App user (master realm) - same as Keycloak admin for master realm login
+APP_USER="$KC_ADMIN_USER"
+APP_PASS="$KC_ADMIN_PASS"
 
 KUBEADMIN_PASS=""
 if [ "$ENV_TYPE" = "hypershift" ]; then
@@ -164,7 +163,7 @@ if [ "$VERBOSE" = "false" ]; then
     echo ""
 
     # Credentials
-    echo -e "${GREEN}Kagenti UI & MLflow:${NC}  ${APP_USER} / ${APP_PASS}  ${DIM}(demo realm)${NC}"
+    echo -e "${GREEN}Kagenti UI & MLflow:${NC}  ${APP_USER} / ${APP_PASS}  ${DIM}(master realm)${NC}"
     echo -e "${GREEN}Keycloak Admin:${NC}       ${KC_ADMIN_USER} / ${KC_ADMIN_PASS}  ${DIM}(master realm)${NC}"
     if [ -n "$KUBEADMIN_PASS" ]; then
         echo -e "${GREEN}kubeadmin:${NC}            kubeadmin / ${KUBEADMIN_PASS}"
@@ -269,7 +268,7 @@ echo -e "${CYAN}        (Services using Keycloak - use credentials below)       
 echo "##########################################################################"
 echo ""
 
-echo -e "${GREEN}App Login (Kagenti UI & MLflow):${NC} ${YELLOW}(demo realm)${NC}"
+echo -e "${GREEN}App Login (Kagenti UI & MLflow):${NC} ${YELLOW}(master realm)${NC}"
 echo "  Username: ${APP_USER}"
 echo "  Password: ${APP_PASS}"
 echo ""
