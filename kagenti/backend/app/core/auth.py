@@ -23,6 +23,52 @@ logger = logging.getLogger(__name__)
 # HTTP Bearer token security scheme
 security = HTTPBearer(auto_error=False)
 
+# =============================================================================
+# RBAC Role Constants
+# =============================================================================
+# These roles are defined in Keycloak and embedded in JWT realm_access.roles
+
+ROLE_VIEWER = "kagenti-viewer"
+ROLE_OPERATOR = "kagenti-operator"
+ROLE_ADMIN = "kagenti-admin"
+
+# Role hierarchy: higher roles inherit permissions of lower roles (direct edges only)
+# e.g., kagenti-admin inherits kagenti-operator, which inherits kagenti-viewer
+# The get_effective_roles() function expands these transitively.
+ROLE_HIERARCHY: dict[str, list[str]] = {
+    ROLE_ADMIN: [ROLE_OPERATOR],  # admin -> operator (operator -> viewer is transitive)
+    ROLE_OPERATOR: [ROLE_VIEWER],  # operator -> viewer
+    ROLE_VIEWER: [],
+}
+
+
+def get_effective_roles(roles: list[str]) -> set[str]:
+    """
+    Expand a list of roles to include all transitively inherited roles.
+
+    Walks the role hierarchy graph until no new roles are added,
+    handling cycles safely via a visited set.
+
+    Args:
+        roles: List of role names from the token
+
+    Returns:
+        Set of all effective roles (including transitively inherited ones)
+    """
+    effective: set[str] = set()
+    to_process = list(roles)
+
+    while to_process:
+        role = to_process.pop()
+        if role in effective:
+            continue  # Already processed, avoid cycles
+        effective.add(role)
+        # Add inherited roles to processing queue
+        if role in ROLE_HIERARCHY:
+            to_process.extend(ROLE_HIERARCHY[role])
+
+    return effective
+
 
 class KeycloakJWKS:
     """Manages Keycloak JWKS (JSON Web Key Set) for token validation."""
@@ -86,10 +132,23 @@ class TokenData:
         self.email = email
         self.roles = roles
         self.raw_token = raw_token
+        # Cache effective roles (with hierarchy expansion) at init time
+        # to avoid recomputing on every has_role() call
+        self._effective_roles = get_effective_roles(roles)
 
     def has_role(self, role: str) -> bool:
-        """Check if user has a specific role."""
-        return role in self.roles
+        """
+        Check if user has a specific role, considering role hierarchy.
+
+        Uses cached effective roles computed at initialization.
+
+        Args:
+            role: The role to check for
+
+        Returns:
+            True if user has the role directly or via hierarchy inheritance
+        """
+        return role in self._effective_roles
 
 
 async def validate_token(token: str) -> TokenData:
@@ -199,7 +258,7 @@ async def get_current_user(
             sub="mock-user",
             username="admin",
             email="admin@example.com",
-            roles=["admin"],
+            roles=[ROLE_ADMIN],
             raw_token={},
         )
 
@@ -223,7 +282,7 @@ async def get_required_user(
             sub="mock-user",
             username="admin",
             email="admin@example.com",
-            roles=["admin"],
+            roles=[ROLE_ADMIN],
             raw_token={},
         )
 
@@ -241,9 +300,16 @@ def require_roles(*required_roles: str):
     """
     Dependency factory to require specific roles.
 
+    Supports role hierarchy: if a user has kagenti-admin, they automatically
+    satisfy requirements for kagenti-operator or kagenti-viewer.
+
     Usage:
-        @router.get("/admin", dependencies=[Depends(require_roles("admin"))])
-        async def admin_endpoint():
+        @router.get("/protected", dependencies=[Depends(require_roles(ROLE_VIEWER))])
+        async def view_endpoint():
+            ...
+
+        @router.post("/create", dependencies=[Depends(require_roles(ROLE_OPERATOR))])
+        async def create_endpoint():
             ...
     """
 
