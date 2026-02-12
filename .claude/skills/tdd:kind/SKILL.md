@@ -17,6 +17,22 @@ Test-driven development workflow using a local Kind cluster for fast iteration.
 > **Auto-approved**: All operations on Kind clusters (read + write, deploy, test) are auto-approved.
 > Cluster create/destroy is also auto-approved for Kind.
 
+## Cluster Concurrency Guard
+
+**Only one Kind cluster at a time.** Before any cluster operation, check:
+
+```bash
+kind get clusters 2>/dev/null
+```
+
+- **No clusters** → proceed normally (create cluster)
+- **Cluster exists AND this session owns it** → reuse it (skip creation, run tests)
+- **Cluster exists AND another session owns it** → **STOP**. Do not proceed. Inform the user:
+  > A Kind cluster is already running (likely from another session).
+  > Options: (a) wait for that session to finish, (b) switch to `tdd:ci` for CI-only iteration, (c) explicitly destroy the existing cluster first with `kind delete cluster --name kagenti`.
+
+To determine ownership: if the current task list or conversation created this cluster, it's yours. Otherwise assume another session owns it.
+
 ## Key Principle
 
 **Match CI exactly**: Kind tests must use the same packages as CI to avoid version mismatches. CI uses `pip install` (gets latest versions), local uses `uv` (locked versions). Always verify package versions match.

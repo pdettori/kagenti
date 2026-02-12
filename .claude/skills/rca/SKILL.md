@@ -66,6 +66,10 @@ After RCA is complete, switch to TDD for fix iteration: ◄──┘┘ │
 | `rca:hypershift` | Full cluster access | All read ops | Deep investigation |
 | `rca:kind` | Full local access | All ops | Kind failures, fast repro |
 
+> **Concurrency limit**: Only one `rca:kind` session at a time (one Kind cluster fits locally).
+> Before routing to `rca:kind`, run `kind get clusters` — if a cluster exists from another session,
+> route to `rca:ci` instead or ask the user.
+
 ## Related Skills
 
 - `tdd:ci` - Fix iteration after RCA (CI-driven)

@@ -217,6 +217,10 @@ Commit 3: 11 pass, 2 fail ← good, +1 passing
 | `tdd:kind` | Local Kind | All ops auto-approved | Fast |
 | `tdd:hypershift` | HyperShift hosted | All ops auto-approved | Medium |
 
+> **Concurrency limit**: Only one `tdd:kind` session at a time (one Kind cluster fits locally).
+> Before routing to `tdd:kind`, run `kind get clusters` — if a cluster exists from another session,
+> route to `tdd:ci` instead or ask the user.
+
 ## Related Skills
 
 - `rca:ci` - Root cause analysis from CI logs
