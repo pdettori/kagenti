@@ -13,12 +13,11 @@ from contextlib import AsyncExitStack
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
-from pydantic import BaseModel, field_validator
-
-from app.core.auth import require_roles, ROLE_VIEWER, ROLE_OPERATOR
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+from pydantic import BaseModel, field_validator
 
+from app.core.auth import ROLE_OPERATOR, ROLE_VIEWER, require_roles
 from app.core.config import settings
 from app.core.constants import (
     TOOLHIVE_CRD_GROUP,
