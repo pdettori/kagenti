@@ -31,6 +31,12 @@ DEFAULT_ADMIN_USERNAME_KEY = "username"
 DEFAULT_ADMIN_PASSWORD_KEY = "password"
 DEFAULT_SPIFFE_PREFIX = "spiffe://localtest.me/sa"
 
+# RBAC Role Constants - must match backend app/core/auth.py
+ROLE_VIEWER = "kagenti-viewer"
+ROLE_OPERATOR = "kagenti-operator"
+ROLE_ADMIN = "kagenti-admin"
+RBAC_ROLES = [ROLE_VIEWER, ROLE_OPERATOR, ROLE_ADMIN]
+
 
 def get_optional_env(key: str, default: Optional[str] = None) -> Optional[str]:
     """Get an optional environment variable with optional default."""
@@ -265,6 +271,86 @@ class KeycloakSetup:
         except Exception as e:
             typer.echo(f'Unexpected error creating realm "{self.realm_name}": {e}')
 
+    def create_realm_roles(self, roles: list[str]) -> None:
+        """Create RBAC realm roles in Keycloak.
+
+        Creates the specified roles in the current realm. Roles that already
+        exist are skipped without error.
+
+        Args:
+            roles: List of role names to create (e.g., ['kagenti-viewer', 'kagenti-operator'])
+        """
+        # Switch to the target realm for role operations
+        self.keycloak_admin.change_current_realm(self.realm_name)
+
+        for role_name in roles:
+            try:
+                self.keycloak_admin.create_realm_role(
+                    payload={
+                        "name": role_name,
+                        "description": f"Kagenti RBAC role: {role_name}",
+                    },
+                    skip_exists=True,
+                )
+                typer.echo(f'Created realm role "{role_name}"')
+            except KeycloakPostError as e:
+                if hasattr(e, "response_code") and e.response_code == 409:
+                    typer.echo(f'Realm role "{role_name}" already exists')
+                else:
+                    typer.secho(
+                        f'Failed to create realm role "{role_name}": {e}',
+                        fg="yellow",
+                    )
+            except Exception as e:
+                typer.secho(
+                    f'Unexpected error creating realm role "{role_name}": {e}',
+                    fg="yellow",
+                )
+
+    def assign_role_to_user(self, username: str, role_name: str) -> None:
+        """Assign a realm role to a user.
+
+        Args:
+            username: The username to assign the role to
+            role_name: The realm role name to assign
+        """
+        # Ensure we're in the target realm
+        self.keycloak_admin.change_current_realm(self.realm_name)
+
+        try:
+            # Get user by username
+            users = self.keycloak_admin.get_users({"username": username, "exact": True})
+            if not users:
+                typer.secho(
+                    f'User "{username}" not found, cannot assign role "{role_name}"',
+                    fg="yellow",
+                )
+                return
+
+            user_id = users[0]["id"]
+
+            # Get the role
+            role = self.keycloak_admin.get_realm_role(role_name)
+            if not role:
+                typer.secho(
+                    f'Role "{role_name}" not found, cannot assign to user "{username}"',
+                    fg="yellow",
+                )
+                return
+
+            # Assign role to user
+            self.keycloak_admin.assign_realm_roles(
+                user_id=user_id,
+                roles=[role],
+            )
+            typer.echo(f'Assigned role "{role_name}" to user "{username}"')
+
+        except Exception as e:
+            typer.secho(
+                f'Warning: Could not assign role "{role_name}" to user "{username}": {e}',
+                fg="yellow",
+            )
+
     def create_user(self, username, password: Optional[str] = None):
         """Create a Keycloak user and add to mlflow groups.
 
@@ -386,6 +472,9 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
         raise typer.Exit(1)
     setup.create_realm()
 
+    # Create RBAC realm roles for API authorization
+    setup.create_realm_roles(RBAC_ROLES)
+
     # Create a test user in the configured realm for UI/MLflow login.
     # Generates a random password and stores credentials in a K8s secret.
     create_test_user = parse_bool(get_optional_env("CREATE_KEYCLOAK_TEST_USER", "true"))
@@ -399,6 +488,9 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
             typer.echo(f"Generated random password for test user '{test_user_name}'")
 
         setup.create_user(test_user_name, test_user_password)
+
+        # Assign admin role to the test user for full API access
+        setup.assign_role_to_user(test_user_name, ROLE_ADMIN)
 
         # Store test user credentials in a K8s secret for show-services.sh and tests
         try:
