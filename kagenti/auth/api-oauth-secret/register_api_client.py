@@ -147,6 +147,9 @@ def register_confidential_client(
     """
     Register a confidential client with service account for Client Credentials Grant.
 
+    If the client already exists, updates its configuration to ensure it matches
+    the expected settings for Client Credentials Grant.
+
     Args:
         keycloak_admin: Connected KeycloakAdmin instance
         client_id: The client ID to register
@@ -174,8 +177,13 @@ def register_confidential_client(
     except KeycloakPostError as e:
         # Check if client already exists
         if hasattr(e, "response_code") and e.response_code == 409:
-            logger.info(f'Client "{client_id}" already exists, retrieving...')
+            logger.info(
+                f'Client "{client_id}" already exists, updating configuration...'
+            )
             internal_client_id = keycloak_admin.get_client_id(client_id)
+            # Update existing client to ensure correct configuration
+            keycloak_admin.update_client(internal_client_id, client_payload)
+            logger.info(f'Updated client "{client_id}" configuration')
         else:
             raise
 
@@ -198,26 +206,28 @@ def assign_role_to_service_account(
     internal_client_id: str,
     role_name: str,
 ) -> None:
-    """Assign a realm role to the client's service account."""
-    try:
-        # Get service account user for the client
-        service_account_user = keycloak_admin.get_client_service_account_user(
-            internal_client_id
+    """Assign a realm role to the client's service account.
+
+    Raises:
+        RuntimeError: If role assignment fails (role not found or API error)
+    """
+    # Get service account user for the client
+    service_account_user = keycloak_admin.get_client_service_account_user(
+        internal_client_id
+    )
+    user_id = service_account_user["id"]
+
+    # Get the realm role
+    role = keycloak_admin.get_realm_role(role_name)
+    if not role:
+        raise RuntimeError(
+            f'Role "{role_name}" not found in realm. '
+            f"Ensure Keycloak realm roles are created (Phase 3) before running this job."
         )
-        user_id = service_account_user["id"]
 
-        # Get the realm role
-        role = keycloak_admin.get_realm_role(role_name)
-        if not role:
-            logger.warning(f'Role "{role_name}" not found, skipping assignment')
-            return
-
-        # Assign role to service account
-        keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
-        logger.info(f'Assigned role "{role_name}" to service account')
-
-    except Exception as e:
-        logger.warning(f'Could not assign role "{role_name}" to service account: {e}')
+    # Assign role to service account
+    keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
+    logger.info(f'Assigned role "{role_name}" to service account')
 
 
 def create_or_update_secret(
