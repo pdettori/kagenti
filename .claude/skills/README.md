@@ -66,9 +66,10 @@ flowchart TD
     CHECKPR -->|No PR| RESEARCH["rca + plan + post to issue"]:::rca
     FORK --> RESEARCH
     RESEARCH --> WORKTREE["git:worktree"]:::git
+    WORKTREE --> TDDCI
 
     PR --> RCACI["rca:ci"]:::rca
-    RCACI --> TDDCI["tdd:ci fix loop"]:::tdd
+    RCACI --> TDDCI["tdd:ci"]:::tdd
     TDDCI -->|"3+ failures"| HS["tdd:hypershift"]:::tdd
     TDDCI -->|CI green| REVIEWS[Handle PR reviews]
 
@@ -80,23 +81,13 @@ flowchart TD
     DETECT -->|Kind| KIND
     DETECT -->|None| TDDCI
 
-    WORKTREE --> CODE[Write/Fix Code]
-    HS --> CODE
-    CODE --> TESTLOOP["test:write + test:review"]:::test
-    TESTLOOP --> RUN["test:run-*"]:::test
-    RUN -->|Fail| CODE
-    RUN -->|Progress| COMMIT["git:commit + git:rebase"]:::git
-    COMMIT --> MONITOR["ci:monitoring"]:::ci
-    MONITOR -->|CI fails| CODE
-    MONITOR -->|CI green| REVIEWS
-    REVIEWS -->|Changes needed| CODE
+    HS -->|CI green| REVIEWS
+    REVIEWS -->|Changes needed| TDDCI
     REVIEWS -->|Approved| DONE([Merged])
 
     classDef tdd fill:#4CAF50,stroke:#333,color:white
     classDef rca fill:#FF5722,stroke:#333,color:white
-    classDef test fill:#9C27B0,stroke:#333,color:white
     classDef git fill:#FF9800,stroke:#333,color:white
-    classDef ci fill:#2196F3,stroke:#333,color:white
 ```
 
 ### Test Workflow
