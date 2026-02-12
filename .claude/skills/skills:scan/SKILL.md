@@ -7,6 +7,30 @@ description: Scan a repository to bootstrap new skills or audit and update exist
 
 Bootstrap skills for a new repo, or audit and update skills in an existing one.
 
+```mermaid
+flowchart TD
+    START(["/skills:scan"]) --> MODE{"Repo has skills?"}
+    MODE -->|No| NP1["Analyze Repo"]:::skills
+    MODE -->|Yes| EP1["Validate Existing"]:::skills
+
+    NP1 --> NP2["Identify Categories"]:::skills
+    NP2 --> NP3["Generate Core Skills"]:::skills
+    NP3 --> NP4["Generate settings.json"]:::skills
+    NP4 --> DONE([Skills bootstrapped])
+
+    EP1 --> EP2["Gap Analysis"]:::skills
+    EP2 --> EP3["Content Quality"]:::skills
+    EP3 --> EP4["Connection Analysis"]:::skills
+    EP4 --> EP5["Usefulness Rating"]:::skills
+    EP5 --> EP6["Generate Report"]:::skills
+    EP6 --> EP7["Update README"]:::skills
+
+    EP1 -->|Issues| WRITE["skills:write"]:::skills
+    EP6 -->|Gaps| WRITE
+
+    classDef skills fill:#607D8B,stroke:#333,color:white
+```
+
 ## When to Use
 
 - Setting up Claude Code skills in a new repository
@@ -117,6 +141,7 @@ For each existing skill, assess:
 | Freshness | Commands and paths still match current repo structure |
 | Cross-links | Related Skills use colon notation and link to real skills |
 | Auto-approve | Sandbox commands match settings.json patterns |
+| Mermaid diagram | Workflow/router skills have embedded diagram matching textual flow |
 
 ### Phase 4: Connection Analysis
 
@@ -174,6 +199,10 @@ Output a structured report:
 ### Gap Analysis
 - Missing skills for detected tech: [list]
 - Stale skills referencing removed tech: [list]
+
+### Diagram Coverage
+- Skills with diagrams: [count]
+- Skills needing diagrams: [list]
 
 ### Recommendations
 1. Create: [new skills needed]

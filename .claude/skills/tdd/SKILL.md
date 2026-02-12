@@ -3,7 +3,46 @@ name: tdd
 description: Test-driven development workflows for Kagenti - CI, HyperShift, and Kind
 ---
 
-> 📊 **[View workflow diagram](README.md#tdd-workflow)**
+```mermaid
+flowchart TD
+    START(["/tdd"]) --> INPUT{"What input?"}
+    INPUT -->|GH Issue URL| ISSUE[Flow 1: Issue-First]
+    INPUT -->|GH PR URL| PR[Flow 2: PR-First]
+    INPUT -->|Local doc/task| LOCAL[Flow 3: Local-First]
+    INPUT -->|Nothing| DETECT{Detect cluster}
+
+    ISSUE --> ANALYZE[Read issue + conversation]
+    ANALYZE --> CHECKPR{"Existing PR?"}
+    CHECKPR -->|Own PR| PR
+    CHECKPR -->|Other's PR| FORK{Fork or comment?}
+    CHECKPR -->|No PR| RESEARCH["rca + plan + post to issue"]:::rca
+    FORK --> RESEARCH
+    RESEARCH --> WORKTREE["git:worktree"]:::git
+    WORKTREE --> TDDCI
+
+    PR --> RCACI["rca:ci"]:::rca
+    RCACI --> TDDCI["tdd:ci"]:::tdd
+    TDDCI -->|"3+ failures"| HS["tdd:hypershift"]:::tdd
+    TDDCI -->|CI green| REVIEWS[Handle PR reviews]
+
+    LOCAL --> KIND["tdd:kind"]:::tdd
+    KIND -->|Tests pass| MOVETOPR[Create issue + PR]
+    MOVETOPR --> PR
+
+    DETECT -->|HyperShift| HS
+    DETECT -->|Kind| KIND
+    DETECT -->|None| TDDCI
+
+    HS -->|CI green| REVIEWS
+    REVIEWS -->|Changes needed| TDDCI
+    REVIEWS -->|Approved| DONE([Merged])
+
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef git fill:#FF9800,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # TDD Skills
 
@@ -21,6 +60,58 @@ What was provided?
     ├─ Local doc/task   → Flow 3: Local-First
     └─ Nothing          → Detect cluster, pick tdd:ci/kind/hypershift
 ```
+
+## Debug Mode (--debug)
+
+Debug mode is **only activated** when `/tdd` is invoked as `/tdd --debug <issue|PR|doc>`.
+
+When active, the workflow visually tracks progress through the diagram, highlighting the current node and showing edge traversal counts.
+
+### Setup
+
+1. Create the debug output directory:
+
+```bash
+mkdir -p /tmp/kagenti/tdd/
+```
+
+2. Initialize the state file on first invocation. The script creates `/tmp/kagenti/tdd/tdd-debug-state.json` automatically.
+
+### At Each Phase Transition
+
+Run the debug diagram script to update the visual:
+
+```bash
+python3 .claude/scripts/tdd-debug-diagram.py \
+  --template .claude/skills/tdd/tdd-workflow.mmd \
+  --current-node <NODE_ID> \
+  --edge-counts '{"<FROM>-><TO>": <count>, ...}' \
+  --output /tmp/kagenti/tdd/debug-diagram.mmd
+```
+
+Node IDs match the diagram: `START`, `INPUT`, `ISSUE`, `PR`, `LOCAL`, `DETECT`, `ANALYZE`, `CHECKPR`, `FORK`, `RESEARCH`, `WORKTREE`, `RCACI`, `TDDCI`, `HS`, `KIND`, `MOVETOPR`, `REVIEWS`, `DONE`.
+
+### State Tracking
+
+The script maintains `/tmp/kagenti/tdd/tdd-debug-state.json` with:
+- `current_node` - where in the workflow we are now
+- `edge_counts` - how many times each edge has been traversed
+- `history` - ordered list of nodes visited with timestamps
+
+### Propagation to Sub-Skills
+
+When debug mode is active and the workflow enters a sub-skill (`tdd:ci`, `tdd:kind`, `tdd:hypershift`), pass the debug flag through:
+
+1. Use the sub-skill's own `.mmd` template (e.g., `.claude/skills/tdd:ci/tdd-ci-workflow.mmd`)
+2. Continue updating `/tmp/kagenti/tdd/tdd-debug-state.json` with the sub-skill's node transitions
+3. When the sub-skill completes, resume tracking in the parent `tdd-workflow.mmd`
+
+### Report Current Position
+
+After each script invocation, report to the user:
+- Current node name and description
+- Number of loop iterations (from edge counts)
+- Path taken so far (from history)
 
 ---
 

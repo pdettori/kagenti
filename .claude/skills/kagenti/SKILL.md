@@ -3,7 +3,27 @@ name: kagenti
 description: Deploy and manage Kagenti platform, operator, agents, and tools on Kubernetes.
 ---
 
-> 📊 **[View workflow diagram](README.md#deploy--debug-workflow)**
+```mermaid
+flowchart TD
+    DEPLOY([Deploy]) --> TYPE{Platform?}
+    TYPE -->|Kind| KDEPLOY["kagenti:deploy"]:::deploy
+    TYPE -->|OpenShift| ODEPLOY["kagenti:deploy"]:::deploy
+    TYPE -->|HyperShift| HSDEPLOY["kagenti:operator"]:::deploy
+
+    KDEPLOY --> HEALTH["k8s:health"]:::k8s
+    ODEPLOY --> HEALTH
+    HSDEPLOY --> HEALTH
+    HEALTH -->|Healthy| DONE([Ready])
+    HEALTH -->|Issues| DEBUG{Debug}
+    DEBUG -->|Pods| PODS["k8s:pods"]:::k8s
+    DEBUG -->|Logs| LOGS["k8s:logs"]:::k8s
+    DEBUG -->|UI| UI["kagenti:ui-debug"]:::deploy
+
+    classDef deploy fill:#795548,stroke:#333,color:white
+    classDef k8s fill:#00BCD4,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # Kagenti Skills
 

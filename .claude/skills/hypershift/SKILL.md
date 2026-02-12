@@ -3,7 +3,20 @@ name: hypershift
 description: Manage HyperShift clusters on AWS for Kagenti testing. Create, destroy, debug clusters and check quotas.
 ---
 
-> 📊 **[View workflow diagram](README.md#hypershift-cluster-lifecycle-with-mgmt-creds)**
+```mermaid
+flowchart LR
+    SETUP["hypershift:setup"]:::hs --> PRE["hypershift:preflight"]:::hs
+    PRE --> QUOTAS["hypershift:quotas"]:::hs
+    QUOTAS --> CREATE["hypershift:cluster"]:::hs
+    CREATE --> USE([Use cluster])
+    USE --> DESTROY["hypershift:cluster destroy"]:::hs
+    CREATE -.->|fails| DEBUG["hypershift:debug"]:::hs
+    DESTROY -.->|stuck| DEBUG
+
+    classDef hs fill:#3F51B5,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # HyperShift Skills
 

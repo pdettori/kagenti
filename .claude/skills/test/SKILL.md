@@ -3,7 +3,27 @@ name: test
 description: Test writing, reviewing, and running for Kagenti - smart router for test workflows
 ---
 
-> 📊 **[View workflow diagram](README.md#test-workflow)**
+```mermaid
+flowchart TD
+    START([Need Tests]) --> TEST{"/test"}
+    TEST -->|Write new tests| WRITE["test:write"]:::test
+    TEST -->|Review quality| REVIEW["test:review"]:::test
+    TEST -->|Run on Kind| RUNKIND["test:run-kind"]:::test
+    TEST -->|Run on HyperShift| RUNHS["test:run-hypershift"]:::test
+    TEST -->|Playwright| PW["test:playwright"]:::test
+    TEST -->|Full TDD loop| TDD["tdd/*"]:::tdd
+
+    WRITE --> REVIEW
+    REVIEW -->|Issues found| WRITE
+    REVIEW -->|Clean| RUN{Run where?}
+    RUN -->|Kind| RUNKIND
+    RUN -->|HyperShift| RUNHS
+
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # Test Skills
 

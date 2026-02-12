@@ -28,34 +28,22 @@ Systematic root cause analysis when you only have access to CI logs and artifact
 
 ## RCA Workflow
 
+```mermaid
+flowchart TD
+    START(["/rca:ci"]) --> P1["Phase 1: Gather"]:::rca
+    P1 --> P2["Phase 2: Isolate"]:::rca
+    P2 --> P3["Phase 3: Hypothesize"]:::rca
+    P3 --> P4["Phase 4: Verify"]:::rca
+    P4 --> RESULT{"Conclusive?"}
+    RESULT -->|Yes| P5["Phase 5: Document"]:::rca
+    RESULT -->|No| ESC["Escalate to rca:hypershift"]:::rca
+    P5 --> TDD["tdd:ci"]:::tdd
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. GATHER                                                      │
-│     ├─ Download CI logs                                         │
-│     ├─ Get test output                                          │
-│     └─ Check artifacts                                          │
-├─────────────────────────────────────────────────────────────────┤
-│  2. ISOLATE                                                     │
-│     ├─ Find first failure                                       │
-│     ├─ Trace error chain                                        │
-│     └─ Identify failing component                               │
-├─────────────────────────────────────────────────────────────────┤
-│  3. HYPOTHESIZE                                                 │
-│     ├─ List possible causes                                     │
-│     ├─ Rank by likelihood                                       │
-│     └─ Identify evidence needed                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  4. VERIFY                                                      │
-│     ├─ Check logs for evidence                                  │
-│     ├─ Confirm or eliminate hypotheses                          │
-│     └─ If inconclusive → escalate to rca:hypershift             │
-├─────────────────────────────────────────────────────────────────┤
-│  5. DOCUMENT                                                    │
-│     ├─ Root cause identified                                    │
-│     ├─ Evidence supporting conclusion                           │
-│     └─ Proposed fix                                             │
-└─────────────────────────────────────────────────────────────────┘
-```
+
+> Follow this diagram as the workflow.
 
 ## Phase 1: Gather CI Artifacts
 

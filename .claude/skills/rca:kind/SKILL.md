@@ -31,6 +31,28 @@ kind get clusters 2>/dev/null
 
 To determine ownership: if the current task list or conversation created this cluster, it's yours. Otherwise assume another session owns it.
 
+```mermaid
+flowchart TD
+    START(["/rca:kind"]) --> GUARD{"Kind cluster?"}
+    GUARD -->|No clusters| CREATE["Deploy Kind cluster"]:::rca
+    GUARD -->|Owned| REUSE[Reuse existing]:::rca
+    GUARD -->|Another session| STOP([Stop - cluster busy])
+
+    CREATE --> P1["Phase 1: Reproduce"]:::rca
+    REUSE --> P2["Phase 2: Inspect"]:::rca
+    P1 --> P2
+    P2 --> P3["Phase 3: Diagnose"]:::rca
+    P3 --> P4["Phase 4: Fix and Verify"]:::rca
+    P4 --> RESULT{"Fixed?"}
+    RESULT -->|Yes| TDD["tdd:kind"]:::tdd
+    RESULT -->|No| P2
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
+
 ## Workflow
 
 ```

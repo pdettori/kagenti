@@ -5,6 +5,22 @@ description: End-of-session review to identify improvements, skill gaps, and ref
 
 # Session Retrospective
 
+```mermaid
+flowchart TD
+    START(["/skills:retrospective"]) --> P1["Phase 1: Session Analysis"]:::skills
+    P1 --> P1B["Phase 1b: Commit History"]:::skills
+    P1B --> P2["Phase 2: Skill Inventory"]:::skills
+    P2 --> P3["Phase 3: Create Plan"]:::skills
+    P3 --> APPROVE{"User approves?"}
+    APPROVE -->|Yes| P4["Phase 4: Execute"]:::skills
+    APPROVE -->|Changes| P3
+    P4 --> DONE([Commit changes])
+
+    classDef skills fill:#607D8B,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
+
 ## Table of Contents
 
 - [When to Use](#when-to-use)

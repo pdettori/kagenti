@@ -3,7 +3,29 @@ name: ci
 description: CI pipeline monitoring, status checks, and PR validation workflows
 ---
 
-> 📊 **[View workflow diagram](README.md#ci-workflow)**
+```mermaid
+flowchart TD
+    PR([PR / Push]) --> CI{"/ci"}
+    CI -->|Check status| STATUS["ci:status"]:::ci
+    CI -->|Monitor running| MON["ci:monitoring"]:::ci
+    CI -->|Failed, investigate| RCACI["rca:ci"]:::rca
+    CI -->|Failed, fix + rerun| TDDCI["tdd:ci"]:::tdd
+
+    STATUS --> RESULT{Result?}
+    RESULT -->|All pass| DONE([Merge])
+    RESULT -->|Failed| RCACI
+    MON -->|Completed| STATUS
+
+    RCACI --> ROOT[Root Cause]
+    ROOT --> TDDCI
+    TDDCI -->|CI passes| DONE
+
+    classDef ci fill:#2196F3,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # CI Skills
 

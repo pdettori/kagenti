@@ -3,7 +3,27 @@ name: rca
 description: Root cause analysis workflows - systematic investigation of failures
 ---
 
-> 📊 **[View workflow diagram](README.md#rca-workflow)**
+```mermaid
+flowchart TD
+    FAIL([Failure]) --> RCA{"/rca"}
+    RCA -->|CI failure, no cluster| RCACI["rca:ci"]:::rca
+    RCA -->|HyperShift available| RCAHS["rca:hypershift"]:::rca
+    RCA -->|Kind available| RCAKIND["rca:kind"]:::rca
+
+    RCACI -->|Inconclusive| NEED{"Need cluster?"}
+    NEED -->|Yes| RCAHS
+    NEED -->|Reproduce locally| RCAKIND
+
+    RCACI --> ROOT[Root Cause Found]
+    RCAHS --> ROOT
+    RCAKIND --> ROOT
+    ROOT --> TDD["tdd:*"]:::tdd
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # RCA Skills
 

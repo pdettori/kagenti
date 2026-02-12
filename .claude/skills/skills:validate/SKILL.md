@@ -21,6 +21,8 @@ description: Validate skill files meet the standard format and naming convention
 - [ ] **Title**: Has `# Skill Name` as first heading
 - [ ] **When to Use**: Has "When to Use" or "Overview" section
 - [ ] **Related Skills**: Has "Related Skills" section at the end
+- [ ] **Mermaid diagram**: Workflow/router skills have an embedded mermaid diagram
+- [ ] **Diagram colors**: classDef colors match README color legend
 
 ### Command Format (Required)
 
@@ -37,6 +39,7 @@ description: Validate skill files meet the standard format and naming convention
 - [ ] **Parent ref**: Parent category `SKILL.md` references this skill
 - [ ] **Imperative voice**: Uses "Run X" not "You should run X"
 - [ ] **Length**: Leaf skills are 80-200 lines (300 max)
+- [ ] **Diagram-text match**: Diagram nodes correspond to textual flow steps
 
 ## Sandbox vs Management Classification
 
@@ -105,6 +108,18 @@ done
 ```bash
 # Find chained commands in sandbox skills (potential auto-approve issues)
 grep -n ' && ' .claude/skills/k8s:*/SKILL.md .claude/skills/kagenti:*/SKILL.md .claude/skills/kind:*/SKILL.md .claude/skills/local:*/SKILL.md .claude/skills/tdd:*/SKILL.md .claude/skills/rca:*/SKILL.md
+```
+
+### Check Mermaid Diagram Presence
+
+```bash
+for f in .claude/skills/*/SKILL.md; do
+  dir=$(basename $(dirname "$f"))
+  case "$dir" in git|k8s|auth|openshift|local|kind|helm|meta|genai|repo|testing) continue ;; esac
+  if ! grep -q '```mermaid' "$f"; then
+    echo "MISSING DIAGRAM: $dir"
+  fi
+done
 ```
 
 ### Verify settings.json Coverage

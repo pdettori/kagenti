@@ -3,7 +3,21 @@ name: skills
 description: Skill management - create, validate, and improve Claude Code skills
 ---
 
-> 📊 **[View workflow diagram](README.md#skills-meta-workflow)**
+```mermaid
+flowchart TD
+    START([Skills]) --> SCAN["skills:scan"]:::skills
+    SCAN -->|New repo| WRITE["skills:write"]:::skills
+    SCAN -->|Existing| VALIDATE["skills:validate"]:::skills
+    VALIDATE -->|Issues| WRITE
+    VALIDATE -->|All pass| REPORT[Generate Report]
+    WRITE --> VALIDATE
+    REPORT --> RETRO["skills:retrospective"]:::skills
+    RETRO -->|Gaps| WRITE
+
+    classDef skills fill:#607D8B,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # Skills Management
 
