@@ -108,11 +108,12 @@ fi
 # Fetch all route hostnames up front
 # =============================================================================
 if [ "$ENV_TYPE" = "kind" ]; then
-    KEYCLOAK_URL="http://keycloak.localtest.me:8080"
-    UI_URL="http://kagenti-ui.localtest.me:8080"
-    MLFLOW_URL="http://mlflow.localtest.me:8080"
-    PHOENIX_URL="http://phoenix.localtest.me:8080"
-    KIALI_URL="http://kiali.localtest.me:8080"
+    DOMAIN_NAME="${DOMAIN_NAME:-localtest.me}"
+    KEYCLOAK_URL="http://keycloak.${DOMAIN_NAME}:8080"
+    UI_URL="http://kagenti-ui.${DOMAIN_NAME}:8080"
+    MLFLOW_URL="http://mlflow.${DOMAIN_NAME}:8080"
+    PHOENIX_URL="http://phoenix.${DOMAIN_NAME}:8080"
+    KIALI_URL="http://kiali.${DOMAIN_NAME}:8080"
     AGENT_URL=""
     CONSOLE_URL=""
 else

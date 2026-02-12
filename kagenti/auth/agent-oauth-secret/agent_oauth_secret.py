@@ -29,7 +29,8 @@ DEFAULT_KEYCLOAK_NAMESPACE = "keycloak"
 DEFAULT_ADMIN_SECRET_NAME = "keycloak-initial-admin"
 DEFAULT_ADMIN_USERNAME_KEY = "username"
 DEFAULT_ADMIN_PASSWORD_KEY = "password"
-DEFAULT_SPIFFE_PREFIX = "spiffe://localtest.me/sa"
+DEFAULT_DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localtest.me")
+DEFAULT_SPIFFE_PREFIX = f"spiffe://{DEFAULT_DOMAIN_NAME}/sa"
 
 
 def get_optional_env(key: str, default: Optional[str] = None) -> Optional[str]:
@@ -137,7 +138,7 @@ def get_keycloak_env_config() -> Tuple[str, str, Optional[str], str]:
     Returns a tuple: (base_url, demo_realm_name, ssl_cert_file, spiffe_prefix)
     """
     base_url = get_optional_env(
-        "KEYCLOAK_BASE_URL", "http://keycloak.localtest.me:8080"
+        "KEYCLOAK_BASE_URL", f"http://keycloak.{DEFAULT_DOMAIN_NAME}:8080"
     )
     demo_realm_name = get_optional_env("KEYCLOAK_DEMO_REALM", "demo")
     ssl_cert_file = get_optional_env("SSL_CERT_FILE")

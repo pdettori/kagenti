@@ -229,8 +229,9 @@ def get_mlflow_url() -> str | None:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
-    # Fall back to Kind cluster URL
-    return "http://mlflow.localtest.me:8080"
+    # Fall back to Kind cluster URL using DOMAIN_NAME env var
+    domain = os.environ.get("DOMAIN_NAME", "localtest.me")
+    return f"http://mlflow.{domain}:8080"
 
 
 def setup_mlflow_client(mlflow_url: str) -> bool:

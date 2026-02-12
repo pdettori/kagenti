@@ -205,7 +205,8 @@ def run_auth_demo_setup(namespace: str, script_dir: Path) -> bool:
     env.update(
         {
             "KEYCLOAK_URL": env.get(
-                "KEYCLOAK_URL", "http://keycloak.localtest.me:8080"
+                "KEYCLOAK_URL",
+                f"http://keycloak.{env.get('DOMAIN_NAME', 'localtest.me')}:8080",
             ),
             "KEYCLOAK_REALM": env.get("KEYCLOAK_REALM", "master"),
             "KEYCLOAK_ADMIN_USERNAME": env.get("KEYCLOAK_ADMIN_USERNAME", "admin"),

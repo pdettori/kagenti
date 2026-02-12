@@ -68,8 +68,9 @@ def get_phoenix_url() -> str | None:
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
-    # Fall back to Kind cluster URL
-    return "http://phoenix.localtest.me:8080"
+    # Fall back to Kind cluster URL using DOMAIN_NAME env var
+    domain = os.environ.get("DOMAIN_NAME", "localtest.me")
+    return f"http://phoenix.{domain}:8080"
 
 
 class PhoenixClient:

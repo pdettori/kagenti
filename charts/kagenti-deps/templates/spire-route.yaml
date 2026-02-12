@@ -28,7 +28,7 @@ spec:
     - name: http
       namespace: kagenti-system
   hostnames:
-    - "spire-oidc.localtest.me"
+    - "spire-oidc.{{ .Values.domain }}"
   rules:
     - matches:
         - path:
@@ -52,7 +52,7 @@ spec:
     - name: http
       namespace: kagenti-system
   hostnames:
-    - "spire-tornjak-api.localtest.me"
+    - "spire-tornjak-api.{{ .Values.domain }}"
   rules:
     - matches:
         - path:
@@ -76,7 +76,7 @@ spec:
     - name: http
       namespace: kagenti-system
   hostnames:
-    - "spire-tornjak-ui.localtest.me"
+    - "spire-tornjak-ui.{{ .Values.domain }}"
   rules:
     - matches:
         - path:
