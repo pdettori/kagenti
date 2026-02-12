@@ -113,7 +113,7 @@ agentOAuthSecret:
 #  WARNING: This is a shared credential for testing/dev only.
 # ------------------------------------------------------------------
 apiOAuthSecret:
-  enabled: true
+  enabled: false
   image: ghcr.io/kagenti/kagenti/api-oauth-secret
   tag: latest
   # Client ID for the API service account
