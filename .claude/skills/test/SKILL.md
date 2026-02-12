@@ -14,8 +14,11 @@ Test management for Kagenti: write, review, and run tests.
 ```
 What do you need?
     │
-    ├─ Write new tests
+    ├─ Write pytest E2E/unit tests
     │   → test:write
+    │
+    ├─ Write Playwright demo tests
+    │   → test:playwright
     │
     ├─ Review existing tests for quality
     │   → test:review
@@ -32,12 +35,13 @@ What do you need?
 
 ## Available Skills
 
-| Skill | Purpose | Auto-approve |
-|-------|---------|--------------|
-| `test:write` | Write new E2E/unit tests | N/A (code editing) |
-| `test:review` | Review test quality, catch bad patterns | N/A (analysis) |
-| `test:run-kind` | Run tests on Kind cluster | All auto-approved |
-| `test:run-hypershift` | Run tests on HyperShift cluster | All auto-approved |
+| Skill | Purpose | Framework |
+|-------|---------|-----------|
+| `test:write` | Write pytest E2E/unit tests | pytest |
+| `test:playwright` | Write Playwright demo tests (markStep, assertions, narration) | Playwright |
+| `test:review` | Review test quality, catch bad patterns | Any |
+| `test:run-kind` | Run tests on Kind cluster | pytest |
+| `test:run-hypershift` | Run tests on HyperShift cluster | pytest |
 
 ## Test Workflow in TDD
 

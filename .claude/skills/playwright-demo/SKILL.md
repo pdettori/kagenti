@@ -52,11 +52,12 @@ source .env
 
 ### On invocation
 
-1. **Review test quality** before recording (see Test Review below)
-2. **Run test** to verify it passes with assertions
-3. **Record** video (--no-narration first if iterating)
-4. **Add narration** and re-run with `OPENAI_API_KEY`
-5. **Validate alignment** and iterate
+1. **Write/review test** using `test:playwright` -- verify markStep segments,
+   assertions, selectors, and narration alignment
+2. **Run test** to verify it passes: `--no-narration` first
+3. **Record** video with voiceover: `source .env` then run
+4. **Validate alignment** and iterate on narration text
+5. **Fix failures** using `playwright-demo:debug` if needed
 
 ### Recording pipeline (with OPENAI_API_KEY)
 
