@@ -12,6 +12,7 @@ with copy-pasteable commands and decision trees.
   - [Test Workflow](#test-workflow)
   - [RCA Workflow](#rca-workflow)
   - [CI Workflow](#ci-workflow)
+  - [Playwright Demo Workflow](#playwright-demo-workflow)
   - [Skills Meta Workflow](#skills-meta-workflow)
   - [GitHub Repository Analysis](#github-repository-analysis)
   - [Deploy & Debug Workflow](#deploy--debug-workflow)
@@ -46,6 +47,7 @@ Only skill nodes are colored. Decision points, actions, and labels have no color
 | ⚫ Gray | Skills Meta |
 | 🩷 Pink | GitHub |
 | 🔵 Indigo | HyperShift |
+| 🟡 Yellow-Green | Playwright / Demo |
 
 ### TDD Workflow (3 Entry Points)
 
@@ -177,6 +179,27 @@ flowchart TD
     classDef ci fill:#2196F3,stroke:#333,color:white
     classDef rca fill:#FF5722,stroke:#333,color:white
     classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+### Playwright Demo Workflow
+
+```mermaid
+flowchart TD
+    START([Demo Needed]) --> RESEARCH["playwright-research"]:::pw
+    RESEARCH -->|UI changes detected| PLAN[Plan demo segments]
+    RESEARCH -->|No changes| SKIP([No update needed])
+
+    PLAN --> WRITE["test:playwright"]:::test
+    WRITE --> REVIEW["test:review"]:::test
+    REVIEW -->|Issues| WRITE
+    REVIEW -->|Clean| RECORD["playwright-demo"]:::pw
+
+    RECORD -->|Fails| DEBUG["playwright-demo:debug"]:::pw
+    DEBUG --> WRITE
+    RECORD -->|Success| VIDEO([Demo video ready])
+
+    classDef pw fill:#8BC34A,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
 ```
 
 ### Skills Meta Workflow
@@ -325,6 +348,9 @@ flowchart LR
 │   ├── openshift:debug
 │   ├── openshift:routes
 │   └── openshift:trusted-ca-bundle
+├── playwright-demo/                Demo video recording
+│   └── playwright-demo:debug
+├── playwright-research/            Demo lifecycle management
 ├── rca/                            Root cause analysis (smart router)
 │   ├── rca:ci
 │   ├── rca:hypershift
@@ -339,6 +365,7 @@ flowchart LR
 │   ├── tdd:hypershift
 │   └── tdd:kind
 ├── test/                           Test management (smart router)
+│   ├── test:playwright
 │   ├── test:write
 │   ├── test:review
 │   ├── test:run-kind
