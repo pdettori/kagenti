@@ -5,15 +5,20 @@
 Configuration API endpoints.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.auth import require_roles, ROLE_VIEWER
 from app.core.config import settings
 from app.models.responses import DashboardConfigResponse
 
 router = APIRouter(prefix="/config", tags=["config"])
 
 
-@router.get("/dashboards", response_model=DashboardConfigResponse)
+@router.get(
+    "/dashboards",
+    response_model=DashboardConfigResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
+)
 async def get_dashboard_config() -> DashboardConfigResponse:
     """
     Get dashboard URLs for observability tools.

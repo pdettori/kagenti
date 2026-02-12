@@ -13,10 +13,11 @@ from contextlib import AsyncExitStack
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
-from pydantic import BaseModel, field_validator
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+from pydantic import BaseModel, field_validator
 
+from app.core.auth import ROLE_OPERATOR, ROLE_VIEWER, require_roles
 from app.core.config import settings
 from app.core.constants import (
     TOOLHIVE_CRD_GROUP,
@@ -512,7 +513,7 @@ def _build_tool_shipwright_buildrun_manifest(
     )
 
 
-@router.get("", response_model=ToolListResponse)
+@router.get("", response_model=ToolListResponse, dependencies=[Depends(require_roles(ROLE_VIEWER))])
 async def list_tools(
     namespace: str = Query(default="default", description="Kubernetes namespace"),
     kube: KubernetesService = Depends(get_kubernetes_service),
@@ -631,7 +632,7 @@ async def list_tools(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-@router.get("/{namespace}/{name}")
+@router.get("/{namespace}/{name}", dependencies=[Depends(require_roles(ROLE_VIEWER))])
 async def get_tool(
     namespace: str,
     name: str,
@@ -694,7 +695,7 @@ async def get_tool(
     }
 
 
-@router.get("/{namespace}/{name}/route-status")
+@router.get("/{namespace}/{name}/route-status", dependencies=[Depends(require_roles(ROLE_VIEWER))])
 async def get_tool_route_status(
     namespace: str,
     name: str,
@@ -705,7 +706,11 @@ async def get_tool_route_status(
     return {"hasRoute": exists}
 
 
-@router.delete("/{namespace}/{name}", response_model=DeleteResponse)
+@router.delete(
+    "/{namespace}/{name}",
+    response_model=DeleteResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def delete_tool(
     namespace: str,
     name: str,
@@ -1249,7 +1254,9 @@ def _get_tool_service_name(name: str) -> str:
     return f"{name}{TOOL_SERVICE_SUFFIX}"
 
 
-@router.post("", response_model=CreateToolResponse)
+@router.post(
+    "", response_model=CreateToolResponse, dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def create_tool(
     request: CreateToolRequest,
     kube: KubernetesService = Depends(get_kubernetes_service),
@@ -1454,6 +1461,7 @@ async def create_tool(
 @router.get(
     "/{namespace}/{name}/shipwright-build-info",
     response_model=ToolShipwrightBuildInfoResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
 )
 async def get_tool_shipwright_build_info(
     namespace: str,
@@ -1545,7 +1553,9 @@ async def get_tool_shipwright_build_info(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-@router.post("/{namespace}/{name}/shipwright-buildrun")
+@router.post(
+    "/{namespace}/{name}/shipwright-buildrun", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def create_tool_buildrun(
     namespace: str,
     name: str,
@@ -1607,7 +1617,11 @@ async def create_tool_buildrun(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-@router.post("/{namespace}/{name}/finalize-shipwright-build", response_model=CreateToolResponse)
+@router.post(
+    "/{namespace}/{name}/finalize-shipwright-build",
+    response_model=CreateToolResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def finalize_tool_shipwright_build(
     namespace: str,
     name: str,
@@ -1836,7 +1850,11 @@ def _get_tool_url(name: str, namespace: str) -> str:
         return f"http://{name}.{domain}:8080"
 
 
-@router.post("/{namespace}/{name}/connect", response_model=MCPToolsResponse)
+@router.post(
+    "/{namespace}/{name}/connect",
+    response_model=MCPToolsResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def connect_to_tool(
     namespace: str,
     name: str,
@@ -1898,7 +1916,11 @@ async def connect_to_tool(
         )
 
 
-@router.post("/{namespace}/{name}/invoke", response_model=MCPInvokeResponse)
+@router.post(
+    "/{namespace}/{name}/invoke",
+    response_model=MCPInvokeResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def invoke_tool(
     namespace: str,
     name: str,
@@ -2214,6 +2236,7 @@ def _build_service_from_mcpserver(mcpserver: Dict, namespace: str) -> Dict:
     response_model=ListMigratableToolsResponse,
     summary="List tools that can be migrated from MCPServer CRD to Deployment",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
 )
 async def list_migratable_tools(
     namespace: str = Query(default="default", description="Kubernetes namespace"),
@@ -2313,6 +2336,7 @@ async def list_migratable_tools(
     response_model=MigrateToolResponse,
     summary="Migrate an MCPServer CRD to a Deployment",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
 )
 async def migrate_tool(
     namespace: str,
@@ -2471,6 +2495,7 @@ async def migrate_tool(
     response_model=BatchMigrateToolsResponse,
     summary="Migrate all MCPServer CRDs in a namespace to Deployments",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
 )
 async def batch_migrate_tools(
     namespace: str = Query(default="default", description="Kubernetes namespace"),

@@ -12,10 +12,11 @@ from typing import Optional, List
 from uuid import uuid4
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from app.core.auth import require_roles, ROLE_VIEWER, ROLE_OPERATOR
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,11 @@ def _get_agent_url(name: str, namespace: str) -> str:
         return f"http://{name}.{namespace}.{domain}:8080"
 
 
-@router.get("/{namespace}/{name}/agent-card", response_model=AgentCardResponse)
+@router.get(
+    "/{namespace}/{name}/agent-card",
+    response_model=AgentCardResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
+)
 async def get_agent_card(
     namespace: str,
     name: str,
@@ -138,7 +143,11 @@ async def get_agent_card(
         )
 
 
-@router.post("/{namespace}/{name}/send", response_model=ChatResponse)
+@router.post(
+    "/{namespace}/{name}/send",
+    response_model=ChatResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def send_message(
     namespace: str,
     name: str,
@@ -477,7 +486,7 @@ async def _stream_a2a_response(
         yield f"data: {json.dumps({'error': error_msg, 'session_id': session_id})}\n\n"
 
 
-@router.post("/{namespace}/{name}/stream")
+@router.post("/{namespace}/{name}/stream", dependencies=[Depends(require_roles(ROLE_OPERATOR))])
 async def stream_message(
     namespace: str,
     name: str,

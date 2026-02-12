@@ -7,13 +7,16 @@ Namespace API endpoints.
 
 from fastapi import APIRouter, Depends, Query
 
+from app.core.auth import require_roles, ROLE_VIEWER
 from app.models.responses import NamespaceListResponse
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
 
 router = APIRouter(prefix="/namespaces", tags=["namespaces"])
 
 
-@router.get("", response_model=NamespaceListResponse)
+@router.get(
+    "", response_model=NamespaceListResponse, dependencies=[Depends(require_roles(ROLE_VIEWER))]
+)
 async def list_namespaces(
     enabled_only: bool = Query(default=True, description="Only return enabled namespaces"),
     kube: KubernetesService = Depends(get_kubernetes_service),

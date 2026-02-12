@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
 from pydantic import BaseModel, field_validator
 
+from app.core.auth import ROLE_OPERATOR, ROLE_VIEWER, require_roles
 from app.core.constants import (
     CRD_GROUP,
     CRD_VERSION,
@@ -451,7 +452,9 @@ def _extract_labels(labels: dict) -> ResourceLabels:
     )
 
 
-@router.get("", response_model=AgentListResponse)
+@router.get(
+    "", response_model=AgentListResponse, dependencies=[Depends(require_roles(ROLE_VIEWER))]
+)
 async def list_agents(
     namespace: str = Query(default="default", description="Kubernetes namespace"),
     kube: KubernetesService = Depends(get_kubernetes_service),
@@ -624,7 +627,7 @@ async def list_agents(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-@router.get("/{namespace}/{name}")
+@router.get("/{namespace}/{name}", dependencies=[Depends(require_roles(ROLE_VIEWER))])
 async def get_agent(
     namespace: str,
     name: str,
@@ -722,7 +725,7 @@ async def get_agent(
     return response
 
 
-@router.get("/{namespace}/{name}/route-status")
+@router.get("/{namespace}/{name}/route-status", dependencies=[Depends(require_roles(ROLE_VIEWER))])
 async def get_agent_route_status(
     namespace: str,
     name: str,
@@ -733,7 +736,11 @@ async def get_agent_route_status(
     return {"hasRoute": exists}
 
 
-@router.delete("/{namespace}/{name}", response_model=DeleteResponse)
+@router.delete(
+    "/{namespace}/{name}",
+    response_model=DeleteResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def delete_agent(
     namespace: str,
     name: str,
@@ -866,6 +873,7 @@ async def delete_agent(
     response_model=ListMigratableAgentsResponse,
     summary="List agents that can be migrated from Agent CRD to Deployment",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
 )
 async def list_migratable_agents(
     namespace: str = Query(default="default", description="Kubernetes namespace"),
@@ -950,6 +958,7 @@ async def list_migratable_agents(
     response_model=MigrateAgentResponse,
     summary="Migrate an Agent CRD to a Deployment",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
 )
 async def migrate_agent(
     namespace: str,
@@ -1133,6 +1142,7 @@ async def migrate_agent(
     response_model=Dict[str, Any],
     summary="Migrate all Agent CRDs in a namespace to Deployments",
     tags=["migration"],
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
 )
 async def migrate_all_agents(
     namespace: str = Query(default="default", description="Kubernetes namespace"),
@@ -1383,7 +1393,11 @@ def _build_service_from_agent_crd(agent: dict) -> dict:
     }
 
 
-@router.get("/build-strategies", response_model=ClusterBuildStrategiesResponse)
+@router.get(
+    "/build-strategies",
+    response_model=ClusterBuildStrategiesResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
+)
 async def list_build_strategies(
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> ClusterBuildStrategiesResponse:
@@ -1423,7 +1437,11 @@ async def list_build_strategies(
         )
 
 
-@router.get("/{namespace}/{name}/shipwright-build", response_model=ShipwrightBuildStatusResponse)
+@router.get(
+    "/{namespace}/{name}/shipwright-build",
+    response_model=ShipwrightBuildStatusResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
+)
 async def get_shipwright_build_status(
     namespace: str,
     name: str,
@@ -1471,6 +1489,7 @@ async def get_shipwright_build_status(
 @router.get(
     "/{namespace}/{name}/shipwright-buildrun",
     response_model=ShipwrightBuildRunStatusResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
 )
 async def get_shipwright_buildrun_status(
     namespace: str,
@@ -1563,7 +1582,9 @@ async def get_shipwright_buildrun_status(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-@router.post("/{namespace}/{name}/shipwright-buildrun")
+@router.post(
+    "/{namespace}/{name}/shipwright-buildrun", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def trigger_shipwright_buildrun(
     namespace: str,
     name: str,
@@ -1627,6 +1648,7 @@ async def trigger_shipwright_buildrun(
 @router.get(
     "/{namespace}/{name}/shipwright-build-info",
     response_model=AgentShipwrightBuildInfoResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
 )
 async def get_shipwright_build_info(
     namespace: str,
@@ -2224,7 +2246,9 @@ def _build_job_manifest(
     return manifest
 
 
-@router.post("", response_model=CreateAgentResponse)
+@router.post(
+    "", response_model=CreateAgentResponse, dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def create_agent(
     request: CreateAgentRequest,
     kube: KubernetesService = Depends(get_kubernetes_service),
@@ -2409,7 +2433,11 @@ class FinalizeShipwrightBuildRequest(BaseModel):
     imagePullSecret: Optional[str] = None
 
 
-@router.post("/{namespace}/{name}/finalize-shipwright-build", response_model=CreateAgentResponse)
+@router.post(
+    "/{namespace}/{name}/finalize-shipwright-build",
+    response_model=CreateAgentResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def finalize_shipwright_build(
     namespace: str,
     name: str,
@@ -2768,7 +2796,11 @@ def is_ip_blocked(ip_str: str) -> bool:
         return False
 
 
-@router.post("/parse-env", response_model=ParseEnvResponse)
+@router.post(
+    "/parse-env",
+    response_model=ParseEnvResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def parse_env_file(request: ParseEnvRequest) -> ParseEnvResponse:
     """
     Parse .env file content and return structured environment variables.
@@ -2837,7 +2869,11 @@ async def parse_env_file(request: ParseEnvRequest) -> ParseEnvResponse:
     return ParseEnvResponse(envVars=env_vars, warnings=warnings if warnings else None)
 
 
-@router.post("/fetch-env-url", response_model=FetchEnvUrlResponse)
+@router.post(
+    "/fetch-env-url",
+    response_model=FetchEnvUrlResponse,
+    dependencies=[Depends(require_roles(ROLE_OPERATOR))],
+)
 async def fetch_env_from_url(request: FetchEnvUrlRequest) -> FetchEnvUrlResponse:
     """
     Fetch .env file content from a remote URL.
