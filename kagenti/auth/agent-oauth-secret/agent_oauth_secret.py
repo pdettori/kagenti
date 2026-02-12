@@ -280,8 +280,16 @@ class KeycloakSetup:
         Args:
             roles: List of role names to create (e.g., ['kagenti-viewer', 'kagenti-operator'])
         """
-        # Switch to the target realm for role operations
-        self.keycloak_admin.change_current_realm(self.realm_name)
+        try:
+            # Switch to the target realm for role operations
+            self.keycloak_admin.change_current_realm(self.realm_name)
+        except Exception as e:
+            typer.secho(
+                f'Failed to switch to realm "{self.realm_name}" for role creation: {e}',
+                fg="red",
+                err=True,
+            )
+            return
 
         for role_name in roles:
             try:
@@ -290,7 +298,7 @@ class KeycloakSetup:
                         "name": role_name,
                         "description": f"Kagenti RBAC role: {role_name}",
                     },
-                    skip_exists=True,
+                    skip_exists=False,
                 )
                 typer.echo(f'Created realm role "{role_name}"')
             except KeycloakPostError as e:
@@ -314,10 +322,10 @@ class KeycloakSetup:
             username: The username to assign the role to
             role_name: The realm role name to assign
         """
-        # Ensure we're in the target realm
-        self.keycloak_admin.change_current_realm(self.realm_name)
-
         try:
+            # Ensure we're in the target realm
+            self.keycloak_admin.change_current_realm(self.realm_name)
+
             # Get user by username
             users = self.keycloak_admin.get_users({"username": username, "exact": True})
             if not users:
@@ -489,8 +497,19 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
 
         setup.create_user(test_user_name, test_user_password)
 
-        # Assign admin role to the test user for full API access
-        setup.assign_role_to_user(test_user_name, ROLE_ADMIN)
+        # Optionally assign admin role to the test user for full API access.
+        # Gated behind an env var to allow operators to control privilege level.
+        # Defaults to true for dev/test environments where full access is typically needed.
+        grant_admin_to_test_user = parse_bool(
+            get_optional_env("KEYCLOAK_TEST_USER_ADMIN", "true")
+        )
+        if grant_admin_to_test_user:
+            setup.assign_role_to_user(test_user_name, ROLE_ADMIN)
+        else:
+            typer.echo(
+                f"Test user '{test_user_name}' created without admin role "
+                "(set KEYCLOAK_TEST_USER_ADMIN=true to grant admin)."
+            )
 
         # Store test user credentials in a K8s secret for show-services.sh and tests
         try:
