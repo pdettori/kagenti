@@ -25,11 +25,12 @@ Through this incubation project, we have identified several core components:
 
 ## Develop with Kagenti
 
-This repo provides a UI to interface with the operator and deployed agents and tools. 
+This repo provides a UI to interface with the operator and deployed agents and tools.
 
+- [Developer Environment Guides](./developer/README.md) - Setup guides for Kind, HyperShift, and Claude Code workflows
 - [Developer's Guide](./dev-guide.md) provides instructions to get started contributing to the Kagenti UI
-- [Import your own agent](./new-agent.md) provides instructions to import your own agent via the UI. 
-- [Import your own tool](./new-tool.md) provides instructions to import your own MCP tool via the UI. 
+- [Import your own agent](./new-agent.md) provides instructions to import your own agent via the UI.
+- [Import your own tool](./new-tool.md) provides instructions to import your own MCP tool via the UI.
 
 ## Community
 
