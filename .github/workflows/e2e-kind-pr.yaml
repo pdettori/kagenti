@@ -1,21 +1,13 @@
-name: E2E K8s 1.32.2 (Kind)
+name: E2E K8s 1.32.2 (Kind PR)
 
 on:
-  push:
+  pull_request:
     branches: [main]
     paths:
       - 'kagenti/**'
       - 'deployments/**'
       - '.github/**'
       - 'charts/**'
-  # NOTE: For PR E2E testing, see e2e-kind-pr.yaml
-  # This workflow only handles push to main and manual dispatch.
-  workflow_dispatch:
-
-# Only allow one run per branch to avoid resource conflicts
-concurrency:
-  group: e2e-kind-${{ github.ref }}
-  cancel-in-progress: true
 
 # Explicit permissions - principle of least privilege
 permissions:
