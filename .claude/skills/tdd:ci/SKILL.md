@@ -480,8 +480,14 @@ Typical task structure for an issue fix:
 **Symptom**: DCO check fails on PR
 **Fix**: Ensure commits use `git commit -s` for sign-off.
 
+## UI Tests
+
+For Playwright UI tests (login, navigation, agent chat), invoke `test:ui`.
+CI runs UI tests automatically via `91-run-ui-tests.sh` after pytest E2E tests.
+
 ## Related Skills
 
+- `test:ui` - **Write and run Playwright UI tests** (CI/Kind/HyperShift)
 - `git:worktree` - Create and manage git worktrees
 - `superpowers:brainstorming` - Design before implementation
 - `superpowers:systematic-debugging` - Debug CI failures
