@@ -41,13 +41,16 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.KAGENTI_UI_URL || 'http://localhost:5173',
+    baseURL: process.env.KAGENTI_UI_URL || 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
 
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
+
+    /* Accept self-signed certificates (HyperShift/OpenShift routes use cluster CA) */
+    ignoreHTTPSErrors: true,
   },
 
   /* Configure projects for major browsers */
@@ -70,7 +73,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: process.env.KAGENTI_UI_URL ? undefined : {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
