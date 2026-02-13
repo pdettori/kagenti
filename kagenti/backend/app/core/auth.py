@@ -80,17 +80,13 @@ class KeycloakJWKS:
 
     async def load_keys(self) -> None:
         """Fetch JWKS from Keycloak."""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(self.jwks_url, timeout=10.0)
-                response.raise_for_status()
-                jwks_data = response.json()
-                self._keys = {key["kid"]: key for key in jwks_data.get("keys", [])}
-                self._loaded = True
-                logger.info(f"Loaded {len(self._keys)} keys from Keycloak JWKS")
-        except Exception as e:
-            logger.error(f"Failed to load JWKS from {self.jwks_url}: {e}")
-            raise
+        async with httpx.AsyncClient() as client:
+            response = await client.get(self.jwks_url, timeout=10.0)
+            response.raise_for_status()
+            jwks_data = response.json()
+            self._keys = {key["kid"]: key for key in jwks_data.get("keys", [])}
+            self._loaded = True
+            logger.info(f"Loaded {len(self._keys)} keys from Keycloak JWKS")
 
     def get_key(self, kid: str) -> Optional[dict]:
         """Get a specific key by its ID."""
@@ -110,7 +106,7 @@ def get_jwks() -> KeycloakJWKS:
     global _jwks
     if _jwks is None:
         _jwks = KeycloakJWKS(
-            keycloak_url=settings.effective_keycloak_url,
+            keycloak_url=settings.keycloak_internal_url,
             realm=settings.effective_keycloak_realm,
         )
     return _jwks
@@ -214,12 +210,22 @@ async def validate_token(token: str) -> TokenData:
         # Extract roles from realm and resource access
         roles = []
         realm_access = payload.get("realm_access", {})
-        roles.extend(realm_access.get("roles", []))
+        realm_roles = realm_access.get("roles", [])
+        roles.extend(realm_roles)
 
         resource_access = payload.get("resource_access", {})
         for resource_roles in resource_access.values():
             if isinstance(resource_roles, dict):
                 roles.extend(resource_roles.get("roles", []))
+
+        # TODO: Temporary mapping until the "Protect Backend API" epic
+        # (issue #647) is completed and custom Keycloak realm roles
+        # (kagenti-viewer, kagenti-operator, kagenti-admin) are provisioned
+        # via a dedicated Keycloak setup job. Once that's in place, this
+        # automatic mapping should be removed in favor of explicit role
+        # assignment in Keycloak.
+        if "admin" in realm_roles and ROLE_ADMIN not in roles:
+            roles.append(ROLE_ADMIN)
 
         return TokenData(
             sub=sub,
@@ -240,6 +246,12 @@ async def validate_token(token: str) -> TokenData:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token key error",
+        )
+    except (httpx.HTTPError, ConnectionError) as e:
+        logger.error(f"Failed to connect to Keycloak for token validation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service unavailable",
         )
 
 

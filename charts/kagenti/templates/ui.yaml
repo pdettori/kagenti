@@ -109,6 +109,8 @@ spec:
                   optional: true
             - name: ENABLE_AUTH
               value: "{{ .Values.ui.auth.enabled }}"
+            - name: KEYCLOAK_URL
+              value: {{ .Values.keycloak.url | quote }}
             # Dashboard URLs from ConfigMap (populated by ui-routes-job)
             - name: TRACES_DASHBOARD_URL
               valueFrom:
