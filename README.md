@@ -161,6 +161,10 @@ From the UI you can:
 
 We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
+## Contact
+
+To reach the maintainer team, email **kagenti-maintainers@googlegroups.com** or join us on [Discord](https://discord.gg/aJ92dNDzqB).
+
 ## License
 
 [Apache 2.0](./LICENSE)
