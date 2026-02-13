@@ -102,8 +102,9 @@ class Settings(BaseSettings):
     def effective_keycloak_url(self) -> str:
         """
         Extract Keycloak base URL from AUTH_ENDPOINT or use direct config.
-        AUTH_ENDPOINT format: http://keycloak.localtest.me:8080/realms/master/protocol/openid-connect/auth
-        Returns: http://keycloak.localtest.me:8080
+
+        This returns the external (browser-facing) URL, used for frontend
+        auth config and redirect flows.
         """
         if self.auth_endpoint:
             # Parse AUTH_ENDPOINT to extract base URL
@@ -115,6 +116,19 @@ class Settings(BaseSettings):
         if self.keycloak_url:
             return self.keycloak_url
         return f"http://keycloak.{self.domain_name}:8080"
+
+    @property
+    def keycloak_internal_url(self) -> str:
+        """
+        Get the Keycloak URL for server-to-server calls (e.g. JWKS validation).
+
+        When running in-cluster, uses KEYCLOAK_URL (internal K8s service URL)
+        since the external domain (e.g. localtest.me) resolves to localhost
+        and is unreachable from pods. Off-cluster, falls back to the external URL.
+        """
+        if self.is_running_in_cluster and self.keycloak_url:
+            return self.keycloak_url
+        return self.effective_keycloak_url
 
     @property
     def effective_keycloak_realm(self) -> str:
