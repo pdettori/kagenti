@@ -246,6 +246,20 @@ kubectl cluster-info 2>/dev/null && echo "Kubernetes: connected" || echo "Kubern
 
 ## Quick Reference
 
+Start a Claude Code session from the repo root, then invoke skills as slash commands:
+
+```bash
+# Start Claude Code from the repo root
+cd kagenti/
+claude
+
+# Inside the Claude Code session, invoke skills:
+> /tdd https://github.com/kagenti/kagenti/issues/123
+> /rca https://github.com/kagenti/kagenti/actions/runs/12345
+> /k8s:health
+> /git:worktree my-feature origin/my-feature-branch
+```
+
 | Skill | Purpose | Entry Point |
 |-------|---------|-------------|
 | `/tdd` | Test-driven development | Issue URL, PR URL, or local task |
