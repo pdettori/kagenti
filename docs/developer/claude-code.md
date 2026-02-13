@@ -605,18 +605,34 @@ These skills are invoked automatically when relevant. For example, `superpowers:
 <details>
 <summary><b>Ralph Loop Plugin</b></summary>
 
-A plugin for long-running autonomous Claude Code sessions. Named after Ralph Wiggum, it helps Claude Code stay on track during extended autonomous work.
+Implements the [Ralph Wiggum technique](https://ghuntley.com/ralph/) - iterative autonomous development where the same prompt is fed to Claude Code repeatedly. Each iteration, Claude sees its own previous work in files and git history, and incrementally improves toward the goal.
 
 ```
 /plugin claude-plugins-official/ralph-loop
 ```
 
-Commands:
-- `/ralph-loop` - Start an autonomous loop in the current session
+**Usage:**
+
+```
+/ralph-loop "Fix the auth token refresh logic. Output <promise>FIXED</promise> when all tests pass." --completion-promise "FIXED" --max-iterations 10
+```
+
+**Options:**
+
+| Option | Required | Purpose |
+|--------|----------|---------|
+| `--max-iterations <n>` | Strongly recommended | Max iterations before auto-stop. **Always set this to avoid runaway token consumption.** There is no default limit. |
+| `--completion-promise <text>` | Recommended | A keyword that Claude outputs inside a `<promise>` tag to signal the task is done (e.g., `FIXED`, `TESTS COMPLETE`) |
+
+Without `--max-iterations` or `--completion-promise`, the loop runs indefinitely until manually cancelled with `/cancel-ralph`.
+
+**Commands:**
+- `/ralph-loop <prompt> [options]` - Start an autonomous loop
 - `/cancel-ralph` - Cancel the active loop
 - `/ralph-loop:help` - Explain how it works
 
-Useful for long-running tasks where you want Claude Code to work autonomously with periodic self-checks, similar to Boris Cherny's approach of using stop hooks for quality verification.
+**Good for:** Well-defined tasks with clear success criteria, iterative refinement, greenfield work.
+**Not good for:** Tasks requiring human judgment, unclear success criteria, production debugging.
 
 </details>
 
