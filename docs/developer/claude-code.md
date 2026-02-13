@@ -473,34 +473,24 @@ This layered approach means you can let Claude Code iterate freely on implementa
 
 These patterns have been refined over months of daily Claude Code usage on the Kagenti project.
 
-### 1. Parallel Sessions with iTerm2
+### 1. Parallel Sessions with Git Worktrees
 
-Run multiple Claude Code sessions in parallel using iTerm2 split panes or tabs:
-
-```bash
-# Terminal 1: Feature development
-CLAUDE_CODE_TASK_LIST_ID=feature-auth claude
-
-# Terminal 2: CI monitoring
-CLAUDE_CODE_TASK_LIST_ID=ci-monitor claude
-
-# Terminal 3: Bug investigation
-CLAUDE_CODE_TASK_LIST_ID=rca-phoenix claude
-```
-
-Each session gets its own task list for independent progress tracking.
-
-### 2. Work Isolation with Git Worktrees
-
-Every task gets its own worktree. Claude Code is aware of worktrees and can find the right one for a PR:
+Run multiple Claude Code sessions in parallel using iTerm2 split panes or tabs. Each session can manage work across several worktrees - Claude Code is aware of worktrees and can find the right one for a PR or issue:
 
 ```bash
-# Claude Code creates worktrees via /git:worktree
-# Each worktree is an isolated copy of the repo
-# Multiple Claude sessions can work on different worktrees simultaneously
+# Terminal 1: Working on a feature (manages its own worktrees)
+claude
+
+# Terminal 2: Debugging a CI failure on a different PR
+claude
+
+# Terminal 3: Investigating an issue
+claude
 ```
 
-### 3. Sandbox Clusters
+Each session creates and manages worktrees via `/git:worktree`. Worktrees provide full isolation - separate branches, separate builds, separate clusters. Multiple Claude sessions can work on different worktrees simultaneously without interfering with each other.
+
+### 2. Sandbox Clusters
 
 Have one or more sandbox clusters available per worktree:
 
@@ -509,7 +499,7 @@ Have one or more sandbox clusters available per worktree:
 
 Claude Code can deploy, test, debug, and redeploy without affecting other work.
 
-### 4. Script Output Management
+### 3. Script Output Management
 
 When Claude Code writes and runs scripts, keep output minimal to avoid context pollution:
 
@@ -518,7 +508,7 @@ When Claude Code writes and runs scripts, keep output minimal to avoid context p
 - Claude Code can read the log file if it needs details
 - Long outputs in context can cause Claude Code to crash or lose track
 
-### 5. Let Claude Iterate on Its Own Tools
+### 4. Let Claude Iterate on Its Own Tools
 
 Claude Code is inconsistent at following complex rule sets in long sessions. Instead of giving it rules to follow, have it build scripts and validation tools that enforce the rules:
 
@@ -527,7 +517,7 @@ Claude Code is inconsistent at following complex rule sets in long sessions. Ins
 - Combine validation scripts with CI checks - accuracy increases rapidly as each layer catches what the previous missed
 - For complex tasks, provide pseudo code that drives the implementation. Claude Code executes well against a clear algorithmic spec, but struggles when the spec is ambiguous prose
 
-### 6. Strict CI Is Now Practical
+### 5. Strict CI Is Now Practical
 
 In the past, even a few strict checks in CI became a huge chore fast - developers avoided adding more because every new check meant more manual fix-up work. With agent-assisted development, this inverts completely:
 
@@ -536,7 +526,7 @@ In the past, even a few strict checks in CI became a huge chore fast - developer
 - The stricter the CI, the better the output quality
 - The result: more secure and cleaner code with human assistance than without, because the checks that were too expensive to maintain manually are now free
 
-### 7. Idempotent Skills (Resume from Any Session)
+### 6. Idempotent Skills (Resume from Any Session)
 
 The `/tdd` and `/rca` skills are designed to be resumable. Start a fresh Claude Code session, point it to a PR, issue, or doc, and it picks up where the previous session left off:
 
@@ -556,7 +546,7 @@ This means you can close a session, start fresh, and `/tdd <PR URL>` continues t
 
 > **Note**: Phase-level tracking (which TDD phase was last completed) does not persist across sessions. Claude Code re-evaluates the current state from git/CI/cluster state rather than reading a checkpoint file.
 
-### 8. Check Out Boris Cherny (Claude Code Creator)
+### 7. Check Out Boris Cherny (Claude Code Creator)
 
 Boris Cherny created Claude Code and shares workflow tips regularly:
 
