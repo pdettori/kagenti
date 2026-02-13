@@ -403,7 +403,21 @@ def main() -> None:
         )
 
         # Assign role to service account
-        assign_role_to_service_account(keycloak_admin, internal_client_id, role_name)
+        try:
+            assign_role_to_service_account(
+                keycloak_admin, internal_client_id, role_name
+            )
+        except RuntimeError as exc:
+            logger.error(
+                "Failed to assign role '%s' to service account for client '%s': %s. "
+                "Verify that the role exists in realm '%s' and that the admin user "
+                "has sufficient permissions.",
+                role_name,
+                client_id,
+                exc,
+                keycloak_realm,
+            )
+            raise
 
         # Construct token endpoint
         token_endpoint = (
