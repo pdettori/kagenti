@@ -21,7 +21,7 @@ This guide covers installation on both local Kind clusters and OpenShift environ
 | Python | ≥3.9 | Running the installer |
 | [uv](https://docs.astral.sh/uv/getting-started/installation) | Latest | Python package manager |
 | kubectl | ≥1.32.1 | Kubernetes CLI |
-| [Helm](https://helm.sh/docs/intro/install/) | ≥3.18.0 | Package manager for Kubernetes |
+| [Helm](https://helm.sh/docs/intro/install/) | ≥3.18.0, <4 | Package manager for Kubernetes |
 | git | ≥2.48.0 | Cloning repositories |
 
 ### Kind-Specific Requirements

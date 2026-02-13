@@ -69,7 +69,7 @@ These limitations will be addressed in successive PRs.
 
 ## Requirements
 
-- helm >= v3.18.0
+- helm ≥3.18.0, <4
 - kubectl >= v1.32.1 or oc >= 4.16.0
 - git >= 2.48.0
 - **Access to OpenShift cluster with admin authority**
