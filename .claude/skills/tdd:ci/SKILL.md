@@ -205,6 +205,26 @@ This helps clarify:
 
 ## Phase 2: Commit
 
+### Branch verification (first commit only)
+
+Before the first commit, run the **Branch Verification Gate** (see parent `tdd` skill):
+
+```bash
+git branch --show-current
+```
+
+```bash
+gh pr list --head "$(git branch --show-current)" --json number,title,url --jq '.[] | "#\(.number) \(.title) \(.url)"'
+```
+
+If the current branch has an open PR for **different work**, stop and create a worktree:
+
+```bash
+git worktree add .worktrees/<name> -b <new-branch> upstream/main
+```
+
+### Create commit
+
 Create a focused commit with your changes:
 
 ```bash
@@ -459,6 +479,7 @@ Typical task structure for an issue fix:
 
 | Don't | Do Instead |
 |-------|------------|
+| Commit to a branch with an unrelated open PR | Run branch verification gate, create worktree |
 | Work on current branch when given an issue URL | Create a worktree from `upstream/main` |
 | Push without local checks | Run `make lint` and `pre-commit` first |
 | Amend after push | Create new commits |

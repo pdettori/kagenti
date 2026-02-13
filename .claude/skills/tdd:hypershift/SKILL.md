@@ -67,10 +67,14 @@ flowchart TD
     L4 --> SETENV
 
     TEST --> RESULT{"Tests pass?"}
-    RESULT -->|Yes| COMMIT["git:commit"]:::git
+    RESULT -->|Yes| BRANCHCHECK{"Branch verified?"}
     RESULT -->|No| DEBUG["Debug with k8s:pods, k8s:logs"]:::k8s
     DEBUG --> FIX["Fix code"]:::tdd
     FIX --> ITER
+
+    BRANCHCHECK -->|Yes| COMMIT["git:commit"]:::git
+    BRANCHCHECK -->|Wrong branch| WORKTREE["Create worktree"]:::git
+    WORKTREE --> COMMIT
 
     COMMIT --> CI([Back to tdd:ci for CI validation])
 
