@@ -175,8 +175,11 @@ source .env.kagenti-hypershift-custom
 ### Common Workflows
 
 ```bash
-# Full run: create → deploy → test → destroy (~50 min)
+# Check state (dry run - default with no options)
 ./.github/scripts/local-setup/hypershift-full-test.sh
+
+# Full run: create → deploy → test → destroy
+./.github/scripts/local-setup/hypershift-full-test.sh --full
 
 # Iterate on existing cluster (skip create/destroy)
 ./.github/scripts/local-setup/hypershift-full-test.sh --skip-cluster-create --skip-cluster-destroy
@@ -384,12 +387,14 @@ oc get events -A --sort-by='.lastTimestamp' | tail -30
 
 | Option | Effect | Use Case |
 |--------|--------|----------|
+| (no options) | Dry run | **Default**: check state, suggest next command |
+| `--full` | All phases | Full run (create → test → destroy) |
 | `--skip-cluster-destroy` | Create, install, deploy, test | **Main flow**: keep cluster for debugging |
 | `--include-cluster-destroy` | Destroy only | **Cleanup**: destroy cluster when done |
-| (no options) | All phases | Full run (create → test → destroy) |
 | `--skip-cluster-create --skip-cluster-destroy` | Install, deploy, test | Iterate on existing cluster |
 | `--include-<phase>` | Selected phase(s) | Run specific phase(s) only |
 | `--clean-kagenti` | Uninstall before install | Fresh Kagenti installation |
+| `--dry-run` | Check state only | Inspect cluster state without changes |
 | `[suffix]` | Custom cluster name | Use suffix instead of $USER |
 
 ### Credentials Parity with CI
