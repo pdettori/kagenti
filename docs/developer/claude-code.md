@@ -559,6 +559,53 @@ Key insights from his workflow:
 - Give Claude a way to verify its work - feedback loops 2-3x the quality
 - For long-running tasks, use background agents or stop hooks
 
+## Experimental: Claude Code Plugins (Optional)
+
+These third-party plugins extend Claude Code with additional capabilities. They are not required but can improve autonomous workflows.
+
+Install plugins from within a Claude Code session using the `/plugin` command.
+
+<details>
+<summary><b>Superpowers Plugin</b></summary>
+
+A collection of meta-skills that add structured workflows for common development patterns:
+
+```
+/plugin claude-plugins-official/superpowers
+```
+
+Includes skills for:
+- **Brainstorming** - Structured idea exploration before implementation
+- **Systematic debugging** - Step-by-step investigation before proposing fixes
+- **Test-driven development** - Write tests before implementation code
+- **Writing plans** - Create implementation plans from specs
+- **Code review** - Request and receive code review with technical rigor
+- **Verification before completion** - Run verification commands before claiming work is done
+- **Git worktrees** - Smart worktree creation with directory selection
+- **Parallel agents** - Dispatch independent tasks to multiple agents
+
+These skills are invoked automatically when relevant. For example, `superpowers:brainstorming` activates before creative work, and `superpowers:systematic-debugging` activates when encountering test failures.
+
+</details>
+
+<details>
+<summary><b>Ralph Loop Plugin</b></summary>
+
+A plugin for long-running autonomous Claude Code sessions. Named after Ralph Wiggum, it helps Claude Code stay on track during extended autonomous work.
+
+```
+/plugin claude-plugins-official/ralph-loop
+```
+
+Commands:
+- `/ralph-loop` - Start an autonomous loop in the current session
+- `/cancel-ralph` - Cancel the active loop
+- `/ralph-loop:help` - Explain how it works
+
+Useful for long-running tasks where you want Claude Code to work autonomously with periodic self-checks, similar to Boris Cherny's approach of using stop hooks for quality verification.
+
+</details>
+
 ## Related Documentation
 
 - [Kind Development Guide](./kind.md) - Local development with Kind
