@@ -30,8 +30,9 @@ if [ -z "${KAGENTI_UI_URL:-}" ]; then
         KAGENTI_UI_URL="https://$(oc get route kagenti-ui -n kagenti-system -o jsonpath='{.spec.host}' 2>/dev/null)"
         log_info "Detected OpenShift UI URL: $KAGENTI_UI_URL"
     else
-        # Kind: use the ingress URL (not Vite dev server, to match Keycloak redirect_uri)
-        KAGENTI_UI_URL="http://kagenti-ui.localtest.me:8080"
+        # Kind: build URL from DOMAIN_NAME configmap (not hardcoded)
+        DOMAIN=$(kubectl get configmap kagenti-ui-config -n kagenti-system -o jsonpath='{.data.DOMAIN_NAME}' 2>/dev/null || echo "localtest.me")
+        KAGENTI_UI_URL="http://kagenti-ui.${DOMAIN}:8080"
         log_info "Detected Kind UI URL: $KAGENTI_UI_URL"
     fi
 fi

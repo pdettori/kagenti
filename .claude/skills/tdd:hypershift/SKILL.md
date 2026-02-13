@@ -258,8 +258,14 @@ Once the issue is fixed with real-time debugging, return to `tdd:ci` for final C
 2. Push to PR
 3. Use `tdd:ci` to verify CI passes
 
+## UI Tests
+
+For Playwright UI tests (login, navigation, agent chat), invoke `test:ui`.
+Set `KAGENTI_UI_URL` to the OpenShift route and run against the live cluster.
+
 ## Related Skills
 
+- **`test:ui`** - **Write and run Playwright UI tests**
 - **`tdd:ci`** - CI-driven TDD (escalates here after 3+ failures)
 - **`local:full-test`** - Complete testing reference
 - **`k8s:live-debugging`** - Debug issues on running cluster
