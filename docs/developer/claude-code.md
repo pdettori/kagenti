@@ -524,7 +524,7 @@ In the past, even a few strict checks in CI became a huge chore fast - developer
 - Claude Code handles the iteration cost of fixing lint warnings, security findings, and test failures
 - This makes it practical to have a large number of strict checks
 - The stricter the CI, the better the output quality
-- The result: more secure and cleaner code with human assistance than without, because the checks that were too expensive to maintain manually are now free
+- The result: more secure and cleaner code with human assistance than without, because the checks that were too expensive to maintain manually are now very easy to manage
 
 ### 6. Idempotent Skills (Resume from Any Session)
 
