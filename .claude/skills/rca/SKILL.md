@@ -3,7 +3,27 @@ name: rca
 description: Root cause analysis workflows - systematic investigation of failures
 ---
 
-> 📊 **[View workflow diagram](README.md#rca-workflow)**
+```mermaid
+flowchart TD
+    FAIL([Failure]) --> RCA{"/rca"}
+    RCA -->|CI failure, no cluster| RCACI["rca:ci"]:::rca
+    RCA -->|HyperShift available| RCAHS["rca:hypershift"]:::rca
+    RCA -->|Kind available| RCAKIND["rca:kind"]:::rca
+
+    RCACI -->|Inconclusive| NEED{"Need cluster?"}
+    NEED -->|Yes| RCAHS
+    NEED -->|Reproduce locally| RCAKIND
+
+    RCACI --> ROOT[Root Cause Found]
+    RCAHS --> ROOT
+    RCAKIND --> ROOT
+    ROOT --> TDD["tdd:*"]:::tdd
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # RCA Skills
 
@@ -65,6 +85,10 @@ After RCA is complete, switch to TDD for fix iteration: ◄──┘┘ │
 | `rca:ci` | CI logs/artifacts only | N/A | CI failures, no cluster |
 | `rca:hypershift` | Full cluster access | All read ops | Deep investigation |
 | `rca:kind` | Full local access | All ops | Kind failures, fast repro |
+
+> **Concurrency limit**: Only one `rca:kind` session at a time (one Kind cluster fits locally).
+> Before routing to `rca:kind`, run `kind get clusters` — if a cluster exists from another session,
+> route to `rca:ci` instead or ask the user.
 
 ## Related Skills
 

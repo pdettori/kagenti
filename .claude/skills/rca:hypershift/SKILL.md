@@ -5,6 +5,23 @@ description: Root cause analysis with live cluster - full access to pods, logs, 
 
 # RCA-HyperShift: Root Cause Analysis with Live Cluster
 
+```mermaid
+flowchart TD
+    START(["/rca:hypershift"]) --> P1["Phase 1: Observe"]:::rca
+    P1 --> P2["Phase 2: Inspect"]:::rca
+    P2 --> P3["Phase 3: Reproduce"]:::rca
+    P3 --> P4["Phase 4: Trace"]:::rca
+    P4 --> ROOT{"Root cause found?"}
+    ROOT -->|Yes| P5["Phase 5: Document"]:::rca
+    ROOT -->|No| P2
+    P5 --> TDD["tdd:hypershift"]:::tdd
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
+
 Systematic root cause analysis with full cluster access for deep investigation.
 
 ## rca:hypershift vs rca:ci

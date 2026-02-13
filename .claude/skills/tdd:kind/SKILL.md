@@ -17,6 +17,59 @@ Test-driven development workflow using a local Kind cluster for fast iteration.
 > **Auto-approved**: All operations on Kind clusters (read + write, deploy, test) are auto-approved.
 > Cluster create/destroy is also auto-approved for Kind.
 
+## Cluster Concurrency Guard
+
+**Only one Kind cluster at a time.** Before any cluster operation, check:
+
+```bash
+kind get clusters 2>/dev/null
+```
+
+- **No clusters** → proceed normally (create cluster)
+- **Cluster exists AND this session owns it** → reuse it (skip creation, run tests)
+- **Cluster exists AND another session owns it** → **STOP**. Do not proceed. Inform the user:
+  > A Kind cluster is already running (likely from another session).
+  > Options: (a) wait for that session to finish, (b) switch to `tdd:ci` for CI-only iteration, (c) explicitly destroy the existing cluster first with `kind delete cluster --name kagenti`.
+
+To determine ownership: if the current task list or conversation created this cluster, it's yours. Otherwise assume another session owns it.
+
+```mermaid
+flowchart TD
+    START(["/tdd:kind"]) --> GUARD{"kind get clusters"}
+    GUARD -->|No clusters| CREATE["Create Kind cluster"]:::k8s
+    GUARD -->|Cluster exists, mine| REUSE["Reuse existing cluster"]:::k8s
+    GUARD -->|Cluster exists, not mine| STOP([Stop - another session owns it])
+
+    CREATE --> ITER
+    REUSE --> ITER
+
+    ITER{"Iteration level?"}
+    ITER -->|Level 1| L1["Test only (fastest)"]:::test
+    ITER -->|Level 2| L2["Reinstall + test"]:::test
+    ITER -->|Level 3| L3["Full cluster recreate"]:::test
+
+    L1 --> CHECK{"Tests pass?"}
+    L2 --> CHECK
+    L3 --> CHECK
+
+    CHECK -->|Yes| COMMIT["git:commit"]:::git
+    CHECK -->|No, minor| FIX["Fix code"]:::tdd
+    CHECK -->|No, env issue| ITER
+
+    FIX --> L1
+    COMMIT --> DONE([Push to CI / tdd:ci])
+
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef git fill:#FF9800,stroke:#333,color:white
+    classDef k8s fill:#00BCD4,stroke:#333,color:white
+    classDef hypershift fill:#3F51B5,stroke:#333,color:white
+    classDef ci fill:#2196F3,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
+
 ## Key Principle
 
 **Match CI exactly**: Kind tests must use the same packages as CI to avoid version mismatches. CI uses `pip install` (gets latest versions), local uses `uv` (locked versions). Always verify package versions match.

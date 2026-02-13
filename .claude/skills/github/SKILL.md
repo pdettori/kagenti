@@ -3,7 +3,23 @@ name: github
 description: GitHub repository analysis - weekly reports, issue triage, PR health, CI trends
 ---
 
-> 📊 **[View workflow diagram](README.md#github-repository-analysis)**
+```mermaid
+flowchart TD
+    START([Repo Health]) --> GH{"/github"}
+    GH -->|Weekly summary| WEEK["github:last-week"]:::github
+    GH -->|Triage issues| ISSUES["github:issues"]:::github
+    GH -->|PR health| PRS["github:prs"]:::github
+
+    WEEK -->|calls| ISSUES
+    WEEK -->|calls| PRS
+    ISSUES -->|stale| CLOSE[Close or update]
+    PRS -->|CI failing| RCA["rca:ci"]:::rca
+
+    classDef github fill:#E91E63,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
 
 # GitHub Skills
 

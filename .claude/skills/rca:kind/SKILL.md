@@ -15,6 +15,44 @@ Root cause analysis workflow for failures on local Kind clusters.
 
 > **Auto-approved**: All read and debug operations on Kind clusters are auto-approved.
 
+## Cluster Concurrency Guard
+
+**Only one Kind cluster at a time.** Before any cluster operation, check:
+
+```bash
+kind get clusters 2>/dev/null
+```
+
+- **No clusters** → proceed normally (create cluster)
+- **Cluster exists AND this session owns it** → reuse it (skip creation, inspect directly)
+- **Cluster exists AND another session owns it** → **STOP**. Do not proceed. Inform the user:
+  > A Kind cluster is already running (likely from another session).
+  > Options: (a) wait for that session to finish, (b) switch to `rca:ci` for log-only analysis, (c) explicitly destroy the existing cluster first with `kind delete cluster --name kagenti`.
+
+To determine ownership: if the current task list or conversation created this cluster, it's yours. Otherwise assume another session owns it.
+
+```mermaid
+flowchart TD
+    START(["/rca:kind"]) --> GUARD{"Kind cluster?"}
+    GUARD -->|No clusters| CREATE["Deploy Kind cluster"]:::rca
+    GUARD -->|Owned| REUSE[Reuse existing]:::rca
+    GUARD -->|Another session| STOP([Stop - cluster busy])
+
+    CREATE --> P1["Phase 1: Reproduce"]:::rca
+    REUSE --> P2["Phase 2: Inspect"]:::rca
+    P1 --> P2
+    P2 --> P3["Phase 3: Diagnose"]:::rca
+    P3 --> P4["Phase 4: Fix and Verify"]:::rca
+    P4 --> RESULT{"Fixed?"}
+    RESULT -->|Yes| TDD["tdd:kind"]:::tdd
+    RESULT -->|No| P2
+
+    classDef rca fill:#FF5722,stroke:#333,color:white
+    classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+> Follow this diagram as the workflow.
+
 ## Workflow
 
 ```

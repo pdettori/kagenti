@@ -12,6 +12,7 @@ with copy-pasteable commands and decision trees.
   - [Test Workflow](#test-workflow)
   - [RCA Workflow](#rca-workflow)
   - [CI Workflow](#ci-workflow)
+  - [Playwright Demo Workflow](#playwright-demo-workflow)
   - [Skills Meta Workflow](#skills-meta-workflow)
   - [GitHub Repository Analysis](#github-repository-analysis)
   - [Deploy & Debug Workflow](#deploy--debug-workflow)
@@ -46,45 +47,47 @@ Only skill nodes are colored. Decision points, actions, and labels have no color
 | ⚫ Gray | Skills Meta |
 | 🩷 Pink | GitHub |
 | 🔵 Indigo | HyperShift |
+| 🟡 Yellow-Green | Playwright / Demo |
 
-### TDD Workflow
+### TDD Workflow (3 Entry Points)
 
 ```mermaid
 flowchart TD
-    START([Task / Bug]) --> TDD{"/tdd"}
-    TDD -->|HyperShift cluster found| HS["tdd:hypershift"]:::tdd
-    TDD -->|Kind cluster found| KIND["tdd:kind"]:::tdd
-    TDD -->|No cluster| CI["tdd:ci"]:::tdd
-    TDD -->|No cluster, ask user| CREATE{"Create cluster?"}
-    CREATE -->|Kind auto-approved| KIND
-    CREATE -->|HyperShift needs approval| HS
-    CREATE -->|No| CI
+    START(["/tdd"]) --> INPUT{"What input?"}
+    INPUT -->|GH Issue URL| ISSUE[Flow 1: Issue-First]
+    INPUT -->|GH PR URL| PR[Flow 2: PR-First]
+    INPUT -->|Local doc/task| LOCAL[Flow 3: Local-First]
+    INPUT -->|Nothing| DETECT{Detect cluster}
 
-    CI -->|"3+ failures"| ESCALATE{"Escalate?"}
-    ESCALATE -->|Yes| HS
-    ESCALATE -->|No| CI
+    ISSUE --> ANALYZE[Read issue + conversation]
+    ANALYZE --> CHECKPR{"Existing PR?"}
+    CHECKPR -->|Own PR| PR
+    CHECKPR -->|Other's PR| FORK{Fork or comment?}
+    CHECKPR -->|No PR| RESEARCH["rca + plan + post to issue"]:::rca
+    FORK --> RESEARCH
+    RESEARCH --> WORKTREE["git:worktree"]:::git
+    WORKTREE --> TDDCI
 
-    HS --> CODE[Write/Fix Code]
-    KIND --> CODE
-    CI --> CODE
+    PR --> RCACI["rca:ci"]:::rca
+    RCACI --> TDDCI["tdd:ci"]:::tdd
+    TDDCI -->|"3+ failures"| HS["tdd:hypershift"]:::tdd
+    TDDCI -->|CI green| REVIEWS[Handle PR reviews]
 
-    CODE --> TESTLOOP["test:write + test:review"]:::test
-    TESTLOOP --> RUN{Run tests}
-    RUN -->|Kind| RUNKIND["test:run-kind"]:::test
-    RUN -->|HyperShift| RUNHS["test:run-hypershift"]:::test
-    RUNKIND -->|More failures than before| CODE
-    RUNHS -->|More failures than before| CODE
-    RUNKIND -->|"Fewer failures (progress!)"| COMMIT["git:commit + git:rebase"]:::git
-    RUNHS -->|"Fewer failures (progress!)"| COMMIT
-    COMMIT --> PUSH[Push to PR]
-    PUSH --> MONITOR["ci:monitoring"]:::ci
-    MONITOR -->|CI passes| DONE([Done])
-    MONITOR -->|CI fails| CODE
+    LOCAL --> KIND["tdd:kind"]:::tdd
+    KIND -->|Tests pass| MOVETOPR[Create issue + PR]
+    MOVETOPR --> PR
+
+    DETECT -->|HyperShift| HS
+    DETECT -->|Kind| KIND
+    DETECT -->|None| TDDCI
+
+    HS -->|CI green| REVIEWS
+    REVIEWS -->|Changes needed| TDDCI
+    REVIEWS -->|Approved| DONE([Merged])
 
     classDef tdd fill:#4CAF50,stroke:#333,color:white
-    classDef test fill:#9C27B0,stroke:#333,color:white
+    classDef rca fill:#FF5722,stroke:#333,color:white
     classDef git fill:#FF9800,stroke:#333,color:white
-    classDef ci fill:#2196F3,stroke:#333,color:white
 ```
 
 ### Test Workflow
@@ -167,6 +170,27 @@ flowchart TD
     classDef ci fill:#2196F3,stroke:#333,color:white
     classDef rca fill:#FF5722,stroke:#333,color:white
     classDef tdd fill:#4CAF50,stroke:#333,color:white
+```
+
+### Playwright Demo Workflow
+
+```mermaid
+flowchart TD
+    START([Demo Needed]) --> RESEARCH["playwright-research"]:::pw
+    RESEARCH -->|UI changes detected| PLAN[Plan demo segments]
+    RESEARCH -->|No changes| SKIP([No update needed])
+
+    PLAN --> WRITE["test:playwright"]:::test
+    WRITE --> REVIEW["test:review"]:::test
+    REVIEW -->|Issues| WRITE
+    REVIEW -->|Clean| RECORD["playwright-demo"]:::pw
+
+    RECORD -->|Fails| DEBUG["playwright-demo:debug"]:::pw
+    DEBUG --> WRITE
+    RECORD -->|Success| VIDEO([Demo video ready])
+
+    classDef pw fill:#8BC34A,stroke:#333,color:white
+    classDef test fill:#9C27B0,stroke:#333,color:white
 ```
 
 ### Skills Meta Workflow
@@ -315,6 +339,9 @@ flowchart LR
 │   ├── openshift:debug
 │   ├── openshift:routes
 │   └── openshift:trusted-ca-bundle
+├── playwright-demo/                Demo video recording
+│   └── playwright-demo:debug
+├── playwright-research/            Demo lifecycle management
 ├── rca/                            Root cause analysis (smart router)
 │   ├── rca:ci
 │   ├── rca:hypershift
@@ -329,6 +356,7 @@ flowchart LR
 │   ├── tdd:hypershift
 │   └── tdd:kind
 ├── test/                           Test management (smart router)
+│   ├── test:playwright
 │   ├── test:write
 │   ├── test:review
 │   ├── test:run-kind
