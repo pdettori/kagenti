@@ -67,10 +67,14 @@ flowchart TD
     L4 --> SETENV
 
     TEST --> RESULT{"Tests pass?"}
-    RESULT -->|Yes| COMMIT["git:commit"]:::git
+    RESULT -->|Yes| BRANCHCHECK{"Branch verified?"}
     RESULT -->|No| DEBUG["Debug with k8s:pods, k8s:logs"]:::k8s
     DEBUG --> FIX["Fix code"]:::tdd
     FIX --> ITER
+
+    BRANCHCHECK -->|Yes| COMMIT["git:commit"]:::git
+    BRANCHCHECK -->|Wrong branch| WORKTREE["Create worktree"]:::git
+    WORKTREE --> COMMIT
 
     COMMIT --> CI([Back to tdd:ci for CI validation])
 
@@ -258,8 +262,14 @@ Once the issue is fixed with real-time debugging, return to `tdd:ci` for final C
 2. Push to PR
 3. Use `tdd:ci` to verify CI passes
 
+## UI Tests
+
+For Playwright UI tests (login, navigation, agent chat), invoke `test:ui`.
+Set `KAGENTI_UI_URL` to the OpenShift route and run against the live cluster.
+
 ## Related Skills
 
+- **`test:ui`** - **Write and run Playwright UI tests**
 - **`tdd:ci`** - CI-driven TDD (escalates here after 3+ failures)
 - **`local:full-test`** - Complete testing reference
 - **`k8s:live-debugging`** - Debug issues on running cluster

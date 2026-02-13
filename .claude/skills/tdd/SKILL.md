@@ -261,11 +261,63 @@ Offer options:
 
 ---
 
+## Branch Verification Gate
+
+**MANDATORY before the first commit in any TDD flow.** Prevents pushing work to the wrong branch/PR.
+
+### Steps
+
+1. **Check current branch**:
+
+```bash
+git branch --show-current
+```
+
+2. **Check for open PRs on this branch**:
+
+```bash
+gh pr list --head "$(git branch --show-current)" --json number,title,url --jq '.[] | "#\(.number) \(.title) \(.url)"'
+```
+
+3. **Route based on findings**:
+
+```
+Current branch has open PR?
+    │
+    ├─ YES → Ask user:
+    │   "You are on branch <branch> which has open PR #<N>: <title>.
+    │    Is this the right target for your current work?"
+    │   │
+    │   ├─ YES → Continue (commit to this branch)
+    │   │
+    │   └─ NO → Create worktree with new branch:
+    │       git worktree add .worktrees/<name> -b <new-branch> upstream/main
+    │       (switch all subsequent work to the worktree)
+    │
+    └─ NO open PR → Check if branch is main/upstream
+        │
+        ├─ On main → Create worktree with new branch (never commit to main)
+        │
+        └─ On feature branch without PR → Ask user:
+            "You are on branch <branch> with no open PR.
+             Continue here or create a new worktree?"
+```
+
+4. **Record the verified branch** in task metadata so subsequent commits skip re-verification.
+
+### Why This Exists
+
+Without this gate, it's easy to accidentally push unrelated changes to an existing
+feature branch with an open PR, polluting that PR with unrelated commits.
+
+---
+
 ## TDD Code Loop
 
 All three flows eventually enter this loop:
 
 ```
+0. Branch verification gate — verify branch/PR association (first commit only)
 1. Write/fix code
 2. test:write — write or update tests
 3. test:review — verify test quality (no silent skips, assertive)

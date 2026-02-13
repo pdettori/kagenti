@@ -52,9 +52,13 @@ flowchart TD
     L2 --> CHECK
     L3 --> CHECK
 
-    CHECK -->|Yes| COMMIT["git:commit"]:::git
+    CHECK -->|Yes| BRANCHCHECK{"Branch verified?"}
     CHECK -->|No, minor| FIX["Fix code"]:::tdd
     CHECK -->|No, env issue| ITER
+
+    BRANCHCHECK -->|Yes| COMMIT["git:commit"]:::git
+    BRANCHCHECK -->|Wrong branch| WORKTREE["Create worktree"]:::git
+    WORKTREE --> COMMIT
 
     FIX --> L1
     COMMIT --> DONE([Push to CI / tdd:ci])
@@ -204,8 +208,14 @@ ps aux | grep port-forward
 - MLflow is disabled in Kind (dev_values.yaml)
 - MLflow trace tests are OpenShift-only
 
+## UI Tests
+
+For Playwright UI tests (login, navigation, agent chat), invoke `test:ui`.
+Tests run against the Vite dev server which proxies `/api` to `localhost:8000` (backend port-forward).
+
 ## Related Skills
 
+- **`test:ui`** - **Write and run Playwright UI tests**
 - **`tdd:ci`** - CI-driven TDD (wait for CI results)
 - **`tdd:hypershift`** - TDD with HyperShift cluster
 - **`kind:cluster`** - Create/destroy Kind clusters
