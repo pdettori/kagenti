@@ -37,8 +37,11 @@ DEFAULT_ADMIN_PASSWORD_KEY = "password"
 DEFAULT_CLIENT_ID = "kagenti-api"
 DEFAULT_SECRET_NAME = "kagenti-api-oauth-secret"
 
-# RBAC Role to assign to service account
+# RBAC Role Constants - must match backend app/core/auth.py
+ROLE_VIEWER = "kagenti-viewer"
 ROLE_OPERATOR = "kagenti-operator"
+ROLE_ADMIN = "kagenti-admin"
+RBAC_ROLES = [ROLE_VIEWER, ROLE_OPERATOR, ROLE_ADMIN]
 
 
 def get_required_env(key: str) -> str:
@@ -201,6 +204,72 @@ def register_confidential_client(
     return internal_client_id, client_secret
 
 
+def create_realm_roles(
+    keycloak_admin: KeycloakAdmin,
+    roles: list[str],
+) -> None:
+    """Create RBAC realm roles in Keycloak.
+
+    Creates the specified roles in the current realm. Roles that already
+    exist are skipped without error.
+
+    Args:
+        keycloak_admin: Connected KeycloakAdmin instance
+        roles: List of role names to create
+    """
+    for role_name in roles:
+        try:
+            keycloak_admin.create_realm_role(
+                payload={
+                    "name": role_name,
+                    "description": f"Kagenti RBAC role: {role_name}",
+                },
+                skip_exists=False,
+            )
+            logger.info(f'Created realm role "{role_name}"')
+        except KeycloakPostError as e:
+            if hasattr(e, "response_code") and e.response_code == 409:
+                logger.info(f'Realm role "{role_name}" already exists')
+            else:
+                logger.warning(f'Failed to create realm role "{role_name}": {e}')
+        except Exception as e:
+            logger.warning(f'Unexpected error creating realm role "{role_name}": {e}')
+
+
+def assign_role_to_user(
+    keycloak_admin: KeycloakAdmin,
+    username: str,
+    role_name: str,
+) -> None:
+    """Assign a realm role to a user.
+
+    Args:
+        keycloak_admin: Connected KeycloakAdmin instance
+        username: The username to assign the role to
+        role_name: The realm role name to assign
+    """
+    try:
+        users = keycloak_admin.get_users({"username": username, "exact": True})
+        if not users:
+            logger.warning(
+                f'User "{username}" not found, cannot assign role "{role_name}"'
+            )
+            return
+
+        user_id = users[0]["id"]
+        role = keycloak_admin.get_realm_role(role_name)
+        if not role:
+            logger.warning(
+                f'Role "{role_name}" not found, cannot assign to user "{username}"'
+            )
+            return
+
+        keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
+        logger.info(f'Assigned role "{role_name}" to user "{username}"')
+    except Exception as e:
+        logger.warning(f'Could not assign role "{role_name}" to user "{username}": {e}')
+
+
 def assign_role_to_service_account(
     keycloak_admin: KeycloakAdmin,
     internal_client_id: str,
@@ -217,13 +286,10 @@ def assign_role_to_service_account(
     )
     user_id = service_account_user["id"]
 
-    # Get the realm role
+    # Get the realm role (created by create_realm_roles earlier in this job)
     role = keycloak_admin.get_realm_role(role_name)
     if not role:
-        raise RuntimeError(
-            f'Role "{role_name}" not found in realm. '
-            f"Ensure Keycloak realm roles are created (Phase 3) before running this job."
-        )
+        raise RuntimeError(f'Role "{role_name}" not found in realm.')
 
     # Assign role to service account
     keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
@@ -323,6 +389,13 @@ def main() -> None:
         if not keycloak_admin:
             logger.error("Failed to connect to Keycloak")
             sys.exit(1)
+
+        # Create RBAC realm roles for API authorization
+        create_realm_roles(keycloak_admin, RBAC_ROLES)
+
+        # Assign kagenti-admin to the Keycloak admin user so the default
+        # admin has full platform access via the UI
+        assign_role_to_user(keycloak_admin, admin_username, ROLE_ADMIN)
 
         # Register confidential client
         internal_client_id, client_secret = register_confidential_client(
