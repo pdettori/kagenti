@@ -105,7 +105,7 @@ def connect_to_keycloak(
     username: str,
     password: str,
     realm: str,
-    verify_ssl,
+    verify_ssl: Optional[str],
     timeout: int = 120,
     interval: int = 5,
 ) -> Optional[KeycloakAdmin]:
