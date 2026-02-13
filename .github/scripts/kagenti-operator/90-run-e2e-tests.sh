@@ -139,3 +139,17 @@ eval "$PYTEST_CMD $PYTEST_TARGETS $PYTEST_OPTS" || {
 }
 
 log_success "E2E tests passed"
+
+# ============================================================================
+# Run Playwright UI E2E tests
+# ============================================================================
+UI_TEST_SCRIPT="$SCRIPT_DIR/../common/91-run-ui-tests.sh"
+if [ -f "$UI_TEST_SCRIPT" ]; then
+    log_step "91" "Running UI E2E tests (Playwright)"
+    bash "$UI_TEST_SCRIPT" || {
+        log_error "UI E2E tests failed"
+        exit 1
+    }
+else
+    log_info "UI test script not found, skipping Playwright tests"
+fi
