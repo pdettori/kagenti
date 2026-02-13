@@ -72,10 +72,7 @@ def read_keycloak_credentials(
 ) -> Tuple[str, str]:
     """Read Keycloak admin credentials from a Kubernetes secret."""
     try:
-        logger.info(
-            f"Reading Keycloak admin credentials from secret {secret_name} "
-            f"in namespace {namespace}"
-        )
+        logger.info("Reading Keycloak admin credentials from Kubernetes secret")
         secret = v1_client.read_namespaced_secret(secret_name, namespace)
 
         if username_key not in secret.data:
@@ -252,7 +249,7 @@ def assign_role_to_user(
         users = keycloak_admin.get_users({"username": username, "exact": True})
         if not users:
             logger.warning(
-                f'User "{username}" not found, cannot assign role "{role_name}"'
+                f'Target user not found in realm, cannot assign role "{role_name}"'
             )
             return
 
@@ -260,14 +257,16 @@ def assign_role_to_user(
         role = keycloak_admin.get_realm_role(role_name)
         if not role:
             logger.warning(
-                f'Role "{role_name}" not found, cannot assign to user "{username}"'
+                f'Role "{role_name}" not found, cannot assign to target user'
             )
             return
 
         keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
-        logger.info(f'Assigned role "{role_name}" to user "{username}"')
+        logger.info(f'Assigned role "{role_name}" to target user')
     except Exception as e:
-        logger.warning(f'Could not assign role "{role_name}" to user "{username}": {e}')
+        logger.warning(
+            f'Could not assign role "{role_name}" to target user: {type(e).__name__}'
+        )
 
 
 def assign_role_to_service_account(
@@ -318,7 +317,7 @@ def create_or_update_secret(
             string_data=data,
         )
         v1_client.create_namespaced_secret(namespace=namespace, body=secret_body)
-        logger.info(f"Created secret '{secret_name}' in namespace '{namespace}'")
+        logger.info(f"Created Kubernetes secret in namespace '{namespace}'")
     except client.exceptions.ApiException as e:
         if e.status == 409:
             # Secret exists, update it
@@ -327,7 +326,7 @@ def create_or_update_secret(
                 namespace=namespace,
                 body={"stringData": data},
             )
-            logger.info(f"Updated secret '{secret_name}' in namespace '{namespace}'")
+            logger.info(f"Updated Kubernetes secret in namespace '{namespace}'")
         else:
             raise
 
@@ -437,7 +436,7 @@ def main() -> None:
 
         logger.info("API OAuth secret creation completed successfully")
         logger.info(f"  Client ID: {client_id}")
-        logger.info(f"  Secret: {secret_name}")
+        logger.info(f"  Namespace: {target_namespace}")
         logger.info(f"  Token endpoint: {token_endpoint}")
 
     except Exception as e:
