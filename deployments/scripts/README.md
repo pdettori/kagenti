@@ -90,7 +90,7 @@ Next steps:
 |-----------|----------------|-------|
 | OpenShift | 4.16.0 | Base Kagenti functionality |
 | OpenShift (SPIRE) | 4.19.0 | Required for SPIRE/ZTWIM operator |
-| Helm | 3.18.0 | Chart installation |
+| Helm | ≥3.18.0, <4 | Chart installation |
 | kubectl/oc | 1.32.1 / 4.16.0 | Cluster management |
 
 **Troubleshooting:**
