@@ -182,13 +182,16 @@ For production OpenShift deployments, consider:
 
 ### Customizing the Ollama Endpoint
 
-To change the default Ollama endpoint for all agent namespaces at install time, you can patch the ConfigMap via a Helm post-install hook or use the Ansible override mechanism. For example, in an override values file:
+The default `ollama` environment set points to `http://host.docker.internal:11434/v1`, which works for Kind but not for OpenShift. After deploying Kagenti, update the `environments` ConfigMap in each agent namespace to point to your Ollama service:
 
-```yaml
-# In your override file, customize the environments ConfigMap
-# by editing charts/kagenti/templates/agent-namespaces.yaml
-# Change the LLM_API_BASE value for the ollama entry
+```bash
+# For each agent namespace (e.g., team1, team2)
+kubectl get configmap environments -n team1 -o yaml | \
+  sed 's|http://host.docker.internal:11434/v1|http://ollama.kagenti-system.svc.cluster.local:11434/v1|' | \
+  kubectl apply -f -
 ```
+
+This updates `LLM_API_BASE` so agents in that namespace reach the in-cluster Ollama service. Repeat for each agent namespace.
 
 ---
 
