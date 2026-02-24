@@ -103,8 +103,8 @@ Each phase skill is responsible for updating `phase-status.md` when it starts an
 | 1 | orchestrate:plan | -- | Brainstorm enhancements and produce a phased plan |
 | 2 | orchestrate:precommit | PR #1 | Pre-commit hooks, linting, and code formatting |
 | 3 | orchestrate:tests | PR #2 | Test infrastructure and initial test coverage |
-| 4 | orchestrate:ci | PR #3 | CI workflows (GitHub Actions or equivalent) |
-| 5 | orchestrate:security | PR #4 | Security hardening (CODEOWNERS, scanning, policies) |
+| 4 | orchestrate:ci | PR #3 | Comprehensive CI: lint, test, build, security scanning, dependabot, scorecard |
+| 5 | orchestrate:security | PR #4 | Security governance: CODEOWNERS, SECURITY.md, CONTRIBUTING.md, LICENSE |
 | 6 | orchestrate:replicate | PR #5 | Bootstrap Claude Code skills into the target repo |
 
 Phases are sequential. Each PR builds on the previous one. Tests come before CI (so CI can run them) and before security (so code refactoring for security fixes has test coverage as a safety net). The scan and plan phases do not produce PRs -- they produce artifacts that guide all subsequent phases.
@@ -140,9 +140,9 @@ git clone git@github.com:org/repo.git .repos/repo-name
 | `orchestrate:scan` | Assess target repo structure and identify gaps |
 | `orchestrate:plan` | Produce a phased enhancement plan |
 | `orchestrate:precommit` | Add pre-commit hooks, linters, formatters |
-| `orchestrate:ci` | Add CI workflows and pipeline configuration |
+| `orchestrate:ci` | Comprehensive CI: lint, test, build, security scanning, dependabot, scorecard |
 | `orchestrate:tests` | Add test infrastructure and initial test coverage |
-| `orchestrate:security` | Add security hardening (CODEOWNERS, scanning) |
+| `orchestrate:security` | Security governance: CODEOWNERS, SECURITY.md, CONTRIBUTING.md, LICENSE |
 | `orchestrate:replicate` | Bootstrap Claude Code skills into the target |
 
 ### Onboard skills

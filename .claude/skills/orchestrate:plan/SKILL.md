@@ -54,9 +54,9 @@ Not all repos need all phases. Use AskUserQuestion to decide:
 | Gap Found | Phase | Default |
 |-----------|-------|---------|
 | No pre-commit config | `orchestrate:precommit` | Always (foundation) |
-| No/incomplete CI workflows | `orchestrate:ci` | Yes if missing |
+| No/incomplete CI workflows or security scanning | `orchestrate:ci` | Yes if missing |
 | No/few tests (<5 test files) | `orchestrate:tests` | Yes if low coverage |
-| No CODEOWNERS/dependabot/scorecard | `orchestrate:security` | Recommended |
+| No CODEOWNERS/SECURITY.md/LICENSE | `orchestrate:security` | Recommended |
 | No `.claude/skills/` directory | `orchestrate:replicate` | Always (last phase) |
 
 ### 4. Determine phase order
@@ -101,15 +101,19 @@ Save to `/tmp/kagenti/orchestrate/<target>/plan.md`:
 - [ ] Add test:write and tdd:ci skills
 
 ## Phase 4: CI (PR #3, ~NNN lines)
-- [ ] Add lint workflow
-- [ ] Add test workflow
-- [ ] Add build workflow
+- [ ] Add lint/test/build workflow (ci.yml)
+- [ ] Add security scanning workflow (security-scans.yml)
+- [ ] Add dependabot.yml (all detected ecosystems)
+- [ ] Add scorecard workflow
+- [ ] Add action pinning verification
+- [ ] Add container build workflow (if Dockerfiles exist)
 - [ ] Add ci:status and rca:ci skills
 
-## Phase 5: Security (PR #4, ~NNN lines)
+## Phase 5: Security Governance (PR #4, ~NNN lines)
 - [ ] Create CODEOWNERS
-- [ ] Add dependabot.yml
-- [ ] Add scorecard workflow
+- [ ] Create SECURITY.md
+- [ ] Create CONTRIBUTING.md
+- [ ] Verify/add LICENSE
 - [ ] Audit .gitignore
 
 ## Phase 6: Replicate (PR #5)
@@ -132,8 +136,8 @@ cat > /tmp/kagenti/orchestrate/<target>/phase-status.md << 'EOF'
 | scan | complete | — | YYYY-MM-DD |
 | plan | complete | — | YYYY-MM-DD |
 | precommit | pending | | |
-| ci | pending | | |
 | tests | pending | | |
+| ci | pending | | |
 | security | pending | | |
 | replicate | pending | | |
 EOF
