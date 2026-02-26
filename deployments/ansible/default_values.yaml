@@ -171,7 +171,6 @@ charts:
           ignoreNamespaces:
             - kube-system
             - kube-public
-            - kagenti-system
             - tekton-*
             - istio-*
           identities:
