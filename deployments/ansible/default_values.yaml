@@ -156,6 +156,11 @@ charts:
             enabled: true
           namespaces:
             create: true
+            server:
+              name: zero-trust-workload-identity-manager
+              create: true
+              labels:
+                shared-gateway-access: "true"
           ingressControllerType: ""
           clusterName: agent-platform
           trustDomain: "{{ domain | default('localtest.me') }}"

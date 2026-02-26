@@ -1,21 +1,6 @@
 {{- /* Create SPIRE routes for Kubernetes or when using Helm chart on OpenShift (OCP < 4.19) */}}
+{{- /* Note: The namespace is created and owned by the SPIRE Helm chart */}}
 {{- if and .Values.components.spire.enabled (or (not .Values.openshift) .Values.useSpireHelmChart) }}
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Values.spire.namespace }}
-  labels:
-    {{- include "kagenti.labels" . | nindent 4 }}
-    # Allow HTTPRoutes in this namespace to attach to the kagenti-system Gateway
-    shared-gateway-access: "true"
-{{- if .Values.openshift }}
-    # Pod Security Standards labels for OpenShift
-    # Required for SPIFFE CSI driver to mount workload API sockets
-    pod-security.kubernetes.io/enforce: privileged
-    pod-security.kubernetes.io/audit: privileged
-    pod-security.kubernetes.io/warn: privileged
-{{- end }}
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -38,7 +23,6 @@ spec:
             value: /
       backendRefs:
         - name: spire-spiffe-oidc-discovery-provider
-          namespace: spire-server
           port: 80
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -63,7 +47,6 @@ spec:
             value: /
       backendRefs:
         - name: spire-tornjak-backend
-          namespace: spire-server
           port: 10000
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -88,23 +71,5 @@ spec:
             value: /
       backendRefs:
         - name: spire-tornjak-frontend
-          namespace: spire-server
           port: 3000
----
-{{- /* ReferenceGrant to allow HTTPRoutes to reference services in spire-server namespace */}}
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind: ReferenceGrant
-metadata:
-  name: spire-routes-backend-access
-  namespace: spire-server
-  labels:
-    {{- include "kagenti.labels" . | nindent 4 }}
-spec:
-  from:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    namespace: {{ .Values.spire.namespace }}
-  to:
-  - group: ""
-    kind: Service
 {{- end }}
