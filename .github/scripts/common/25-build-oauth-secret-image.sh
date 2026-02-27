@@ -84,6 +84,7 @@ EOF
     INTERNAL_IMAGE="${INTERNAL_REGISTRY}/${BUILD_NS}/${BUILD_NAME}:latest"
     log_info "Image available at: ${INTERNAL_IMAGE}"
 
+    # Restart the job with the freshly-built internal image
     log_info "Restarting oauth-secret job with updated image..."
     kubectl delete job "$JOB_NAME" -n "$NAMESPACE" --ignore-not-found
     sleep 2
@@ -105,6 +106,7 @@ EOF
     log_info "Restarting kagenti-ui to pick up the new secret..."
     kubectl rollout restart deployment/kagenti-ui -n "$NAMESPACE"
     kubectl rollout status deployment/kagenti-ui -n "$NAMESPACE" --timeout=120s
+
 else
     # ── Kind / vanilla Kubernetes: local build + kind load ──
     log_info "Building image: ${FULL_IMAGE}"
