@@ -12,6 +12,47 @@
   ansible.builtin.import_tasks: 02_setup_cluster.yaml
 
 #
+#  Load preloaded images into kind (async)
+#  Uses raw loading (docker save + ctr import) instead of `kind load docker-image`
+#  which is broken on latest Rancher Desktop with VZ virtualization.
+#
+- name: Load images into kind (async)
+  shell: |
+    FAILED=0
+    for img in {{ preload_images | join(' ') }}; do
+      tmp=$(mktemp /tmp/image.XXXXXX)
+      docker save "$img" -o "$tmp" && \
+      docker cp "$tmp" {{ kind_cluster_name }}-control-plane:/"$(basename "$tmp")" && \
+      docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")" && \
+      docker exec {{ kind_cluster_name }}-control-plane rm "/$(basename "$tmp")"
+      rc=$?
+      rm -f "$tmp"
+      if [ $rc -ne 0 ]; then
+        echo "FAILED: $img" >&2
+        FAILED=1
+      fi
+    done
+    exit $FAILED
+  args:
+    executable: /bin/bash
+  async: 600
+  poll: 0
+  register: kind_load_async
+  when: preload_images_ready | default(false)
+
+#
+#  Tekton (fire async — no dependency on Istio or cert-manager)
+#
+- name: Install tekton (async)
+  command: >-
+    kubectl apply --server-side
+    -f https://storage.googleapis.com/tekton-releases/pipeline/previous/{{tekton.version}}/release.yaml
+  async: 300
+  poll: 0
+  register: tekton_async
+  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
+
+#
 #  Install Istio
 #
 - name: Install Istio helm charts for Kubernetes cluster
@@ -140,17 +181,36 @@
   when: (kiali.enabled | default(false)) and not (enable_openshift | default(false))
 
 #
-#  Tekton
+#  Wait for async Tekton install to complete
 #
-- name: Install tekton
-  kubernetes.core.k8s:
-    state: present
-    src: "https://storage.googleapis.com/tekton-releases/pipeline/previous/{{tekton.version}}/release.yaml"
+- name: Wait for tekton install to finish
+  async_status:
+    jid: "{{ tekton_async.ansible_job_id }}"
   register: tekton_result
-  retries: 3
-  delay: 15
-  until: tekton_result is not failed
-  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
+  until: tekton_result.finished
+  retries: 30
+  delay: 10
+  when: tekton_async is not skipped
+
+#
+#  Wait for async kind image load to complete before installing components that need them
+#
+- name: Wait for kind image load to finish
+  async_status:
+    jid: "{{ kind_load_async.ansible_job_id }}"
+  register: kind_load_result
+  until: kind_load_result.finished
+  retries: 60
+  delay: 10
+  when: kind_load_async is not skipped
+  failed_when: kind_load_result.rc != 0
+
+- name: Show kind image load stderr (if any)
+  debug:
+    msg: "{{ kind_load_result.stderr_lines }}"
+  when:
+    - kind_load_async is not skipped
+    - kind_load_result.stderr_lines | default([]) | length > 0
 
 #
 #  Shipwright

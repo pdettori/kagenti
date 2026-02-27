@@ -3,9 +3,14 @@ docker.io/istio/install-cni:1.28.0-distroless
 docker.io/istio/pilot:1.28.0-distroless
 docker.io/istio/proxyv2:1.28.0-distroless
 docker.io/istio/ztunnel:1.28.0
-docker.io/kindest/kindnetd:v20250512-df8de77b
-docker.io/kindest/local-path-provisioner:v20250214-acbabc1a
 docker.io/nginx/nginx-prometheus-exporter:1.4.2
 docker.io/nginxinc/nginx-unprivileged:1.29.1-alpine
 docker.io/prom/prometheus:v3.5.0
 otel/opentelemetry-collector-contrib:0.122.1
+quay.io/containers/buildah:v1.37.5
+quay.io/keycloak/keycloak:26.3.3
+ghcr.io/shipwright-io/build/shipwright-build-controller:v0.14.0
+ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.14.0
+ghcr.io/kagenti/kagenti/ui-v2:v0.5.0-alpha.8
+ghcr.io/kagenti/kagenti-operator/kagenti-operator:0.2.0-alpha.19
+ghcr.io/kagenti/kagenti/backend:v0.5.0-alpha.8

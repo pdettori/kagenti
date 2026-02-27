@@ -242,6 +242,9 @@ if [[ "$(uname)" == "Darwin" ]]; then
   fi
 fi
 
+# Enable task timing — shows duration of each task in the output
+export ANSIBLE_CALLBACKS_ENABLED=ansible.posix.profile_tasks
+
 # Call ansible-playbook via the 'uv' wrapper when available so uv manages deps/venv.
 # Fall back to ansible-playbook if uv is not present.
 if command -v uv >/dev/null 2>&1; then
@@ -296,6 +299,8 @@ fi
 
 echo "Running: ${DISPLAY_CMD[*]}"
 
+START_TIME=$SECONDS
+
 # Run the ansible-playbook command and capture its exit status so we can
 # perform follow-up actions (like printing Helm release notes) after it
 # completes. We avoid 'exec' so the script can continue.
@@ -303,7 +308,8 @@ echo "Running: ${DISPLAY_CMD[*]}"
 rc=$?
 
 if [[ $rc -ne 0 ]]; then
-  echo "ERROR: ansible-playbook exited with status $rc" >&2
+  elapsed=$(( SECONDS - START_TIME ))
+  echo "ERROR: ansible-playbook exited with status $rc after ${elapsed}s" >&2
   exit $rc
 fi
 
@@ -316,5 +322,8 @@ if command -v helm >/dev/null 2>&1; then
 else
   echo "WARNING: 'helm' not found in PATH; skipping 'helm get notes'" >&2
 fi
+
+elapsed=$(( SECONDS - START_TIME ))
+printf "\nDeployment completed in %dm %ds\n" $(( elapsed / 60 )) $(( elapsed % 60 ))
 
 exit 0
