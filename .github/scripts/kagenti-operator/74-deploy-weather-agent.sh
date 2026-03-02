@@ -107,6 +107,11 @@ log_success "BuildRun completed successfully"
 
 log_info "Creating Deployment and Service..."
 
+# Clean up any operator-created deployment to apply our version
+# (the operator may auto-create a Deployment from the Shipwright Build)
+kubectl delete deployment weather-service -n team1 --ignore-not-found 2>/dev/null || true
+sleep 2
+
 # Apply Deployment manifest (use OCP-specific file with correct registry on OpenShift)
 if [ "$IS_OPENSHIFT" = "true" ]; then
     kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_deployment_ocp.yaml"
