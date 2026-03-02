@@ -35,3 +35,14 @@ export const isValidContainerImage = (image: string): boolean => {
   // Two parts: NAMESPACE/REPOSITORY
   return validSegment.test(parts[0]) && validSegment.test(parts[1]);
 };
+
+/**
+ * Validate an image tag.
+ *
+ * Must be valid ASCII containing only letters, digits, underscores,
+ * periods, and dashes. May not start with a period or a dash.
+ */
+export const isValidImageTag = (tag: string): boolean => {
+  if (!tag) return false;
+  return /^[a-zA-Z0-9_][a-zA-Z0-9._-]*$/.test(tag);
+};

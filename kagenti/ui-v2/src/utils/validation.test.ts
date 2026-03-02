@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 import { describe, it, expect } from 'vitest';
-import { isValidEnvVarName, isValidContainerImage } from './validation';
+import { isValidEnvVarName, isValidContainerImage, isValidImageTag } from './validation';
 
 describe('isValidEnvVarName', () => {
   it('accepts names starting with a letter', () => {
@@ -103,5 +103,61 @@ describe('isValidContainerImage', () => {
   it('rejects images with tags or digests embedded', () => {
     expect(isValidContainerImage('ns/repo:latest')).toBe(false);
     expect(isValidContainerImage('ns/repo@sha256:abc')).toBe(false);
+  });
+});
+
+describe('isValidImageTag', () => {
+  it('accepts typical tags', () => {
+    expect(isValidImageTag('latest')).toBe(true);
+    expect(isValidImageTag('v1.0.0')).toBe(true);
+    expect(isValidImageTag('v2.3.1-rc1')).toBe(true);
+  });
+
+  it('accepts tags starting with a letter', () => {
+    expect(isValidImageTag('release')).toBe(true);
+    expect(isValidImageTag('A')).toBe(true);
+  });
+
+  it('accepts tags starting with a digit', () => {
+    expect(isValidImageTag('1.0')).toBe(true);
+    expect(isValidImageTag('0')).toBe(true);
+  });
+
+  it('accepts tags starting with an underscore', () => {
+    expect(isValidImageTag('_build123')).toBe(true);
+  });
+
+  it('accepts tags with underscores, periods, and dashes', () => {
+    expect(isValidImageTag('my_tag')).toBe(true);
+    expect(isValidImageTag('my.tag')).toBe(true);
+    expect(isValidImageTag('my-tag')).toBe(true);
+    expect(isValidImageTag('a1.2_3-beta')).toBe(true);
+  });
+
+  it('rejects empty string', () => {
+    expect(isValidImageTag('')).toBe(false);
+  });
+
+  it('rejects tags starting with a period', () => {
+    expect(isValidImageTag('.hidden')).toBe(false);
+    expect(isValidImageTag('.1')).toBe(false);
+  });
+
+  it('rejects tags starting with a dash', () => {
+    expect(isValidImageTag('-flag')).toBe(false);
+    expect(isValidImageTag('-1')).toBe(false);
+  });
+
+  it('rejects tags with spaces', () => {
+    expect(isValidImageTag('my tag')).toBe(false);
+    expect(isValidImageTag(' latest')).toBe(false);
+  });
+
+  it('rejects tags with non-ASCII or special characters', () => {
+    expect(isValidImageTag('tag@1')).toBe(false);
+    expect(isValidImageTag('tag:1')).toBe(false);
+    expect(isValidImageTag('tag/1')).toBe(false);
+    expect(isValidImageTag('tag!')).toBe(false);
+    expect(isValidImageTag('tàg')).toBe(false);
   });
 });
