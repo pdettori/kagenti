@@ -67,6 +67,24 @@ const REGISTRY_OPTIONS = [
   { value: 'github', label: 'GitHub Container Registry', url: 'ghcr.io' },
 ];
 
+// Validate container image matches [HOST[:PORT]/]NAMESPACE/REPOSITORY
+const isValidContainerImage = (image: string): boolean => {
+  const parts = image.split('/');
+  if (parts.length < 2 || parts.length > 3) return false;
+  if (parts.some((p) => p.length === 0)) return false;
+
+  const validSegment = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
+
+  if (parts.length === 3) {
+    // First part is HOST[:PORT]
+    if (!/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(:[0-9]+)?$/.test(parts[0])) return false;
+    return validSegment.test(parts[1]) && validSegment.test(parts[2]);
+  }
+
+  // Two parts: NAMESPACE/REPOSITORY
+  return validSegment.test(parts[0]) && validSegment.test(parts[1]);
+};
+
 const DEFAULT_REPO_URL = 'https://github.com/kagenti/agent-examples';
 const DEFAULT_BRANCH = 'main';
 
@@ -393,8 +411,8 @@ export const ImportAgentPage: React.FC = () => {
         isValid = false;
       }
     } else {
-      // Container image validation
-      if (!containerImage) {
+      // Container image validation: must match [HOST[:PORT]/]NAMESPACE/REPOSITORY
+      if (!containerImage || !isValidContainerImage(containerImage)) {
         newValidated.containerImage = 'error';
         isValid = false;
       } else {
@@ -850,7 +868,7 @@ export const ImportAgentPage: React.FC = () => {
                       <HelperText>
                         <HelperTextItem variant={validated.containerImage === 'error' ? 'error' : 'default'}>
                           {validated.containerImage === 'error'
-                            ? 'Container image is required'
+                            ? 'Must be [HOST[:PORT]/]NAMESPACE/REPOSITORY (e.g., quay.io/myorg/my-agent)'
                             : 'Full image path without tag (e.g., quay.io/myorg/my-agent)'}
                         </HelperTextItem>
                       </HelperText>
