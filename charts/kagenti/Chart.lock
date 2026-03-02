@@ -1,9 +1,9 @@
 dependencies:
 - name: kagenti-operator-chart
   repository: oci://ghcr.io/kagenti/kagenti-operator
-  version: 0.2.0-alpha.20
+  version: 0.2.0-alpha.21
 - name: kagenti-webhook-chart
   repository: oci://ghcr.io/kagenti/kagenti-extensions
   version: 0.4.0-alpha.5
-digest: sha256:78ecdec88cf67d017ff3dc6c5450545f5b79b8b8806fd19a6c9321f132c3d793
-generated: "2026-02-25T12:44:28.679149-05:00"
+digest: sha256:88e98f9ae2b96a8e5a6644c663ff81b7ae97cd568077df963b8c89be4d9cc953
+generated: "2026-03-02T10:48:11.442622Z"
