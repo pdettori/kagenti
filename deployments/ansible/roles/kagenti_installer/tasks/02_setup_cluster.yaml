@@ -125,16 +125,23 @@
 
     - name: Pull images concurrently
       shell: |
-        PIDS=()
+        FAIL=0
+        PIDS=""
         for img in {{ preload_images | join(' ') }}; do
-          docker pull "$img" &
-          PIDS+=($!)
+          docker pull "$img" 2>&1 | grep -E "^(Status:|Error)" &
+          PIDS="$PIDS $!"
         done
-        for pid in "${PIDS[@]}"; do
-          wait "$pid" || true
+        for pid in $PIDS; do
+          wait "$pid" || FAIL=1
         done
+        exit $FAIL
       args:
         executable: /bin/bash
+      register: pull_result
+
+    - name: Show image pull results
+      debug:
+        msg: "{{ pull_result.stdout_lines }}"
 
     - name: Set preload_images_ready flag for async load
       set_fact:

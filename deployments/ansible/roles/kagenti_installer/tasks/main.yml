@@ -23,8 +23,8 @@
       tmp=$(mktemp /tmp/image.XXXXXX)
       docker save "$img" -o "$tmp" && \
       docker cp "$tmp" {{ kind_cluster_name }}-control-plane:/"$(basename "$tmp")" && \
-      docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")" && \
-      docker exec {{ kind_cluster_name }}-control-plane rm "/$(basename "$tmp")"
+      docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")"
+      docker exec {{ kind_cluster_name }}-control-plane rm -f "/$(basename "$tmp")" 2>/dev/null
       rc=$?
       rm -f "$tmp"
       if [ $rc -ne 0 ]; then
@@ -44,9 +44,17 @@
 #  Tekton (fire async — no dependency on Istio or cert-manager)
 #
 - name: Install tekton (async)
-  command: >-
-    kubectl apply --server-side
-    -f https://storage.googleapis.com/tekton-releases/pipeline/previous/{{tekton.version}}/release.yaml
+  shell: |
+    for attempt in 1 2 3; do
+      kubectl apply --server-side \
+        -f https://storage.googleapis.com/tekton-releases/pipeline/previous/{{ tekton.version }}/release.yaml \
+        && exit 0
+      echo "Attempt $attempt failed, retrying in 15s..." >&2
+      sleep 15
+    done
+    exit 1
+  args:
+    executable: /bin/bash
   async: 300
   poll: 0
   register: tekton_async
@@ -191,6 +199,7 @@
   retries: 30
   delay: 10
   when: tekton_async is not skipped
+  failed_when: tekton_result.rc != 0
 
 #
 #  Wait for async kind image load to complete before installing components that need them

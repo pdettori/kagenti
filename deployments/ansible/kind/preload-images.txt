@@ -1,3 +1,9 @@
+# Images pre-pulled on the host and loaded into Kind for faster startup.
+# Keep versions in sync with:
+#   - deployments/ansible/default_values.yaml       (istio, shipwright)
+#   - charts/kagenti/values.yaml                    (ui-v2, backend, kagenti-operator)
+#   - charts/kagenti-deps/templates/                (phoenix, otel-collector, keycloak)
+#   - deployments/ansible/roles/.../04_install_shipwright.yaml (buildah)
 arizephoenix/phoenix:version-8.32.1
 docker.io/istio/install-cni:1.28.0-distroless
 docker.io/istio/pilot:1.28.0-distroless
