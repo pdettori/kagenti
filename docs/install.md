@@ -81,6 +81,11 @@ Run the Ansible install script:
 deployments/ansible/run-install.sh --env dev
 ```
 
+> **Tip:** Add `--preload` to pre-pull and load container images into Kind before deploying. This avoids slow in-cluster registry pulls and can significantly speed up deployment:
+> ```bash
+> deployments/ansible/run-install.sh --env dev --preload
+> ```
+
 The Ansible-based installer will create a Kind cluster (when appropriate) and deploy platform components.
 
 ### Using an Existing Kubernetes Cluster
