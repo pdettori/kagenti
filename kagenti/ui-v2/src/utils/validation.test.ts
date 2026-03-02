@@ -77,8 +77,10 @@ describe('isValidContainerImage', () => {
     expect(isValidContainerImage('')).toBe(false);
   });
 
-  it('rejects too many segments', () => {
-    expect(isValidContainerImage('a/b/c/d')).toBe(false);
+  it('accepts deeper paths', () => {
+    expect(isValidContainerImage('ghcr.io/kagenti/agent-examples/a2a_currency_converter')).toBe(true);
+    expect(isValidContainerImage('registry.example.com:5000/org/repo/sub/path')).toBe(true);
+    expect(isValidContainerImage('a/b/c/d')).toBe(true);
   });
 
   it('rejects empty segments', () => {
