@@ -99,18 +99,24 @@ def _get_ssl_context():
 # ============================================================================
 
 
+# Truncation limits for diagnostic output in assertion messages
+_DIAG_TEXT_LIMIT = 200
+_DIAG_ARTIFACT_LIMIT = 100
+_DIAG_ERROR_LIMIT = 500
+
+
 def _extract_text_from_parts(parts):
-    """Extract text from A2A message/artifact parts."""
-    text = ""
-    for part in parts or []:
-        p = getattr(part, "root", part)
-        if hasattr(p, "text"):
-            text += p.text
-    return text
+    """Extract concatenated text from a list of A2A Part objects."""
+    return "".join(
+        p.text
+        for part in (parts or [])
+        for p in [getattr(part, "root", part)]
+        if hasattr(p, "text")
+    )
 
 
 def _task_diagnostic(task):
-    """Build diagnostic string for a task (for assertion messages)."""
+    """Build a diagnostic string from an A2A Task for assertion messages."""
     if not task:
         return "task=None"
     lines = []
@@ -121,13 +127,13 @@ def _task_diagnostic(task):
         if msg:
             text = _extract_text_from_parts(getattr(msg, "parts", []))
             if text:
-                lines.append(f"task.status.message={text[:200]}")
+                lines.append(f"task.status.message={text[:_DIAG_TEXT_LIMIT]}")
     artifacts = getattr(task, "artifacts", None)
     lines.append(f"task.artifacts count={len(artifacts) if artifacts else 0}")
     if artifacts:
         for i, art in enumerate(artifacts):
             art_text = _extract_text_from_parts(getattr(art, "parts", []))
-            lines.append(f"  artifact[{i}] text={art_text[:100]!r}")
+            lines.append(f"  artifact[{i}] text={art_text[:_DIAG_ARTIFACT_LIMIT]!r}")
     return "\n    ".join(lines)
 
 
@@ -233,7 +239,7 @@ class TestWeatherAgentConversation:
                 f"Agent returned a FAILED task\n"
                 f"  Agent URL: {agent_url}\n"
                 f"  Query: {user_message}\n"
-                f"  Error: {full_response[:500]}\n"
+                f"  Error: {full_response[:_DIAG_ERROR_LIMIT]}\n"
                 f"  Task details:\n    {_task_diagnostic(last_task)}"
             )
 
@@ -357,7 +363,7 @@ class TestWeatherAgentConversation:
                                 )
                             pytest.fail(
                                 f"Turn {turn}: Agent returned FAILED task\n"
-                                f"  Error: {full_response[:500]}\n"
+                                f"  Error: {full_response[:_DIAG_ERROR_LIMIT]}\n"
                                 f"  Task details:\n"
                                 f"    {_task_diagnostic(last_task)}"
                             )
