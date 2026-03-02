@@ -23,6 +23,7 @@ from a2a.types import (
     Message as A2AMessage,
     TextPart,
     TaskArtifactUpdateEvent,
+    TaskState,
 )
 
 # Import CA certificate fetching from conftest
@@ -98,6 +99,44 @@ def _get_ssl_context():
 # ============================================================================
 
 
+# Truncation limits for diagnostic output in assertion messages
+_DIAG_TEXT_LIMIT = 200
+_DIAG_ARTIFACT_LIMIT = 100
+_DIAG_ERROR_LIMIT = 500
+
+
+def _extract_text_from_parts(parts):
+    """Extract concatenated text from a list of A2A Part objects."""
+    return "".join(
+        p.text
+        for part in (parts or [])
+        for p in [getattr(part, "root", part)]
+        if hasattr(p, "text")
+    )
+
+
+def _task_diagnostic(task):
+    """Build a diagnostic string from an A2A Task for assertion messages."""
+    if not task:
+        return "task=None"
+    lines = []
+    status = getattr(task, "status", None)
+    if status:
+        lines.append(f"task.status.state={getattr(status, 'state', '?')}")
+        msg = getattr(status, "message", None)
+        if msg:
+            text = _extract_text_from_parts(getattr(msg, "parts", []))
+            if text:
+                lines.append(f"task.status.message={text[:_DIAG_TEXT_LIMIT]}")
+    artifacts = getattr(task, "artifacts", None)
+    lines.append(f"task.artifacts count={len(artifacts) if artifacts else 0}")
+    if artifacts:
+        for i, art in enumerate(artifacts):
+            art_text = _extract_text_from_parts(getattr(art, "parts", []))
+            lines.append(f"  artifact[{i}] text={art_text[:_DIAG_ARTIFACT_LIMIT]!r}")
+    return "\n    ".join(lines)
+
+
 class TestWeatherAgentConversation:
     """Test weather-service agent with MCP weather-tool (works with both operators)."""
 
@@ -150,49 +189,67 @@ class TestWeatherAgentConversation:
         full_response = ""
         tool_invocation_detected = False
         events_received = []
+        last_task = None
+        task_failed = False
 
         try:
             async for result in client.send_message(message):
                 if isinstance(result, tuple):
                     task, event = result
+                    last_task = task
                     events_received.append(
                         type(event).__name__ if event else "Task(final)"
                     )
+
+                    # Check for failed task
+                    status = getattr(task, "status", None)
+                    if status and getattr(status, "state", None) == TaskState.failed:
+                        task_failed = True
+                        # Extract error message from failed task status
+                        status_msg = getattr(status, "message", None)
+                        if status_msg:
+                            full_response += _extract_text_from_parts(
+                                getattr(status_msg, "parts", [])
+                            )
 
                     # Extract from TaskArtifactUpdateEvent
                     if isinstance(event, TaskArtifactUpdateEvent):
                         tool_invocation_detected = True
                         if hasattr(event, "artifact") and event.artifact:
-                            for part in event.artifact.parts or []:
-                                p = getattr(part, "root", part)
-                                if hasattr(p, "text"):
-                                    full_response += p.text
+                            full_response += _extract_text_from_parts(
+                                event.artifact.parts
+                            )
 
                     # Extract from final task (event=None means complete)
                     if event is None and task and task.artifacts:
                         for artifact in task.artifacts:
-                            for part in artifact.parts or []:
-                                p = getattr(part, "root", part)
-                                if hasattr(p, "text"):
-                                    full_response += p.text
+                            full_response += _extract_text_from_parts(artifact.parts)
                         tool_invocation_detected = True
 
                 elif isinstance(result, A2AMessage):
                     events_received.append("Message")
-                    for part in result.parts or []:
-                        p = getattr(part, "root", part)
-                        if hasattr(p, "text"):
-                            full_response += p.text
+                    full_response += _extract_text_from_parts(result.parts)
 
         except Exception as e:
             pytest.fail(f"Error during A2A conversation: {e}")
+
+        # Check for agent-side failures first
+        if task_failed:
+            pytest.fail(
+                f"Agent returned a FAILED task\n"
+                f"  Agent URL: {agent_url}\n"
+                f"  Query: {user_message}\n"
+                f"  Error: {full_response[:_DIAG_ERROR_LIMIT]}\n"
+                f"  Task details:\n    {_task_diagnostic(last_task)}"
+            )
 
         # Validate response
         assert full_response, (
             f"Agent did not return any response\n"
             f"  Agent URL: {agent_url}\n"
             f"  Events received: {events_received}\n"
-            f"  Query: {user_message}"
+            f"  Query: {user_message}\n"
+            f"  Task details:\n    {_task_diagnostic(last_task)}"
         )
         assert len(full_response) > 10, f"Agent response too short: {full_response}"
 
@@ -282,31 +339,55 @@ class TestWeatherAgentConversation:
             )
 
             full_response = ""
+            last_task = None
+            events_received = []
             try:
                 async for result in client.send_message(message):
                     if isinstance(result, tuple):
                         task, event = result
+                        last_task = task
+                        events_received.append(
+                            type(event).__name__ if event else "Task(final)"
+                        )
+
+                        # Check for failed task
+                        status = getattr(task, "status", None)
+                        if (
+                            status
+                            and getattr(status, "state", None) == TaskState.failed
+                        ):
+                            status_msg = getattr(status, "message", None)
+                            if status_msg:
+                                full_response += _extract_text_from_parts(
+                                    getattr(status_msg, "parts", [])
+                                )
+                            pytest.fail(
+                                f"Turn {turn}: Agent returned FAILED task\n"
+                                f"  Error: {full_response[:_DIAG_ERROR_LIMIT]}\n"
+                                f"  Task details:\n"
+                                f"    {_task_diagnostic(last_task)}"
+                            )
+
                         if isinstance(event, TaskArtifactUpdateEvent):
                             if event.artifact:
-                                for part in event.artifact.parts or []:
-                                    p = getattr(part, "root", part)
-                                    if hasattr(p, "text"):
-                                        full_response += p.text
+                                full_response += _extract_text_from_parts(
+                                    event.artifact.parts
+                                )
                         if event is None and task and task.artifacts:
                             for artifact in task.artifacts:
-                                for part in artifact.parts or []:
-                                    p = getattr(part, "root", part)
-                                    if hasattr(p, "text"):
-                                        full_response += p.text
+                                full_response += _extract_text_from_parts(
+                                    artifact.parts
+                                )
                     elif isinstance(result, A2AMessage):
-                        for part in result.parts or []:
-                            p = getattr(part, "root", part)
-                            if hasattr(p, "text"):
-                                full_response += p.text
+                        full_response += _extract_text_from_parts(result.parts)
             except Exception as e:
                 pytest.fail(f"Turn {turn} failed: {e}")
 
-            assert full_response, f"Turn {turn}: Agent did not return any response"
+            assert full_response, (
+                f"Turn {turn}: Agent did not return any response\n"
+                f"  Events received: {events_received}\n"
+                f"  Task details:\n    {_task_diagnostic(last_task)}"
+            )
             print(f"  Response: {full_response[:100]}...")
 
         print(f"\n  Multi-turn conversation completed ({len(messages)} turns)")
