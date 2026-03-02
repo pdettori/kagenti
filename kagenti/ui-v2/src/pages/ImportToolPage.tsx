@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isValidEnvVarName } from '../utils/validation';
+import { isValidEnvVarName, isValidContainerImage, isValidImageTag } from '../utils/validation';
 import {
   PageSection,
   Title,
@@ -374,13 +374,21 @@ export const ImportToolPage: React.FC = () => {
         newValidated.registryNamespace = 'success';
       }
     } else {
-      // Container image validation for image deployment
-      if (!containerImage) {
+      // Container image validation: must match [HOST[:PORT]/]NAMESPACE/REPOSITORY[/…]
+      if (!containerImage || !isValidContainerImage(containerImage)) {
         newValidated.containerImage = 'error';
         isValid = false;
       } else {
         newValidated.containerImage = 'success';
       }
+    }
+
+    // Image tag validation (shared by both deployment methods)
+    if (imageTag && !isValidImageTag(imageTag)) {
+      newValidated.imageTag = 'error';
+      isValid = false;
+    } else if (imageTag) {
+      newValidated.imageTag = 'success';
     }
 
     setValidated(newValidated);
@@ -687,7 +695,17 @@ export const ImportToolPage: React.FC = () => {
                       value={imageTag}
                       onChange={(_e, value) => setImageTag(value)}
                       placeholder="v0.0.1"
+                      validated={validated.imageTag}
                     />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.imageTag === 'error' ? 'error' : 'default'}>
+                          {validated.imageTag === 'error'
+                            ? 'Letters, digits, underscores, periods, and dashes only. May not start with a period or dash.'
+                            : 'Tag to apply to the image (e.g., v0.0.1)'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
                   </FormGroup>
 
                   <Divider style={{ margin: '24px 0' }} />
@@ -786,7 +804,7 @@ export const ImportToolPage: React.FC = () => {
                       <HelperText>
                         <HelperTextItem variant={validated.containerImage === 'error' ? 'error' : 'default'}>
                           {validated.containerImage === 'error'
-                            ? 'Container image is required'
+                            ? 'Must be [HOST[:PORT]/]NAMESPACE/REPOSITORY (e.g., quay.io/myorg/my-tool)'
                             : 'Full image path without tag (e.g., quay.io/myorg/my-tool)'}
                         </HelperTextItem>
                       </HelperText>
@@ -799,7 +817,17 @@ export const ImportToolPage: React.FC = () => {
                       value={imageTag}
                       onChange={(_e, value) => setImageTag(value)}
                       placeholder="latest"
+                      validated={validated.imageTag}
                     />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.imageTag === 'error' ? 'error' : 'default'}>
+                          {validated.imageTag === 'error'
+                            ? 'Letters, digits, underscores, periods, and dashes only. May not start with a period or dash.'
+                            : 'Tag to apply to the image (e.g., latest, v1.0.0)'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
                   </FormGroup>
 
                   <FormGroup label="Image Pull Secret" fieldId="imagePullSecret">
