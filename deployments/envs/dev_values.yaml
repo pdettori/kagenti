@@ -97,5 +97,8 @@ kind_images_preload: false
 # docker or podman
 container_engine: docker
 
-
-
+####################################################################
+# RHOAI (Red Hat OpenShift AI)
+####################################################################
+rhoai:
+  enabled: false

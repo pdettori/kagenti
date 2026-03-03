@@ -113,3 +113,12 @@ charts:
   ####################################################################
   spire:
     enabled: false  # Helm SPIRE disabled; ZTWIM operator used via kagenti-deps
+
+####################################################################
+# RHOAI (Red Hat OpenShift AI)
+####################################################################
+rhoai:
+  enabled: true
+  profile: minimal    # minimal or full
+  channel: fast-3.x
+  kserve_mode: raw    # raw (no mesh needed) or serverless (deprecated)
