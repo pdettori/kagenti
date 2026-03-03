@@ -64,6 +64,26 @@ if [ -n "${KUBECONFIG:-}" ] && [ -f "${KUBECONFIG:-}" ]; then
     oc get pods -n kagenti-system 2>/dev/null || echo "(namespace not found or cluster not reachable)"
 
     echo ""
+    echo "=== Pods in team1 ==="
+    oc get pods -n team1 2>/dev/null || echo "(namespace not found)"
+
+    echo ""
+    echo "=== Weather Service Agent Logs (last 50 lines) ==="
+    oc logs -n team1 deployment/weather-service --tail=50 2>/dev/null || echo "(not available)"
+
+    echo ""
+    echo "=== Weather Service Agent Env Vars (LLM config) ==="
+    oc get deployment weather-service -n team1 -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{.valueFrom.secretKeyRef.name}{"\n"}{end}' 2>/dev/null || echo "(not available)"
+
+    echo ""
+    echo "=== Weather Tool MCP Logs (last 30 lines) ==="
+    oc logs -n team1 deployment/weather-tool --tail=30 2>/dev/null || echo "(not available)"
+
+    echo ""
+    echo "=== OTEL Collector Errors (last 20 lines) ==="
+    oc logs -n kagenti-system deployment/otel-collector --tail=100 2>/dev/null | grep -iE "error|fail|warn" | tail -20 || echo "(none found)"
+
+    echo ""
     echo "=== Recent Events ==="
     oc get events -A --sort-by='.lastTimestamp' 2>/dev/null | tail -50 || echo "(events not available)"
 else
