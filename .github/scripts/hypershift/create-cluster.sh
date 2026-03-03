@@ -111,6 +111,16 @@ OCP_VERSION="${OCP_VERSION:-4.20.11}"
 AUTOSCALE_MIN="${AUTOSCALE_MIN:-}"
 AUTOSCALE_MAX="${AUTOSCALE_MAX:-}"
 
+# Validate autoscaling parameters if set
+if [[ -n "$AUTOSCALE_MIN" ]] && ! [[ "$AUTOSCALE_MIN" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: AUTOSCALE_MIN must be a number, got: $AUTOSCALE_MIN"
+  exit 1
+fi
+if [[ -n "$AUTOSCALE_MAX" ]] && ! [[ "$AUTOSCALE_MAX" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: AUTOSCALE_MAX must be a number, got: $AUTOSCALE_MAX"
+  exit 1
+fi
+
 # Cluster suffix - if not set, use positional arg, then default to username
 # Set CLUSTER_SUFFIX="" to generate a random suffix
 #

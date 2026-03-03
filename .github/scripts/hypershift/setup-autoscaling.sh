@@ -984,7 +984,7 @@ spec:
   # The descheduler only EVICTS pods - the scheduler handles rescheduling.
   # Too frequent runs may cause excessive pod churn.
   # ============================================================================
-  deschedulingIntervalSeconds: $(echo "$DESCHED_INTERVAL" | sed 's/m/*60/' | bc)
+  deschedulingIntervalSeconds: $(( ${DESCHED_INTERVAL%m} * 60 ))
 
   # ============================================================================
   # PROFILES
