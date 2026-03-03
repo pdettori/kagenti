@@ -1,0 +1,127 @@
+# Install Red Hat OpenShift AI (RHOAI) operator and DataScienceCluster
+#
+# This task installs RHOAI before Kagenti's Istio so the Shared Trust Pattern
+# can sync CAs if RHOAI installs its own Istio (serverless KServe mode).
+#
+# With KServe RawDeployment mode (default in RHOAI 3.x), no additional Istio
+# is installed, avoiding the dual-mesh CA conflict entirely.
+#
+# Variables (from values files):
+#   rhoai.enabled: true/false
+#   rhoai.profile: minimal/full
+#   rhoai.channel: OLM subscription channel (e.g., fast-3.2)
+#   rhoai.kserve_mode: raw/serverless
+
+- name: Install RHOAI operator and DataScienceCluster
+  block:
+    # --- Namespace and OperatorGroup ---
+    - name: Create RHOAI operator namespace
+      kubernetes.core.k8s:
+        state: present
+        template: rhoai/namespace.yaml.j2
+
+    - name: Create RHOAI operator group
+      kubernetes.core.k8s:
+        state: present
+        template: rhoai/operatorgroup.yaml.j2
+
+    # --- Operator Subscription ---
+    - name: Create RHOAI operator subscription
+      kubernetes.core.k8s:
+        state: present
+        template: rhoai/subscription.yaml.j2
+
+    - name: Wait for RHOAI operator CSV to succeed
+      shell: |
+        for i in $(seq 1 60); do
+          csv=$(kubectl get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}' 2>/dev/null)
+          if [ "$csv" = "Succeeded" ]; then
+            echo "RHOAI operator CSV succeeded"
+            exit 0
+          fi
+          echo "Waiting for RHOAI CSV... ($i/60, status: $csv)"
+          sleep 10
+        done
+        echo "ERROR: RHOAI operator CSV did not reach Succeeded state within 10 minutes"
+        exit 1
+      register: rhoai_csv_result
+
+    # --- DataScienceCluster ---
+    - name: Wait for DataScienceCluster CRD to be available
+      command: kubectl wait --for=condition=Established crd/datascienceclusters.datasciencecluster.opendatahub.io --timeout=120s
+
+    - name: "Create DataScienceCluster ({{ rhoai.profile | default('minimal') }} profile)"
+      kubernetes.core.k8s:
+        state: present
+        template: "rhoai/dsc-{{ rhoai.profile | default('minimal') }}.yaml.j2"
+
+    - name: Wait for DataScienceCluster to be Ready
+      shell: |
+        for i in $(seq 1 90); do
+          phase=$(kubectl get datasciencecluster default-dsc -o jsonpath='{.status.phase}' 2>/dev/null)
+          if [ "$phase" = "Ready" ]; then
+            echo "DataScienceCluster is Ready"
+            exit 0
+          fi
+          echo "Waiting for DSC... ($i/90, phase: $phase)"
+          sleep 10
+        done
+        echo "ERROR: DataScienceCluster did not reach Ready state within 15 minutes"
+        exit 1
+      register: dsc_ready_result
+
+    # --- Serverless operator (only for serverless KServe mode) ---
+    - name: Install OpenShift Serverless operator (serverless KServe mode)
+      block:
+        - name: Create OpenShift Serverless namespace
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: openshift-serverless
+
+        - name: Create OpenShift Serverless operator group
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: operators.coreos.com/v1
+              kind: OperatorGroup
+              metadata:
+                name: serverless-operator
+                namespace: openshift-serverless
+              spec: {}
+
+        - name: Create OpenShift Serverless subscription
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: operators.coreos.com/v1alpha1
+              kind: Subscription
+              metadata:
+                name: serverless-operator
+                namespace: openshift-serverless
+              spec:
+                channel: stable
+                installPlanApproval: Automatic
+                name: serverless-operator
+                source: redhat-operators
+                sourceNamespace: openshift-marketplace
+
+        - name: Wait for Serverless operator CSV to succeed
+          shell: |
+            for i in $(seq 1 60); do
+              csv=$(kubectl get csv -n openshift-serverless -l operators.coreos.com/serverless-operator.openshift-serverless -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
+              if [ "$csv" = "Succeeded" ]; then
+                echo "Serverless operator CSV succeeded"
+                exit 0
+              fi
+              echo "Waiting for Serverless CSV... ($i/60, status: $csv)"
+              sleep 10
+            done
+            echo "ERROR: Serverless operator CSV did not succeed within 10 minutes"
+            exit 1
+      when: (rhoai.kserve_mode | default('raw')) == 'serverless'
+
+  when: rhoai.enabled | default(false)
