@@ -12,6 +12,35 @@
   ansible.builtin.import_tasks: 02_setup_cluster.yaml
 
 #
+#  RHOAI (Red Hat OpenShift AI)
+#
+- name: Install RHOAI
+  ansible.builtin.import_tasks: 05_install_rhoai.yaml
+
+#
+#  Operator Detection (skip components already installed by RHOAI)
+#
+- name: Detect existing cert-manager
+  command: kubectl get crd certificates.cert-manager.io
+  register: certmanager_crd_check
+  failed_when: false
+  changed_when: false
+  when: rhoai.enabled | default(false)
+
+- name: Detect existing tekton
+  command: kubectl get crd pipelines.tekton.dev
+  register: tekton_crd_check
+  failed_when: false
+  changed_when: false
+  when: rhoai.enabled | default(false)
+
+- name: Set operator skip flags
+  set_fact:
+    skip_cert_manager: "{{ (rhoai.enabled | default(false)) and (certmanager_crd_check.rc | default(1)) == 0 }}"
+    skip_tekton: "{{ (rhoai.enabled | default(false)) and (tekton_crd_check.rc | default(1)) == 0 }}"
+  when: rhoai.enabled | default(false)
+
+#
 #  Load preloaded images into kind (async)
 #  Uses raw loading (docker save + ctr import) instead of `kind load docker-image`
 #  which is broken on latest Rancher Desktop with VZ virtualization.
@@ -58,7 +87,7 @@
   async: 300
   poll: 0
   register: tekton_async
-  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
+  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false)) and not (skip_tekton | default(false))
 
 #
 #  Install Istio
@@ -168,7 +197,7 @@
   - name: Wait for cert manager webhook to start
     command: >-
       kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=120s
-  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))
+  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false)) and not (skip_cert_manager | default(false))
 
 #
 #  Kiali and Prometheus
@@ -809,6 +838,7 @@
         | combine((((secret_values.get('charts', {}) | default({})).get('kagenti-deps', {}) ).get('values', {})) , recursive=True)
         | combine((secret_values.get('global', {}) | default({})), recursive=True)
         | combine({'openshift': enable_openshift}, recursive=True)
+        | combine({'rhoaiManagesServiceMesh': (rhoai.enabled | default(false)) | bool}, recursive=True)
         | combine((kagenti_deps_operator_overrides | default({})), recursive=True) }}
     values_files: >
       {{ (((charts['kagenti-deps'] | default({}))['values_files'] | default([])) | list)
