@@ -48,7 +48,7 @@ spec:
         - name: MCP_URL
           value: "http://weather-tool-mcp.team1.svc.cluster.local:8000/mcp"
         - name: LLM_API_BASE
-          value: "https://mistral-small-24b-w8a8-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"
+          value: "https://llama-3-2-3b-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
@@ -60,7 +60,7 @@ spec:
               name: openai-secret
               key: apikey
         - name: LLM_MODEL
-          value: "mistral-small-24b-w8a8"
+          value: "llama-3-2-3b"
         - name: GITHUB_SECRET_NAME
           value: "github-token-secret"
         ports:
