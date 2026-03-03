@@ -98,6 +98,16 @@ istio:
   istiod:
     profile: ambient
     namespace: '{{ .Values.istio.namespace | quote }}'
+  tracing:
+    randomSamplingPercentage: 100
+
+# ------------------------------------------------------------------
+#  OpenTelemetry Configuration
+# ------------------------------------------------------------------
+otel:
+  collector:
+    service: otel-collector.kagenti-system.svc.cluster.local
+    port: 4317
 
 httpGateway:
   name: http

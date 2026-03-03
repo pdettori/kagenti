@@ -98,8 +98,8 @@
             extensionProviders:
             - name: otel-tracing
               opentelemetry:
-                service: otel-collector.kagenti-system.svc.cluster.local
-                port: 4317
+                service: "{{ charts['kagenti-deps']['values']['otel']['collector']['service'] }}"
+                port: "{{ charts['kagenti-deps']['values']['otel']['collector']['port'] }}"
       register: istiod_result
       retries: 3
       delay: 15

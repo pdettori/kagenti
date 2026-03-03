@@ -10,5 +10,5 @@ spec:
   tracing:
   - providers:
     - name: otel-tracing
-    randomSamplingPercentage: 100
+    randomSamplingPercentage: {{ .Values.istio.tracing.randomSamplingPercentage }}
 {{- end }}
