@@ -3,8 +3,9 @@
 # This task installs RHOAI before Kagenti's Istio so the Shared Trust Pattern
 # can sync CAs if RHOAI installs its own Istio (serverless KServe mode).
 #
-# With KServe RawDeployment mode (default in RHOAI 3.x), no additional Istio
-# is installed, avoiding the dual-mesh CA conflict entirely.
+# Note: RHOAI 3.x installs openshift-gateway Istio (via OSSM v3) and
+# servicemeshoperator3 regardless of KServe mode. The Shared Trust Pattern
+# in main.yml handles CA sync between Kagenti's and RHOAI's Istio.
 #
 # Variables (from values files):
 #   rhoai.enabled: true/false
@@ -69,6 +70,27 @@
         echo "ERROR: DataScienceCluster did not reach Ready state within 15 minutes"
         exit 1
       register: dsc_ready_result
+
+    # --- Helm adoption of RHOAI-managed OLM subscriptions ---
+    # RHOAI 3.x auto-installs servicemeshoperator3 via OLM dependencies.
+    # The kagenti-deps Helm chart also manages this subscription, so we
+    # must add Helm ownership labels before the chart install runs.
+    - name: Check for OLM-managed servicemeshoperator3 subscription
+      command: kubectl get subscription servicemeshoperator3 -n openshift-operators -o name
+      register: ossm3_sub_check
+      failed_when: false
+      changed_when: false
+
+    - name: Adopt servicemeshoperator3 subscription for Helm
+      shell: |
+        kubectl annotate subscription servicemeshoperator3 -n openshift-operators \
+          meta.helm.sh/release-name=kagenti-deps \
+          meta.helm.sh/release-namespace=kagenti-system \
+          --overwrite
+        kubectl label subscription servicemeshoperator3 -n openshift-operators \
+          app.kubernetes.io/managed-by=Helm \
+          --overwrite
+      when: ossm3_sub_check.rc == 0
 
     # --- Serverless operator (only for serverless KServe mode) ---
     - name: Install OpenShift Serverless operator (serverless KServe mode)
