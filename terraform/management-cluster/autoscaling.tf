@@ -61,8 +61,9 @@ data "kubernetes_resources" "machinesets" {
 locals {
   machineset_map = var.autoscaling_enabled && length(data.kubernetes_resources.machinesets) > 0 ? {
     for ms in data.kubernetes_resources.machinesets[0].objects :
-    # Extract AZ from MachineSet name (format: cluster-random-worker-us-east-1a)
-    regex(".*-(us-[a-z]+-[0-9][a-z])$", ms.metadata.name)[0] => ms.metadata.name
+    # Extract AZ from MachineSet name (format: cluster-random-worker-<region>-<az>)
+    # Supports all AWS regions (us-east-1a, eu-west-1a, ap-southeast-1a, etc.)
+    regex(".*-([a-z]+-[a-z]+-[0-9][a-z])$", ms.metadata.name)[0] => ms.metadata.name
   } : {}
 }
 
