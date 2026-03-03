@@ -83,6 +83,7 @@
 
     - name: Adopt servicemeshoperator3 subscription for Helm
       shell: |
+        # Add Helm ownership labels and annotations
         kubectl annotate subscription servicemeshoperator3 -n openshift-operators \
           meta.helm.sh/release-name=kagenti-deps \
           meta.helm.sh/release-namespace=kagenti-system \
@@ -90,6 +91,9 @@
         kubectl label subscription servicemeshoperator3 -n openshift-operators \
           app.kubernetes.io/managed-by=Helm \
           --overwrite
+        # Force server-side apply to take field ownership from ingress-operator
+        kubectl get subscription servicemeshoperator3 -n openshift-operators -o yaml | \
+          kubectl apply --server-side --force-conflicts --field-manager=helm -f -
       when: ossm3_sub_check.rc == 0
 
     # --- Serverless operator (only for serverless KServe mode) ---
