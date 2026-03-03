@@ -129,8 +129,8 @@ data:
         "name": "LLM_API_KEY",
         "valueFrom": {"secretKeyRef": {"name": "openai-secret", "key": "apikey"}}
       },
-      {"name": "LLM_API_BASE", "value": "https://llama-3-2-3b-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"},
-      {"name": "LLM_MODEL", "value": "llama-3-2-3b"}
+      {"name": "LLM_API_BASE", "value": "https://llama-4-scout-17b-16e-w4a16-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"},
+      {"name": "LLM_MODEL", "value": "llama-4-scout-17b-16e-w4a16"}
     ]
   mcp-weather: |
     [
