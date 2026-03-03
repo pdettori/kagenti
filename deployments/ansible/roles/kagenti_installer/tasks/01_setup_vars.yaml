@@ -91,6 +91,7 @@
         kind_config_registry: "{{ global_values_merged.get('kind_config_registry', kind_config_registry | default('./kind/kind-config-registry.yaml')) }}"
         preload_images_file: "{{ global_values_merged.get('preload_images_file', preload_images_file | default('./kind/preload-images.txt')) }}"
         secrets: "{{ (secrets | default({})) | combine((global_values_merged.get('secrets', {}) | default({})), recursive=True) }}"
+        rhoai: "{{ (rhoai | default({})) | combine((global_values_merged.get('rhoai', {}) | default({})), recursive=True) }}"
       when: global_values_merged is defined
 
   when: global_value_files is defined
