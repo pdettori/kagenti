@@ -129,25 +129,30 @@ class TestRHOAIMeshTrust:
         ), "ztunnel logs contain BadSignature errors - CA mismatch detected"
 
     @pytest.mark.requires_features(["rhoai"])
-    def test_rhoai_dashboard_route_accessible(self, k8s_custom_client):
-        """Verify RHOAI Dashboard route exists."""
-        try:
-            route = k8s_custom_client.get_namespaced_custom_object(
-                group="route.openshift.io",
-                version="v1",
-                namespace="redhat-ods-applications",
-                plural="routes",
-                name="rhods-dashboard",
-            )
-            host = route.get("spec", {}).get("host", "")
-            assert host, "RHOAI Dashboard route has no host"
-        except Exception:
-            routes = k8s_custom_client.list_namespaced_custom_object(
-                group="route.openshift.io",
-                version="v1",
-                namespace="redhat-ods-applications",
-                plural="routes",
-            )
-            assert (
-                len(routes.get("items", [])) > 0
-            ), "No routes found in redhat-ods-applications namespace"
+    def test_rhoai_dashboard_accessible(self, k8s_custom_client):
+        """Verify RHOAI Dashboard is accessible via route or gateway."""
+        # RHOAI 3.x uses data-science-gateway in openshift-ingress
+        # RHOAI 2.x used rhods-dashboard route in redhat-ods-applications
+        found = False
+        for ns, name in [
+            ("openshift-ingress", "data-science-gateway"),
+            ("redhat-ods-applications", "rhods-dashboard"),
+        ]:
+            try:
+                route = k8s_custom_client.get_namespaced_custom_object(
+                    group="route.openshift.io",
+                    version="v1",
+                    namespace=ns,
+                    plural="routes",
+                    name=name,
+                )
+                host = route.get("spec", {}).get("host", "")
+                if host:
+                    found = True
+                    break
+            except Exception:
+                continue
+        assert found, (
+            "No RHOAI Dashboard route found (checked data-science-gateway "
+            "in openshift-ingress and rhods-dashboard in redhat-ods-applications)"
+        )
