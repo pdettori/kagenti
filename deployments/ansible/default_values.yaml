@@ -78,6 +78,13 @@ charts:
         shipwright:
           enabled: false
       # components settings
+      istio:
+        tracing:
+          randomSamplingPercentage: 100
+      otel:
+        collector:
+          service: otel-collector.kagenti-system.svc.cluster.local
+          port: 4317
       containerRegistry:
         namespace: cr-system
         name: registry
