@@ -109,6 +109,8 @@ OPTIONS:
     Other options:
         --clean-kagenti              Uninstall Kagenti before installing
         --env ENV                    Environment for installer (default: ocp)
+        --rhoai-profile <profile>    Set RHOAI profile (minimal|full). Default: from env values.
+        --no-rhoai                   Disable RHOAI installation.
         -h, --help                   Show this help message
 
     Cluster suffix:
@@ -183,6 +185,8 @@ PYTEST_ARGS=""
 DRY_RUN=true  # Default to dry-run if no phase flags provided
 FULL_RUN=false
 HAS_PHASE_FLAGS=false  # Track if any phase flags were provided
+RHOAI_PROFILE="${RHOAI_PROFILE:-}"
+NO_RHOAI="${NO_RHOAI:-false}"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -282,6 +286,14 @@ while [[ $# -gt 0 ]]; do
             FULL_RUN=true
             HAS_PHASE_FLAGS=true
             SKIP_DESTROY=false
+            shift
+            ;;
+        --rhoai-profile)
+            RHOAI_PROFILE="$2"
+            shift 2
+            ;;
+        --no-rhoai)
+            NO_RHOAI=true
             shift
             ;;
         *)
@@ -918,7 +930,13 @@ if [ "$RUN_INSTALL" = "true" ]; then
     fi
 
     log_step "Installing Kagenti platform..."
-    ./.github/scripts/kagenti-operator/30-run-installer.sh --env "$KAGENTI_ENV"
+    INSTALLER_ARGS=(--env "$KAGENTI_ENV")
+    if [ "$NO_RHOAI" = "true" ]; then
+        INSTALLER_ARGS+=(--extra-vars '{"rhoai": {"enabled": false}}')
+    elif [ -n "$RHOAI_PROFILE" ]; then
+        INSTALLER_ARGS+=(--extra-vars "{\"rhoai\": {\"enabled\": true, \"profile\": \"$RHOAI_PROFILE\"}}")
+    fi
+    ./.github/scripts/kagenti-operator/30-run-installer.sh "${INSTALLER_ARGS[@]}"
 
     log_step "Waiting for CRDs..."
     ./.github/scripts/kagenti-operator/41-wait-crds.sh
