@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isValidEnvVarName } from '../utils/validation';
+import { isValidEnvVarName, isValidContainerImage, isValidImageTag } from '../utils/validation';
 import {
   PageSection,
   Title,
@@ -393,12 +393,20 @@ export const ImportAgentPage: React.FC = () => {
         isValid = false;
       }
     } else {
-      // Container image validation
-      if (!containerImage) {
+      // Container image validation: must match [HOST[:PORT]/]NAMESPACE/REPOSITORY
+      if (!containerImage || !isValidContainerImage(containerImage)) {
         newValidated.containerImage = 'error';
         isValid = false;
       } else {
         newValidated.containerImage = 'success';
+      }
+
+      // Image tag validation
+      if (imageTag && !isValidImageTag(imageTag)) {
+        newValidated.imageTag = 'error';
+        isValid = false;
+      } else if (imageTag) {
+        newValidated.imageTag = 'success';
       }
     }
 
@@ -850,7 +858,7 @@ export const ImportAgentPage: React.FC = () => {
                       <HelperText>
                         <HelperTextItem variant={validated.containerImage === 'error' ? 'error' : 'default'}>
                           {validated.containerImage === 'error'
-                            ? 'Container image is required'
+                            ? 'Must be [HOST[:PORT]/]NAMESPACE/REPOSITORY (e.g., quay.io/myorg/my-agent)'
                             : 'Full image path without tag (e.g., quay.io/myorg/my-agent)'}
                         </HelperTextItem>
                       </HelperText>
@@ -863,7 +871,17 @@ export const ImportAgentPage: React.FC = () => {
                       value={imageTag}
                       onChange={(_e, value) => setImageTag(value)}
                       placeholder="latest"
+                      validated={validated.imageTag}
                     />
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant={validated.imageTag === 'error' ? 'error' : 'default'}>
+                          {validated.imageTag === 'error'
+                            ? 'Letters, digits, underscores, periods, and dashes only. May not start with a period or dash.'
+                            : 'Tag to apply to the image (e.g., latest, v1.0.0)'}
+                        </HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
                   </FormGroup>
 
                   <FormGroup label="Image Pull Secret" fieldId="imagePullSecret">
