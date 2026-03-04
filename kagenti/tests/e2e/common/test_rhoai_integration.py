@@ -59,9 +59,9 @@ class TestRHOAIOperatorHealth:
         )
         assert len(pods.items) > 0, "No RHOAI operator pods found"
         for pod in pods.items:
-            assert (
-                pod.status.phase == "Running"
-            ), f"RHOAI operator pod {pod.metadata.name} is {pod.status.phase}"
+            assert pod.status.phase == "Running", (
+                f"RHOAI operator pod {pod.metadata.name} is {pod.status.phase}"
+            )
 
 
 class TestRHOAIDataScienceCluster:
@@ -99,9 +99,9 @@ class TestRHOAIDataScienceCluster:
         )
         assert len(pods.items) > 0, "No KServe controller pods found"
         for pod in pods.items:
-            assert (
-                pod.status.phase == "Running"
-            ), f"KServe controller pod {pod.metadata.name} is {pod.status.phase}"
+            assert pod.status.phase == "Running", (
+                f"KServe controller pod {pod.metadata.name} is {pod.status.phase}"
+            )
 
 
 class TestRHOAIMeshTrust:
@@ -124,9 +124,9 @@ class TestRHOAIMeshTrust:
             text=True,
             timeout=30,
         )
-        assert (
-            "BadSignature" not in result.stdout
-        ), "ztunnel logs contain BadSignature errors - CA mismatch detected"
+        assert "BadSignature" not in result.stdout, (
+            "ztunnel logs contain BadSignature errors - CA mismatch detected"
+        )
 
     @pytest.mark.requires_features(["rhoai"])
     def test_rhoai_dashboard_accessible(self, k8s_custom_client):
