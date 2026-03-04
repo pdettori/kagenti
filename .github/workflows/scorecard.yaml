@@ -26,8 +26,9 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
-# Scorecard requires job-level permissions (no workflow-level write permissions allowed)
+# Deny all permissions at workflow level; the job declares only what it needs
 # See: https://github.com/ossf/scorecard-action#workflow-restrictions
+permissions: {}
 
 jobs:
   scorecard:

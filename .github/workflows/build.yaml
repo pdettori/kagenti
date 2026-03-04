@@ -8,8 +8,8 @@ on:
   # Allows also to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Note: Job-level permissions are used for least privilege
-# Top-level set to read-only; jobs request write only where needed
+# Deny all permissions at workflow level; each job declares only what it needs
+permissions: {}
 
 env:
   REGISTRY: ghcr.io

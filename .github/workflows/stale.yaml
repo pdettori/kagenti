@@ -14,6 +14,9 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
+# Deny all permissions at workflow level; the reusable workflow declares its own
+permissions: {}
+
 jobs:
   stale:
     uses: kagenti/.github/.github/workflows/stale.yaml@main
