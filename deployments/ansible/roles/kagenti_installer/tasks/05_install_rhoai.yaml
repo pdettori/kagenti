@@ -57,13 +57,31 @@
     # The RHOAI dashboard requests 2.5 CPU / 5Gi RAM per replica (4 sidecars including
     # oauth-proxy). The operator defaults to 3 replicas at 500m each. On small clusters
     # (2-3 nodes), this exhausts CPU and blocks other pods from scheduling.
-    - name: Scale down RHOAI dashboard for test cluster
-      command: kubectl scale deployment rhods-dashboard -n redhat-ods-applications --replicas=1
+    # Scale operator FIRST (prevents it from reconciling replicas back up), then dashboard.
+    - name: Scale down RHOAI operator to 1 replica for test cluster
+      command: kubectl scale deployment rhods-operator -n redhat-ods-operator --replicas=1
       failed_when: false
       changed_when: false
 
-    - name: Scale down RHOAI operator to 1 replica for test cluster
-      command: kubectl scale deployment rhods-operator -n redhat-ods-operator --replicas=1
+    - name: Scale down RHOAI dashboard for test cluster
+      shell: |
+        # Wait for dashboard deployment to exist (created by DSC reconciliation)
+        for i in $(seq 1 30); do
+          if kubectl get deployment rhods-dashboard -n redhat-ods-applications 2>/dev/null; then
+            kubectl scale deployment rhods-dashboard -n redhat-ods-applications --replicas=1
+            echo "Dashboard scaled to 1 replica"
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "Dashboard deployment not found (may not be created yet)"
+      failed_when: false
+      changed_when: false
+
+    - name: Delete pending dashboard pods to free CPU
+      shell: |
+        kubectl delete pod -n redhat-ods-applications --field-selector=status.phase=Pending 2>/dev/null || true
+        kubectl delete pod -n redhat-ods-operator --field-selector=status.phase=Pending 2>/dev/null || true
       failed_when: false
       changed_when: false
 
