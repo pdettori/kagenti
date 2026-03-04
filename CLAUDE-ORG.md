@@ -146,32 +146,9 @@ spec:
     name: weather-service
 ```
 
-**CRDs**:
-```yaml
-# Component (platform-operator)
-apiVersion: kagenti.operator.dev/v1alpha1
-kind: Component
-spec:
-  agent: {}     # or tool: {} or infra: {}
-  deployer:
-    kubernetes:
-      imageSpec: {}      # Deploy from image
-      manifest: {}       # Deploy from URL/GitHub manifest
-      podTemplateSpec: {} # Full pod control
-    helm: {}             # Deploy via Helm chart
-
-# Platform (platform-operator)
-apiVersion: kagenti.operator.dev/v1alpha1
-kind: Platform
-spec:
-  globalConfig:
-    namespace: kagenti-system
-    labels: {}
-    annotations: {}
-  infrastructure: []
-  tools: []
-  agents: []
-```
+**Agent Deployment**: Agents are now deployed as standard Kubernetes Deployments + Services
+(the old Component CRD from `kagenti.operator.dev` has been removed).
+See `docs/plans/migrate-agent-crd-to-workloads.md` for details.
 
 **Commands**:
 ```bash

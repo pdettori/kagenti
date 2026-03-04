@@ -275,7 +275,6 @@ If you encounter any errors, check the [Troubleshooting Guide](../troubleshootin
 You may navigate to the **Agent Catalog** and **Tool Catalog** in the UI and delete the agent and tool respectively. Else, you may do this in the console:
 
 ```console
-   installer$ kubectl delete components.kagenti.operator.dev slack-researcher slack-tool -n <namespace>
+installer$ kubectl delete deployment slack-researcher slack-tool -n <namespace>
+installer$ kubectl delete service slack-researcher slack-tool -n <namespace>
 ```
-
-The Kagenti Operator will automatically clean up all related Kubernetes resources.

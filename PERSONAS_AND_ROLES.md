@@ -121,8 +121,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 
 **CRDs Managed**:
 
-- `agents.kagenti.operator.dev/v1alpha1`
-- `components.kagenti.operator.dev/v1alpha1`
+- `agents.agent.kagenti.dev/v1alpha1` (legacy, being replaced by standard Deployments)
 - `mcpserverregistrations.mcp.kagenti.com/v1alpha1`
 
 **Technical Skills**:
