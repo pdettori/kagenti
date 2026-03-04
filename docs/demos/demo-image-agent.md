@@ -131,29 +131,9 @@ If you encounter any errors, check the [Troubleshooting section](./demos.md#trou
 To cleanup the agents and tools in the UI, go to the `Agent Catalog` and `Tool Catalog`
 respectively and click the `Delete` button next to each.
 
-You can also manually remove them by deleting their Custom Resources (CRs) from the cluster.
+You can also manually remove them from the cluster:
 
-### Step 1: List Custom Resource Definitions (CRDs)
-
-   ```console
-   installer$ kubectl get crds | grep kagenti
-   components.kagenti.operator.dev             2025-07-23T23:11:59Z
-   platforms.kagenti.operator.dev              2025-07-23T23:11:59Z
-   ```
-
-### Step 2: List deployed components in your namespace
-
-   ```console
-   installer$ kubectl get components.kagenti.operator.dev -n <your-ns>
-   NAME                  SUSPEND
-   image-service       false
-   image-tool          false
-   ```
-
-### Step 3: Delete the Agent and the Tool
-
-   ```console
-   installer$ kubectl delete components.kagenti.operator.dev image-service image-tool -n <your-ns>
-   ```
-
-The Kagenti Operator will automatically clean up all related Kubernetes resources.
+```console
+installer$ kubectl delete deployment image-service image-tool -n <your-ns>
+installer$ kubectl delete service image-service image-tool -n <your-ns>
+```
