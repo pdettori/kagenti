@@ -259,9 +259,7 @@ export const ImportToolPage: React.FC = () => {
   };
 
   const handleImportEnvVars = (importedVars: EnvVar[]) => {
-    const existingNames = new Set(envVars.map(v => v.name));
-    const newVars = importedVars.filter(v => !existingNames.has(v.name));
-    setEnvVars([...envVars, ...newVars]);
+    setEnvVars(importedVars);
     setShowEnvVars(true);
   };
 
