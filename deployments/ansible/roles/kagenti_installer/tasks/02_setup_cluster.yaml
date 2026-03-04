@@ -125,10 +125,11 @@
 
     - name: Pull images concurrently
       shell: |
+        set -o pipefail
         FAIL=0
         PIDS=""
         for img in {{ preload_images | join(' ') }}; do
-          docker pull "$img" 2>&1 | grep -E "^(Status:|Error)" &
+          (docker pull "$img" 2>&1 | { grep -E "^(Status:|Error)" || true; }) &
           PIDS="$PIDS $!"
         done
         for pid in $PIDS; do
