@@ -2,7 +2,7 @@
 """
 RHOAI Integration E2E Tests
 
-Tests RHOAI deployment health and mesh trust when RHOAI is enabled.
+Tests RHOAI deployment health and Istio coexistence when RHOAI is enabled.
 
 Usage:
     pytest tests/e2e/common/test_rhoai_integration.py -v
@@ -104,8 +104,8 @@ class TestRHOAIDataScienceCluster:
             )
 
 
-class TestRHOAIMeshTrust:
-    """Test mesh trust when both Istio control planes exist."""
+class TestRHOAICoexistence:
+    """Test RHOAI and Kagenti Istio coexistence (gateway + ambient)."""
 
     @pytest.mark.requires_features(["rhoai", "istio"])
     def test_ztunnel_no_bad_signature(self, k8s_client):
