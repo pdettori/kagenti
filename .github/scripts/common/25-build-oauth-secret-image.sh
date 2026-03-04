@@ -14,6 +14,7 @@ NAMESPACE="kagenti-system"
 JOB_NAME="kagenti-ui-oauth-secret-job"
 
 if [ "$IS_OPENSHIFT" = "true" ]; then
+    # ── OpenShift: use BuildConfig with binary source ──
     source "$SCRIPT_DIR/../lib/k8s-utils.sh"
 
     BUILD_NAME="ui-oauth-secret"
@@ -83,6 +84,7 @@ EOF
     INTERNAL_IMAGE="${INTERNAL_REGISTRY}/${BUILD_NS}/${BUILD_NAME}:latest"
     log_info "Image available at: ${INTERNAL_IMAGE}"
 
+    # Restart the job with the freshly-built internal image
     log_info "Restarting oauth-secret job with updated image..."
     kubectl delete job "$JOB_NAME" -n "$NAMESPACE" --ignore-not-found
     sleep 2
@@ -104,7 +106,9 @@ EOF
     log_info "Restarting kagenti-ui to pick up the new secret..."
     kubectl rollout restart deployment/kagenti-ui -n "$NAMESPACE"
     kubectl rollout status deployment/kagenti-ui -n "$NAMESPACE" --timeout=120s
+
 else
+    # ── Kind / vanilla Kubernetes: local build + kind load ──
     log_info "Building image: ${FULL_IMAGE}"
     docker build -t "${FULL_IMAGE}" \
         -f "$REPO_ROOT/kagenti/auth/ui-oauth-secret/Dockerfile" \
@@ -114,6 +118,9 @@ else
     log_info "Loading image into Kind cluster '${CLUSTER_NAME}'..."
     kind load docker-image "${FULL_IMAGE}" --name "${CLUSTER_NAME}"
 
+    # Always restart the job so it runs with the freshly-built PR image.
+    # The Helm install may have already completed the job using the old
+    # registry image, which lacks PR changes (e.g. realm bootstrap/user creation).
     log_info "Restarting oauth-secret job with updated image..."
     kubectl delete job "$JOB_NAME" -n "$NAMESPACE" --ignore-not-found
     sleep 2
