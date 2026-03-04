@@ -53,6 +53,20 @@
         state: present
         template: "rhoai/dsc-{{ rhoai.profile | default('minimal') }}.yaml.j2"
 
+    # Right-size RHOAI for test/dev clusters.
+    # The RHOAI dashboard requests 2.5 CPU / 5Gi RAM per replica (4 sidecars including
+    # oauth-proxy). The operator defaults to 3 replicas at 500m each. On small clusters
+    # (2-3 nodes), this exhausts CPU and blocks other pods from scheduling.
+    - name: Scale down RHOAI dashboard for test cluster
+      command: kubectl scale deployment rhods-dashboard -n redhat-ods-applications --replicas=1
+      failed_when: false
+      changed_when: false
+
+    - name: Scale down RHOAI operator to 1 replica for test cluster
+      command: kubectl scale deployment rhods-operator -n redhat-ods-operator --replicas=1
+      failed_when: false
+      changed_when: false
+
     - name: Wait for DataScienceCluster to be Ready
       shell: |
         for i in $(seq 1 90); do
