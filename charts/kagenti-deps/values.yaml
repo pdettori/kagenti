@@ -37,6 +37,9 @@ components:
     enabled: true
   certManager:
     enabled: true
+  rhoai:
+    enabled: false
+    skipDataScienceCluster: true  # Ansible creates after CRD is ready
   gatewayApi:
     enabled: false
   ingressGateway:
@@ -124,6 +127,13 @@ shipwright:
 # ------------------------------------------------------------------
 certManager:
   namespace: cert-manager-operator
+
+# ------------------------------------------------------------------
+#  RHOAI (Red Hat OpenShift AI) Configuration
+# ------------------------------------------------------------------
+rhoai:
+  namespace: redhat-ods-operator
+  channel: fast-3.x
 
 # ------------------------------------------------------------------
 #  Spire Configuration

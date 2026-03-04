@@ -52,6 +52,9 @@ charts:
           skipOpenShiftBuildOperand: true
         certManager:
           enabled: true
+        rhoai:
+          enabled: true
+          skipDataScienceCluster: true  # Ansible creates after CRD is ready
         gatewayApi:
           enabled: false
       # MLflow authentication - requires Keycloak OAuth2

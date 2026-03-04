@@ -12,35 +12,6 @@
   ansible.builtin.import_tasks: 02_setup_cluster.yaml
 
 #
-#  RHOAI (Red Hat OpenShift AI)
-#
-- name: Install RHOAI
-  ansible.builtin.import_tasks: 05_install_rhoai.yaml
-
-#
-#  Operator Detection (skip components already installed by RHOAI)
-#
-- name: Detect existing cert-manager
-  command: kubectl get crd certificates.cert-manager.io
-  register: certmanager_crd_check
-  failed_when: false
-  changed_when: false
-  when: rhoai.enabled | default(false)
-
-- name: Detect existing tekton
-  command: kubectl get crd pipelines.tekton.dev
-  register: tekton_crd_check
-  failed_when: false
-  changed_when: false
-  when: rhoai.enabled | default(false)
-
-- name: Set operator skip flags
-  set_fact:
-    skip_cert_manager: "{{ (rhoai.enabled | default(false)) and (certmanager_crd_check.rc | default(1)) == 0 }}"
-    skip_tekton: "{{ (rhoai.enabled | default(false)) and (tekton_crd_check.rc | default(1)) == 0 }}"
-  when: rhoai.enabled | default(false)
-
-#
 #  Load preloaded images into kind (async)
 #  Uses raw loading (docker save + ctr import) instead of `kind load docker-image`
 #  which is broken on latest Rancher Desktop with VZ virtualization.
@@ -864,6 +835,14 @@
   when:
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+#
+#  RHOAI (Red Hat OpenShift AI) - wait for operator and create DataScienceCluster
+#  The operator subscription is created by the kagenti-deps Helm chart.
+#  Ansible waits for CSV, CRD readiness, and creates the DataScienceCluster CR.
+#
+- name: Wait for RHOAI operator and create DataScienceCluster
+  ansible.builtin.import_tasks: 05_install_rhoai.yaml
 
 # Create ConfigMap for OpenShift trusted CA bundle injection
 # OpenShift's cluster network operator injects the trusted CA bundle into

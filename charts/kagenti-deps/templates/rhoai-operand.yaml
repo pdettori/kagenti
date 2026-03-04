@@ -1,0 +1,51 @@
+{{- if and .Values.components.rhoai.enabled .Values.openshift (not .Values.components.rhoai.skipDataScienceCluster) }}
+{{- /*
+  DataScienceCluster Operand Configuration
+
+  The RHOAI operator requires this operand CR to deploy AI/ML components.
+  After the operator subscription is installed, this CR triggers the creation of:
+  - KServe for model serving
+  - Dashboard for the RHOAI web console
+
+  Uses Helm hooks to ensure the operator has time to install before creating the operand.
+
+  NOTE: On fresh installs (e.g., HyperShift), the CRD may not exist when Helm runs.
+  Set components.rhoai.skipDataScienceCluster=true and let Ansible create
+  the operand after the CRD is available.
+*/}}
+apiVersion: datasciencecluster.opendatahub.io/v1
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+  labels:
+    {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  components:
+    dashboard:
+      managementState: Managed
+    kserve:
+      managementState: Managed
+      rawDeploymentServiceConfig: Headless
+    workbenches:
+      managementState: Removed
+    modelmeshserving:
+      managementState: Removed
+    datasciencepipelines:
+      managementState: Removed
+    codeflare:
+      managementState: Removed
+    ray:
+      managementState: Removed
+    kueue:
+      managementState: Removed
+    trustyai:
+      managementState: Removed
+    modelregistry:
+      managementState: Removed
+    trainingoperator:
+      managementState: Removed
+{{- end }}

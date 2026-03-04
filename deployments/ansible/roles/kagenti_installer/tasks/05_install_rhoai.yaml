@@ -1,37 +1,19 @@
-# Install Red Hat OpenShift AI (RHOAI) operator and DataScienceCluster
+# Wait for RHOAI operator and DataScienceCluster readiness
 #
-# This task installs RHOAI before Kagenti's Istio so the Shared Trust Pattern
-# can sync CAs if RHOAI installs its own Istio (serverless KServe mode).
-#
-# Note: RHOAI 3.x installs openshift-gateway Istio (via OSSM v3) and
-# servicemeshoperator3 regardless of KServe mode. The Shared Trust Pattern
-# in main.yml handles CA sync between Kagenti's and RHOAI's Istio.
+# The RHOAI operator subscription is created by the kagenti-deps Helm chart.
+# This task handles:
+# 1. Waiting for the operator CSV to reach Succeeded state
+# 2. Waiting for the DataScienceCluster CRD to be available
+# 3. Creating the DataScienceCluster CR (since Helm hook can't create it on fresh installs)
+# 4. Waiting for the DataScienceCluster to reach Ready state
 #
 # Variables (from values files):
 #   rhoai.enabled: true/false
 #   rhoai.profile: minimal/full
-#   rhoai.channel: OLM subscription channel (e.g., fast-3.2)
 #   rhoai.kserve_mode: raw/serverless
 
-- name: Install RHOAI operator and DataScienceCluster
+- name: Wait for RHOAI operator and create DataScienceCluster
   block:
-    # --- Namespace and OperatorGroup ---
-    - name: Create RHOAI operator namespace
-      kubernetes.core.k8s:
-        state: present
-        template: rhoai/namespace.yaml.j2
-
-    - name: Create RHOAI operator group
-      kubernetes.core.k8s:
-        state: present
-        template: rhoai/operatorgroup.yaml.j2
-
-    # --- Operator Subscription ---
-    - name: Create RHOAI operator subscription
-      kubernetes.core.k8s:
-        state: present
-        template: rhoai/subscription.yaml.j2
-
     - name: Wait for RHOAI operator CSV to succeed
       shell: |
         for i in $(seq 1 60); do
@@ -47,7 +29,6 @@
         exit 1
       register: rhoai_csv_result
 
-    # --- DataScienceCluster ---
     - name: Wait for DataScienceCluster CRD to be available
       command: kubectl wait --for=condition=Established crd/datascienceclusters.datasciencecluster.opendatahub.io --timeout=120s
 
@@ -70,84 +51,5 @@
         echo "ERROR: DataScienceCluster did not reach Ready state within 15 minutes"
         exit 1
       register: dsc_ready_result
-
-    # --- Helm adoption of RHOAI-managed OLM subscriptions ---
-    # RHOAI 3.x auto-installs servicemeshoperator3 via OLM dependencies.
-    # The kagenti-deps Helm chart also manages this subscription, so we
-    # must add Helm ownership labels before the chart install runs.
-    - name: Check for OLM-managed servicemeshoperator3 subscription
-      command: kubectl get subscription servicemeshoperator3 -n openshift-operators -o name
-      register: ossm3_sub_check
-      failed_when: false
-      changed_when: false
-
-    - name: Adopt servicemeshoperator3 subscription for Helm
-      shell: |
-        # Add Helm ownership labels and annotations
-        kubectl annotate subscription servicemeshoperator3 -n openshift-operators \
-          meta.helm.sh/release-name=kagenti-deps \
-          meta.helm.sh/release-namespace=kagenti-system \
-          --overwrite
-        kubectl label subscription servicemeshoperator3 -n openshift-operators \
-          app.kubernetes.io/managed-by=Helm \
-          --overwrite
-        # Force server-side apply to take field ownership from ingress-operator
-        kubectl get subscription servicemeshoperator3 -n openshift-operators -o yaml | \
-          kubectl apply --server-side --force-conflicts --field-manager=helm -f -
-      when: ossm3_sub_check.rc == 0
-
-    # --- Serverless operator (only for serverless KServe mode) ---
-    - name: Install OpenShift Serverless operator (serverless KServe mode)
-      block:
-        - name: Create OpenShift Serverless namespace
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: v1
-              kind: Namespace
-              metadata:
-                name: openshift-serverless
-
-        - name: Create OpenShift Serverless operator group
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: operators.coreos.com/v1
-              kind: OperatorGroup
-              metadata:
-                name: serverless-operator
-                namespace: openshift-serverless
-              spec: {}
-
-        - name: Create OpenShift Serverless subscription
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: operators.coreos.com/v1alpha1
-              kind: Subscription
-              metadata:
-                name: serverless-operator
-                namespace: openshift-serverless
-              spec:
-                channel: stable
-                installPlanApproval: Automatic
-                name: serverless-operator
-                source: redhat-operators
-                sourceNamespace: openshift-marketplace
-
-        - name: Wait for Serverless operator CSV to succeed
-          shell: |
-            for i in $(seq 1 60); do
-              csv=$(kubectl get csv -n openshift-serverless -l operators.coreos.com/serverless-operator.openshift-serverless -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
-              if [ "$csv" = "Succeeded" ]; then
-                echo "Serverless operator CSV succeeded"
-                exit 0
-              fi
-              echo "Waiting for Serverless CSV... ($i/60, status: $csv)"
-              sleep 10
-            done
-            echo "ERROR: Serverless operator CSV did not succeed within 10 minutes"
-            exit 1
-      when: (rhoai.kserve_mode | default('raw')) == 'serverless'
 
   when: rhoai.enabled | default(false)
