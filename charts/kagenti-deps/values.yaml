@@ -134,6 +134,10 @@ certManager:
 rhoai:
   namespace: redhat-ods-operator
   channel: fast-3.x
+  installPlanApproval: Automatic
+
+# When true, skip servicemeshoperator3 Subscription creation (RHOAI provides it)
+rhoaiManagesServiceMesh: false
 
 # ------------------------------------------------------------------
 #  Spire Configuration

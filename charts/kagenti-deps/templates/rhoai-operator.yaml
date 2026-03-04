@@ -60,7 +60,7 @@ metadata:
   namespace: {{ .Values.rhoai.namespace }}
 spec:
   channel: {{ .Values.rhoai.channel | default "fast-3.x" }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .Values.rhoai.installPlanApproval | default "Automatic" }}
   name: rhods-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace

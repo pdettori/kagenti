@@ -29,6 +29,22 @@
         exit 1
       register: rhoai_csv_result
 
+    - name: Verify RHOAI operator is version 3.x
+      shell: |
+        csv_version=$(kubectl get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].spec.version}' 2>/dev/null)
+        if [ -z "$csv_version" ]; then
+          echo "WARNING: Could not determine RHOAI version"
+          exit 0
+        fi
+        major=$(echo "$csv_version" | cut -d. -f1)
+        if [ "$major" -lt 3 ] 2>/dev/null; then
+          echo "ERROR: RHOAI version $csv_version is not 3.x. This installer requires RHOAI 3.x or later."
+          echo "RHOAI 2.x uses sidecar-based Istio which requires the Shared Trust Pattern."
+          exit 1
+        fi
+        echo "RHOAI version $csv_version confirmed (3.x)"
+      register: rhoai_version_check
+
     - name: Wait for DataScienceCluster CRD to be available
       command: kubectl wait --for=condition=Established crd/datascienceclusters.datasciencecluster.opendatahub.io --timeout=120s
 
