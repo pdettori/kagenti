@@ -60,14 +60,16 @@ echo -e "${YELLOW}Commits that will be signed:${NC}"
 git --no-pager log --oneline "$UPSTREAM_REF"..HEAD
 echo ""
 
-# Show the command that will be run (non-interactive rebase with exec)
-REBASE_CMD="git rebase HEAD~${COMMIT_COUNT} --exec 'git commit --amend -s -S --no-edit'"
-echo -e "${GREEN}Command to run:${NC}"
-echo "  $REBASE_CMD"
+# Trailer replacement
+ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
+
+# Show what will happen
+echo -e "${GREEN}Will sign each commit and replace Co-Authored-By trailers with:${NC}"
+echo "  $ASSISTED_BY"
 echo ""
 
 # Prompt for confirmation
-echo -ne "${YELLOW}Run this command? [y/N]: ${NC}"
+echo -ne "${YELLOW}Run this? [y/N]: ${NC}"
 read -r REPLY
 
 if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
@@ -75,15 +77,36 @@ if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Run the rebase (non-interactive)
+# Create a temporary exec script (avoids quoting hell in --exec)
+EXEC_SCRIPT=$(mktemp)
+cat > "$EXEC_SCRIPT" << 'EXECEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
+MSG=$(git log -1 --format="%B")
+# Check if any Co-Authored-By variant exists
+if echo "$MSG" | grep -qiE '^Co-[Aa]uthored-[Bb]y:'; then
+    # Remove all Co-Authored-By lines, add Assisted-By, strip trailing blanks
+    NEWMSG=$(echo "$MSG" | sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | sed -e :a -e '/^\n*$/{$d;N;ba;}')
+    NEWMSG=$(printf '%s\n%s\n' "$NEWMSG" "$ASSISTED_BY")
+    git commit --amend -s -S -m "$NEWMSG" --allow-empty
+else
+    git commit --amend -s -S --no-edit
+fi
+EXECEOF
+chmod +x "$EXEC_SCRIPT"
+
+# Run the rebase
 echo ""
-echo -e "${BLUE}Running rebase to sign commits...${NC}"
+echo -e "${BLUE}Running rebase to sign commits and fix trailers...${NC}"
 echo ""
 
-git rebase "HEAD~${COMMIT_COUNT}" --exec 'git commit --amend -s -S --no-edit'
+git rebase "HEAD~${COMMIT_COUNT}" --exec "$EXEC_SCRIPT"
+
+rm -f "$EXEC_SCRIPT"
 
 echo ""
-echo -e "${GREEN}Done! All $COMMIT_COUNT commits have been signed.${NC}"
+echo -e "${GREEN}Done! All $COMMIT_COUNT commits have been signed and trailers updated.${NC}"
 echo ""
 echo "You may need to force-push:"
 echo "  git push origin $CURRENT_BRANCH --force-with-lease"
