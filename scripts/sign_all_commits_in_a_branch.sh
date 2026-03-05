@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Sign all commits in current branch that are ahead of the tracked upstream.
-# This adds both sign-off (-s) and GPG signature (-S) to each commit.
+# Sign all commits in current branch that are ahead of upstream/main.
+# This adds both sign-off (-s) and GPG signature (-S) to each commit,
+# and replaces any Co-Authored-By trailers with Assisted-By.
 #
 # Usage: ./scripts/sign_all_commits_in_a_branch.sh [upstream-ref]
 #
-# If upstream-ref is not provided, uses the branch's tracked upstream,
-# falling back to upstream/main if not set.
+# Default upstream-ref: upstream/main
 #
 
 set -euo pipefail
@@ -18,17 +18,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Get the upstream reference
-if [ $# -ge 1 ]; then
-    UPSTREAM_REF="$1"
-else
-    # Try to get the tracked upstream branch
-    UPSTREAM_REF=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo "")
-    if [ -z "$UPSTREAM_REF" ]; then
-        UPSTREAM_REF="upstream/main"
-        echo -e "${YELLOW}No tracking branch set, using default: ${UPSTREAM_REF}${NC}"
-    fi
-fi
+# Get the upstream reference (default: upstream/main)
+UPSTREAM_REF="${1:-upstream/main}"
 
 # Verify the upstream ref exists
 if ! git rev-parse --verify "$UPSTREAM_REF" >/dev/null 2>&1; then
@@ -86,12 +77,13 @@ ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
 MSG=$(git log -1 --format="%B")
 # Check if any Co-Authored-By variant exists
 if echo "$MSG" | grep -qiE '^Co-[Aa]uthored-[Bb]y:'; then
-    # Remove all Co-Authored-By lines, add Assisted-By, strip trailing blanks
+    # Remove all Co-Authored-By lines, strip trailing blank lines
     NEWMSG=$(echo "$MSG" | sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | sed -e :a -e '/^\n*$/{$d;N;ba;}')
+    # Append Assisted-By trailer
     NEWMSG=$(printf '%s\n%s\n' "$NEWMSG" "$ASSISTED_BY")
-    git commit --amend -s -S -m "$NEWMSG" --allow-empty
+    git commit --amend --no-verify -s -S -m "$NEWMSG"
 else
-    git commit --amend -s -S --no-edit
+    git commit --amend --no-verify -s -S --no-edit
 fi
 EXECEOF
 chmod +x "$EXEC_SCRIPT"
