@@ -35,7 +35,6 @@ command > $LOG_DIR/<name>.log 2>&1; echo "EXIT:$?"
 
 # Wait for CRDs and apply pipeline template
 ./.github/scripts/kagenti-operator/41-wait-crds.sh
-./.github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 ```
 
 ## Quick Deploy (OpenShift/HyperShift)
@@ -49,7 +48,6 @@ export KUBECONFIG=~/clusters/hcp/<cluster-name>/auth/kubeconfig
 
 # Wait for CRDs and apply pipeline template
 ./.github/scripts/kagenti-operator/41-wait-crds.sh
-./.github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 ```
 
 ## Deploy Demo Agents
@@ -99,7 +97,6 @@ export KAGENTI_CONFIG_FILE=deployments/envs/ocp_values.yaml  # OpenShift
 |--------|-------------|
 | `30-run-installer.sh` | Run Ansible installer for Kagenti platform |
 | `41-wait-crds.sh` | Wait for Kagenti CRDs to be available |
-| `42-apply-pipeline-template.sh` | Apply Tekton pipeline templates |
 
 ### Namespace Setup
 

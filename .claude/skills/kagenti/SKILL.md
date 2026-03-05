@@ -45,7 +45,6 @@ Skills for deploying and managing the Kagenti platform.
 
 # Wait for CRDs
 ./.github/scripts/kagenti-operator/41-wait-crds.sh
-./.github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 
 # Deploy demo agents
 ./.github/scripts/kagenti-operator/71-build-weather-tool.sh
