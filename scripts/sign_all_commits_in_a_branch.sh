@@ -39,22 +39,18 @@ fi
 # Get current branch name
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+# Trailer replacement
+ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
+
 # Show info
 echo ""
 echo -e "${BLUE}Branch:${NC} $CURRENT_BRANCH"
 echo -e "${BLUE}Upstream:${NC} $UPSTREAM_REF"
 echo -e "${BLUE}Commits to sign:${NC} $COMMIT_COUNT"
 echo ""
-
-# Show the commits that will be signed (no pager)
 echo -e "${YELLOW}Commits that will be signed:${NC}"
 git --no-pager log --oneline "$UPSTREAM_REF"..HEAD
 echo ""
-
-# Trailer replacement
-ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
-
-# Show what will happen
 echo -e "${GREEN}Will sign each commit and replace Co-Authored-By trailers with:${NC}"
 echo "  $ASSISTED_BY"
 echo ""
@@ -68,34 +64,25 @@ if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Create a temporary exec script (avoids quoting hell in --exec)
-EXEC_SCRIPT=$(mktemp)
-cat > "$EXEC_SCRIPT" << 'EXECEOF'
-#!/usr/bin/env bash
-set -euo pipefail
-ASSISTED_BY="Assisted-By: Claude (Anthropic AI) <noreply@anthropic.com>"
-MSG=$(git log -1 --format="%B")
-# Check if any Co-Authored-By variant exists
-if echo "$MSG" | grep -qiE '^Co-[Aa]uthored-[Bb]y:'; then
-    # Remove all Co-Authored-By lines, strip trailing blank lines
-    NEWMSG=$(echo "$MSG" | sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | sed -e :a -e '/^\n*$/{$d;N;ba;}')
-    # Append Assisted-By trailer
-    NEWMSG=$(printf '%s\n%s\n' "$NEWMSG" "$ASSISTED_BY")
-    git commit --amend --no-verify -s -S -m "$NEWMSG"
+# Step 1: Sign all commits with rebase --exec (simple, no message changes)
+echo ""
+echo -e "${BLUE}Step 1/2: Signing commits...${NC}"
+git rebase "HEAD~${COMMIT_COUNT}" \
+    --exec 'git commit --amend --no-verify --no-edit -s -S'
+
+# Step 2: Replace Co-Authored-By trailers using filter-branch --msg-filter
+HAS_COAUTHOR=$(git log --format="%B" "$UPSTREAM_REF"..HEAD | grep -ciE '^Co-[Aa]uthored-[Bb]y:' || true)
+
+if [ "$HAS_COAUTHOR" -gt 0 ]; then
+    echo ""
+    echo -e "${BLUE}Step 2/2: Replacing $HAS_COAUTHOR Co-Authored-By trailer(s)...${NC}"
+    FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
+        --msg-filter "sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | sed -e :a -e '/^\n*$/{\$d;N;ba;}'; echo '$ASSISTED_BY'" \
+        "$UPSTREAM_REF"..HEAD
 else
-    git commit --amend --no-verify -s -S --no-edit
+    echo ""
+    echo -e "${GREEN}Step 2/2: No Co-Authored-By trailers found, skipping.${NC}"
 fi
-EXECEOF
-chmod +x "$EXEC_SCRIPT"
-
-# Run the rebase
-echo ""
-echo -e "${BLUE}Running rebase to sign commits and fix trailers...${NC}"
-echo ""
-
-git rebase "HEAD~${COMMIT_COUNT}" --exec "$EXEC_SCRIPT"
-
-rm -f "$EXEC_SCRIPT"
 
 echo ""
 echo -e "${GREEN}Done! All $COMMIT_COUNT commits have been signed and trailers updated.${NC}"
