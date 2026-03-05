@@ -77,7 +77,7 @@ if [ "$HAS_COAUTHOR" -gt 0 ]; then
     echo ""
     echo -e "${BLUE}Step 2/2: Replacing $HAS_COAUTHOR Co-Authored-By trailer(s)...${NC}"
     FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
-        --msg-filter "sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | sed -e :a -e '/^\n*$/{\$d;N;ba;}'; echo '$ASSISTED_BY'" \
+        --msg-filter "sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | awk 'NF{p=1}p'; echo '$ASSISTED_BY'" \
         "$UPSTREAM_REF"..HEAD
 else
     echo ""
