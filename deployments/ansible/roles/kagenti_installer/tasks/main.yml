@@ -809,6 +809,8 @@
         | combine((((secret_values.get('charts', {}) | default({})).get('kagenti-deps', {}) ).get('values', {})) , recursive=True)
         | combine((secret_values.get('global', {}) | default({})), recursive=True)
         | combine({'openshift': enable_openshift}, recursive=True)
+        # RHOAI 3.x always installs servicemeshoperator3 via OLM dependencies,
+        # regardless of KServe mode. Skip Kagenti's subscription to avoid conflicts.
         | combine({'rhoaiManagesServiceMesh': (rhoai.enabled | default(false)) | bool}, recursive=True)
         | combine((kagenti_deps_operator_overrides | default({})), recursive=True) }}
     values_files: >

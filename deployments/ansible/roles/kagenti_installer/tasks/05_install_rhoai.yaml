@@ -48,6 +48,11 @@
     - name: Wait for DataScienceCluster CRD to be available
       command: kubectl wait --for=condition=Established crd/datascienceclusters.datasciencecluster.opendatahub.io --timeout=120s
 
+    - name: Validate RHOAI profile
+      fail:
+        msg: "Invalid rhoai.profile '{{ rhoai.profile }}'. Must be 'minimal' or 'full'."
+      when: rhoai.profile | default('minimal') not in ['minimal', 'full']
+
     - name: "Create DataScienceCluster ({{ rhoai.profile | default('minimal') }} profile)"
       kubernetes.core.k8s:
         state: present

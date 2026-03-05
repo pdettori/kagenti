@@ -124,8 +124,6 @@ def enabled_features(kagenti_config):
         "certManager",
         "tekton",
         "kiali",
-        "toolhiveCRDs",
-        "toolhiveOperator",
         "rhoai",
     ]
     for feature in top_level_features:
@@ -390,8 +388,6 @@ def pytest_collection_modifyitems(config, items):
         "certManager",
         "tekton",
         "kiali",
-        "toolhiveCRDs",
-        "toolhiveOperator",
         "rhoai",
     ]
     for feature in top_level_features:

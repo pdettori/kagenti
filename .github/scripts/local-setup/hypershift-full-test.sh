@@ -290,6 +290,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --rhoai-profile)
             RHOAI_PROFILE="$2"
+            if [[ ! "$RHOAI_PROFILE" =~ ^(minimal|full)$ ]]; then
+                echo "ERROR: --rhoai-profile must be 'minimal' or 'full', got '$RHOAI_PROFILE'" >&2
+                exit 1
+            fi
             shift 2
             ;;
         --no-rhoai)

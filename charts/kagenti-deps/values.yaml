@@ -39,7 +39,6 @@ components:
     enabled: true
   rhoai:
     enabled: false
-    skipDataScienceCluster: true  # Ansible creates after CRD is ready
   gatewayApi:
     enabled: false
   ingressGateway:
