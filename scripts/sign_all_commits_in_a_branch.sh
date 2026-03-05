@@ -64,25 +64,27 @@ if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Step 1: Sign all commits with rebase --exec (simple, no message changes)
-echo ""
-echo -e "${BLUE}Step 1/2: Signing commits...${NC}"
-git rebase "HEAD~${COMMIT_COUNT}" \
-    --exec 'git commit --amend --no-verify --no-edit -s -S'
-
-# Step 2: Replace Co-Authored-By trailers using filter-branch --msg-filter
+# Step 1: Replace Co-Authored-By trailers using filter-branch --msg-filter
 HAS_COAUTHOR=$(git log --format="%B" "$UPSTREAM_REF"..HEAD | grep -ciE '^Co-[Aa]uthored-[Bb]y:' || true)
 
 if [ "$HAS_COAUTHOR" -gt 0 ]; then
     echo ""
-    echo -e "${BLUE}Step 2/2: Replacing $HAS_COAUTHOR Co-Authored-By trailer(s)...${NC}"
+    echo -e "${BLUE}Step 1/2: Replacing $HAS_COAUTHOR Co-Authored-By trailer(s)...${NC}"
     FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
         --msg-filter "sed -E '/^[Cc]o-[Aa]uthored-[Bb]y:.*/d' | awk 'NF{p=1}p'; echo '$ASSISTED_BY'" \
         "$UPSTREAM_REF"..HEAD
 else
     echo ""
-    echo -e "${GREEN}Step 2/2: No Co-Authored-By trailers found, skipping.${NC}"
+    echo -e "${GREEN}Step 1/2: No Co-Authored-By trailers found, skipping.${NC}"
 fi
+
+# Step 2: Sign all commits (after message rewriting, so signatures stick)
+# Re-count in case filter-branch changed the range
+COMMIT_COUNT=$(git rev-list --count "$UPSTREAM_REF"..HEAD)
+echo ""
+echo -e "${BLUE}Step 2/2: Signing $COMMIT_COUNT commits...${NC}"
+git rebase "HEAD~${COMMIT_COUNT}" \
+    --exec 'git commit --amend --no-verify --no-edit -s -S'
 
 echo ""
 echo -e "${GREEN}Done! All $COMMIT_COUNT commits have been signed and trailers updated.${NC}"
