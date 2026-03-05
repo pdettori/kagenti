@@ -15,8 +15,8 @@ grep -vi -E '^Co-authored-by:.*(Claude|Cursor|anthropic|cursor)' "$COMMIT_MSG_FI
   | grep -vi '^Made-with:' \
   > "$TEMP_FILE" || true
 
-# Remove trailing blank lines
-sed -e :a -e '/^\n*$/{$d;N;ba;}' "$TEMP_FILE" > "$COMMIT_MSG_FILE"
+# Remove trailing blank lines (awk is portable across macOS/Linux unlike sed labels)
+awk '/^[[:space:]]*$/{buf=buf $0 ORS; next} {if(buf) printf "%s",buf; buf=""; print}' "$TEMP_FILE" > "$COMMIT_MSG_FILE"
 
 # If AI trailers were present, add Assisted-By instead
 if [ "$HAS_AI_TRAILER" = true ]; then
