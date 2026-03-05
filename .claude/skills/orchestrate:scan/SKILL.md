@@ -11,12 +11,14 @@ flowchart TD
     SEC_SCAN --> DEPS["Check dependency management"]:::orch
     DEPS --> TESTS["Check test coverage"]:::orch
     TESTS --> SUPPLY["Check supply chain health"]:::orch
-    SUPPLY --> SEC_GOV["Check security governance"]:::orch
+    SUPPLY --> CVE["Run cve:scan"]:::cve
+    CVE --> SEC_GOV["Check security governance"]:::orch
     SEC_GOV --> CLAUDE["Check Claude Code readiness"]:::orch
     CLAUDE --> REPORT["Generate scan report"]:::orch
     REPORT --> DONE([Scan complete])
 
     classDef orch fill:#FF9800,stroke:#333,color:white
+    classDef cve fill:#D32F2F,stroke:#333,color:white
 ```
 
 > Follow this diagram as the workflow.
@@ -137,15 +139,153 @@ grep -l "^permissions:" .repos/<target>/.github/workflows/*.yml 2>/dev/null
 
 ### Test Coverage
 
-```bash
-find .repos/<target> -type d \( -name "tests" -o -name "test" -o -name "__tests__" \) 2>/dev/null
-```
+Categorize tests into 4 areas. For each, detect frameworks, count files/functions,
+check coverage tooling, and verify CI execution.
+
+#### Backend Tests
+
+Detect framework from marker files:
 
 ```bash
-find .repos/<target> -type f \( -name "test_*.py" -o -name "*_test.go" -o -name "*.test.*" \) 2>/dev/null | wc -l
+# Python
+grep -q "pytest" .repos/<target>/pyproject.toml 2>/dev/null && echo "pytest"
+# Go
+ls .repos/<target>/go.mod 2>/dev/null && echo "go test"
+# Go + Ginkgo
+grep -q "ginkgo" .repos/<target>/go.mod 2>/dev/null && echo "ginkgo"
 ```
 
-Check if tests are actually run in CI (not just present but commented out).
+Count test files and functions:
+
+```bash
+find .repos/<target> -type f -name "test_*.py" -o -name "*_test.py" 2>/dev/null | wc -l
+find .repos/<target> -type f -name "*_test.go" 2>/dev/null | wc -l
+grep -rc "def test_\|func Test" .repos/<target> --include="*.py" --include="*.go" 2>/dev/null | awk -F: '{s+=$2} END {print s}'
+```
+
+Check coverage tooling:
+
+```bash
+# Python: pytest-cov in dependencies
+grep -q "pytest-cov" .repos/<target>/pyproject.toml 2>/dev/null && echo "pytest-cov found"
+# Python: coverage config
+grep -q "\[tool.coverage" .repos/<target>/pyproject.toml 2>/dev/null && echo "coverage config found"
+# Go: -coverprofile in Makefile or CI
+grep -r "\-coverprofile" .repos/<target>/Makefile .repos/<target>/.github/workflows/ 2>/dev/null
+```
+
+When coverage tooling is missing, recommend the appropriate tool:
+- Python: add `pytest-cov>=4.0` to dev deps and `[tool.coverage.run] source = ["src"]` to pyproject.toml
+- Go: add `-coverprofile=coverage.out` to `go test` invocation in Makefile/CI
+
+#### UI Tests
+
+Detect framework from package.json:
+
+```bash
+grep -E "playwright|jest|vitest" .repos/<target>/*/package.json .repos/<target>/package.json 2>/dev/null
+```
+
+Count spec files and test blocks:
+
+```bash
+find .repos/<target> -type f \( -name "*.spec.ts" -o -name "*.spec.tsx" -o -name "*.test.ts" -o -name "*.test.tsx" \) 2>/dev/null | wc -l
+grep -rc "test(\|it(\|describe(" .repos/<target> --include="*.spec.*" --include="*.test.*" 2>/dev/null | awk -F: '{s+=$2} END {print s}'
+```
+
+Note: for Playwright E2E-style UI tests, code coverage is typically not applicable.
+For unit-test-style UI tests (jest/vitest), check for istanbul/c8 coverage config.
+
+#### E2E Tests
+
+Count test files and functions:
+
+```bash
+find .repos/<target> -path "*/e2e/*" -type f -name "test_*.py" 2>/dev/null | wc -l
+grep -rc "def test_" .repos/<target>/*/tests/e2e/ .repos/<target>/tests/e2e/ 2>/dev/null | awk -F: '{s+=$2} END {print s}'
+```
+
+Build a feature coverage map by scanning test filenames and imports:
+
+```bash
+# List E2E test files to identify which features are covered
+find .repos/<target> -path "*/e2e/*" -name "test_*.py" -exec basename {} \; 2>/dev/null | sort
+```
+
+Map each test file to a platform feature (e.g., `test_keycloak.py` → Keycloak auth,
+`test_shipwright_build.py` → Shipwright builds). Identify features present in the
+codebase that lack E2E tests.
+
+Build a CI trigger matrix:
+
+```bash
+# Which workflows run E2E tests, on which triggers and platforms?
+grep -l "e2e\|E2E" .repos/<target>/.github/workflows/*.yml 2>/dev/null
+```
+
+For each E2E workflow, note the trigger events (push/PR/manual) and target
+platforms (Kind/OCP/HyperShift).
+
+#### Infra Tests
+
+Infra testing is about variant coverage, not code coverage. Score as a variant matrix.
+
+Scan for deployment targets:
+
+```bash
+# Which platforms appear in CI workflows and scripts?
+grep -rl "kind\|Kind\|KIND" .repos/<target>/.github/workflows/ 2>/dev/null
+grep -rl "openshift\|OpenShift\|OCP" .repos/<target>/.github/workflows/ 2>/dev/null
+grep -rl "hypershift\|HyperShift" .repos/<target>/.github/workflows/ 2>/dev/null
+```
+
+Scan values files for toggle combos:
+
+```bash
+# Which feature toggles exist in Helm values files?
+find .repos/<target> -path "*/envs/*" -name "values*.yaml" 2>/dev/null
+# Check for toggle patterns
+grep -r "enabled:" .repos/<target>/deployments/envs/ .repos/<target>/charts/*/values.yaml 2>/dev/null | head -20
+```
+
+Check static validation in CI:
+
+```bash
+grep -rl "helm lint\|helm template" .repos/<target>/.github/workflows/ 2>/dev/null && echo "helm lint: in CI"
+grep -rl "shellcheck" .repos/<target>/.github/workflows/ .repos/<target>/.pre-commit-config.yaml 2>/dev/null && echo "shellcheck: in CI"
+grep -rl "hadolint" .repos/<target>/.github/workflows/ .repos/<target>/.pre-commit-config.yaml 2>/dev/null && echo "hadolint: in CI"
+grep -rl "yamllint" .repos/<target>/.github/workflows/ .repos/<target>/.pre-commit-config.yaml 2>/dev/null && echo "yamllint: in CI"
+```
+
+### CVE Scan
+
+Invoke `cve:scan` against the target repo to detect known vulnerabilities in
+dependencies. This runs the full cve:scan procedure (inventory → Trivy → LLM +
+WebSearch → findings report).
+
+The scan operates on the target repo working directory:
+
+```bash
+cd .repos/<target>
+```
+
+Then follow the `cve:scan` skill workflow:
+1. **Inventory** — find all dependency files (pyproject.toml, go.mod, package.json,
+   Dockerfile, Chart.yaml, requirements*.txt, uv.lock)
+2. **Trivy** (if installed) — filesystem scan with `--severity HIGH,CRITICAL`
+3. **LLM + WebSearch** — cross-reference dependencies against NVD/OSV/GitHub
+   Advisory Database
+4. **Classify** — confirmed / suspected / false positive
+
+Write CVE findings to `/tmp/kagenti/cve/<target>/scan-report.json` (never to
+git-tracked files). Include a summary in the scan report.
+
+Key areas to focus on:
+- Crypto/auth libraries (cryptography, pyjwt, golang.org/x/crypto, oauth2)
+- Network libraries (httpx, requests, grpcio, golang.org/x/net)
+- Serialization (protobuf, pydantic)
+- Container base images (EOL versions, unpinned tags)
+- Abandoned/deprecated libraries (e.g., dgrijalva/jwt-go)
 
 ### Pre-commit Hooks
 
@@ -229,10 +369,50 @@ Report template:
 - Unpinned actions: [list top offenders]
 
 ## Test Coverage
-- Test directories: [list or "none"]
-- Test file count: N
-- Framework: [detected or "none"]
-- Tests run in CI: yes / commented out / no
+
+### Backend Tests
+- Framework: [pytest X.x / go test / ginkgo vX.x / none]
+- Test files: N
+- Test functions: ~M
+- Coverage tool: [pytest-cov / -coverprofile / missing]
+- Coverage config: [present / missing (recommend: ...)]
+- CI execution: [running in workflow.yaml / missing]
+
+### UI Tests
+- Framework: [Playwright X.x / jest / vitest / none]
+- Spec files: N
+- Test blocks: ~M
+- Coverage tool: [istanbul / c8 / n/a (E2E)]
+- CI execution: [running in workflow.yaml / missing]
+
+### E2E Tests
+- Test files: N
+- Test functions: ~M
+- Feature coverage:
+  | Feature | Test File | Status |
+  |---------|-----------|--------|
+  | [feature] | [test file] | covered/missing |
+- CI trigger matrix:
+  | Platform | Push | PR | Manual |
+  |----------|------|-----|--------|
+  | [platform] | [workflow] | [workflow] | — |
+
+### Infra Tests
+- Deployment variants tested:
+  | Variant | CI Workflow | Values File |
+  |---------|------------|-------------|
+  | [platform + version] | [workflow] | [values file] |
+- Value variant coverage:
+  | Feature Toggle | Tested On | Tested Off |
+  |---------------|-----------|------------|
+  | [toggle] | [platforms] | [platforms or —] |
+- Static validation:
+  | Check | Status |
+  |-------|--------|
+  | Helm lint | in CI / missing |
+  | shellcheck | in CI / missing |
+  | hadolint | in CI / missing / n-a |
+  | yamllint | in CI / missing |
 
 ## Pre-commit
 - Config found: yes/no
@@ -254,17 +434,48 @@ Report template:
 - Dockerfiles: N found [list paths]
 - Multi-arch builds: yes/no
 - Container registry: [ghcr.io/etc or "none"]
+- Base image pinning: digest / tag / unpinned
+- EOL base images: [list or "none"]
+
+## Dependency Vulnerabilities (cve:scan)
+- Scan method: [Trivy + LLM + WebSearch / LLM + WebSearch / LLM only]
+- Full report: `/tmp/kagenti/cve/<target>/scan-report.json`
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | N |
+| HIGH | N |
+| MEDIUM | N |
+| Suspected | N |
+
+### Confirmed Findings
+| Package | Version | Severity | Issue | Fix |
+|---------|---------|----------|-------|-----|
+| [package] | [version] | CRITICAL/HIGH | [brief description — no CVE IDs in public output] | [fixed version or action] |
+
+### Architectural Security Concerns
+| Concern | Severity | Details |
+|---------|----------|---------|
+| [e.g., insecure port, no input validation] | HIGH/MEDIUM | [brief description] |
+
+> **Note:** CVE IDs and detailed descriptions are in `/tmp/kagenti/cve/<target>/scan-report.json` only.
+> Do NOT copy CVE IDs into git-tracked files, PRs, or issues.
 
 ## Gap Summary
 | Area | Status | Action Needed |
 |------|--------|---------------|
 | Pre-commit | missing/partial/ok | orchestrate:precommit |
-| Tests | missing/partial/ok | orchestrate:tests |
+| Tests (backend) | missing/partial/ok | orchestrate:tests |
+| Tests (UI) | missing/partial/ok/n-a | orchestrate:tests |
+| Tests (E2E) | missing/partial/ok | orchestrate:tests |
+| Tests (infra) | missing/partial/ok | orchestrate:ci |
 | CI (lint/test/build) | missing/partial/ok | orchestrate:ci |
 | CI (security scanning) | missing/partial/ok | orchestrate:ci |
 | CI (dependabot) | missing/partial/ok | orchestrate:ci |
 | CI (scorecard) | missing/partial/ok | orchestrate:ci |
 | CI (supply chain) | missing/partial/ok | orchestrate:ci |
+| Dep vulnerabilities | clean/findings/critical | cve:brainstorm / dep bump |
+| Container base images | pinned/unpinned/eol | orchestrate:ci |
 | Governance | missing/partial/ok | orchestrate:security |
 | Skills | missing/partial/ok | orchestrate:replicate |
 
@@ -285,7 +496,17 @@ Determine which phases are needed based on findings:
 | No scorecard workflow | `orchestrate:ci` |
 | Actions not SHA-pinned | `orchestrate:ci` |
 | Permissions not least-privilege | `orchestrate:ci` |
-| No test directory or <5 test files | `orchestrate:tests` |
+| No backend test files or <5 test functions | `orchestrate:tests` |
+| Backend coverage tool missing | `orchestrate:tests` |
+| No UI test specs (when UI code exists) | `orchestrate:tests` |
+| No E2E tests or low feature coverage | `orchestrate:tests` |
+| E2E tests not triggered in CI | `orchestrate:ci` |
+| Only one deployment variant tested | `orchestrate:ci` |
+| Missing static validation (helm lint, shellcheck, etc.) | `orchestrate:ci` |
+| Confirmed CRITICAL/HIGH CVEs in dependencies | `cve:brainstorm` (fix before public issues) |
+| Abandoned/deprecated libraries | dependency bump PR |
+| EOL container base images | `orchestrate:ci` |
+| Unpinned container base image tags | `orchestrate:ci` |
 | No CODEOWNERS or SECURITY.md | `orchestrate:security` |
 | No LICENSE | `orchestrate:security` |
 | No `.claude/skills/` | `orchestrate:replicate` |
@@ -297,4 +518,6 @@ All repos get `orchestrate:precommit` (foundation) and `orchestrate:replicate`
 
 - `orchestrate` — Parent router
 - `orchestrate:plan` — Next step: create phased plan from scan results
+- `cve:scan` — Dependency vulnerability scanning (invoked during this scan)
+- `cve:brainstorm` — Disclosure planning when CRITICAL/HIGH CVEs are found
 - `skills:scan` — Similar pattern for scanning skills specifically

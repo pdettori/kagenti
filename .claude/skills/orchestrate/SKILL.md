@@ -19,14 +19,16 @@ flowchart TD
     NEXT_PHASE -->|Phase 4| CI["orchestrate:ci<br/>PR #3"]:::orch
     NEXT_PHASE -->|Phase 5| SECURITY["orchestrate:security<br/>PR #4"]:::orch
     NEXT_PHASE -->|Phase 6| REPLICATE["orchestrate:replicate<br/>PR #5"]:::orch
+    NEXT_PHASE -->|Phase 7| REVIEW["orchestrate:review"]:::orch
 
     PRECOMMIT --> TESTS
     TESTS --> CI
     CI --> SECURITY
     SECURITY --> REPLICATE
-    REPLICATE -->|optional| ONBOARD_LINK["onboard:link"]:::onb
+    REPLICATE --> REVIEW
+    REVIEW -->|optional| ONBOARD_LINK["onboard:link"]:::onb
     ONBOARD_LINK --> ONBOARD_STD["onboard:standards"]:::onb
-    REPLICATE --> DONE([All phases complete])
+    REVIEW --> DONE([All phases complete])
 
     classDef orch fill:#FF9800,stroke:#333,color:white
     classDef onb fill:#9C27B0,stroke:#333,color:white
@@ -91,6 +93,7 @@ The `phase-status.md` file uses this format:
 | ci | pending | -- | -- |
 | security | pending | -- | -- |
 | replicate | pending | -- | -- |
+| review | pending | -- | -- |
 ```
 
 Each phase skill is responsible for updating `phase-status.md` when it starts and completes.
@@ -106,6 +109,7 @@ Each phase skill is responsible for updating `phase-status.md` when it starts an
 | 4 | orchestrate:ci | PR #3 | Comprehensive CI: lint, test, build, security scanning, dependabot, scorecard |
 | 5 | orchestrate:security | PR #4 | Security governance: CODEOWNERS, SECURITY.md, CONTRIBUTING.md, LICENSE |
 | 6 | orchestrate:replicate | PR #5 | Bootstrap Claude Code skills into the target repo |
+| 7 | orchestrate:review | -- | Review all orchestration PRs before merge |
 
 Phases are sequential. Each PR builds on the previous one. Tests come before CI (so CI can run them) and before security (so code refactoring for security fixes has test coverage as a safety net). The scan and plan phases do not produce PRs -- they produce artifacts that guide all subsequent phases.
 
@@ -144,6 +148,7 @@ git clone git@github.com:org/repo.git .repos/repo-name
 | `orchestrate:tests` | Add test infrastructure and initial test coverage |
 | `orchestrate:security` | Security governance: CODEOWNERS, SECURITY.md, CONTRIBUTING.md, LICENSE |
 | `orchestrate:replicate` | Bootstrap Claude Code skills into the target |
+| `orchestrate:review` | Review all orchestration PRs before merge |
 
 ### Onboard skills
 
