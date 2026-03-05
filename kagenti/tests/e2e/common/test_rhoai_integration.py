@@ -129,30 +129,21 @@ class TestRHOAICoexistence:
         )
 
     @pytest.mark.requires_features(["rhoai"])
-    def test_rhoai_dashboard_accessible(self, k8s_custom_client):
-        """Verify RHOAI Dashboard is accessible via route or gateway."""
-        # RHOAI 3.x uses data-science-gateway in openshift-ingress
-        # RHOAI 2.x used rhods-dashboard route in redhat-ods-applications
-        found = False
-        for ns, name in [
-            ("openshift-ingress", "data-science-gateway"),
-            ("redhat-ods-applications", "rhods-dashboard"),
-        ]:
-            try:
-                route = k8s_custom_client.get_namespaced_custom_object(
-                    group="route.openshift.io",
-                    version="v1",
-                    namespace=ns,
-                    plural="routes",
-                    name=name,
-                )
-                host = route.get("spec", {}).get("host", "")
-                if host:
-                    found = True
-                    break
-            except Exception:
-                continue
-        assert found, (
-            "No RHOAI Dashboard route found (checked data-science-gateway "
-            "in openshift-ingress and rhods-dashboard in redhat-ods-applications)"
-        )
+    def test_rhoai_gateway_route_exists(self, k8s_custom_client):
+        """Verify RHOAI data-science-gateway route exists in openshift-ingress."""
+        # RHOAI 3.x creates a data-science-gateway route via its Istio gateway.
+        # This exists regardless of whether the RHOAI dashboard component is enabled.
+        try:
+            route = k8s_custom_client.get_namespaced_custom_object(
+                group="route.openshift.io",
+                version="v1",
+                namespace="openshift-ingress",
+                plural="routes",
+                name="data-science-gateway",
+            )
+            host = route.get("spec", {}).get("host", "")
+            assert host, "data-science-gateway route has no host"
+        except Exception as e:
+            pytest.fail(
+                f"data-science-gateway route not found in openshift-ingress: {e}"
+            )
