@@ -123,18 +123,30 @@
       set_fact:
         preload_images: "{{ (lookup('file', preload_images_file).split('\n') | map('trim') | reject('equalto','') | reject('match','^#')) | list }}"
 
-    - name: Pull images concurrently
+    - name: Pull images sequentially (Podman) or concurrently (Docker)
       shell: |
         set -o pipefail
         FAIL=0
+        {% if container_engine | default('docker') == 'podman' %}
+        # Pull sequentially for Podman to avoid SSH connection issues
+        for img in {{ preload_images | join(' ') }}; do
+          echo "Pulling $img..."
+          {{ container_engine | default('docker') }} pull "$img" 2>&1 | { grep -E "^(Status:|Error|Trying to pull|Getting image|Copying|Writing manifest)" || true; }
+          if [ $? -ne 0 ]; then
+            FAIL=1
+          fi
+        done
+        {% else %}
+        # Pull concurrently for Docker
         PIDS=""
         for img in {{ preload_images | join(' ') }}; do
-          (docker pull "$img" 2>&1 | { grep -E "^(Status:|Error)" || true; }) &
+          ({{ container_engine | default('docker') }} pull "$img" 2>&1 | { grep -E "^(Status:|Error)" || true; }) &
           PIDS="$PIDS $!"
         done
         for pid in $PIDS; do
           wait "$pid" || FAIL=1
         done
+        {% endif %}
         exit $FAIL
       args:
         executable: /bin/bash
