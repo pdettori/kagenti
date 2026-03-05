@@ -173,14 +173,15 @@ kubectl get crd | grep kagenti
 # All components
 kubectl get components -A
 
-# Agent builds
-kubectl get agentbuilds -A
+# Shipwright builds
+kubectl get builds -A
+kubectl get buildruns -A
 
 # Deployments
 kubectl get deployments -n team1
 ```
 
-### Check Tekton Pipelines
+### Check Shipwright/Tekton Pipelines
 
 ```bash
 # Pipeline runs

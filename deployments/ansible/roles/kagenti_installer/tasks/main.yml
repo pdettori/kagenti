@@ -1009,7 +1009,7 @@
     - cert_manager_existing_check.rc == 0
 
 # TODO: Move TektonConfig patching to kagenti-operator
-# The kagenti-operator creates PipelineRuns for AgentBuilds, so it has the
+# The kagenti-operator manages Shipwright builds, so it has the
 # context to know what Tekton settings are needed. The operator should:
 # 1. Check if running on OpenShift (detect TektonConfig CRD)
 # 2. Patch TektonConfig to set pipeline.set-security-context: true
@@ -1713,10 +1713,10 @@
   - (charts['kagenti'] | default({})).get('chart') is defined
 
 # TODO: Move internal-registry-secret creation to kagenti-operator or kagenti helm chart.
-# The kagenti-operator creates AgentBuilds with Tekton pipelines that push images
-# to the OpenShift internal registry. The buildah step needs a dockerconfigjson-format
-# secret with registry credentials. OpenShift auto-creates builder-dockercfg secrets
-# but in dockercfg format, which buildah cannot use directly.
+# Shipwright builds (triggered by UI/backend) push images to the OpenShift internal
+# registry. The buildah step needs a dockerconfigjson-format secret with registry
+# credentials. OpenShift auto-creates builder-dockercfg secrets but in dockercfg
+# format, which buildah cannot use directly.
 # For now, we create the internal-registry-secret in each agent namespace as a workaround.
 - name: Create internal-registry-secret in agent namespaces for OpenShift
   block:
