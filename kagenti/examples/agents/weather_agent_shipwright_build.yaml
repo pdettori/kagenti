@@ -1,5 +1,5 @@
 # Shipwright Build for weather-service agent
-# This replaces the deprecated AgentBuild + Tekton pipeline approach
+# Uses Shipwright to build container images from source
 apiVersion: shipwright.io/v1beta1
 kind: Build
 metadata:
