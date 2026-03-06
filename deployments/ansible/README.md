@@ -216,7 +216,7 @@ charts:
 - The role exposes many small knobs in `default_values.yaml` (Kind behavior,
    preload lists, chart `values:` overrides). Inspect that file to discover the
    defaults before overriding.
-
+```
 
 ## Installation using Rancher Desktop on MacOS
 
