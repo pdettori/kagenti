@@ -74,10 +74,8 @@ func NewRootCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// No subcommand → launch interactive TUI.
-			cfg := config.Load(flagURL, flagToken, flagNamespace)
-			client := newClientFromConfig(cfg)
-
-			app := ui.NewApp(client)
+			// PersistentPreRunE has already populated ctx.Client.
+			app := ui.NewApp(ctx.Client)
 			p := tea.NewProgram(app, tea.WithAltScreen())
 			if _, err := p.Run(); err != nil {
 				return err
