@@ -14,8 +14,10 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
-# Deny all permissions at workflow level; the reusable workflow declares its own
-permissions: {}
+# Minimum permissions required by the reusable stale workflow
+permissions:
+  issues: write
+  pull-requests: write
 
 jobs:
   stale:
