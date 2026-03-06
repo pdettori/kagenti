@@ -52,11 +52,6 @@ class Settings(BaseSettings):
     crd_version: str = "v1alpha1"
     agents_plural: str = "agents"
 
-    # ToolHive CRD settings
-    toolhive_crd_group: str = "toolhive.stacklok.dev"
-    toolhive_crd_version: str = "v1alpha1"
-    toolhive_mcp_plural: str = "mcpservers"
-
     # Shipwright build settings
     shipwright_default_strategy: str = "buildah-insecure-push"  # Default for dev
     shipwright_default_timeout: str = "15m"
@@ -69,12 +64,6 @@ class Settings(BaseSettings):
     # When True, list_agents will also include legacy Agent CRDs that haven't been migrated
     # Default is False since agents now use standard Kubernetes workloads (Deployments, StatefulSets, Jobs)
     enable_legacy_agent_crd: bool = False
-
-    # Migration settings (Phase 5: MCPServer CRD to Deployment migration)
-    # When True, list_tools will also include legacy MCPServer CRDs that haven't been migrated
-    # Default is False since tools now use standard Kubernetes workloads (Deployments)
-    # Set to True during migration period to see both old MCPServer CRDs and new Deployments
-    enable_legacy_mcpserver_crd: bool = False
 
     # Label settings
     kagenti_label_prefix: str = "kagenti.io/"

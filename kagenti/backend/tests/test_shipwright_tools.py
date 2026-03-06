@@ -22,7 +22,6 @@ from app.routers.tools import (
     ToolShipwrightBuildInfoResponse,
     _build_tool_shipwright_build_manifest,
     _build_tool_shipwright_buildrun_manifest,
-    _build_mcpserver_manifest,
 )
 from app.models.shipwright import (
     ResourceType,
@@ -463,44 +462,3 @@ class TestToolBuildInfoResponse:
         assert response.toolConfig is not None
         assert response.toolConfig.protocol == "streamable_http"
         assert response.toolConfig.createHttpRoute is True
-
-
-class TestMCPServerManifestGeneration:
-    """Tests for MCPServer manifest generation."""
-
-    def test_mcpserver_manifest_from_image(self):
-        """Test MCPServer manifest for image deployment."""
-        request = CreateToolRequest(
-            name="image-tool",
-            namespace="team1",
-            deploymentMethod="image",
-            containerImage="quay.io/myorg/my-tool:v1.0.0",
-            protocol="streamable_http",
-            framework="Python",
-        )
-
-        manifest = _build_mcpserver_manifest(request)
-
-        assert manifest["kind"] == "MCPServer"
-        assert manifest["metadata"]["name"] == "image-tool"
-        assert manifest["metadata"]["namespace"] == "team1"
-        assert manifest["spec"]["image"] == "quay.io/myorg/my-tool:v1.0.0"
-
-    def test_mcpserver_manifest_with_image_pull_secret(self):
-        """Test MCPServer manifest includes image pull secret."""
-        request = CreateToolRequest(
-            name="private-tool",
-            namespace="team1",
-            deploymentMethod="image",
-            containerImage="private.registry/my-tool:v1.0.0",
-            imagePullSecret="my-pull-secret",
-            protocol="streamable_http",
-            framework="Python",
-        )
-
-        manifest = _build_mcpserver_manifest(request)
-
-        # Check imagePullSecrets in pod spec
-        pod_spec = manifest["spec"]["podTemplateSpec"]["spec"]
-        assert "imagePullSecrets" in pod_spec
-        assert pod_spec["imagePullSecrets"][0]["name"] == "my-pull-secret"

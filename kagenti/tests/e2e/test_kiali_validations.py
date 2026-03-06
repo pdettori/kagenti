@@ -55,7 +55,6 @@ DEFAULT_NAMESPACES = [
     "spire-server",
     "spire-system",
     "spire-mgmt",
-    "toolhive-system",
     "istio-system",
     "istio-ztunnel",
 ]

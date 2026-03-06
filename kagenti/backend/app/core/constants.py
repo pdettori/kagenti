@@ -12,11 +12,6 @@ CRD_GROUP = settings.crd_group
 CRD_VERSION = settings.crd_version
 AGENTS_PLURAL = settings.agents_plural
 
-# ToolHive CRD Definitions
-TOOLHIVE_CRD_GROUP = settings.toolhive_crd_group
-TOOLHIVE_CRD_VERSION = settings.toolhive_crd_version
-TOOLHIVE_MCP_PLURAL = settings.toolhive_mcp_plural
-
 # Labels - Keys
 KAGENTI_TYPE_LABEL = settings.kagenti_type_label
 KAGENTI_PROTOCOL_LABEL = settings.kagenti_protocol_label  # deprecated; use PROTOCOL_LABEL_PREFIX
@@ -118,16 +113,6 @@ MIGRATION_SOURCE_ANNOTATION = "kagenti.io/migrated-from"
 MIGRATION_TIMESTAMP_ANNOTATION = "kagenti.io/migration-timestamp"
 # Label to identify legacy Agent CRD resources
 LEGACY_AGENT_CRD_LABEL = "kagenti.io/legacy-crd"
-
-# Migration (Phase 5: MCPServer CRD to Deployment migration)
-# Annotation to track original Toolhive service name
-ORIGINAL_SERVICE_ANNOTATION = "kagenti.io/original-service"
-# Toolhive service naming pattern: mcp-{name}-proxy
-TOOLHIVE_SERVICE_PREFIX = "mcp-"
-TOOLHIVE_SERVICE_SUFFIX = "-proxy"
-# Migration source values
-MIGRATION_SOURCE_AGENT_CRD = "agent-crd"
-MIGRATION_SOURCE_MCPSERVER_CRD = "mcpserver-crd"
 
 # Default environment variables for agents
 DEFAULT_ENV_VARS = [
