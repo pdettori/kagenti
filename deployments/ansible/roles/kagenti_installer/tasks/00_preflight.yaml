@@ -15,6 +15,27 @@
     - not (enable_openshift | default(false))
     - container_engine | default('docker') == 'docker'
 
+- name: Preflight - Detect Podman masquerading as Docker
+  command: docker info --format "{{ '{{' }}.Host.MemTotal{{ '}}' }},{{ '{{' }}.Host.CPUs{{ '}}' }}"
+  register: docker_podman_compat_info
+  failed_when: false
+  changed_when: false
+  when:
+    - create_kind_cluster | default(false)
+    - not (enable_openshift | default(false))
+    - container_engine | default('docker') == 'docker'
+    - docker_info.rc | default(1) != 0
+
+- name: Preflight - Use Podman compat result when Docker format fails
+  set_fact:
+    docker_info: "{{ docker_podman_compat_info }}"
+  when:
+    - create_kind_cluster | default(false)
+    - not (enable_openshift | default(false))
+    - container_engine | default('docker') == 'docker'
+    - docker_info.rc | default(1) != 0
+    - docker_podman_compat_info.rc | default(1) == 0
+
 - name: Preflight - Get container runtime info (Podman)
   command: podman info --format "{{ '{{' }}.Host.MemTotal{{ '}}' }},{{ '{{' }}.Host.CPUs{{ '}}' }}"
   register: podman_info
