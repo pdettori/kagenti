@@ -207,8 +207,8 @@ metadata:
   name: authbridge-config
   namespace: {{ . }}
 data:
-  TOKEN_URL: "http://keycloak-service.keycloak.svc:8080/realms/demo/protocol/openid-connect/token"
-  ISSUER: "{{ $root.Values.keycloak.publicUrl }}/realms/demo"
+  TOKEN_URL: "http://keycloak-service.{{ $root.Values.keycloak.namespace }}.svc:8080/realms/{{ $root.Values.keycloak.realm }}/protocol/openid-connect/token"
+  ISSUER: "{{ $root.Values.keycloak.publicUrl }}/realms/{{ $root.Values.keycloak.realm }}"
   TARGET_AUDIENCE: "auth-target"
   TARGET_SCOPES: "openid auth-target-aud"
 ---
@@ -273,6 +273,7 @@ data:
                       prefix: "/"
                     route:
                       cluster: original_destination
+                      timeout: 300s
               http_filters:
               - name: envoy.filters.http.ext_proc
                 typed_config:
@@ -280,7 +281,7 @@ data:
                   grpc_service:
                     envoy_grpc:
                       cluster_name: ext_proc_cluster
-                    timeout: 30s
+                    timeout: 300s
                   processing_mode:
                     request_header_mode: SEND
                     response_header_mode: SKIP
@@ -312,24 +313,30 @@ data:
                 virtual_hosts:
                 - name: local_app
                   domains: ["*"]
-                  request_headers_to_add:
-                  - header:
-                      key: "x-authbridge-direction"
-                      value: "inbound"
-                    append: false
                   routes:
                   - match:
                       prefix: "/"
                     route:
                       cluster: original_destination
+                      timeout: 300s
               http_filters:
+              # Lua filter injects x-authbridge-direction BEFORE ext_proc runs.
+              # Route-level request_headers_to_add does not work because the
+              # router filter runs after ext_proc.
+              - name: envoy.filters.http.lua
+                typed_config:
+                  "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                  inline_code: |
+                    function envoy_on_request(request_handle)
+                      request_handle:headers():add("x-authbridge-direction", "inbound")
+                    end
               - name: envoy.filters.http.ext_proc
                 typed_config:
                   "@type": type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor
                   grpc_service:
                     envoy_grpc:
                       cluster_name: ext_proc_cluster
-                    timeout: 30s
+                    timeout: 300s
                   processing_mode:
                     request_header_mode: SEND
                     response_header_mode: SKIP
