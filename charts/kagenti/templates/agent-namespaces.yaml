@@ -197,10 +197,11 @@ data:
         "value": "slack-full-access"
       }
     ]
-  SPIRE_ENABLED: "true"
+  SPIRE_ENABLED: {{ if $root.Values.spire.enabled }}"true"{{ else }}"false"{{ end }}
   KEYCLOAK_URL: "http://keycloak-service.{{ $root.Values.keycloak.namespace }}.svc:8080"
   KEYCLOAK_REALM: {{ $root.Values.keycloak.realm | quote }}
 ---
+{{- if not $root.Values.keycloak.adminExistingSecret }}
 # ——————————————————————————————————————————————————————————————————————————————
 #  Secret for Keycloak Admin Credentials in Namespace: {{ . }}
 #  Used by the client-registration sidecar to register agents as OAuth clients.
@@ -214,9 +215,11 @@ metadata:
     {{- include "kagenti.labels" $root | nindent 4 }}
 type: Opaque
 stringData:
-  KEYCLOAK_ADMIN_USERNAME: {{ $root.Values.keycloak.adminUsername | default "admin" | quote }}
-  KEYCLOAK_ADMIN_PASSWORD: {{ $root.Values.keycloak.adminPassword | default "admin" | quote }}
+  KEYCLOAK_ADMIN_USERNAME: {{ $root.Values.keycloak.adminUsername | quote }}
+  KEYCLOAK_ADMIN_PASSWORD: {{ $root.Values.keycloak.adminPassword | quote }}
 ---
+{{- end }}
+
 # ——————————————————————————————————————————————————————————————————————————————
 #  ConfigMap for AuthBridge in Namespace: {{ . }}
 # ——————————————————————————————————————————————————————————————————————————————

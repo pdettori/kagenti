@@ -307,23 +307,37 @@ The installer automatically creates `keycloak-admin-secret` in every agent names
 
 ### Customizing Credentials
 
-If your Keycloak admin credentials differ from the defaults, override them during installation:
+If your Keycloak admin credentials differ from the defaults, override them using a values file (preferred over `--set` to avoid exposing passwords in shell history and process listings):
 
-**Ansible installer** (via `dev_values.yaml` or `--set`):
+**Ansible installer** (via `.secret_values.yaml`):
 
-```bash
-deployments/ansible/run-install.sh --env dev \
-  --set charts.kagenti.values.keycloak.adminUsername=myadmin \
-  --set charts.kagenti.values.keycloak.adminPassword=mypassword
+Add to your `deployments/envs/.secret_values.yaml`:
+
+```yaml
+charts:
+  kagenti:
+    values:
+      keycloak:
+        adminUsername: myadmin
+        adminPassword: mypassword
 ```
 
-**Helm install** (direct):
+**Helm install** (via values file):
 
 ```bash
 helm upgrade --install kagenti ./charts/kagenti/ \
   -n kagenti-system --create-namespace \
-  --set keycloak.adminUsername=myadmin \
-  --set keycloak.adminPassword=mypassword
+  -f my-secret-values.yaml
+```
+
+### Using an Existing Secret
+
+If you already manage Keycloak admin credentials in a Secret (e.g., via an external secrets operator), you can skip the automatic secret creation entirely by setting `keycloak.adminExistingSecret` to the name of that secret. The referenced secret must contain `KEYCLOAK_ADMIN_USERNAME` and `KEYCLOAK_ADMIN_PASSWORD` keys:
+
+```bash
+helm upgrade --install kagenti ./charts/kagenti/ \
+  -n kagenti-system --create-namespace \
+  --set keycloak.adminExistingSecret=my-keycloak-admin-secret
 ```
 
 ### Manual Creation
