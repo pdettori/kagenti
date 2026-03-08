@@ -29,7 +29,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: istio-mesh-root-ca
-  namespace: {{ .Values.rhoai.trustNamespace | default "kagenti-system" }}
+  namespace: cert-manager
   labels:
     {{- include "kagenti.labels" . | nindent 4 }}
 spec:
