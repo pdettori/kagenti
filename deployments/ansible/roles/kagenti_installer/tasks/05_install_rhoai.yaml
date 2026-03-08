@@ -109,6 +109,108 @@
     # cert-manager generates intermediate CA certs with keys tls.crt/tls.key/ca.crt.
     # Istio expects a secret named "cacerts" with keys ca-cert.pem/ca-key.pem/
     # root-cert.pem/cert-chain.pem. Transform and create.
+    #
+    # The Helm template may have skipped creating these resources if cert-manager
+    # CRDs weren't available at chart install time. Create them now as a fallback.
+
+    - name: Ensure cert-manager CRDs are available
+      command: kubectl get crd certificates.cert-manager.io
+      register: certmanager_crd_ready
+      retries: 30
+      delay: 10
+      until: certmanager_crd_ready.rc == 0
+      changed_when: false
+
+    - name: Create shared trust cert-manager resources (fallback if Helm skipped)
+      shell: |
+        kubectl apply -f - <<'EOF'
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: istio-mesh-root-selfsigned
+        spec:
+          selfSigned: {}
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: istio-mesh-root-ca
+          namespace: cert-manager
+        spec:
+          isCA: true
+          commonName: istio-mesh-root-ca
+          duration: 87600h
+          renewBefore: 720h
+          secretName: istio-mesh-root-ca-secret
+          privateKey:
+            algorithm: RSA
+            size: 4096
+          issuerRef:
+            name: istio-mesh-root-selfsigned
+            kind: ClusterIssuer
+        EOF
+      args:
+        executable: /bin/bash
+
+    - name: Wait for root CA secret to be ready
+      command: >-
+        kubectl get secret istio-mesh-root-ca-secret -n cert-manager
+        -o jsonpath='{.data.tls\.crt}'
+      register: root_ca_ready
+      retries: 30
+      delay: 10
+      until: root_ca_ready.rc == 0 and root_ca_ready.stdout | length > 0
+      changed_when: false
+
+    - name: Create CA ClusterIssuer and intermediate certificates
+      shell: |
+        kubectl apply -f - <<'EOF'
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: istio-mesh-ca
+        spec:
+          ca:
+            secretName: istio-mesh-root-ca-secret
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: istio-cacerts-default
+          namespace: istio-system
+        spec:
+          isCA: true
+          commonName: istio-ca-default
+          duration: 8760h
+          renewBefore: 720h
+          secretName: istio-cacerts-default-cert
+          privateKey:
+            algorithm: RSA
+            size: 2048
+          issuerRef:
+            name: istio-mesh-ca
+            kind: ClusterIssuer
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: istio-cacerts-openshift-gateway
+          namespace: openshift-ingress
+        spec:
+          isCA: true
+          commonName: istio-ca-openshift-gateway
+          duration: 8760h
+          renewBefore: 720h
+          secretName: istio-cacerts-og-cert
+          privateKey:
+            algorithm: RSA
+            size: 2048
+          issuerRef:
+            name: istio-mesh-ca
+            kind: ClusterIssuer
+        EOF
+      args:
+        executable: /bin/bash
 
     - name: Wait for cert-manager to generate Kagenti intermediate CA
       command: >-
