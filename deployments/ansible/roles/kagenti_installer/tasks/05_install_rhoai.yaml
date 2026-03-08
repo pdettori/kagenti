@@ -105,4 +105,92 @@
         exit 1
       register: dsc_ready_result
 
+    # --- Shared Trust: cert-manager CA → Istio cacerts format ---
+    # cert-manager generates intermediate CA certs with keys tls.crt/tls.key/ca.crt.
+    # Istio expects a secret named "cacerts" with keys ca-cert.pem/ca-key.pem/
+    # root-cert.pem/cert-chain.pem. Transform and create.
+
+    - name: Wait for cert-manager to generate Kagenti intermediate CA
+      command: >-
+        kubectl get secret istio-cacerts-default-cert -n istio-system
+        -o jsonpath='{.data.tls\.crt}'
+      register: kagenti_cacert_check
+      retries: 30
+      delay: 10
+      until: kagenti_cacert_check.rc == 0 and kagenti_cacert_check.stdout | length > 0
+      changed_when: false
+
+    - name: Wait for cert-manager to generate RHOAI intermediate CA
+      command: >-
+        kubectl get secret istio-cacerts-og-cert -n openshift-ingress
+        -o jsonpath='{.data.tls\.crt}'
+      register: rhoai_cacert_check
+      retries: 30
+      delay: 10
+      until: rhoai_cacert_check.rc == 0 and rhoai_cacert_check.stdout | length > 0
+      changed_when: false
+
+    - name: Create cacerts secret for Kagenti istiod (istio-system)
+      shell: |
+        CA_CERT=$(kubectl get secret istio-cacerts-default-cert -n istio-system -o jsonpath='{.data.tls\.crt}' | base64 -d)
+        CA_KEY=$(kubectl get secret istio-cacerts-default-cert -n istio-system -o jsonpath='{.data.tls\.key}' | base64 -d)
+        ROOT_CERT=$(kubectl get secret istio-cacerts-default-cert -n istio-system -o jsonpath='{.data.ca\.crt}' | base64 -d)
+        CERT_CHAIN="${CA_CERT}
+        ${ROOT_CERT}"
+        kubectl create secret generic cacerts -n istio-system \
+          --from-literal=ca-cert.pem="${CA_CERT}" \
+          --from-literal=ca-key.pem="${CA_KEY}" \
+          --from-literal=root-cert.pem="${ROOT_CERT}" \
+          --from-literal=cert-chain.pem="${CERT_CHAIN}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Create cacerts secret for RHOAI istiod (openshift-ingress)
+      shell: |
+        CA_CERT=$(kubectl get secret istio-cacerts-og-cert -n openshift-ingress -o jsonpath='{.data.tls\.crt}' | base64 -d)
+        CA_KEY=$(kubectl get secret istio-cacerts-og-cert -n openshift-ingress -o jsonpath='{.data.tls\.key}' | base64 -d)
+        ROOT_CERT=$(kubectl get secret istio-cacerts-og-cert -n openshift-ingress -o jsonpath='{.data.ca\.crt}' | base64 -d)
+        CERT_CHAIN="${CA_CERT}
+        ${ROOT_CERT}"
+        kubectl create secret generic cacerts -n openshift-ingress \
+          --from-literal=ca-cert.pem="${CA_CERT}" \
+          --from-literal=ca-key.pem="${CA_KEY}" \
+          --from-literal=root-cert.pem="${ROOT_CERT}" \
+          --from-literal=cert-chain.pem="${CERT_CHAIN}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      args:
+        executable: /bin/bash
+
+    - name: Restart Kagenti istiod to pick up shared CA
+      command: kubectl rollout restart deployment/istiod -n istio-system
+
+    - name: Restart RHOAI istiod to pick up shared CA
+      command: kubectl rollout restart deployment/istiod-openshift-gateway -n openshift-ingress
+      failed_when: false
+
+    - name: Wait for Kagenti istiod rollout
+      command: kubectl rollout status deployment/istiod -n istio-system --timeout=120s
+
+    - name: Wait for RHOAI istiod rollout
+      command: kubectl rollout status deployment/istiod-openshift-gateway -n openshift-ingress --timeout=120s
+      failed_when: false
+
+    - name: Delete stale CA ConfigMaps to force recreation with shared CA
+      shell: |
+        for ns in kagenti-system gateway-system team1 team2 keycloak mcp-system istio-system istio-ztunnel; do
+          kubectl delete configmap istio-ca-root-cert -n $ns --ignore-not-found 2>/dev/null
+        done
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Restart ztunnel to pick up shared CA
+      command: kubectl rollout restart daemonset/ztunnel -n istio-ztunnel
+      failed_when: false
+
+    - name: Wait for ztunnel rollout
+      command: kubectl rollout status daemonset/ztunnel -n istio-ztunnel --timeout=300s
+      failed_when: false
+
   when: rhoai.enabled | default(false)
