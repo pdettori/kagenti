@@ -1,4 +1,4 @@
-{{- if and .Values.components.rhoai.enabled .Values.openshift }}
+{{- if and .Values.components.rhoai.enabled .Values.openshift (lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" "certificates.cert-manager.io") }}
 {{- /*
   Istio Multi-Mesh Shared Trust via cert-manager
 
