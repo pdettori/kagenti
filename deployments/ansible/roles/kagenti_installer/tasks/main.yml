@@ -1409,20 +1409,19 @@
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
 
-# On OpenShift AI clusters (RHOAI 2.x), there may be a pre-existing Istio
-# (openshift-gateway) running as a full sidecar mesh that creates CA ConfigMaps
-# in all namespaces. To avoid CA conflicts between our istiod and openshift-gateway
-# istiod, we use the "Shared Trust Pattern" - copying their CA to our istiod.
+# Shared Trust Pattern (Legacy Workaround for RHOAI 2.x)
 #
-# NOTE: RHOAI 3.x uses openshift-gateway as a Gateway API controller only (not a mesh).
-# When RHOAI 3.x is installed (rhoai.enabled=true), this block is SKIPPED because
-# there is no CA conflict — the gateway-only Istio does not create CA ConfigMaps.
+# When RHOAI 2.x (OSSM v2, sidecar mode) was installed, its openshift-gateway
+# istiod created CA ConfigMaps in all namespaces with a different CA than
+# Kagenti's istiod, causing certificate verification failures.
 #
-# TODO: Implement proper multi-mesh trust based on Istio deployment models.
-# The current approach (copying CA secret) is a workaround. A cleaner solution
-# would follow Istio's "Shared control plane (single-cluster)" or "Multi-primary"
-# trust models as documented at:
-# https://istio.io/latest/docs/ops/deployment/deployment-models/
+# This workaround copies the CA secret between namespaces. It is ONLY used
+# for RHOAI 2.x environments. For RHOAI 3.x, the proper solution is
+# implemented via cert-manager shared trust (see rhoai-shared-trust.yaml
+# and 05_install_rhoai.yaml).
+#
+# When rhoai.enabled=true, this block is SKIPPED — the cert-manager approach
+# in 05_install_rhoai.yaml handles trust properly without credential copying.
 - name: Share CA with openshift-gateway Istio (OpenShift AI clusters)
   block:
     - name: Check if openshift-gateway Istio CA exists
