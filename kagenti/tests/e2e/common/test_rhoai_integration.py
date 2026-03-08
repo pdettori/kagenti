@@ -128,6 +128,24 @@ class TestRHOAICoexistence:
             "ztunnel logs contain BadSignature errors - CA mismatch detected"
         )
 
+    @pytest.mark.requires_features(["rhoai", "istio"])
+    def test_shared_root_ca(self, k8s_client):
+        """Verify both Istio control planes share the same root CA."""
+        cm_kagenti = k8s_client.read_namespaced_config_map(
+            name="istio-ca-root-cert",
+            namespace="kagenti-system",
+        )
+        cm_gateway = k8s_client.read_namespaced_config_map(
+            name="istio-ca-root-cert",
+            namespace="gateway-system",
+        )
+        kagenti_ca = cm_kagenti.data.get("root-cert.pem", "")
+        gateway_ca = cm_gateway.data.get("root-cert.pem", "")
+        assert kagenti_ca == gateway_ca, (
+            "Root CA mismatch between kagenti-system and gateway-system. "
+            "Both Istio control planes should share the same root CA."
+        )
+
     @pytest.mark.requires_features(["rhoai"])
     def test_rhoai_gateway_route_exists(self, k8s_custom_client):
         """Verify RHOAI data-science-gateway route exists in openshift-ingress."""
