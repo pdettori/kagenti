@@ -410,7 +410,11 @@ def pytest_collection_modifyitems(config, items):
 
     for component_name, component_config in deps_components.items():
         if isinstance(component_config, dict) and "enabled" in component_config:
-            enabled[component_name] = component_config["enabled"]
+            # Use OR logic: if any chart enables a feature, it stays enabled
+            # (e.g., istio enabled in kagenti-deps but disabled in kagenti chart)
+            enabled[component_name] = (
+                enabled.get(component_name, False) or component_config["enabled"]
+            )
 
     # kagenti components (includes operators)
     kagenti_chart = charts.get("kagenti", {})
@@ -418,7 +422,9 @@ def pytest_collection_modifyitems(config, items):
 
     for component_name, component_config in components.items():
         if isinstance(component_config, dict) and "enabled" in component_config:
-            enabled[component_name] = component_config["enabled"]
+            enabled[component_name] = (
+                enabled.get(component_name, False) or component_config["enabled"]
+            )
 
     # Detect OpenShift from config
     is_openshift = _detect_openshift_from_config(kagenti_config)
