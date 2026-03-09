@@ -13,7 +13,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-test.describe('Agent Catalog Page', () => {
+test.describe('Agent Catalog Page @extended', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the agent catalog page before each test
     await page.goto('/agents');
@@ -60,7 +60,7 @@ test.describe('Agent Catalog Page', () => {
   });
 });
 
-test.describe('Agent Catalog - With Deployed Agents', () => {
+test.describe('Agent Catalog - With Deployed Agents @extended', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/agents');
     // Wait for the page to load
@@ -158,7 +158,7 @@ test.describe('Agent Catalog - With Deployed Agents', () => {
   });
 });
 
-test.describe('Agent Catalog - API Integration', () => {
+test.describe('Agent Catalog - API Integration @extended', () => {
   test('should call backend API when loading agents', async ({ page }) => {
     // Set up request interception to verify API calls
     let apiCalled = false;

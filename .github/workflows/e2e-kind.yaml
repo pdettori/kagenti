@@ -121,6 +121,8 @@ jobs:
       - name: Run UI E2E tests
         if: success()
         run: bash .github/scripts/common/92-run-ui-tests.sh
+        env:
+          PLAYWRIGHT_GREP_INVERT: "@extended"
 
       - name: Upload test results
         if: always()

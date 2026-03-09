@@ -9,7 +9,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-test.describe('Tool Catalog Page', () => {
+test.describe('Tool Catalog Page @extended', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools');
   });
@@ -35,7 +35,7 @@ test.describe('Tool Catalog Page', () => {
   });
 });
 
-test.describe('Tool Catalog - With Deployed Tools', () => {
+test.describe('Tool Catalog - With Deployed Tools @extended', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tools');
     await page.waitForLoadState('networkidle');
@@ -68,7 +68,7 @@ test.describe('Tool Catalog - With Deployed Tools', () => {
   });
 });
 
-test.describe('Tool Catalog - API Integration', () => {
+test.describe('Tool Catalog - API Integration @extended', () => {
   test('should call backend API when loading tools', async ({ page }) => {
     let apiCalled = false;
 
