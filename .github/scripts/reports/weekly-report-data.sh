@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gather weekly report data from GitHub API
-# Usage: ./weekly-report-data.sh [days] [repo]
+# Usage: ./weekly-report-data.sh [days] [repo] [outdir]
 # Output: JSON files in /tmp/kagenti/github/data/
 
 set -euo pipefail

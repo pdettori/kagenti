@@ -19,7 +19,7 @@ echo ""
 
 # Discover all non-archived repos
 REPOS=$(gh repo list "$ORG" --no-archived --limit 100 --json name --jq '.[].name' | sort)
-REPO_COUNT=$(echo "$REPOS" | wc -l | tr -d ' ')
+REPO_COUNT=$(echo "$REPOS" | wc -w | tr -d ' ')
 echo "Found $REPO_COUNT non-archived repos in $ORG"
 echo ""
 
@@ -33,7 +33,7 @@ for repo in $REPOS; do
     mkdir -p "$REPO_DIR"
 
     # Call the per-repo data script with custom output dir
-    "$SCRIPT_DIR/weekly-report-data.sh" "$DAYS" "$ORG/$repo" "$REPO_DIR" 2>/dev/null || true
+    "$SCRIPT_DIR/weekly-report-data.sh" "$DAYS" "$ORG/$repo" "$REPO_DIR" 2>"$REPO_DIR/errors.log" || true
 
     # Handle repos with issues disabled (files may be empty or missing)
     for f in merged-prs open-prs open-issues new-issues ci-runs ci-runs-all; do
