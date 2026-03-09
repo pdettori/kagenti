@@ -35,6 +35,7 @@ jobs:
 
       - name: Lint with ruff
         run: |
+          # Rule selection is in pyproject.toml [tool.ruff.lint]
           ruff check .
           ruff format --check .
 
