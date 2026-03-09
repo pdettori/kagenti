@@ -66,9 +66,6 @@ Full demo deployment workflow:
 # 3. Deploy weather tool
 ./.github/scripts/kagenti-operator/72-deploy-weather-tool.sh
 
-# 4. Patch weather tool (HTTPRoute, MCP config)
-./.github/scripts/kagenti-operator/73-patch-weather-tool.sh
-
 # 5. Deploy weather agent
 ./.github/scripts/kagenti-operator/74-deploy-weather-agent.sh
 ```
@@ -113,7 +110,6 @@ export KAGENTI_CONFIG_FILE=deployments/envs/ocp_values.yaml  # OpenShift
 |--------|-------------|
 | `71-build-weather-tool.sh` | Build weather tool via Tekton pipeline |
 | `72-deploy-weather-tool.sh` | Deploy weather tool Component CR |
-| `73-patch-weather-tool.sh` | Patch weather tool with HTTPRoute/MCP config |
 | `74-deploy-weather-agent.sh` | Deploy weather agent Component CR |
 | `75-deploy-weather-tool-shipwright.sh` | Alternative: deploy with Shipwright |
 
