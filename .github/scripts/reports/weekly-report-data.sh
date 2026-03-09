@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Gather weekly report data from GitHub API
-# Usage: ./weekly-report-data.sh [days] [repo]
+# Usage: ./weekly-report-data.sh [days] [repo] [outdir]
 # Output: JSON files in /tmp/kagenti/github/data/
 
 set -euo pipefail
 
 DAYS="${1:-7}"
 REPO="${2:-kagenti/kagenti}"
-OUTDIR="/tmp/kagenti/github/data"
+OUTDIR="${3:-/tmp/kagenti/github/data}"
 mkdir -p "$OUTDIR"
 
 SINCE=$(date -v-${DAYS}d -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -d "${DAYS} days ago" -u +"%Y-%m-%dT%H:%M:%SZ")
