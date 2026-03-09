@@ -522,6 +522,42 @@ oc get clusterversion
 
 log_success "Cluster $CLUSTER_NAME created and ready"
 
+# ============================================================================
+# 8. Configure NodePool Autoscaling (if requested)
+# ============================================================================
+
+if [[ -n "$AUTOSCALE_MIN" ]] && [[ -n "$AUTOSCALE_MAX" ]]; then
+    log_info "Configuring NodePool autoscaling (min=$AUTOSCALE_MIN, max=$AUTOSCALE_MAX)..."
+
+    # Patch the NodePool to enable autoscaling
+    # Note: replicas must be set to null when autoScaling is enabled (mutually exclusive)
+    KUBECONFIG="$MGMT_KUBECONFIG" oc patch nodepool/"$NP_NAME" -n clusters --type=merge -p '{
+      "spec": {
+        "replicas": null,
+        "autoScaling": {
+          "min": '"$AUTOSCALE_MIN"',
+          "max": '"$AUTOSCALE_MAX"'
+        }
+      }
+    }' || {
+        log_warn "Failed to configure autoscaling - NodePool may not support it yet"
+        log_warn "You can configure it manually later using:"
+        echo "  KUBECONFIG=$MGMT_KUBECONFIG oc patch nodepool/$NP_NAME -n clusters --type=merge -p '{\"spec\":{\"replicas\":null,\"autoScaling\":{\"min\":$AUTOSCALE_MIN,\"max\":$AUTOSCALE_MAX}}}'"
+    }
+
+    # Verify autoscaling was configured
+    AUTOSCALE_STATUS=$(KUBECONFIG="$MGMT_KUBECONFIG" oc get nodepool -n clusters "$NP_NAME" \
+        -o jsonpath='{.spec.autoScaling}' 2>/dev/null || echo "{}")
+
+    if [[ "$AUTOSCALE_STATUS" != "{}" ]] && [[ "$AUTOSCALE_STATUS" != "" ]]; then
+        log_success "NodePool autoscaling configured successfully"
+        echo "  Min nodes: $AUTOSCALE_MIN"
+        echo "  Max nodes: $AUTOSCALE_MAX"
+    else
+        log_warn "Autoscaling may not have been applied - verify manually"
+    fi
+fi
+
 # In CI mode, output for subsequent steps
 if [ "$CI_MODE" = "true" ]; then
     echo "cluster_kubeconfig=$CLUSTER_KUBECONFIG" >> "$GITHUB_OUTPUT"
