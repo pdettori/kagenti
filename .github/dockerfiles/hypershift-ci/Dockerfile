@@ -15,7 +15,7 @@
 # SECURITY: Container runs as non-root user (UID 1001) by default
 #
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5@sha256:a50731d3397a4ee28583f1699842183d4d24fadcc565c4688487af9ee4e13a44
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7@sha256:c7d44146f826037f6873d99da479299b889473492d3c1ab8af86f08af04ec8a0
 
 # === PINNED VERSIONS ===
 # Update these to upgrade tooling
