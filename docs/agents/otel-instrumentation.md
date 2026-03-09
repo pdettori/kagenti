@@ -152,6 +152,8 @@ def on_complete(output):
 
 ## Phoenix (OpenInference) Requirements
 
+> **Note:** Phoenix is an optional component (`components.phoenix.enabled`). The OTEL Collector's Phoenix pipeline (`traces/phoenix`) is only deployed when Phoenix is enabled.
+
 Phoenix uses [OpenInference semantic conventions](https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md).
 
 ### Required Attributes

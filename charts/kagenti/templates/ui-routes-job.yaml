@@ -109,7 +109,9 @@ data:
     ROUTES_DATA=(
       "kagenti-system,mcp-inspector,true,MCP_INSPECTOR_URL"
       "kagenti-system,mcp-proxy,true,MCP_PROXY_FULL_ADDRESS"
+      {{- if .Values.components.phoenix.enabled }}
       "kagenti-system,phoenix,true,TRACES_DASHBOARD_URL"
+      {{- end }}
       "kagenti-system,kagenti-api,true,API_URL"
       "istio-system,kiali,true,NETWORK_TRAFFIC_DASHBOARD_URL"
       "keycloak,keycloak,true,KEYCLOAK_CONSOLE_URL"

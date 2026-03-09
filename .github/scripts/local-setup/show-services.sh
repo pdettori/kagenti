@@ -201,8 +201,8 @@ if [ "$VERBOSE" = "false" ]; then
         echo -e "  $(link "$MLFLOW_URL/#/experiments/0/chat-sessions" "$MLFLOW_URL/#/experiments/0/chat-sessions")  ${DIM}Chat Sessions${NC}"
     fi
 
-    # Phoenix
-    if [ -n "$PHOENIX_URL" ]; then
+    # Phoenix (only show if deployed)
+    if [ -n "$PHOENIX_URL" ] && $CLI get pods -n kagenti-system -l app=phoenix --no-headers 2>/dev/null | grep -q .; then
         echo -e "${MAGENTA}Phoenix${NC}"
         echo -e "  $(link "$PHOENIX_URL/projects/UHJvamVjdDox/spans" "$PHOENIX_URL/projects/UHJvamVjdDox/spans")  ${DIM}Trace Spans${NC}"
         echo -e "  $(link "$PHOENIX_URL/projects/UHJvamVjdDox/sessions" "$PHOENIX_URL/projects/UHJvamVjdDox/sessions")  ${DIM}Chat Sessions${NC}"
@@ -396,6 +396,7 @@ echo -e "${CYAN}                    (No authentication required)                
 echo "##########################################################################"
 echo ""
 
+if $CLI get pods -n kagenti-system -l app=phoenix --no-headers 2>/dev/null | grep -q .; then
 echo "---------------------------------------------------------------------------"
 echo -e "${MAGENTA}Phoenix (LLM Trace Visualization)${NC}"
 echo "---------------------------------------------------------------------------"
@@ -411,6 +412,7 @@ else
 fi
 echo -e "${BLUE}Auth:${NC}         None required"
 echo ""
+fi
 
 # Kind: show Kiali here (no OpenShift OAuth)
 if [ "$ENV_TYPE" = "kind" ]; then

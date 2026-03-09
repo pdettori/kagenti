@@ -407,7 +407,7 @@ A modern web dashboard built with React ([PatternFly](https://www.patternfly.org
 | **Agent Import** | Import A2A agents from any framework via Git URL or container image |
 | **Tool Deployment** | Deploy MCP tools directly from source or container image |
 | **Interactive Testing** | Chat interface to test agent capabilities |
-| **Monitoring** | View traces, logs, and network traffic via Phoenix and Kiali |
+| **Monitoring** | View traces, logs, and network traffic via Phoenix (optional) and Kiali |
 | **Authentication** | Keycloak-based login/logout with OAuth2 |
 | **MCP Gateway** | Browse and test MCP tools via MCP Inspector |
 
@@ -419,7 +419,7 @@ A modern web dashboard built with React ([PatternFly](https://www.patternfly.org
 | Agents | List, import, and manage agents |
 | Tools | List, import, and manage MCP tools |
 | MCP Gateway | View MCP Gateway status and launch MCP Inspector |
-| Observability | Access Phoenix traces and Kiali network dashboards |
+| Observability | Access Phoenix traces (when enabled) and Kiali network dashboards |
 | Admin | Keycloak and system configuration |
 
 ### Access
@@ -592,9 +592,9 @@ The Ingress Gateway routes external HTTP requests to internal services using the
 
 [Kiali](https://kiali.io) provides visualization of the service mesh topology and traffic flows.
 
-### Phoenix (Tracing)
+### Phoenix (Tracing) -- Optional
 
-LLM observability and tracing for agent interactions.
+LLM observability and tracing for agent interactions. Phoenix is **disabled by default** and can be enabled via `components.phoenix.enabled: true` in both the `kagenti-deps` and `kagenti` charts. Requires `components.otel.enabled: true`.
 
 ---
 

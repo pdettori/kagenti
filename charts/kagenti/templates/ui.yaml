@@ -12,7 +12,11 @@ metadata:
 data:
   DOMAIN_NAME: "{{ .Values.ui.domainName }}"
   API_URL: "http://{{ .Values.ui.api.hostname }}:8080"
+  {{- if .Values.components.phoenix.enabled }}
   TRACES_DASHBOARD_URL: "http://phoenix.{{ .Values.ui.domainName }}:8080"
+  {{- else }}
+  TRACES_DASHBOARD_URL: ""
+  {{- end }}
   NETWORK_TRAFFIC_DASHBOARD_URL: "http://kiali.{{ .Values.ui.domainName }}:8080"
   MCP_INSPECTOR_URL: "http://mcp-inspector.{{ .Values.ui.domainName }}:8080"
   MCP_PROXY_FULL_ADDRESS: "http://mcp-proxy.{{ .Values.ui.domainName }}:8080"
@@ -118,7 +122,7 @@ spec:
                 configMapKeyRef:
                   name: "{{ .Values.ui.configmap }}"
                   key: "TRACES_DASHBOARD_URL"
-                  optional: {{ (not .Values.openshift) }}
+                  optional: true
             - name: NETWORK_DASHBOARD_URL
               valueFrom:
                 configMapKeyRef:

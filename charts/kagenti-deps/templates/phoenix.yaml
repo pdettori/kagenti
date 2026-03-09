@@ -1,4 +1,7 @@
-{{- if .Values.components.otel.enabled }}
+{{- if .Values.components.phoenix.enabled }}
+{{- if not .Values.components.otel.enabled }}
+{{- fail "components.phoenix.enabled requires components.otel.enabled (Phoenix depends on the OTEL Collector)" }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

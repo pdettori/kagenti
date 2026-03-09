@@ -333,7 +333,7 @@ Service routes:
 |---------|-----------------|
 | **Kagenti UI** | `oc get route -n kagenti-system kagenti-ui` |
 | **Keycloak Admin** | `oc get route -n keycloak keycloak` |
-| **Phoenix (Traces)** | `oc get route -n kagenti-system phoenix` |
+| **Phoenix (Traces)** | `oc get route -n kagenti-system phoenix` _(only when `components.phoenix.enabled: true`)_ |
 | **Kiali** | `oc get route -n istio-system kiali` |
 | **OpenShift Console** | `oc get route -n openshift-console console` |
 
