@@ -37,6 +37,8 @@ components:
     enabled: true
   certManager:
     enabled: true
+  rhoai:
+    enabled: false
   gatewayApi:
     enabled: false
   ingressGateway:
@@ -125,6 +127,17 @@ shipwright:
 # ------------------------------------------------------------------
 certManager:
   namespace: cert-manager-operator
+
+# ------------------------------------------------------------------
+#  RHOAI (Red Hat OpenShift AI) Configuration
+# ------------------------------------------------------------------
+rhoai:
+  namespace: redhat-ods-operator
+  channel: fast-3.x
+  installPlanApproval: Automatic
+
+# When true, skip servicemeshoperator3 Subscription creation (RHOAI provides it)
+rhoaiManagesServiceMesh: false
 
 # ------------------------------------------------------------------
 #  Spire Configuration

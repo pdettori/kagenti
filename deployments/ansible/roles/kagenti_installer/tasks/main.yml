@@ -58,7 +58,7 @@
   async: 300
   poll: 0
   register: tekton_async
-  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false))
+  when: (tekton.enabled | default(false)) and not (enable_openshift | default(false)) and not (skip_tekton | default(false))
 
 #
 #  Install Istio
@@ -168,7 +168,7 @@
   - name: Wait for cert manager webhook to start
     command: >-
       kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=120s
-  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false))
+  when: (certManager.enabled | default(false)) and not (enable_openshift | default(false)) and not (skip_cert_manager | default(false))
 
 #
 #  Kiali and Prometheus
@@ -809,6 +809,7 @@
         | combine((((secret_values.get('charts', {}) | default({})).get('kagenti-deps', {}) ).get('values', {})) , recursive=True)
         | combine((secret_values.get('global', {}) | default({})), recursive=True)
         | combine({'openshift': enable_openshift}, recursive=True)
+        | combine({'rhoaiManagesServiceMesh': (rhoai.enabled | default(false)) | bool}, recursive=True)
         | combine((kagenti_deps_operator_overrides | default({})), recursive=True) }}
     values_files: >
       {{ (((charts['kagenti-deps'] | default({}))['values_files'] | default([])) | list)
@@ -834,6 +835,14 @@
   when:
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
+
+#
+#  RHOAI (Red Hat OpenShift AI) - wait for operator and create DataScienceCluster
+#  The operator subscription is created by the kagenti-deps Helm chart.
+#  Ansible waits for CSV, CRD readiness, and creates the DataScienceCluster CR.
+#
+- name: Wait for RHOAI operator and create DataScienceCluster
+  ansible.builtin.import_tasks: 05_install_rhoai.yaml
 
 # Create ConfigMap for OpenShift trusted CA bundle injection
 # OpenShift's cluster network operator injects the trusted CA bundle into
@@ -1400,22 +1409,19 @@
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
 
-# On OpenShift AI clusters, there may be a pre-existing Istio (openshift-gateway) that
-# creates CA ConfigMaps in all namespaces. To avoid CA conflicts between our istiod
-# and openshift-gateway istiod, we use the "Shared Trust Pattern" - copying their CA
-# to our istiod so both create identical ConfigMaps.
+# Shared Trust Pattern (Legacy Workaround for RHOAI 2.x)
 #
-# TODO: Implement proper multi-mesh trust based on Istio deployment models.
-# The current approach (copying CA secret) is a workaround. A cleaner solution
-# would follow Istio's "Shared control plane (single-cluster)" or "Multi-primary"
-# trust models as documented at:
-# https://istio.io/latest/docs/ops/deployment/deployment-models/
+# When RHOAI 2.x (OSSM v2, sidecar mode) was installed, its openshift-gateway
+# istiod created CA ConfigMaps in all namespaces with a different CA than
+# Kagenti's istiod, causing certificate verification failures.
 #
-# Options to consider:
-# 1. Plug-in CA certificates: Configure both istiods to use the same external CA
-#    https://istio.io/latest/docs/tasks/security/cert-management/plugin-ca-cert/
-# 2. Cross-cluster trust with intermediate CAs: Use cacerts Secret with proper chain
-# 3. External CA integration (cert-manager): Single source of truth for certificates
+# This workaround copies the CA secret between namespaces. It is ONLY used
+# for RHOAI 2.x environments. For RHOAI 3.x, the proper solution is
+# implemented via cert-manager shared trust (see rhoai-shared-trust.yaml
+# and 05_install_rhoai.yaml).
+#
+# When rhoai.enabled=true, this block is SKIPPED — the cert-manager approach
+# in 05_install_rhoai.yaml handles trust properly without credential copying.
 - name: Share CA with openshift-gateway Istio (OpenShift AI clusters)
   block:
     - name: Check if openshift-gateway Istio CA exists
@@ -1481,6 +1487,7 @@
   when:
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
+    - not (rhoai.enabled | default(false))  # RHOAI 3.x uses gateway-only Istio, no CA conflict
 
 #
 #  Setup DNS for registry in kind
