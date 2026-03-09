@@ -614,7 +614,6 @@ oc get nodes
 
 ./.github/scripts/kagenti-operator/71-build-weather-tool.sh
 ./.github/scripts/kagenti-operator/72-deploy-weather-tool.sh
-./.github/scripts/kagenti-operator/73-patch-weather-tool.sh
 ./.github/scripts/kagenti-operator/74-deploy-weather-agent.sh
 
 export AGENT_URL="https://\$(oc get route -n team1 weather-service -o jsonpath='{.spec.host}')"

@@ -80,7 +80,6 @@ uv run kagenti-installer
 # ✓ Installs Keycloak + PostgreSQL
 # ✓ Installs Addons (Prometheus, Kiali, Phoenix)
 # ✓ Installs UI
-# ✓ Installs ToolHive
 # ✓ Creates agent namespaces (team1, team2)
 ```
 
@@ -149,7 +148,6 @@ uv run kagenti-installer \
 - `agents` - Demo agents
 - `metrics_server` - Metrics server
 - `inspector` - MCP inspector
-- `toolhive` - ToolHive operator
 
 ## Deploy Weather Agents (Demo)
 

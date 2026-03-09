@@ -8,7 +8,7 @@ These tests validate end-to-end flows for building and deploying MCP tools
 using the Shipwright build system. They run against a real Kubernetes cluster.
 
 After a successful build, tools are deployed as standard Kubernetes Deployments
-+ Services (not MCPServer CRDs).
++ Services.
 """
 
 import json

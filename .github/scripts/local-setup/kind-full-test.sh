@@ -283,9 +283,6 @@ if [ "$RUN_AGENTS" = "true" ]; then
     log_step "Deploying weather-tool..."
     ./.github/scripts/kagenti-operator/72-deploy-weather-tool.sh
 
-    log_step "Patching weather-tool..."
-    ./.github/scripts/kagenti-operator/73-patch-weather-tool.sh
-
     log_step "Deploying weather-agent..."
     ./.github/scripts/kagenti-operator/74-deploy-weather-agent.sh
 else
