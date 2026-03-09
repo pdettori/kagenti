@@ -50,9 +50,22 @@ if [ -z "${KEYCLOAK_PASSWORD:-}" ]; then
     log_info "Keycloak password: ${KC_PASS:0:4}..."
 fi
 
-# Run Playwright tests (only our agent-chat tests for now, existing tests need auth updates)
+# Tag-based test filtering:
+#   PLAYWRIGHT_GREP       — only run tests matching this tag (e.g. "@extended")
+#   PLAYWRIGHT_GREP_INVERT — exclude tests matching this tag (e.g. "@extended")
+# Set these in the workflow env to control which tests run per environment.
+GREP_ARGS=()
+if [ -n "${PLAYWRIGHT_GREP:-}" ]; then
+    GREP_ARGS+=(--grep "$PLAYWRIGHT_GREP")
+    log_info "Playwright tag filter: --grep '$PLAYWRIGHT_GREP'"
+fi
+if [ -n "${PLAYWRIGHT_GREP_INVERT:-}" ]; then
+    GREP_ARGS+=(--grep-invert "$PLAYWRIGHT_GREP_INVERT")
+    log_info "Playwright tag filter: --grep-invert '$PLAYWRIGHT_GREP_INVERT'"
+fi
+
 log_info "Running Playwright E2E tests..."
-CI=true npx playwright test agent-chat --reporter=list,html 2>&1 || {
+CI=true npx playwright test --reporter=list,html "${GREP_ARGS[@]}" 2>&1 || {
     log_error "Playwright UI tests failed"
 
     if [ -d playwright-report ]; then

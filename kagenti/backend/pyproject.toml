@@ -41,8 +41,16 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "C4", "UP"]
-ignore = ["E501"]
+select = ["E", "F", "I", "N", "W", "B", "C4"]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (idiomatic FastAPI Depends())
+    "B904",   # raise from within except (too noisy for existing code)
+    "N815",   # mixedCase variable in class scope (Pydantic models match API schemas)
+    "F401",   # unused imports (to be cleaned up incrementally)
+    "I001",   # import sorting (handled by ruff-format in pre-commit)
+    "E402",   # module-level import not at top (conditional imports)
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

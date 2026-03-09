@@ -23,7 +23,7 @@ test.describe('Home Page', () => {
     await expect(nav.first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('should navigate to agent catalog', async ({ page }) => {
+  test('should navigate to agent catalog @extended', async ({ page }) => {
     await page.goto('/');
 
     // Find and click the Agent Catalog link
@@ -35,7 +35,7 @@ test.describe('Home Page', () => {
     }
   });
 
-  test('should navigate to tool catalog', async ({ page }) => {
+  test('should navigate to tool catalog @extended', async ({ page }) => {
     await page.goto('/');
 
     // Find and click the Tool Catalog link
@@ -60,7 +60,7 @@ test.describe('Navigation', () => {
     await expect(sidebar.first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('should have working breadcrumbs on detail pages', async ({ page }) => {
+  test('should have working breadcrumbs on detail pages @extended', async ({ page }) => {
     // Navigate to a detail page
     await page.goto('/agents');
 
