@@ -29,7 +29,7 @@ kagenti-tui --url http://kagenti-ui.localtest.me:8080
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--url` | `KAGENTI_URL` | `http://localhost:8080` | Backend URL |
+| `--url` | `KAGENTI_URL` | `http://kagenti-api.localtest.me:8080` | Backend URL |
 | `--token` | `KAGENTI_TOKEN` | | Auth token |
 | `--namespace` | `KAGENTI_NAMESPACE` | `team1` | Default namespace |
 | `--version` | | | Print version |

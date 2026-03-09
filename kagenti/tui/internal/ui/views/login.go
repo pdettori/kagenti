@@ -23,6 +23,8 @@ type LoginView struct {
 	verifyURL string
 	err       error
 
+	saveErr error // non-nil if config save failed after successful login
+
 	// Stored from auth config + device code for polling
 	keycloakURL  string
 	realm        string
@@ -135,7 +137,9 @@ func (v LoginView) Update(msg tea.Msg) (LoginView, tea.Cmd) {
 		cfg.KeycloakURL = v.keycloakURL
 		cfg.Realm = v.realm
 		cfg.ClientID = v.clientID
-		_ = cfg.Save()
+		if err := cfg.Save(); err != nil {
+			v.saveErr = err
+		}
 
 		v.state = "done"
 		return v, nil
@@ -198,7 +202,12 @@ func (v LoginView) View() string {
 
 	case "done":
 		b.WriteString(theme.SuccessStyle.Render("  Login successful!") + "\n")
-		b.WriteString(theme.MutedStyle.Render("  Token saved to ~/.config/kagenti/tui.yaml") + "\n\n")
+		if v.saveErr != nil {
+			b.WriteString(theme.WarningStyle.Render(fmt.Sprintf("  Warning: failed to save config: %v", v.saveErr)) + "\n")
+		} else {
+			b.WriteString(theme.MutedStyle.Render("  Token saved to ~/.config/kagenti/tui.yaml") + "\n")
+		}
+		b.WriteString("\n")
 		b.WriteString(theme.MutedStyle.Render("  Press Esc to return"))
 
 	case "error":
