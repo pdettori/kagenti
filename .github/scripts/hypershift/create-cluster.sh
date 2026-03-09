@@ -32,8 +32,12 @@
 #   # Custom instance type and replicas
 #   REPLICAS=3 INSTANCE_TYPE=m5.2xlarge ./.github/scripts/hypershift/create-cluster.sh
 #
-#   # Enable NodePool autoscaling (min 1, max 3 nodes)
-#   AUTOSCALE_MIN=1 AUTOSCALE_MAX=3 ./.github/scripts/hypershift/create-cluster.sh
+#   # NodePool autoscaling is enabled by default (min 2, max 5)
+#   # Override autoscaling limits
+#   AUTOSCALE_MIN=1 AUTOSCALE_MAX=10 ./.github/scripts/hypershift/create-cluster.sh
+#
+#   # Disable autoscaling (fixed replica count)
+#   AUTOSCALE_MIN="" AUTOSCALE_MAX="" ./.github/scripts/hypershift/create-cluster.sh
 #
 
 set -euo pipefail
@@ -105,11 +109,11 @@ REPLICAS="${REPLICAS:-2}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-m5.xlarge}"
 OCP_VERSION="${OCP_VERSION:-4.20.11}"
 
-# NodePool autoscaling (optional)
-# Set AUTOSCALE_MIN and AUTOSCALE_MAX to enable autoscaling
-# When set, the NodePool will be configured with cluster-autoscaler after creation
-AUTOSCALE_MIN="${AUTOSCALE_MIN:-}"
-AUTOSCALE_MAX="${AUTOSCALE_MAX:-}"
+# NodePool autoscaling (enabled by default)
+# Override AUTOSCALE_MIN and AUTOSCALE_MAX to adjust limits, or set to empty to disable
+# When enabled, the NodePool will be configured with cluster-autoscaler after creation
+AUTOSCALE_MIN="${AUTOSCALE_MIN:-2}"
+AUTOSCALE_MAX="${AUTOSCALE_MAX:-5}"
 
 # Validate autoscaling parameters if set
 if [[ -n "$AUTOSCALE_MIN" ]] && ! [[ "$AUTOSCALE_MIN" =~ ^[0-9]+$ ]]; then
