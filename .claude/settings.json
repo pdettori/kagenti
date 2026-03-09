@@ -56,6 +56,7 @@
       "Bash(gh issue view:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
+      "Bash(gh repo list:*)",
       "Bash(gh repo view:*)",
       "Bash(gh search:*)",
 
@@ -215,6 +216,7 @@
     "github": { "path": ".claude/skills/github/SKILL.md" },
     "github:issues": { "path": ".claude/skills/github:issues/SKILL.md" },
     "github:last-week": { "path": ".claude/skills/github:last-week/SKILL.md" },
+    "github:last-week-org": { "path": ".claude/skills/github:last-week-org/SKILL.md" },
     "github:my-status": { "path": ".claude/skills/github:my-status/SKILL.md" },
     "github:pr-review": { "path": ".claude/skills/github:pr-review/SKILL.md" },
     "github:prs": { "path": ".claude/skills/github:prs/SKILL.md" },

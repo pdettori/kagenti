@@ -7,7 +7,7 @@ set -euo pipefail
 
 DAYS="${1:-7}"
 REPO="${2:-kagenti/kagenti}"
-OUTDIR="/tmp/kagenti/github/data"
+OUTDIR="${3:-/tmp/kagenti/github/data}"
 mkdir -p "$OUTDIR"
 
 SINCE=$(date -v-${DAYS}d -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -d "${DAYS} days ago" -u +"%Y-%m-%dT%H:%M:%SZ")
