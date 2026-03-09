@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 # Stage 1: Build the React application
-FROM node:20-alpine@sha256:09e2b3d9726018aecf269bd35325f46bf75046a643a66d28360ec71132750ec8 AS builder
+FROM node:25-alpine@sha256:636c5bc8fa6a7a542bc99f25367777b0b3dd0db7d1ca3959d14137a1ac80bde2 AS builder
 
 WORKDIR /app
 
