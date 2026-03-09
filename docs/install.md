@@ -297,6 +297,70 @@ kubectl get secret keycloak-initial-admin -n keycloak \
 
 ---
 
+## Keycloak Admin Credentials for Agent Namespaces
+
+The [AuthBridge](https://github.com/kagenti/kagenti-extensions/tree/main/AuthBridge) client-registration sidecar needs Keycloak admin credentials to automatically register agents as OAuth2 clients. These credentials are stored in a Kubernetes Secret called `keycloak-admin-secret` in each agent namespace.
+
+### Automatic Provisioning
+
+The installer automatically creates `keycloak-admin-secret` in every agent namespace (e.g., `team1`, `team2`). By default it uses `admin`/`admin`, matching the default Keycloak admin account.
+
+### Customizing Credentials
+
+If your Keycloak admin credentials differ from the defaults, override them using a values file (preferred over `--set` to avoid exposing passwords in shell history and process listings):
+
+**Ansible installer** (via `.secret_values.yaml`):
+
+Add to your `deployments/envs/.secret_values.yaml`:
+
+```yaml
+charts:
+  kagenti:
+    values:
+      keycloak:
+        adminUsername: myadmin
+        adminPassword: mypassword
+```
+
+**Helm install** (via values file):
+
+```bash
+helm upgrade --install kagenti ./charts/kagenti/ \
+  -n kagenti-system --create-namespace \
+  -f my-secret-values.yaml
+```
+
+### Using an Existing Secret
+
+If you already manage Keycloak admin credentials in a Secret (e.g., via an external secrets operator), you can skip the automatic secret creation entirely by setting `keycloak.adminExistingSecret` to the name of that secret. The referenced secret must contain `KEYCLOAK_ADMIN_USERNAME` and `KEYCLOAK_ADMIN_PASSWORD` keys:
+
+```bash
+helm upgrade --install kagenti ./charts/kagenti/ \
+  -n kagenti-system --create-namespace \
+  --set keycloak.adminExistingSecret=my-keycloak-admin-secret
+```
+
+### Manual Creation
+
+If you need to create or update the secret manually in an agent namespace:
+
+```bash
+kubectl create secret generic keycloak-admin-secret -n <agent-namespace> \
+  --from-literal=KEYCLOAK_ADMIN_USERNAME=admin \
+  --from-literal=KEYCLOAK_ADMIN_PASSWORD=admin \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+### Verifying
+
+```bash
+kubectl get secret keycloak-admin-secret -n team1
+```
+
+> **Security note:** For production deployments, use a dedicated Keycloak service account with limited permissions instead of the admin account. See the [Identity Guide](./identity-guide.md) for details.
+
+---
+
 ## Verifying the Installation
 
 ### Identity Services

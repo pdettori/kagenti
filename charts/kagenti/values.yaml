@@ -137,6 +137,14 @@ keycloak:
   adminSecretName: keycloak-initial-admin
   adminUsernameKey: username
   adminPasswordKey: password
+  # Keycloak admin credentials for agent namespaces (keycloak-admin-secret).
+  # Used by the client-registration sidecar to register agents as OAuth clients.
+  # For production, override via .secret_values.yaml or use an existing secret.
+  adminUsername: admin
+  adminPassword: admin
+  # Set to an existing Secret name to skip creating keycloak-admin-secret.
+  # The referenced secret must have KEYCLOAK_ADMIN_USERNAME and KEYCLOAK_ADMIN_PASSWORD keys.
+  # adminExistingSecret: ""
   url: http://keycloak-service.keycloak:8080
   publicUrl: http://keycloak.localtest.me:8080
   realm: kagenti
