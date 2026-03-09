@@ -131,7 +131,7 @@
         # Pull sequentially for Podman to avoid SSH connection issues
         for img in {{ preload_images | join(' ') }}; do
           echo "Pulling $img..."
-          {{ container_engine | default('docker') }} pull "$img" 2>&1 | { grep -E "^(Status:|Error|Trying to pull|Getting image|Copying|Writing manifest)" || true; }
+          {{ container_engine | default('docker') }} pull "$img" 2>&1 | { grep -E "^(Status:|Error|Trying to pull|Getting image|Copying|Writing manifest)" ; }
           if [ $? -ne 0 ]; then
             FAIL=1
           fi
