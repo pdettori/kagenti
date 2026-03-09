@@ -83,7 +83,7 @@ spec:
             secretKeyRef:
               name: otel-db-secret
               key: password
-        image: quay.io/fedora/postgresql-15
+        image: quay.io/sclorg/postgresql-16-c9s:latest
         imagePullPolicy: IfNotPresent
         name: postgres
         ports:
