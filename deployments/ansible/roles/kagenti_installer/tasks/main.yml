@@ -1526,7 +1526,7 @@
           | combine((secret_values.get('global', {}) | default({})), recursive=True)
           | combine({'openshift': enable_openshift}, recursive=True) }}
   register: mcp_gateway_result
-  retries: 10
+  retries: 3
   delay: 15
   until: mcp_gateway_result is not failed
   when: charts.mcpGateway.enabled | default(false)
