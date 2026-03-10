@@ -21,10 +21,10 @@
     FAILED=0
     for img in {{ preload_images | join(' ') }}; do
       tmp=$(mktemp /tmp/image.XXXXXX)
-      docker save "$img" -o "$tmp" && \
-      docker cp "$tmp" {{ kind_cluster_name }}-control-plane:/"$(basename "$tmp")" && \
-      docker exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")"
-      docker exec {{ kind_cluster_name }}-control-plane rm -f "/$(basename "$tmp")" 2>/dev/null
+      {{ container_engine | default('docker') }} save "$img" -o "$tmp" && \
+      {{ container_engine | default('docker') }} cp "$tmp" {{ kind_cluster_name }}-control-plane:/"$(basename "$tmp")" && \
+      {{ container_engine | default('docker') }} exec {{ kind_cluster_name }}-control-plane ctr --namespace=k8s.io images import "/$(basename "$tmp")"
+      {{ container_engine | default('docker') }} exec {{ kind_cluster_name }}-control-plane rm -f "/$(basename "$tmp")" 2>/dev/null
       rc=$?
       rm -f "$tmp"
       if [ $rc -ne 0 ]; then
