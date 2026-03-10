@@ -48,6 +48,10 @@ updates:
       # Block major version bumps to prevent partial upgrades.
       - dependency-name: "@patternfly/*"
         update-types: [version-update:semver-major]
+      # eslint-plugin-react-refresh 0.5.x requires ESLint 9+.
+      # Block until ESLint 8→9 migration is done (see #905).
+      - dependency-name: "eslint-plugin-react-refresh"
+        versions: [">=0.5.0"]
 
   # Go (TUI) — Go module dependencies
   - package-ecosystem: gomod
