@@ -8,23 +8,23 @@ Detailed overview of the identity concepts are covered in the [Kagenti Identity 
 
 Check the details for running various demos:
 
-- **AuthBridge demo - Identity and the new webhook** - [Simple demo showing AuthBridge functionality](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demo-webhook.md) with the mutating webhook controller
+- **AuthBridge Demos (with zero-trust security)** - [All AuthBridge demos](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/README.md) in kagenti-extensions, including:
+  - [Weather Agent](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/weather-agent/demo-ui.md) — Getting-started demo with inbound JWT validation
+  - [GitHub Issue Agent](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/github-issue/demo.md) — Full demo with token exchange and scope-based access control ([demo recording](https://youtu.be/5SpTwERN2jU))
 - **Interactive online demo at KubeCon NA 2025**: [Tutorial: Build-a-Bot Workshop: Enabling Trusted Agents With SPIRE + MCP](https://red.ht/3WL5Loc)
-- **Simplest Demo** - [Weather Service](./demo-weather-agent.md): Deploy your first agent and tool
 - **Identity & Auth Demo** - [Slack Authentication](./demo-slack-research-agent.md): Deploy an agent and MCP Server tool to talk to the Slack API
-- **Github Issue Demo** - [Github Issue Agent](./demo-github-issue.md): Run an agent that can query Github Issues using Github's remote MCP Server ([demo recording](https://youtu.be/5SpTwERN2jU))
 - **Generic Agent Demo** - [Generic Agent](./demo-generic-agent.md): Deploy a generic agent and two MCP Server tools
 - **File Organizer Agent Demo** - [File Organizer Agent](./demo-file-organizer-agent.md): Deploy an agent that can organize files in a cloud storage bucket using a custom MCP Server tool
-- **Multimodal Demo** - [Image Agent](./demo-image-agent.md): Deploy an agent and MCP Server tool to return randomly generated images of user-specified sizes. 
+- **Multimodal Demo** - [Image Agent](./demo-image-agent.md): Deploy an agent and MCP Server tool to return randomly generated images of user-specified sizes.
 
 
 ## Choose Your Demo Based on Your Role
 
 Different demos showcase capabilities relevant to different personas:
 
-- **Agent Developers** → Start with [Weather Service](./demo-weather-agent.md) for framework basics
+- **Agent Developers** → Start with the [Weather Agent with AuthBridge](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/weather-agent/demo-ui.md) for framework basics with zero-trust security
 - **Tool Developers** → Try [Slack Authentication](./demo-slack-research-agent.md) for MCP integration
-- **Security Specialists** → Focus on identity features in [Slack Authentication](./demo-slack-research-agent.md)
+- **Security Specialists** → Focus on the [GitHub Issue Agent with AuthBridge](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/github-issue/demo.md) for token exchange and scope-based access control
 - **Platform Operators** → All demos showcase operational aspects
 
 **👥 [Find Your Persona](../../PERSONAS_AND_ROLES.md#overview)** to understand which demo best matches your role.
