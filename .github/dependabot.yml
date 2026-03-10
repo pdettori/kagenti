@@ -56,6 +56,14 @@ updates:
       # Block until ESLint 8→9 migration is done (see #905).
       - dependency-name: "@typescript-eslint/parser"
         update-types: [version-update:semver-major]
+      - dependency-name: "@typescript-eslint/eslint-plugin"
+        update-types: [version-update:semver-major]
+      # ESLint 9+/10+ requires flat config and all plugins upgraded together.
+      # Block until ESLint 8→9 migration is done (see #905).
+      - dependency-name: "eslint"
+        update-types: [version-update:semver-major]
+      - dependency-name: "eslint-plugin-react-hooks"
+        update-types: [version-update:semver-major]
 
   # Go (TUI) — Go module dependencies
   - package-ecosystem: gomod
