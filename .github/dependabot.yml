@@ -43,6 +43,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # PatternFly packages must be upgraded together (PF5→PF6).
+      # Block major version bumps to prevent partial upgrades.
+      - dependency-name: "@patternfly/*"
+        update-types: [version-update:semver-major]
 
   # Go (TUI) — Go module dependencies
   - package-ecosystem: gomod
