@@ -31,7 +31,7 @@ Kagenti is designed to support a broad range of AI‑agent deployment patterns, 
 
 See the full list and definitions in the **[Kagenti Use Cases](./docs/use-case-types.md)** document.
 
-## Architecturegit push --set-upstream origin
+## Architecture
 
 The goal of Kagenti is to provide a pluggable agentic platform blueprint. Key functionalities are currently organized into four key pillars:
 1. Lifecycle Orchestration
