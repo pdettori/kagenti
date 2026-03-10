@@ -32,8 +32,12 @@
 #   # Custom instance type and replicas
 #   REPLICAS=3 INSTANCE_TYPE=m5.2xlarge ./.github/scripts/hypershift/create-cluster.sh
 #
-#   # Enable NodePool autoscaling (min 1, max 3 nodes)
-#   AUTOSCALE_MIN=1 AUTOSCALE_MAX=3 ./.github/scripts/hypershift/create-cluster.sh
+#   # NodePool autoscaling is enabled by default (min 2, max 5)
+#   # Override autoscaling limits
+#   AUTOSCALE_MIN=1 AUTOSCALE_MAX=10 ./.github/scripts/hypershift/create-cluster.sh
+#
+#   # Disable autoscaling (fixed replica count)
+#   AUTOSCALE_MIN="" AUTOSCALE_MAX="" ./.github/scripts/hypershift/create-cluster.sh
 #
 
 set -euo pipefail
@@ -105,11 +109,11 @@ REPLICAS="${REPLICAS:-2}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-m5.xlarge}"
 OCP_VERSION="${OCP_VERSION:-4.20.11}"
 
-# NodePool autoscaling (optional)
-# Set AUTOSCALE_MIN and AUTOSCALE_MAX to enable autoscaling
-# When set, the NodePool will be configured with cluster-autoscaler after creation
-AUTOSCALE_MIN="${AUTOSCALE_MIN:-}"
-AUTOSCALE_MAX="${AUTOSCALE_MAX:-}"
+# NodePool autoscaling (enabled by default)
+# Override AUTOSCALE_MIN and AUTOSCALE_MAX to adjust limits, or set to empty to disable
+# When enabled, the NodePool will be configured with cluster-autoscaler after creation
+AUTOSCALE_MIN="${AUTOSCALE_MIN:-2}"
+AUTOSCALE_MAX="${AUTOSCALE_MAX:-5}"
 
 # Validate autoscaling parameters if set
 if [[ -n "$AUTOSCALE_MIN" ]] && ! [[ "$AUTOSCALE_MIN" =~ ^[0-9]+$ ]]; then
@@ -581,6 +585,42 @@ oc get nodes
 oc get clusterversion
 
 log_success "Cluster $CLUSTER_NAME created and ready"
+
+# ============================================================================
+# 8. Configure NodePool Autoscaling (if requested)
+# ============================================================================
+
+if [[ -n "$AUTOSCALE_MIN" ]] && [[ -n "$AUTOSCALE_MAX" ]]; then
+    log_info "Configuring NodePool autoscaling (min=$AUTOSCALE_MIN, max=$AUTOSCALE_MAX)..."
+
+    # Patch the NodePool to enable autoscaling
+    # Note: replicas must be set to null when autoScaling is enabled (mutually exclusive)
+    KUBECONFIG="$MGMT_KUBECONFIG" oc patch nodepool/"$NP_NAME" -n clusters --type=merge -p '{
+      "spec": {
+        "replicas": null,
+        "autoScaling": {
+          "min": '"$AUTOSCALE_MIN"',
+          "max": '"$AUTOSCALE_MAX"'
+        }
+      }
+    }' || {
+        log_warn "Failed to configure autoscaling - NodePool may not support it yet"
+        log_warn "You can configure it manually later using:"
+        echo "  KUBECONFIG=$MGMT_KUBECONFIG oc patch nodepool/$NP_NAME -n clusters --type=merge -p '{\"spec\":{\"replicas\":null,\"autoScaling\":{\"min\":$AUTOSCALE_MIN,\"max\":$AUTOSCALE_MAX}}}'"
+    }
+
+    # Verify autoscaling was configured
+    AUTOSCALE_STATUS=$(KUBECONFIG="$MGMT_KUBECONFIG" oc get nodepool -n clusters "$NP_NAME" \
+        -o jsonpath='{.spec.autoScaling}' 2>/dev/null || echo "{}")
+
+    if [[ "$AUTOSCALE_STATUS" != "{}" ]] && [[ "$AUTOSCALE_STATUS" != "" ]]; then
+        log_success "NodePool autoscaling configured successfully"
+        echo "  Min nodes: $AUTOSCALE_MIN"
+        echo "  Max nodes: $AUTOSCALE_MAX"
+    else
+        log_warn "Autoscaling may not have been applied - verify manually"
+    fi
+fi
 
 # In CI mode, output for subsequent steps
 if [ "$CI_MODE" = "true" ]; then
