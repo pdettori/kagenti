@@ -13,10 +13,10 @@ FORBIDDEN_PATTERN='[<>"\\|?*]'
 
 bad_files=()
 while IFS= read -r -d '' file; do
-    basename=$(basename "$file")
-    # Colons are intentional in skill folder names — skip them
-    # Only flag other Windows-forbidden characters
-    cleaned=${basename//:/}
+    # Check the full path so directory components are validated too.
+    # Strip colons first — they are intentional in skill folder names
+    # (e.g., .claude/skills/auth:keycloak-confidential-client/).
+    cleaned=${file//:/}
     if [[ "$cleaned" =~ $FORBIDDEN_PATTERN ]]; then
         bad_files+=("$file")
     fi
