@@ -87,7 +87,6 @@ oc login https://api.your-cluster.example.com:6443 -u kubeadmin -p <password>
 # Install Kagenti platform
 ./.github/scripts/kagenti-operator/30-run-installer.sh --env ocp
 ./.github/scripts/kagenti-operator/41-wait-crds.sh
-./.github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 
 # Deploy agents and tools, run E2E tests
 ./.github/scripts/kagenti-operator/71-build-weather-tool.sh
@@ -498,7 +497,6 @@ source .env.kagenti-hypershift-custom && ./.github/scripts/local-setup/show-serv
 |--------|---------|
 | `30-run-installer.sh [--env <dev\|ocp>]` | Run Ansible installer (default: dev) |
 | `41-wait-crds.sh` | Wait for Kagenti CRDs |
-| `42-apply-pipeline-template.sh` | Apply Tekton pipeline template |
 | `71-build-weather-tool.sh` | Build weather-tool image via Shipwright |
 | `72-deploy-weather-tool.sh` | Deploy weather-tool Deployment + Service |
 | `74-deploy-weather-agent.sh` | Deploy weather-agent Component |

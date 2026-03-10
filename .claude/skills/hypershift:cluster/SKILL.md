@@ -102,7 +102,6 @@ oc get clusterversion
 # 3. Deploy Kagenti platform
 ./.github/scripts/kagenti-operator/30-run-installer.sh --env ocp
 ./.github/scripts/kagenti-operator/41-wait-crds.sh
-./.github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 
 # 4. Deploy demo agents
 ./.github/scripts/kagenti-operator/71-build-weather-tool.sh

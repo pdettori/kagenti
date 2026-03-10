@@ -69,7 +69,6 @@ bash .github/scripts/kagenti-operator/41-wait-crds.sh
 echo ""
 
 echo -e "${BLUE}[8/10] Applying pipeline-template-dev ConfigMap...${NC}"
-bash .github/scripts/kagenti-operator/42-apply-pipeline-template.sh
 echo ""
 
 echo -e "${BLUE}[9/10] Building and deploying weather-tool...${NC}"
