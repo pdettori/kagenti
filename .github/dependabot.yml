@@ -52,6 +52,10 @@ updates:
       # Block until ESLint 8→9 migration is done (see #905).
       - dependency-name: "eslint-plugin-react-refresh"
         versions: [">=0.5.0"]
+      # typescript-eslint parser and plugin must be upgraded together.
+      # Block until ESLint 8→9 migration is done (see #905).
+      - dependency-name: "@typescript-eslint/parser"
+        update-types: [version-update:semver-major]
 
   # Go (TUI) — Go module dependencies
   - package-ecosystem: gomod
