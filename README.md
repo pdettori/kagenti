@@ -26,7 +26,12 @@ Despite the extensive variety of frameworks available for developing agent-based
 
 Kagenti addresses these challenges by enhancing existing agent frameworks with production-ready, framework-neutral infrastructure.
 
-## Architecture
+## Supported AI Use‑Case Types
+Kagenti is designed to support a broad range of AI‑agent deployment patterns, including knowledge services, synchronous and asynchronous user‑authorized assistants, continuous monitoring agents, and event‑driven workflows.
+
+See the full list and definitions in the **[Kagenti Use Cases](./docs/use-case-types.md)** document.
+
+## Architecturegit push --set-upstream origin
 
 The goal of Kagenti is to provide a pluggable agentic platform blueprint. Key functionalities are currently organized into four key pillars:
 1. Lifecycle Orchestration
