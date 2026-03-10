@@ -13,6 +13,7 @@ Usage:
 
 import os
 import pathlib
+import logging
 
 import pytest
 import httpx
@@ -30,6 +31,8 @@ from a2a.types import (
 from kagenti.tests.e2e.conftest import (
     _fetch_openshift_ingress_ca,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _is_openshift_from_config():
@@ -194,12 +197,16 @@ class TestWeatherAgentConversation:
 
         try:
             async for result in client.send_message(message):
+                logger.debug("Received result type: %s", type(result))
                 if isinstance(result, tuple):
                     task, event = result
                     last_task = task
-                    events_received.append(
-                        type(event).__name__ if event else "Task(final)"
-                    )
+                    event_name = type(event).__name__ if event else "Task(final)"
+                    events_received.append(event_name)
+                    logger.debug("Event: %s", event_name)
+                    logger.debug("Task: %s", _task_diagnostic(task))
+                    if event:
+                        logger.debug("Event details: %s", event)
 
                     # Check for failed task
                     status = getattr(task, "status", None)
@@ -216,19 +223,35 @@ class TestWeatherAgentConversation:
                     if isinstance(event, TaskArtifactUpdateEvent):
                         tool_invocation_detected = True
                         if hasattr(event, "artifact") and event.artifact:
-                            full_response += _extract_text_from_parts(
-                                event.artifact.parts
+                            extracted = _extract_text_from_parts(event.artifact.parts)
+                            logger.debug(
+                                "Extracted from TaskArtifactUpdateEvent: %s",
+                                extracted[:200] if extracted else "",
                             )
+                            full_response += extracted
 
                     # Extract from final task (event=None means complete)
                     if event is None and task and task.artifacts:
-                        for artifact in task.artifacts:
-                            full_response += _extract_text_from_parts(artifact.parts)
+                        logger.debug("Final task has %d artifacts", len(task.artifacts))
+                        for i, artifact in enumerate(task.artifacts):
+                            extracted = _extract_text_from_parts(artifact.parts)
+                            logger.debug(
+                                "Extracted from artifact[%d]: %s",
+                                i,
+                                extracted[:200] if extracted else "",
+                            )
+                            full_response += extracted
                         tool_invocation_detected = True
 
                 elif isinstance(result, A2AMessage):
                     events_received.append("Message")
-                    full_response += _extract_text_from_parts(result.parts)
+                    extracted = _extract_text_from_parts(result.parts)
+                    logger.debug(
+                        "Extracted from A2AMessage: %s",
+                        extracted[:200] if extracted else "",
+                    )
+                    logger.debug("Message parts: %s", result.parts)
+                    full_response += extracted
 
         except Exception as e:
             pytest.fail(f"Error during A2A conversation: {e}")
@@ -253,9 +276,11 @@ class TestWeatherAgentConversation:
         )
         assert len(full_response) > 10, f"Agent response too short: {full_response}"
 
-        print(f"\n  Agent responded via A2A (ClientFactory)")
-        print(f"  Events: {events_received}")
-        print(f"  Response: {full_response[:200]}...")
+        logger.debug(
+            "Agent responded via A2A (ClientFactory); events=%s; response=%s...",
+            events_received,
+            full_response[:200],
+        )
 
         # Weather-related keywords that should appear if tool was called successfully
         # The tool returns actual weather data (temperature, conditions, location)
@@ -283,10 +308,11 @@ class TestWeatherAgentConversation:
             f"Response: {full_response}"
         )
 
-        print("\n✓ Agent responded successfully via A2A protocol")
-        print("✓ Weather MCP tool was invoked")
-        print(f"  Query: {user_message}")
-        print(f"  Response: {full_response[:200]}...")
+        logger.debug(
+            "Agent responded via A2A; weather MCP invoked; query=%s; response=%s...",
+            user_message,
+            full_response[:200],
+        )
 
     @pytest.mark.openshift_only
     @pytest.mark.asyncio
@@ -306,8 +332,7 @@ class TestWeatherAgentConversation:
         ssl_verify = _get_ssl_context()
 
         context_id = test_session_id
-        print(f"\n=== Multi-turn Conversation Test ===")
-        print(f"Session/Context ID: {context_id}")
+        logger.debug("Multi-turn conversation test; session/context ID: %s", context_id)
 
         messages = [
             "What is the weather in Paris?",
@@ -329,7 +354,7 @@ class TestWeatherAgentConversation:
             pytest.fail(f"Agent not reachable at {agent_url}: {e}")
 
         for turn, user_message in enumerate(messages, 1):
-            print(f"\n--- Turn {turn}: {user_message} ---")
+            logger.debug("Turn %d: %s", turn, user_message)
 
             message = A2AMessage(
                 role="user",
@@ -343,12 +368,16 @@ class TestWeatherAgentConversation:
             events_received = []
             try:
                 async for result in client.send_message(message):
+                    logger.debug(
+                        "Turn %d - Received result type: %s", turn, type(result)
+                    )
                     if isinstance(result, tuple):
                         task, event = result
                         last_task = task
-                        events_received.append(
-                            type(event).__name__ if event else "Task(final)"
-                        )
+                        event_name = type(event).__name__ if event else "Task(final)"
+                        events_received.append(event_name)
+                        logger.debug("Turn %d - Event: %s", turn, event_name)
+                        logger.debug("Turn %d - Task: %s", turn, _task_diagnostic(task))
 
                         # Check for failed task
                         status = getattr(task, "status", None)
@@ -370,16 +399,38 @@ class TestWeatherAgentConversation:
 
                         if isinstance(event, TaskArtifactUpdateEvent):
                             if event.artifact:
-                                full_response += _extract_text_from_parts(
+                                extracted = _extract_text_from_parts(
                                     event.artifact.parts
                                 )
-                        if event is None and task and task.artifacts:
-                            for artifact in task.artifacts:
-                                full_response += _extract_text_from_parts(
-                                    artifact.parts
+                                logger.debug(
+                                    "Turn %d - TaskArtifactUpdateEvent: %s",
+                                    turn,
+                                    extracted[:200] if extracted else "",
                                 )
+                                full_response += extracted
+                        if event is None and task and task.artifacts:
+                            logger.debug(
+                                "Turn %d - Final task has %d artifacts",
+                                turn,
+                                len(task.artifacts),
+                            )
+                            for i, artifact in enumerate(task.artifacts):
+                                extracted = _extract_text_from_parts(artifact.parts)
+                                logger.debug(
+                                    "Turn %d - Extracted from artifact[%d]: %s",
+                                    turn,
+                                    i,
+                                    extracted[:200] if extracted else "",
+                                )
+                                full_response += extracted
                     elif isinstance(result, A2AMessage):
-                        full_response += _extract_text_from_parts(result.parts)
+                        extracted = _extract_text_from_parts(result.parts)
+                        logger.debug(
+                            "Turn %d - Extracted from A2AMessage: %s",
+                            turn,
+                            extracted[:200] if extracted else "",
+                        )
+                        full_response += extracted
             except Exception as e:
                 pytest.fail(f"Turn {turn} failed: {e}")
 
@@ -388,10 +439,13 @@ class TestWeatherAgentConversation:
                 f"  Events received: {events_received}\n"
                 f"  Task details:\n    {_task_diagnostic(last_task)}"
             )
-            print(f"  Response: {full_response[:100]}...")
+            logger.debug("Turn %d response: %s...", turn, full_response[:100])
 
-        print(f"\n  Multi-turn conversation completed ({len(messages)} turns)")
-        print(f"  Context ID: {context_id}")
+        logger.debug(
+            "Multi-turn conversation completed (%d turns); context ID: %s",
+            len(messages),
+            context_id,
+        )
 
 
 if __name__ == "__main__":
