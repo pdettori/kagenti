@@ -16,18 +16,18 @@
 #
 # OPTIONS:
 #   Include flags (whitelist mode - only run specified phases):
-#     --include-create   Include cluster creation phase
-#     --include-install  Include Kagenti platform installation phase
-#     --include-agents   Include building/deploying test agents phase
-#     --include-test     Include E2E test phase
-#     --include-destroy  Include cluster destruction phase
+#     --include-cluster-create     Include cluster creation phase
+#     --include-kagenti-install    Include Kagenti platform installation phase
+#     --include-agents             Include building/deploying test agents phase
+#     --include-test               Include E2E test phase
+#     --include-cluster-destroy    Include cluster destruction phase
 #
 #   Skip flags (blacklist mode - run all except specified):
-#     --skip-create      Skip cluster creation (reuse existing cluster)
-#     --skip-install     Skip Kagenti platform installation
-#     --skip-agents      Skip building/deploying test agents
-#     --skip-test        Skip running E2E tests
-#     --skip-destroy     Skip cluster destruction (keep cluster after tests)
+#     --skip-cluster-create        Skip cluster creation (reuse existing cluster)
+#     --skip-kagenti-install       Skip Kagenti platform installation
+#     --skip-agents                Skip building/deploying test agents
+#     --skip-test                  Skip running E2E tests
+#     --skip-cluster-destroy       Skip cluster destruction (keep cluster after tests)
 #
 #   Other options:
 #     --clean-kagenti    Uninstall Kagenti before installing (fresh install)
@@ -42,22 +42,22 @@
 #   ./.github/scripts/local-setup/hypershift-full-test.sh
 #
 #   # First dev run - everything except destroy (blacklist mode)
-#   ./.github/scripts/local-setup/hypershift-full-test.sh --skip-destroy
+#   ./.github/scripts/local-setup/hypershift-full-test.sh --skip-cluster-destroy
 #
 #   # CI deploy step - only install + agents (whitelist mode)
-#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-install --include-agents
+#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-kagenti-install --include-agents
 #
 #   # CI test step - only tests (whitelist mode)
 #   ./.github/scripts/local-setup/hypershift-full-test.sh --include-test
 #
 #   # Iterate on existing cluster (blacklist mode)
-#   ./.github/scripts/local-setup/hypershift-full-test.sh --skip-create --skip-destroy
+#   ./.github/scripts/local-setup/hypershift-full-test.sh --skip-cluster-create --skip-cluster-destroy
 #
 #   # Fresh kagenti on existing cluster (whitelist mode)
-#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-install --include-agents --include-test --clean-kagenti
+#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-kagenti-install --include-agents --include-test --clean-kagenti
 #
 #   # Final cleanup - only destroy (whitelist mode)
-#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-destroy
+#   ./.github/scripts/local-setup/hypershift-full-test.sh --include-cluster-destroy
 #
 
 set -euo pipefail
