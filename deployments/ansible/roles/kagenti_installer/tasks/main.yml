@@ -1017,12 +1017,12 @@
     - skip_cert_manager_operator | default(false)
     - cert_manager_existing_check.rc == 0
 
-# TODO: Move TektonConfig patching to kagenti-operator
-# The kagenti-operator manages Shipwright builds, so it has the
-# context to know what Tekton settings are needed. The operator should:
-# 1. Check if running on OpenShift (detect TektonConfig CRD)
-# 2. Patch TektonConfig to set pipeline.set-security-context: true
-# 3. This ensures proper fsGroup handling for PVC permissions in build pods
+# TODO: Move TektonConfig patching to kagenti-operator.
+# Shipwright (managed by OpenShift Builds operator) depends on TektonConfig
+# being correctly configured. The operator should reconcile TektonConfig:
+# 1. Watch for TektonConfig creation (detect TektonConfig CRD)
+# 2. Patch SCC defaults and set pipeline.set-security-context: true
+# 3. Re-patch after upgrades if the config is reset
 # For now, we patch it in the installer as a workaround.
 #
 # IMPORTANT: On HyperShift clusters, TektonConfig may be created without
@@ -1655,73 +1655,6 @@
   - (charts['kagenti'] | default({})).get('enabled', false) | bool
   - (charts['kagenti'] | default({})).get('chart') is defined
 
-# TODO: Move internal-registry-secret creation to kagenti-operator or kagenti helm chart.
-# Shipwright builds (triggered by UI/backend) push images to the OpenShift internal
-# registry. The buildah step needs a dockerconfigjson-format secret with registry
-# credentials. OpenShift auto-creates builder-dockercfg secrets but in dockercfg
-# format, which buildah cannot use directly.
-# For now, we create the internal-registry-secret in each agent namespace as a workaround.
-- name: Create internal-registry-secret in agent namespaces for OpenShift
-  block:
-    - name: Create internal-registry-secret from builder SA token
-      shell: |
-        for ns in {{ (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | join(' ') }}; do
-          # Get builder dockercfg and convert to dockerconfigjson format
-          DOCKERCFG=$(kubectl get secret -n $ns -o name | grep builder-dockercfg | head -1 | xargs -I {} kubectl get {} -n $ns -o jsonpath='{.data.\.dockercfg}' | base64 -d)
-          if [ -n "$DOCKERCFG" ]; then
-            DOCKERCONFIGJSON=$(echo "{\"auths\": $DOCKERCFG}" | base64 | tr -d '\n')
-            kubectl apply -f - <<EOF
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: internal-registry-secret
-          namespace: $ns
-        type: kubernetes.io/dockerconfigjson
-        data:
-          .dockerconfigjson: $DOCKERCONFIGJSON
-        EOF
-            echo "Created internal-registry-secret in $ns"
-          else
-            echo "No builder-dockercfg found in $ns, skipping"
-          fi
-        done
-      args:
-        executable: /bin/bash
-  when:
-    - enable_openshift | default(false)
-    - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
-
-# TODO: Move spiffe-helper-config ConfigMap creation to kagenti-operator.
-# Agent/tool workloads with SPIFFE identity injection expect this ConfigMap for the spiffe-helper sidecar.
-# For now, we create it in each agent namespace.
-- name: Create spiffe-helper-config ConfigMap in agent namespaces
-  block:
-    - name: Apply spiffe-helper-config ConfigMap
-      shell: |
-        for ns in {{ (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | join(' ') }}; do
-          kubectl apply -n $ns -f - <<EOF
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: spiffe-helper-config
-        data:
-          helper.conf: |
-            agent_address = "/spiffe-workload-api/spire-agent.sock"
-            cmd = ""
-            cmd_args = ""
-            svid_file_name = "/opt/svid.pem"
-            svid_key_file_name = "/opt/svid_key.pem"
-            svid_bundle_file_name = "/opt/svid_bundle.pem"
-            jwt_svids = [{jwt_audience="kagenti", jwt_svid_file_name="/opt/jwt_svid.token"}]
-            jwt_svid_file_mode = 0644
-            include_federated_domains = true
-        EOF
-          echo "Created spiffe-helper-config in $ns"
-        done
-      args:
-        executable: /bin/bash
-  when:
-    - (((charts['kagenti'] | default({})).get('values')) | default({})).get('agentNamespaces', []) | length > 0
 
 # TODO: Move OAuth secret job ordering to kagenti helm chart.
 # The kagenti-ui-oauth-secret-job needs the OpenShift Route to exist before it runs,

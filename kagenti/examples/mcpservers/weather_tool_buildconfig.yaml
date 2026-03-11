@@ -26,10 +26,8 @@ spec:
   source:
     type: Git
     git:
-      # TODO: Revert to kagenti/agent-examples after Dockerfile fix merged
-      # TODO: Revert to kagenti/agent-examples after PR#114 merged
-      uri: https://github.com/Ladas/agent-examples
-      ref: genai-autoinstrumentation
+      uri: https://github.com/kagenti/agent-examples
+      ref: main
     contextDir: mcp/weather_tool
   strategy:
     type: Docker

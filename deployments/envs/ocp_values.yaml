@@ -102,7 +102,6 @@ charts:
         useServiceAccountCA: true
       keycloak:
         url: http://keycloak-service.keycloak:8080
-      # List of agent namespaces for Ansible installer to create internal-registry-secret
       agentNamespaces:
         - team1
         - team2
