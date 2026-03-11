@@ -174,8 +174,23 @@ These are fine without redirection (produce <5 lines):
 ## Code Style
 
 - Python 3.11+, `uv` package manager
-- Sign-off required: `git commit -s`
 - Pre-commit hooks: `pre-commit install`
+
+## DCO Sign-Off (Mandatory)
+
+All commits **must** include a `Signed-off-by` trailer (Developer Certificate of Origin).
+Always use the `-s` flag when committing:
+
+```sh
+git commit -s -m "feat: Add new feature"
+```
+
+This adds a line like `Signed-off-by: Your Name <your@email.com>` to the commit message.
+PRs without DCO sign-off will fail CI checks. To retroactively sign-off existing commits:
+
+```sh
+git rebase --signoff main
+```
 
 ## Claude Code Task Lists
 
@@ -224,5 +239,6 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg
 - [Components](docs/components.md)
 - [AI Ops / Claude Code](docs/ai-ops/README.md)
 - [Demos](docs/demos/README.md)
+- [AuthBridge Demos](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/README.md) — Zero-trust agent demos (weather agent, github issue, webhook, multi-target) in kagenti-extensions
 - [Skills and Patterns](docs/skills/README.md)
 - [Keycloak Patterns](docs/auth/keycloak-patterns.md)
