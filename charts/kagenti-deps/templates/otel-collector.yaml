@@ -166,10 +166,12 @@ data:
     exporters:
       debug:
         verbosity: detailed
+      {{- if $.Values.components.phoenix.enabled }}
       otlp/phoenix:
         endpoint: phoenix:4317
         tls:
           insecure: true
+      {{- end }}
       {{- if $.Values.components.mlflow.enabled }}
       otlphttp/mlflow:
         # Use traces_endpoint to specify exact URL (endpoint would append /v1/traces)
@@ -203,6 +205,7 @@ data:
         check_interval: 1s
         limit_mib: 1000
       batch:
+      {{- if $.Values.components.phoenix.enabled }}
       filter/phoenix:
         traces:
           span:
@@ -228,6 +231,7 @@ data:
               - set(attributes["llm.system"], attributes["gen_ai.system"]) where attributes["gen_ai.system"] != nil
               # Convert GenAI invocation parameters (temperature)
               - set(attributes["llm.invocation_parameters"], Concat(["{\"temperature\":", Concat([attributes["gen_ai.request.temperature"], "}"], "")], "")) where attributes["gen_ai.request.temperature"] != nil
+      {{- end }}
       {{- if $.Values.components.mlflow.enabled }}
       # Filter for MLflow: only keep agent spans, filter out A2A framework spans
       # A2A framework spans have names starting with "a2a."
@@ -276,10 +280,18 @@ data:
     service:
       extensions: [ health_check{{ if and $.Values.components.mlflow.enabled $.Values.mlflow.auth.enabled }}, oauth2client/mlflow{{ end }} ]
       pipelines:
+        {{- if $.Values.components.phoenix.enabled }}
         traces/phoenix:
           receivers: [ otlp ]
           processors: [ memory_limiter, filter/phoenix, transform/genai_to_openinference, batch ]
           exporters: [ otlp/phoenix ]
+        {{- end }}
+        {{- if and (not $.Values.components.phoenix.enabled) (not $.Values.components.mlflow.enabled) }}
+        traces/default:
+          receivers: [ otlp ]
+          processors: [ memory_limiter, batch ]
+          exporters: [ debug ]
+        {{- end }}
         {{- if $.Values.components.mlflow.enabled }}
         traces/mlflow:
           receivers: [ otlp ]

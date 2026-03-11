@@ -121,18 +121,20 @@ export const ObservabilityPage: React.FC = () => {
         )}
 
         <Grid hasGutter>
-          <GridItem md={6}>
-            <DashboardCard
-              title="Tracing & Performance"
-              description="Access detailed trace data for debugging and performance analysis. Monitor LLM calls, latency, and token usage with Phoenix/OpenTelemetry."
-              icon={<ChartLineIcon />}
-              url={tracesUrl}
-              buttonText="Open Phoenix"
-              isLoading={isLoading}
-            />
-          </GridItem>
+          {tracesUrl && (
+            <GridItem md={6}>
+              <DashboardCard
+                title="Tracing & Performance"
+                description="Access detailed trace data for debugging and performance analysis. Monitor LLM calls, latency, and token usage with Phoenix/OpenTelemetry."
+                icon={<ChartLineIcon />}
+                url={tracesUrl}
+                buttonText="Open Phoenix"
+                isLoading={isLoading}
+              />
+            </GridItem>
+          )}
 
-          <GridItem md={6}>
+          <GridItem md={tracesUrl ? 6 : 12}>
             <DashboardCard
               title="Network Traffic"
               description="Visualize service interactions, traffic flow, and service mesh health with Kiali. Monitor Istio metrics and network policies."
@@ -150,9 +152,9 @@ export const ObservabilityPage: React.FC = () => {
           isInline
           style={{ marginTop: '24px' }}
         >
-          Ensure that the observability tools (Phoenix for traces and Kiali for
+          Ensure that the observability tools ({tracesUrl ? 'Phoenix for traces and ' : ''}Kiali for
           service mesh) are properly configured and accessible from your
-          environment. Default credentials are typically <code>admin/admin</code>.
+          environment.
         </Alert>
       </PageSection>
     </>

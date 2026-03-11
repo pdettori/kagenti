@@ -25,6 +25,8 @@ components:
     enabled: false
   otel:
     enabled: true
+  phoenix:
+    enabled: false
   mlflow:
     enabled: false
   containerRegistry:

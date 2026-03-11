@@ -275,7 +275,7 @@ def phoenix_client(is_openshift):
 
 
 @pytest.mark.observability
-@pytest.mark.requires_features(["otel"])
+@pytest.mark.requires_features(["otel", "phoenix"])
 class TestPhoenixConnectivity:
     """Test Phoenix service is accessible."""
 
@@ -289,7 +289,7 @@ class TestPhoenixConnectivity:
 
 @pytest.mark.observability
 @pytest.mark.openshift_only
-@pytest.mark.requires_features(["otel"])
+@pytest.mark.requires_features(["otel", "phoenix"])
 class TestWeatherAgentTracesInPhoenix:
     """
     Validate weather agent traces are captured in Phoenix.

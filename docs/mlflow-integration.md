@@ -1,7 +1,8 @@
 # MLflow Integration for LLM Observability
 
 This document describes deploying MLflow alongside Phoenix for LLM trace
-collection in Kagenti E2E tests.
+collection in Kagenti E2E tests. Note that Phoenix is an optional component
+(`components.phoenix.enabled`, default: false) and can be deployed independently of MLflow.
 
 ## Overview
 
