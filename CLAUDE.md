@@ -174,8 +174,23 @@ These are fine without redirection (produce <5 lines):
 ## Code Style
 
 - Python 3.11+, `uv` package manager
-- Sign-off required: `git commit -s`
 - Pre-commit hooks: `pre-commit install`
+
+## DCO Sign-Off (Mandatory)
+
+All commits **must** include a `Signed-off-by` trailer (Developer Certificate of Origin).
+Always use the `-s` flag when committing:
+
+```sh
+git commit -s -m "feat: Add new feature"
+```
+
+This adds a line like `Signed-off-by: Your Name <your@email.com>` to the commit message.
+PRs without DCO sign-off will fail CI checks. To retroactively sign-off existing commits:
+
+```sh
+git rebase --signoff main
+```
 
 ## Claude Code Task Lists
 
