@@ -169,7 +169,7 @@ cleanup_orphaned_aws_resources() {
                     echo "    None found"
                 fi
 
-                # 3. Delete VPC endpoints (they use ENIs)
+                # 3. Delete VPC endpoints (they use ENIs) - WITH PROPER WAITING
                 echo "  - VPC Endpoints:"
                 ENDPOINTS=$(aws ec2 describe-vpc-endpoints --region "$AWS_REGION" \
                     --filters "Name=vpc-id,Values=$vpc" \
@@ -182,7 +182,22 @@ cleanup_orphaned_aws_resources() {
                         aws ec2 delete-vpc-endpoints --region "$AWS_REGION" \
                             --vpc-endpoint-ids "$ep" 2>&1 || true
                     done
-                    sleep 5  # Brief wait for endpoint ENIs to be released
+
+                    # Wait for VPC endpoints to fully delete (including their ENIs)
+                    # VPC endpoint ENIs can take 30-90 seconds to release
+                    echo "    Waiting for VPC endpoint ENIs to be released (up to 90s)..."
+                    for ep_wait in {1..9}; do
+                        REMAINING_EPS=$(aws ec2 describe-vpc-endpoints --region "$AWS_REGION" \
+                            --filters "Name=vpc-id,Values=$vpc" \
+                            --query 'VpcEndpoints[*].VpcEndpointId' \
+                            --output text 2>/dev/null || echo "")
+                        if [ -z "$REMAINING_EPS" ] || [ "$REMAINING_EPS" = "None" ]; then
+                            echo "    All VPC endpoints deleted"
+                            break
+                        fi
+                        echo "    [$ep_wait/9] Still deleting: $REMAINING_EPS"
+                        sleep 10
+                    done
                 else
                     echo "    None found"
                 fi
@@ -267,10 +282,11 @@ cleanup_orphaned_aws_resources() {
                 # 7. Delete route tables (after subnets - associations already removed)
                 # Note: Main route table cannot be deleted (auto-deleted with VPC)
                 # Query catches both orphaned route tables (no associations) and non-main ones
+                # Fixed query: length() == 0 matches both empty Associations and non-main route tables
                 echo "  - Route Tables (non-main):"
                 RTS=$(aws ec2 describe-route-tables --region "$AWS_REGION" \
                     --filters "Name=vpc-id,Values=$vpc" \
-                    --query 'RouteTables[?!Associations[?Main==`true`]].RouteTableId' \
+                    --query 'RouteTables[?length(Associations[?Main==`true`]) == `0`].RouteTableId' \
                     --output text 2>/dev/null || echo "")
                 if [ -n "$RTS" ] && [ "$RTS" != "None" ]; then
                     echo "    Found non-main: $RTS"
@@ -297,7 +313,46 @@ cleanup_orphaned_aws_resources() {
                 fi
 
                 echo "  - Attempting manual VPC delete:"
-                aws ec2 delete-vpc --region "$AWS_REGION" --vpc-id "$vpc" 2>&1 || true
+                VPC_DELETE_OUTPUT=$(aws ec2 delete-vpc --region "$AWS_REGION" --vpc-id "$vpc" 2>&1)
+                VPC_DELETE_EXIT=$?
+
+                if [ $VPC_DELETE_EXIT -eq 0 ]; then
+                    echo "    Successfully deleted VPC: $vpc"
+                else
+                    echo "    Failed to delete VPC: $vpc"
+                    echo "    Error: $VPC_DELETE_OUTPUT"
+
+                    # Show remaining dependencies blocking deletion
+                    echo "    Checking for remaining dependencies..."
+
+                    # Check for remaining ENIs (most common blocker)
+                    REMAINING_ENIS=$(aws ec2 describe-network-interfaces --region "$AWS_REGION" \
+                        --filters "Name=vpc-id,Values=$vpc" \
+                        --query 'NetworkInterfaces[*].[NetworkInterfaceId,Status,Description]' \
+                        --output text 2>/dev/null || echo "")
+                    if [ -n "$REMAINING_ENIS" ] && [ "$REMAINING_ENIS" != "None" ]; then
+                        echo "    - Network Interfaces still attached:"
+                        echo "$REMAINING_ENIS" | sed 's/^/      /'
+                    fi
+
+                    # Check for remaining subnets
+                    REMAINING_SUBNETS=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+                        --filters "Name=vpc-id,Values=$vpc" \
+                        --query 'Subnets[*].SubnetId' \
+                        --output text 2>/dev/null || echo "")
+                    if [ -n "$REMAINING_SUBNETS" ] && [ "$REMAINING_SUBNETS" != "None" ]; then
+                        echo "    - Subnets: $REMAINING_SUBNETS"
+                    fi
+
+                    # Check for remaining route table associations
+                    REMAINING_RT_ASSOCS=$(aws ec2 describe-route-tables --region "$AWS_REGION" \
+                        --filters "Name=vpc-id,Values=$vpc" \
+                        --query 'RouteTables[*].Associations[?!Main].RouteTableAssociationId' \
+                        --output text 2>/dev/null || echo "")
+                    if [ -n "$REMAINING_RT_ASSOCS" ] && [ "$REMAINING_RT_ASSOCS" != "None" ]; then
+                        echo "    - Route table associations: $REMAINING_RT_ASSOCS"
+                    fi
+                fi
             done
 
         # Check if this was the last attempt
@@ -315,9 +370,160 @@ cleanup_orphaned_aws_resources() {
             fi
         fi
 
-        echo "  Waiting 30s before next check..."
-        sleep 30
+        echo "  Waiting 60s before next check..."
+        sleep 60
     done
+
+    # ============================================================
+    # Clean up non-VPC resources (Elastic IPs, IAM, OIDC, Route53)
+    # These should be cleaned by ansible but often aren't
+    # ============================================================
+    echo ""
+    echo "=== Cleaning up non-VPC AWS resources ==="
+
+    # 1. Release Elastic IPs (orphaned from NAT gateways)
+    echo "  - Elastic IPs:"
+    EIPS=$(aws ec2 describe-addresses --region "$AWS_REGION" \
+        --filters "Name=tag-key,Values=${CLUSTER_TAG}" \
+        --query 'Addresses[*].AllocationId' \
+        --output text 2>/dev/null || echo "")
+    if [ -n "$EIPS" ] && [ "$EIPS" != "None" ]; then
+        echo "    Found: $EIPS"
+        for eip in $EIPS; do
+            echo "    Releasing Elastic IP: $eip"
+            aws ec2 release-address --region "$AWS_REGION" \
+                --allocation-id "$eip" 2>&1 || true
+        done
+    else
+        echo "    None found"
+    fi
+
+    # 2. Delete Route53 hosted zones
+    echo "  - Route53 Hosted Zones:"
+    ZONES=$(aws route53 list-hosted-zones --query "HostedZones[?contains(Name, '${CLUSTER_NAME}')].Id" \
+        --output text 2>/dev/null || echo "")
+    if [ -n "$ZONES" ] && [ "$ZONES" != "None" ]; then
+        echo "    Found: $ZONES"
+        for zone_id in $ZONES; do
+            # Extract zone ID (remove /hostedzone/ prefix)
+            zone_id_clean="${zone_id##*/}"
+            echo "    Deleting hosted zone: $zone_id_clean"
+
+            # First delete all record sets except NS and SOA
+            RECORD_SETS=$(aws route53 list-resource-record-sets \
+                --hosted-zone-id "$zone_id_clean" \
+                --query "ResourceRecordSets[?Type != 'NS' && Type != 'SOA'].[Name,Type]" \
+                --output text 2>/dev/null || echo "")
+
+            if [ -n "$RECORD_SETS" ] && [ "$RECORD_SETS" != "None" ]; then
+                echo "      Deleting record sets in zone $zone_id_clean"
+                while IFS=$'\t' read -r name type; do
+                    [ -z "$name" ] && continue
+                    echo "        Deleting $type record: $name"
+                    # Get the full record set
+                    CHANGE_BATCH=$(aws route53 list-resource-record-sets \
+                        --hosted-zone-id "$zone_id_clean" \
+                        --query "ResourceRecordSets[?Name=='${name}' && Type=='${type}']" \
+                        --output json 2>/dev/null)
+
+                    if [ -n "$CHANGE_BATCH" ] && [ "$CHANGE_BATCH" != "[]" ]; then
+                        # Delete the record set
+                        aws route53 change-resource-record-sets \
+                            --hosted-zone-id "$zone_id_clean" \
+                            --change-batch "{\"Changes\":[{\"Action\":\"DELETE\",\"ResourceRecordSet\":$(echo "$CHANGE_BATCH" | jq '.[0]')}]}" \
+                            2>&1 || true
+                    fi
+                done <<< "$RECORD_SETS"
+            fi
+
+            # Now delete the hosted zone
+            aws route53 delete-hosted-zone --id "$zone_id_clean" 2>&1 || true
+        done
+    else
+        echo "    None found"
+    fi
+
+    # 3. Delete OIDC providers
+    echo "  - OIDC Providers:"
+    OIDC_PROVIDERS=$(aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[?contains(Arn, '${CLUSTER_NAME}')].Arn" \
+        --output text 2>/dev/null || echo "")
+    if [ -n "$OIDC_PROVIDERS" ] && [ "$OIDC_PROVIDERS" != "None" ]; then
+        echo "    Found: $OIDC_PROVIDERS"
+        for oidc_arn in $OIDC_PROVIDERS; do
+            echo "    Deleting OIDC provider: $oidc_arn"
+            aws iam delete-open-id-connect-provider --open-id-connect-provider-arn "$oidc_arn" 2>&1 || true
+        done
+    else
+        echo "    None found"
+    fi
+
+    # 4. Delete IAM roles and instance profiles
+    echo "  - IAM Roles and Instance Profiles:"
+    IAM_ROLES=$(aws iam list-roles --query "Roles[?contains(RoleName, '${CLUSTER_NAME}')].RoleName" \
+        --output text 2>/dev/null || echo "")
+    if [ -n "$IAM_ROLES" ] && [ "$IAM_ROLES" != "None" ]; then
+        echo "    Found roles: $IAM_ROLES"
+        for role in $IAM_ROLES; do
+            echo "    Processing role: $role"
+
+            # Detach all managed policies
+            ATTACHED_POLICIES=$(aws iam list-attached-role-policies --role-name "$role" \
+                --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null || echo "")
+            if [ -n "$ATTACHED_POLICIES" ] && [ "$ATTACHED_POLICIES" != "None" ]; then
+                for policy_arn in $ATTACHED_POLICIES; do
+                    echo "      Detaching policy: $policy_arn"
+                    aws iam detach-role-policy --role-name "$role" --policy-arn "$policy_arn" 2>&1 || true
+                done
+            fi
+
+            # Delete all inline policies
+            INLINE_POLICIES=$(aws iam list-role-policies --role-name "$role" \
+                --query 'PolicyNames[*]' --output text 2>/dev/null || echo "")
+            if [ -n "$INLINE_POLICIES" ] && [ "$INLINE_POLICIES" != "None" ]; then
+                for policy_name in $INLINE_POLICIES; do
+                    echo "      Deleting inline policy: $policy_name"
+                    aws iam delete-role-policy --role-name "$role" --policy-name "$policy_name" 2>&1 || true
+                done
+            fi
+
+            # Remove from instance profiles
+            INSTANCE_PROFILES=$(aws iam list-instance-profiles-for-role --role-name "$role" \
+                --query 'InstanceProfiles[*].InstanceProfileName' --output text 2>/dev/null || echo "")
+            if [ -n "$INSTANCE_PROFILES" ] && [ "$INSTANCE_PROFILES" != "None" ]; then
+                for profile in $INSTANCE_PROFILES; do
+                    echo "      Removing from instance profile: $profile"
+                    aws iam remove-role-from-instance-profile \
+                        --instance-profile-name "$profile" --role-name "$role" 2>&1 || true
+                    # Delete the instance profile
+                    echo "      Deleting instance profile: $profile"
+                    aws iam delete-instance-profile --instance-profile-name "$profile" 2>&1 || true
+                done
+            fi
+
+            # Delete the role
+            echo "      Deleting role: $role"
+            aws iam delete-role --role-name "$role" 2>&1 || true
+        done
+    else
+        echo "    None found"
+    fi
+
+    # 5. Delete S3 buckets (if any)
+    echo "  - S3 Buckets:"
+    S3_BUCKETS=$(aws s3api list-buckets --query "Buckets[?contains(Name, '${CLUSTER_NAME}')].Name" \
+        --output text 2>/dev/null || echo "")
+    if [ -n "$S3_BUCKETS" ] && [ "$S3_BUCKETS" != "None" ]; then
+        echo "    Found: $S3_BUCKETS"
+        for bucket in $S3_BUCKETS; do
+            echo "    Deleting S3 bucket: $bucket"
+            # Empty the bucket first
+            aws s3 rm "s3://$bucket" --recursive 2>&1 || true
+            # Delete the bucket
+            aws s3api delete-bucket --bucket "$bucket" --region "$AWS_REGION" 2>&1 || true
+        done
+    else
+        echo "    None found"
+    fi
 
     echo "AWS orphaned resource cleanup complete"
 }
@@ -439,8 +645,8 @@ echo "=== Checking for orphaned AWS resources ==="
 
 DEBUG_SCRIPT="$REPO_ROOT/.github/scripts/hypershift/debug-aws-hypershift.sh"
 
-# Check for orphaned VPCs specifically (these block cluster creation)
-# Other resources (IAM, S3, OIDC) don't block and may be cleaned up by hcp CLI later
+# Check for orphaned VPCs (these block cluster creation)
+# Other resources (IAM, S3, OIDC, Route53, Elastic IPs) are cleaned up after VPC deletion
 check_orphaned_vpcs() {
     ORPHANED_VPCS=$(aws ec2 describe-vpcs \
         --region "$AWS_REGION" \
@@ -459,10 +665,10 @@ if ! "$DEBUG_SCRIPT" --check "$CLUSTER_NAME"; then
     echo "Orphaned AWS resources detected, running cleanup..."
     cleanup_orphaned_aws_resources
 
-    # Final verification - only fail if VPCs still remain
-    # Other resources (IAM, S3, OIDC) don't block and will be overwritten/reused
+    # Final verification - check if VPCs still remain
+    # All resources (VPC, IAM, S3, OIDC, Route53, Elastic IPs) are now cleaned
     echo ""
-    echo "=== Final VPC verification ==="
+    echo "=== Final resource verification ==="
     if check_orphaned_vpcs; then
         echo "::error::VPCs still remain after cleanup - these block cluster creation"
         echo "Cannot proceed with cluster creation while old VPC exists."
@@ -473,8 +679,7 @@ if ! "$DEBUG_SCRIPT" --check "$CLUSTER_NAME"; then
         echo "  $DEBUG_SCRIPT $CLUSTER_NAME"
         exit 1
     fi
-    echo "VPCs cleaned up successfully"
-    echo "::notice::Some non-blocking resources (IAM, S3, OIDC) may still exist - they will be overwritten/reused"
+    echo "All AWS resources cleaned up successfully"
 else
     echo "No orphaned AWS resources found"
 fi
