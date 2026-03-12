@@ -41,8 +41,6 @@ components:
     enabled: true
   rhoai:
     enabled: false
-  gatewayApi:
-    enabled: false
   ingressGateway:
     enabled: false
 
