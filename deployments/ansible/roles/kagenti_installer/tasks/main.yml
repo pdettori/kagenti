@@ -844,25 +844,6 @@
 - name: Wait for RHOAI operator and create DataScienceCluster
   ansible.builtin.import_tasks: 05_install_rhoai.yaml
 
-# Create ConfigMap for OpenShift trusted CA bundle injection
-# OpenShift's cluster network operator injects the trusted CA bundle into
-# ConfigMaps that have the label config.openshift.io/inject-trusted-cabundle=true
-- name: Create trusted CA bundle ConfigMap for OpenShift
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: config-trusted-cabundle
-        namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
-        labels:
-          config.openshift.io/inject-trusted-cabundle: "true"
-      data: {}
-  when:
-    - openshift | default(false) | bool
-    - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
-
 # Wait for cert-manager CRDs to be available on OpenShift.
 # The cert-manager operator is installed via OLM subscription in kagenti-deps,
 # but the CRDs take time to be created by the operator. The kagenti chart
@@ -1394,8 +1375,19 @@
 # Wait for Istio ambient mesh components to be ready on OpenShift.
 # The Istio, IstioCNI, and ZTunnel CRs are created as helm post-install hooks,
 # and ztunnel pods may start before istiod is ready, causing certificate issues.
+# Guard: check that the istiod deployment actually exists before waiting,
+# since a failed kagenti-deps install may have prevented the hooks from running.
 - name: Wait for Istio ambient mesh to be ready on OpenShift
   block:
+    - name: Check if istiod deployment exists
+      command: >-
+        kubectl get deployment/istiod
+        -n {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}
+        --no-headers
+      register: istiod_exists
+      failed_when: false
+      changed_when: false
+
     - name: Wait for istiod deployment to be ready
       command: >-
         kubectl rollout status deployment/istiod
@@ -1405,6 +1397,16 @@
       retries: 3
       delay: 30
       until: istiod_ready.rc == 0
+      when: istiod_exists.rc == 0
+
+    - name: Warn if istiod deployment was not found
+      debug:
+        msg: >-
+          WARNING: istiod deployment not found in
+          {{ (charts['kagenti-deps'] | default({})).get('values', {}).get('istio', {}).get('namespace', 'istio-system') }}.
+          The kagenti-deps Helm post-install hooks may not have run.
+          Check 'helm history kagenti-deps -n kagenti-system' for errors.
+      when: istiod_exists.rc != 0
   when:
     - enable_openshift | default(false)
     - (charts['kagenti-deps'] | default({})).get('values', {}).get('components', {}).get('istio', {}).get('enabled', false) | bool
@@ -1697,4 +1699,24 @@
   when:
     - enable_openshift | default(false)
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
+
+- name: Verify Helm release status
+  shell: |
+    NS={{ (charts['kagenti'] | default({})).get('namespace', 'kagenti-system') }}
+    FAILED=""
+    for RELEASE in kagenti-deps kagenti; do
+      STATUS=$(helm history "$RELEASE" -n "$NS" --max 1 -o json 2>/dev/null | {{ ansible_python_interpreter | default('python3', true) }} -c "import sys,json; h=json.load(sys.stdin); print(h[0]['status'])" 2>/dev/null || echo "not-found")
+      echo "$RELEASE: $STATUS"
+      if [ "$STATUS" != "deployed" ] && [ "$STATUS" != "not-found" ]; then
+        FAILED="$FAILED $RELEASE($STATUS)"
+      fi
+    done
+    if [ -n "$FAILED" ]; then
+      echo "ERROR: Helm releases not healthy:$FAILED"
+      helm list -n "$NS" -a
+      exit 1
+    fi
+    echo "All Helm releases healthy."
+  args:
+    executable: /bin/bash
 

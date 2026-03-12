@@ -134,11 +134,12 @@ spec:
           pip install --no-cache-dir --quiet "mlflow-oidc-auth" && \
           {{- end }}
           {{- if and .Values.openshift .Values.mlflow.auth.enabled }}
-          # Set CA bundle for JWKS verification AFTER pip install
-          # The ingress CA is only for OpenShift routes, not PyPI
-          # SSL_CERT_FILE for httpx/authlib (OIDC), REQUESTS_CA_BUNDLE for requests
-          export SSL_CERT_FILE=/etc/pki/ingress-ca/ingress-ca.pem && \
-          export REQUESTS_CA_BUNDLE=/etc/pki/ingress-ca/ingress-ca.pem && \
+          # Combine system CAs with the ingress CA so Python can verify both
+          # public CAs (e.g. Let's Encrypt on ROSA) and custom OpenShift CAs
+          SYS_CA=$(find /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem -maxdepth 0 2>/dev/null | head -1) && \
+          cat "${SYS_CA:-/dev/null}" /etc/pki/ingress-ca/ingress-ca.pem > /tmp/combined-ca.pem && \
+          export SSL_CERT_FILE=/tmp/combined-ca.pem && \
+          export REQUESTS_CA_BUNDLE=/tmp/combined-ca.pem && \
           {{- end }}
           {{- if .Values.openshift }}
           # Read auto-detected route hostname if available

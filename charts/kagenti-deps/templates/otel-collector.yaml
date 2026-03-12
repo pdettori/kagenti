@@ -11,6 +11,14 @@ metadata:
     # OpenShift injects trusted CA bundle into ConfigMaps with this label
     config.openshift.io/inject-trusted-cabundle: "true"
     {{- include "kagenti.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    # Retain on helm uninstall: OpenShift asynchronously injects the trusted CA bundle
+    # into this ConfigMap. Deleting it causes a race on reinstall where the OTel collector
+    # mounts an empty ConfigMap before OpenShift re-injects the CAs, breaking TLS verification.
+    "helm.sh/resource-policy": keep
 data: {}
 {{- end }}
 ---
@@ -103,10 +111,12 @@ spec:
           configMap:
             name: otel-collector-config
         {{- if and $.Values.openshift $.Values.components.mlflow.enabled $.Values.mlflow.auth.enabled }}
-        # Use OpenShift's pre-existing trusted CA bundle ConfigMap
+        # OpenShift trusted CA bundle — created by Tekton/platform operators.
+        # Optional so the pod starts while waiting for the ConfigMap to appear.
         - name: trusted-ca
           configMap:
             name: config-trusted-cabundle
+            optional: true
             items:
               - key: ca-bundle.crt
                 path: tls-ca-bundle.pem

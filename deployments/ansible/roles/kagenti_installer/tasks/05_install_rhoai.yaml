@@ -63,10 +63,12 @@
     # oauth-proxy). The operator defaults to 3 replicas at 500m each. On small clusters
     # (2-3 nodes), this exhausts CPU and blocks other pods from scheduling.
     # Scale operator FIRST (prevents it from reconciling replicas back up), then dashboard.
+    # Only runs when rhoai.scale_down is explicitly set to true.
     - name: Scale down RHOAI operator to 1 replica for test cluster
       command: kubectl scale deployment rhods-operator -n redhat-ods-operator --replicas=1
       failed_when: false
       changed_when: false
+      when: (rhoai | default({})).get('scale_down', false) | bool
 
     - name: Scale down RHOAI dashboard for test cluster
       shell: |
@@ -82,6 +84,7 @@
         echo "Dashboard deployment not found (may not be created yet)"
       failed_when: false
       changed_when: false
+      when: (rhoai | default({})).get('scale_down', false) | bool
 
     - name: Delete pending dashboard pods to free CPU
       shell: |
@@ -89,6 +92,7 @@
         kubectl delete pod -n redhat-ods-operator --field-selector=status.phase=Pending 2>/dev/null || true
       failed_when: false
       changed_when: false
+      when: (rhoai | default({})).get('scale_down', false) | bool
 
     - name: Wait for DataScienceCluster to be Ready
       shell: |
@@ -120,6 +124,15 @@
       delay: 10
       until: certmanager_crd_ready.rc == 0
       changed_when: false
+
+    - name: Wait for cert-manager webhook to be ready
+      command: >-
+        kubectl rollout status deployment/cert-manager-webhook
+        -n cert-manager --timeout=60s
+      register: certmanager_webhook_ready
+      retries: 12
+      delay: 15
+      until: certmanager_webhook_ready.rc == 0
 
     - name: Create shared trust cert-manager resources (fallback if Helm skipped)
       shell: |
@@ -232,6 +245,62 @@
       until: rhoai_cacert_check.rc == 0 and rhoai_cacert_check.stdout | length > 0
       changed_when: false
 
+    # When the root CA is regenerated (e.g. after Helm reinstall), cert-manager
+    # does NOT re-sign existing valid intermediates. Detect the mismatch and
+    # force re-issuance by deleting stale intermediate secrets.
+    - name: Get current root CA fingerprint
+      shell: >-
+        kubectl get secret istio-mesh-root-ca-secret -n cert-manager
+        -o jsonpath='{.data.tls\.crt}' | base64 -d |
+        openssl x509 -noout -fingerprint -sha256 2>/dev/null |
+        sed 's/.*=//'
+      register: root_ca_fingerprint
+      args:
+        executable: /bin/bash
+
+    - name: Check intermediate CA root consistency
+      shell: |
+        ROOT_FP="{{ root_ca_fingerprint.stdout }}"
+        CHANGED=false
+        for item in "istio-cacerts-default-cert:istio-system" "istio-cacerts-og-cert:openshift-ingress"; do
+          SECRET="${item%%:*}"
+          NS="${item##*:}"
+          INTER_FP=$(kubectl get secret "$SECRET" -n "$NS" \
+            -o jsonpath='{.data.ca\.crt}' | base64 -d | \
+            openssl x509 -noout -fingerprint -sha256 2>/dev/null | sed 's/.*=//')
+          if [ "$ROOT_FP" != "$INTER_FP" ]; then
+            echo "Root CA mismatch in $NS/$SECRET — forcing re-issuance"
+            kubectl delete secret "$SECRET" -n "$NS"
+            CHANGED=true
+          fi
+        done
+        echo "$CHANGED"
+      register: ca_consistency_check
+      args:
+        executable: /bin/bash
+
+    - name: Wait for re-issued Kagenti intermediate CA
+      command: >-
+        kubectl get secret istio-cacerts-default-cert -n istio-system
+        -o jsonpath='{.data.tls\.crt}'
+      register: kagenti_reissued
+      retries: 30
+      delay: 10
+      until: kagenti_reissued.rc == 0 and kagenti_reissued.stdout | length > 0
+      changed_when: false
+      when: "'true' in ca_consistency_check.stdout"
+
+    - name: Wait for re-issued RHOAI intermediate CA
+      command: >-
+        kubectl get secret istio-cacerts-og-cert -n openshift-ingress
+        -o jsonpath='{.data.tls\.crt}'
+      register: rhoai_reissued
+      retries: 30
+      delay: 10
+      until: rhoai_reissued.rc == 0 and rhoai_reissued.stdout | length > 0
+      changed_when: false
+      when: "'true' in ca_consistency_check.stdout"
+
     - name: Create cacerts secret for Kagenti istiod (istio-system)
       shell: |
         CA_CERT=$(kubectl get secret istio-cacerts-default-cert -n istio-system -o jsonpath='{.data.tls\.crt}' | base64 -d)
@@ -264,8 +333,15 @@
       args:
         executable: /bin/bash
 
+    - name: Check if Kagenti istiod deployment exists
+      command: kubectl get deployment/istiod -n istio-system --no-headers
+      register: kagenti_istiod_exists
+      failed_when: false
+      changed_when: false
+
     - name: Restart Kagenti istiod to pick up shared CA
       command: kubectl rollout restart deployment/istiod -n istio-system
+      when: kagenti_istiod_exists.rc == 0
 
     - name: Restart RHOAI istiod to pick up shared CA
       command: kubectl rollout restart deployment/istiod-openshift-gateway -n openshift-ingress
@@ -273,6 +349,15 @@
 
     - name: Wait for Kagenti istiod rollout
       command: kubectl rollout status deployment/istiod -n istio-system --timeout=120s
+      when: kagenti_istiod_exists.rc == 0
+
+    - name: Warn if Kagenti istiod not found for shared CA restart
+      debug:
+        msg: >-
+          WARNING: deployment/istiod not found in istio-system.
+          The kagenti-deps Helm post-install hooks may not have created the Istio CR.
+          Check 'helm history kagenti-deps -n kagenti-system' for errors.
+      when: kagenti_istiod_exists.rc != 0
 
     - name: Wait for RHOAI istiod rollout
       command: kubectl rollout status deployment/istiod-openshift-gateway -n openshift-ingress --timeout=120s
