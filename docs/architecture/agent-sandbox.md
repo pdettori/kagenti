@@ -20,9 +20,11 @@ This gap matters for three reasons:
    need isolated, ephemeral compute that no human is watching.
 2. **Untrusted-code safety** -- Engineers working on external or AI-generated code need
    stronger isolation than a local shell provides.
-3. **Lessons from OpenClaw** -- CVE-2026-25253 demonstrated that application-level
-   sandboxing without kernel enforcement leads to 1-click RCE, supply-chain attacks,
-   and 40K+ exposed instances. Software toggles are not security boundaries.
+3. **Lessons from [OpenClaw](https://github.com/openclaw/openclaw)** --
+   [CVE-2026-25253](https://www.cve.org/CVERecord?id=CVE-2026-25253) demonstrated
+   that application-level sandboxing without kernel enforcement leads to 1-click RCE,
+   supply-chain attacks, and 40K+ exposed instances. Software toggles are not
+   security boundaries.
 
 ## Goals
 
@@ -39,8 +41,8 @@ The design defines 20 capabilities (C1-C20). The most significant:
 
 | Capability | What it provides |
 |------------|------------------|
-| **Sandbox CRDs** (C1) | Declarative pod lifecycle with warm pools, stable DNS, and automatic expiry via kubernetes-sigs/agent-sandbox |
-| **Kernel Sandbox** (C3) | Landlock LSM + seccomp-BPF via nono; irreversible once applied, with hardcoded blocklist for sensitive paths |
+| **Sandbox CRDs** (C1) | Declarative pod lifecycle with warm pools, stable DNS, and automatic expiry via [kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) |
+| **Kernel Sandbox** (C3) | Landlock LSM + seccomp-BPF via [nono](https://github.com/always-further/nono); irreversible once applied, with hardcoded blocklist for sensitive paths |
 | **Network Filtering** (C5) | Squid forward-proxy sidecar with domain allowlist; unlisted domains get HTTP 403 |
 | **Credential Isolation** (C6) | AuthBridge (Envoy ext_proc) exchanges pod's SPIFFE SVID for scoped OAuth2 tokens; agent code never sees credentials |
 | **Skills Loading** (C10) | SkillsLoader parses CLAUDE.md and .claude/skills/ into structured, model-agnostic LLM context |
@@ -113,13 +115,13 @@ Seven projects were evaluated across the agent sandboxing landscape:
 
 | Project | Relationship | Key Contribution |
 |---------|-------------|------------------|
-| **kubernetes-sigs/agent-sandbox** | Direct dependency | Sandbox CRDs, warm pools, SandboxClaim lifecycle |
-| **always-further/nono** | Direct dependency | Landlock + seccomp kernel enforcement, Sigstore attestation, Python bindings (PyO3) |
-| **cgwalters/devaipod** | Concepts replicated | Credential isolation via MCP proxy (agent never receives tokens) |
-| **arewm/ai-shell** | Concepts replicated | TOFU for project configs, per-project volume isolation |
-| **bbrowning/paude** | Pattern replicated | Squid proxy sidecar for L7 domain filtering |
-| **HKUDS/nanobot** | Patterns adopted | Tool registry with safety guards, multi-LLM via litellm |
-| **openclaw/openclaw** | Cautionary tale | CVE-2026-25253 (1-click RCE); proves kernel enforcement is non-negotiable |
+| [**kubernetes-sigs/agent-sandbox**](https://github.com/kubernetes-sigs/agent-sandbox) | Direct dependency | Sandbox CRDs, warm pools, SandboxClaim lifecycle |
+| [**always-further/nono**](https://github.com/always-further/nono) | Direct dependency | Landlock + seccomp kernel enforcement, Sigstore attestation, Python bindings (PyO3) |
+| [**cgwalters/devaipod**](https://github.com/cgwalters/devaipod) | Concepts replicated | Credential isolation via MCP proxy (agent never receives tokens) |
+| [**arewm/ai-shell**](https://github.com/arewm/ai-shell) | Concepts replicated | TOFU for project configs, per-project volume isolation |
+| [**bbrowning/paude**](https://github.com/bbrowning/paude) | Pattern replicated | Squid proxy sidecar for L7 domain filtering |
+| [**HKUDS/nanobot**](https://github.com/HKUDS/nanobot) | Patterns adopted | Tool registry with safety guards, multi-LLM via litellm |
+| [**openclaw/openclaw**](https://github.com/openclaw/openclaw) | Cautionary tale | CVE-2026-25253 (1-click RCE); proves kernel enforcement is non-negotiable |
 
 Commercial landscape also surveyed: Northflank (microVM/BYOC), E2B (Firecracker),
 Docker Sandboxes, OpenAI Codex, microsandbox.
