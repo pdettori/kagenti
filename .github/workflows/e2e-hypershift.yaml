@@ -187,7 +187,6 @@ jobs:
         run: bash .github/scripts/common/92-run-ui-tests.sh
         env:
           KUBECONFIG: ${{ steps.create-cluster.outputs.cluster_kubeconfig }}
-          PLAYWRIGHT_GREP_INVERT: "@extended"
 
       # Security: Scan deployed cluster for vulnerabilities and misconfigurations
       - name: Run Trivy Kubernetes cluster scan
