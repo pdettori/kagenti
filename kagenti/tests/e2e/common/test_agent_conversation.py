@@ -277,11 +277,24 @@ class TestWeatherAgentConversation:
                 pytest.fail(f"Error during A2A conversation: {e}")
 
             if last_result["task_failed"]:
+                error_text = last_result["full_response"][:_DIAG_ERROR_LIMIT]
+                # Retry on transient MCP connectivity failures — the weather-tool
+                # pod may still be initializing when the test starts.
+                if "Cannot connect" in error_text and attempt < _LLM_QUERY_MAX_ATTEMPTS:
+                    logger.warning(
+                        "MCP connectivity error on attempt %d/%d, retrying in %ds...\n  %s",
+                        attempt,
+                        _LLM_QUERY_MAX_ATTEMPTS,
+                        _LLM_QUERY_RETRY_DELAY_S,
+                        error_text[:200],
+                    )
+                    await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
+                    continue
                 pytest.fail(
                     f"Agent returned a FAILED task\n"
                     f"  Agent URL: {agent_url}\n"
                     f"  Query: {user_message}\n"
-                    f"  Error: {last_result['full_response'][:_DIAG_ERROR_LIMIT]}\n"
+                    f"  Error: {error_text}\n"
                     f"  Task details:\n    {_task_diagnostic(last_result['last_task'])}"
                 )
 
@@ -408,9 +421,22 @@ class TestWeatherAgentConversation:
                     pytest.fail(f"Turn {turn} failed: {e}")
 
                 if last_result["task_failed"]:
+                    error_text = last_result["full_response"][:_DIAG_ERROR_LIMIT]
+                    if (
+                        "Cannot connect" in error_text
+                        and attempt < _LLM_QUERY_MAX_ATTEMPTS
+                    ):
+                        logger.warning(
+                            "Turn %d: MCP connectivity error on attempt %d/%d, retrying...",
+                            turn,
+                            attempt,
+                            _LLM_QUERY_MAX_ATTEMPTS,
+                        )
+                        await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
+                        continue
                     pytest.fail(
                         f"Turn {turn}: Agent returned FAILED task\n"
-                        f"  Error: {last_result['full_response'][:_DIAG_ERROR_LIMIT]}\n"
+                        f"  Error: {error_text}\n"
                         f"  Task details:\n"
                         f"    {_task_diagnostic(last_result['last_task'])}"
                     )
