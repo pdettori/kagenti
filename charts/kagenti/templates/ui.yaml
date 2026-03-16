@@ -359,6 +359,11 @@ rules:
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  # ServiceAccounts — ensure_service_account() creates a dedicated SA so the
+  # webhook's SPIFFE identity uses the workload name (see kagenti#959)
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "create"]
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
