@@ -77,8 +77,8 @@
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
       register: istio_base_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: istio_base_result is not failed
 
     - name: Install istiod
@@ -101,8 +101,8 @@
                 service: "{{ charts['kagenti-deps']['values']['otel']['collector']['service'] }}"
                 port: "{{ charts['kagenti-deps']['values']['otel']['collector']['port'] }}"
       register: istiod_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: istiod_result is not failed
 
     - name: Install istio-cni
@@ -119,8 +119,8 @@
         values:
           profile: ambient
       register: istio_cni_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: istio_cni_result is not failed
 
     - name: Install ztunnel
@@ -135,8 +135,8 @@
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
       register: ztunnel_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: ztunnel_result is not failed
 
     - name: Label istio namespace to allow shared gateway access
@@ -180,8 +180,8 @@
         state: present
         src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/prometheus.yaml"
       register: prometheus_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: prometheus_result is not failed
 
     - name: Apply kiali manifest
@@ -189,8 +189,8 @@
         state: present
         src: "https://raw.githubusercontent.com/istio/istio/{{kiali.version}}/samples/addons/kiali.yaml"
       register: kiali_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: kiali_result is not failed
   when: (kiali.enabled | default(false)) and not (enable_openshift | default(false))
 
@@ -257,8 +257,8 @@
         wait: true
         timeout: "{{ helm_wait_timeout }}s"
       register: spire_crds_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: spire_crds_result is not failed
 
     - name: Install spire
@@ -274,8 +274,8 @@
         timeout: "{{ helm_wait_timeout }}s"
         values: "{{ (charts['spire'] | default({}))['values'] | default({}) }}"
       register: spire_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: spire_result is not failed
   when: >
     (charts.spire.enabled | default(false)) and
@@ -297,8 +297,8 @@
         state: present
         src: "https://github.com/kubernetes-sigs/gateway-api/releases/download/{{gatewayApi.version}}/standard-install.yaml"
       register: gateway_api_result
-      retries: 3
-      delay: 15
+      retries: 5
+      delay: 30
       until: gateway_api_result is not failed
       when: gateway_crd_check.rc != 0
   when: gatewayApi.enabled | default(false)
