@@ -1014,7 +1014,7 @@ if [ "$RUN_TEST" = "true" ]; then
 
     # OpenShift routes use self-signed certs — always disable SSL verification
     # for E2E tests, regardless of how KEYCLOAK_URL was set.
-    if [ "$IS_OPENSHIFT" = "true" ]; then
+    if [ "$KAGENTI_ENV" = "ocp" ]; then
         export KEYCLOAK_VERIFY_SSL="false"
     fi
 
