@@ -415,18 +415,18 @@ subjects:
     namespace: {{ . }}
 ---
 # ——————————————————————————————————————————————————————————————————————————————
-#  SCC RoleBinding for Agent SAs in Namespace: {{ . }}
-#  Grants privileged SCC to all service accounts in the namespace so that
+#  SCC RoleBinding for AuthBridge in Namespace: {{ . }}
+#  Grants the kagenti-authbridge custom SCC to all service accounts so that
 #  the webhook-injected AuthBridge stack can run:
-#    - proxy-init init container (privileged, root) for iptables
+#    - proxy-init init container (NET_ADMIN/NET_RAW, root) for iptables
 #    - envoy-proxy sidecar (UID 1337)
 #    - spiffe-helper / client-registration sidecars (UID 1000)
 #  Agent SAs are created dynamically by the operator (name = agent name),
 #  so we use the namespace service accounts group.
 #
-#  TODO: After kagenti-extensions#234 is released (webhook uses capabilities
-#  instead of privileged mode), switch to the narrower kagenti-authbridge SCC:
-#    name: system:openshift:scc:kagenti-authbridge
+#  Requires kagenti-extensions#234 (webhook uses capabilities instead of
+#  privileged mode). Use --extensions-ref to test:
+#    /run-e2e --extensions-ref fix/proxy-init-drop-privileged
 # ——————————————————————————————————————————————————————————————————————————————
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -438,7 +438,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: system:openshift:scc:privileged
+  name: system:openshift:scc:kagenti-authbridge
 subjects:
   - kind: Group
     apiGroup: rbac.authorization.k8s.io
