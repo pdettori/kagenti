@@ -1058,8 +1058,14 @@ if [ "$RUN_TEST" = "true" ]; then
         log_step "PYTEST_ARGS: $PYTEST_ARGS"
     fi
 
+    # Print deployed image/Helm versions (collapsible in GH Actions)
+    ./.github/scripts/common/86-print-version-matrix.sh
+
     # Pre-flight checks (OTEL/MLflow pipeline readiness)
     ./.github/scripts/common/90-preflight-checks.sh
+
+    # Ensure test user and service account exist in Keycloak
+    ./.github/scripts/common/87-setup-test-credentials.sh
 
     # Backend E2E tests (pytest)
     ./.github/scripts/kagenti-operator/90-run-e2e-tests.sh
