@@ -81,6 +81,7 @@ from app.models.shipwright import (
     BuildStatusCondition,
     ClusterBuildStrategyInfo,
     ClusterBuildStrategiesResponse,
+    ShipwrightBuildListResponse,
     ShipwrightBuildStatusResponse,
     ShipwrightBuildRunStatusResponse,
     ResourceConfigFromBuild,
@@ -97,6 +98,7 @@ from app.services.shipwright import (
     get_output_image_from_buildrun,
     resolve_clone_secret,
 )
+from app.services.shipwright_builds import collect_kagenti_shipwright_builds
 
 
 class SecretKeyRef(BaseModel):
@@ -1465,6 +1467,45 @@ async def list_build_strategies(
             status_code=e.status,
             detail=f"Failed to list build strategies: {e.reason}",
         )
+
+
+@router.get(
+    "/shipwright-builds",
+    response_model=ShipwrightBuildListResponse,
+    dependencies=[Depends(require_roles(ROLE_VIEWER))],
+)
+async def list_agent_shipwright_builds(
+    namespace: str = Query(
+        default="",
+        description="Kubernetes namespace (required unless all_namespaces=true)",
+    ),
+    all_namespaces: bool = Query(
+        default=False,
+        alias="allNamespaces",
+        description="If true, list builds in all kagenti-enabled namespaces",
+    ),
+    kube: KubernetesService = Depends(get_kubernetes_service),
+) -> ShipwrightBuildListResponse:
+    """List Shipwright Build resources for agents only (kagenti.io/type=agent)."""
+    namespaces_to_scan: List[str] = []
+    if all_namespaces:
+        namespaces_to_scan = kube.list_enabled_namespaces()
+    else:
+        if not namespace or not namespace.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="namespace query parameter is required (or use allNamespaces=true)",
+            )
+        namespaces_to_scan = [namespace.strip()]
+
+    try:
+        items = collect_kagenti_shipwright_builds(
+            kube, namespaces_to_scan, RESOURCE_TYPE_AGENT, logger
+        )
+    except ApiException as e:
+        raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    return ShipwrightBuildListResponse(items=items)
 
 
 @router.get(
