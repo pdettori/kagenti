@@ -25,6 +25,7 @@ from app.core.constants import (
     CRD_GROUP,
     CRD_VERSION,
     AGENTS_PLURAL,
+    AGENTRUNTIMES_PLURAL,
     KAGENTI_TYPE_LABEL,
     PROTOCOL_LABEL_PREFIX,
     KAGENTI_FRAMEWORK_LABEL,
@@ -828,6 +829,22 @@ async def delete_agent(
             pass
         else:
             logger.warning(f"Failed to delete Service '{name}': {e.reason}")
+
+    # Delete the AgentRuntime CR (if exists)
+    try:
+        kube.delete_custom_resource(
+            group=CRD_GROUP,
+            version=CRD_VERSION,
+            namespace=namespace,
+            plural=AGENTRUNTIMES_PLURAL,
+            name=name,
+        )
+        messages.append(f"AgentRuntime '{name}' deleted")
+    except ApiException as e:
+        if e.status == 404:
+            pass
+        else:
+            logger.warning("Failed to delete AgentRuntime '%s': %s", name, e.reason)
 
     # Legacy cleanup: Delete the Agent CR if it exists
     try:
@@ -2047,6 +2064,64 @@ def _build_selector_labels(request: "CreateAgentRequest") -> Dict[str, str]:
     }
 
 
+def _build_agentruntime_manifest(
+    name: str,
+    namespace: str,
+    workload_type: str,
+    agent_type: str = RESOURCE_TYPE_AGENT,
+) -> dict:
+    """Build an AgentRuntime CR manifest for the given workload."""
+    kind_map = {
+        WORKLOAD_TYPE_DEPLOYMENT: "Deployment",
+        WORKLOAD_TYPE_STATEFULSET: "StatefulSet",
+    }
+    return {
+        "apiVersion": f"{CRD_GROUP}/{CRD_VERSION}",
+        "kind": "AgentRuntime",
+        "metadata": {
+            "name": name,
+            "namespace": namespace,
+            "labels": {
+                KAGENTI_TYPE_LABEL: agent_type,
+                APP_KUBERNETES_IO_MANAGED_BY: KAGENTI_UI_CREATOR_LABEL,
+            },
+        },
+        "spec": {
+            "type": agent_type,
+            "targetRef": {
+                "apiVersion": "apps/v1",
+                "kind": kind_map.get(workload_type, "Deployment"),
+                "name": name,
+            },
+        },
+    }
+
+
+def _ensure_agentruntime(
+    kube: "KubernetesService",
+    name: str,
+    namespace: str,
+    workload_type: str,
+    agent_type: str = RESOURCE_TYPE_AGENT,
+) -> None:
+    """Create an AgentRuntime CR for the workload. Skip if it already exists."""
+    manifest = _build_agentruntime_manifest(name, namespace, workload_type, agent_type)
+    try:
+        kube.create_custom_resource(
+            group=CRD_GROUP,
+            version=CRD_VERSION,
+            namespace=namespace,
+            plural=AGENTRUNTIMES_PLURAL,
+            body=manifest,
+        )
+        logger.info("Created AgentRuntime '%s' in namespace '%s'", name, namespace)
+    except ApiException as e:
+        if e.status == 409:
+            logger.info("AgentRuntime '%s' already exists in namespace '%s'", name, namespace)
+        else:
+            logger.warning("Failed to create AgentRuntime '%s': %s", name, e.reason)
+
+
 def _build_deployment_manifest(
     request: "CreateAgentRequest",
     image: str,
@@ -2489,6 +2564,15 @@ async def create_agent(
                 )
                 logger.info(f"Created Service '{request.name}' in namespace '{request.namespace}'")
 
+            # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
+            if request.workloadType != WORKLOAD_TYPE_JOB:
+                _ensure_agentruntime(
+                    kube=kube,
+                    name=request.name,
+                    namespace=request.namespace,
+                    workload_type=request.workloadType,
+                )
+
             message = f"Agent '{request.name}' deployed as {request.workloadType} successfully."
 
             # Create HTTPRoute/Route if requested (not applicable for Jobs)
@@ -2905,6 +2989,17 @@ async def finalize_shipwright_build(
             )
             kube.create_service(namespace=namespace, body=service_manifest)
             logger.info(f"Created Service '{name}' in namespace '{namespace}'")
+
+        # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
+        # Only for agents — tools don't need sidecar injection
+        resource_type = build_labels.get(KAGENTI_TYPE_LABEL, RESOURCE_TYPE_AGENT)
+        if final_workload_type != WORKLOAD_TYPE_JOB and resource_type == RESOURCE_TYPE_AGENT:
+            _ensure_agentruntime(
+                kube=kube,
+                name=name,
+                namespace=namespace,
+                workload_type=final_workload_type,
+            )
 
         message = f"Agent '{name}' deployed as {final_workload_type} with image '{output_image}'."
 
