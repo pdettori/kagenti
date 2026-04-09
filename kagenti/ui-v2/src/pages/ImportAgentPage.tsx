@@ -172,6 +172,11 @@ export const ImportAgentPage: React.FC = () => {
   // SPIRE identity
   const [spireEnabled, setSpireEnabled] = useState(false);
 
+  // Per-sidecar injection controls
+  const [envoyProxyInject, setEnvoyProxyInject] = useState<boolean | undefined>(undefined);
+  const [spiffeHelperInject, setSpiffeHelperInject] = useState<boolean | undefined>(undefined);
+  const [clientRegistrationInject, setClientRegistrationInject] = useState<boolean | undefined>(true);
+
   // Validation state
   const [validated, setValidated] = useState<Record<string, 'success' | 'error' | 'default'>>({});
 
@@ -460,6 +465,9 @@ export const ImportAgentPage: React.FC = () => {
         createHttpRoute,
         authBridgeEnabled,
         spireEnabled,
+        envoyProxyInject: authBridgeEnabled ? envoyProxyInject : undefined,
+        spiffeHelperInject: authBridgeEnabled ? spiffeHelperInject : undefined,
+        clientRegistrationInject: authBridgeEnabled ? clientRegistrationInject : undefined,
         // Shipwright build configuration (always enabled)
         shipwrightConfig,
       });
@@ -486,6 +494,9 @@ export const ImportAgentPage: React.FC = () => {
         createHttpRoute,
         authBridgeEnabled,
         spireEnabled,
+        envoyProxyInject: authBridgeEnabled ? envoyProxyInject : undefined,
+        spiffeHelperInject: authBridgeEnabled ? spiffeHelperInject : undefined,
+        clientRegistrationInject: authBridgeEnabled ? clientRegistrationInject : undefined,
       });
     }
   };
@@ -982,8 +993,15 @@ export const ImportAgentPage: React.FC = () => {
                   id="authBridgeEnabled"
                   label="Enable AuthBridge sidecar injection"
                   isChecked={authBridgeEnabled}
-                  onChange={(_e, checked) => setAuthBridgeEnabled(checked)}
-                  description="When enabled, the webhook injects AuthBridge sidecars (envoy-proxy, go-processor, spiffe-helper) into the agent pod for inbound JWT validation and outbound token exchange. Keycloak client registration is managed by the operator by default."
+                  onChange={(_e, checked) => {
+                    setAuthBridgeEnabled(checked);
+                    if (checked) {
+                      setEnvoyProxyInject(undefined);
+                      setSpiffeHelperInject(undefined);
+                      setClientRegistrationInject(true);
+                    }
+                  }}
+                  description="When enabled, the webhook injects AuthBridge sidecars (envoy-proxy, go-processor, spiffe-helper, client-registration) into the agent pod for inbound JWT validation, outbound token exchange, and automatic Keycloak client registration."
               />
               </FormGroup>
 
@@ -996,6 +1014,34 @@ export const ImportAgentPage: React.FC = () => {
                   onChange={(_e, checked) => setSpireEnabled(checked)}
                 />
               </FormGroup>
+
+              {authBridgeEnabled && (
+                <>
+                  <FormGroup fieldId="sidecarControls" label="Advanced Injection Controls">
+                    <Checkbox
+                      id="envoyProxyInject"
+                      label="Envoy Proxy"
+                      isChecked={envoyProxyInject !== false}
+                      onChange={(_e, checked) => setEnvoyProxyInject(checked ? undefined : false)}
+                      description="Envoy proxy with go-processor for traffic interception. Disable to skip envoy-proxy sidecar."
+                    />
+                    <Checkbox
+                      id="spiffeHelperInject"
+                      label="SPIFFE Helper"
+                      isChecked={spiffeHelperInject !== false}
+                      onChange={(_e, checked) => setSpiffeHelperInject(checked ? undefined : false)}
+                      description="SPIFFE identity helper for SVID management. Disable to skip spiffe-helper sidecar."
+                    />
+                    <Checkbox
+                      id="clientRegistrationInject"
+                      label="Client Registration"
+                      isChecked={clientRegistrationInject === true}
+                      onChange={(_e, checked) => setClientRegistrationInject(checked ? true : undefined)}
+                      description="Sidecar-based Keycloak client registration. Automatically registers the workload as an OAuth2 client using its SPIFFE identity."
+                    />
+                  </FormGroup>
+                </>
+              )}
 
               {/* Pod Configuration */}
               <ExpandableSection
