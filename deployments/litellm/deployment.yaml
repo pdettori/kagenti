@@ -62,7 +62,7 @@ spec:
         - name: STORE_MODEL_IN_DB
           value: "True"
         - name: LITELLM_LOG
-          value: "DEBUG"
+          value: "INFO"
         envFrom:
         - secretRef:
             name: litellm-model-keys
