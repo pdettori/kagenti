@@ -399,7 +399,7 @@ class KubernetesService:
                 name=name,
                 namespace=namespace,
             )
-        except ApiException as e:
+        except ApiException:
             raise
 
     # -------------------------------------------------------------------------
