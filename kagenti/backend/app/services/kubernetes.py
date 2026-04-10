@@ -400,7 +400,6 @@ class KubernetesService:
                 namespace=namespace,
             )
         except ApiException as e:
-            logger.error("Error deleting Service: %s", e.status)
             raise
 
     # -------------------------------------------------------------------------
@@ -441,9 +440,6 @@ class KubernetesService:
                     body=body,
                 )
                 return result.to_dict()
-            logger.error(
-                "Error creating Secret: status=%d", e.status if isinstance(e.status, int) else 0
-            )
             raise
 
     # -------------------------------------------------------------------------
@@ -484,7 +480,6 @@ class KubernetesService:
                     body=body,
                 )
                 return result.to_dict()
-            logger.error("Error creating ConfigMap: %s", e.status)
             raise
 
     # -------------------------------------------------------------------------
