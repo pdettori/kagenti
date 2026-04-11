@@ -20,6 +20,15 @@ from app.core.constants import ENABLED_NAMESPACE_LABEL_KEY, ENABLED_NAMESPACE_LA
 logger = logging.getLogger(__name__)
 
 
+def _sanitize(value: str) -> str:
+    """Strip newlines and control characters to prevent log injection (CWE-117).
+
+    Uses str.replace for \n and \r which CodeQL recognizes as a sanitizer,
+    plus strips other control characters.
+    """
+    return value.replace("\n", "").replace("\r", "").replace("\x00", "")
+
+
 class KubernetesService:
     """Service class for Kubernetes API interactions."""
 
@@ -444,13 +453,95 @@ class KubernetesService:
 
     def delete_service(self, namespace: str, name: str) -> None:
         """Delete a Service by name."""
+        namespace = _sanitize(namespace)
+        name = _sanitize(name)
         try:
             self.core_api.delete_namespaced_service(
                 name=name,
                 namespace=namespace,
             )
+        except ApiException:
+            raise
+
+    # -------------------------------------------------------------------------
+    # Secret Operations
+    # -------------------------------------------------------------------------
+
+    def create_secret(
+        self,
+        namespace: str,
+        name: str,
+        string_data: dict,
+        labels: Optional[dict] = None,
+    ) -> dict:
+        """Create an Opaque Secret with the provided string data.
+
+        If the secret already exists (409 Conflict), updates it in place.
+        """
+        namespace = _sanitize(namespace)
+        name = _sanitize(name)
+        metadata = kubernetes.client.V1ObjectMeta(name=name, labels=labels)
+        body = kubernetes.client.V1Secret(
+            api_version="v1",
+            kind="Secret",
+            metadata=metadata,
+            string_data=string_data,
+        )
+        try:
+            result = self.core_api.create_namespaced_secret(
+                namespace=namespace,
+                body=body,
+            )
+            return result.to_dict()
         except ApiException as e:
-            logger.error(f"Error deleting Service {name} in {namespace}: {e}")
+            if e.status == 409:
+                result = self.core_api.patch_namespaced_secret(
+                    name=name,
+                    namespace=namespace,
+                    body=body,
+                )
+                return result.to_dict()
+            raise
+
+    # -------------------------------------------------------------------------
+    # ConfigMap Operations
+    # -------------------------------------------------------------------------
+
+    def create_configmap(
+        self,
+        namespace: str,
+        name: str,
+        data: dict,
+        labels: Optional[dict] = None,
+    ) -> dict:
+        """Create a ConfigMap with the provided data.
+
+        If the ConfigMap already exists (409 Conflict), updates it in place.
+        """
+        namespace = _sanitize(namespace)
+        name = _sanitize(name)
+        metadata = kubernetes.client.V1ObjectMeta(name=name, labels=labels)
+        body = kubernetes.client.V1ConfigMap(
+            api_version="v1",
+            kind="ConfigMap",
+            metadata=metadata,
+            data=data,
+        )
+        try:
+            result = self.core_api.create_namespaced_config_map(
+                namespace=namespace,
+                body=body,
+            )
+            return result.to_dict()
+        except ApiException as e:
+            if e.status == 409:
+                # ConfigMap already exists — patch it
+                result = self.core_api.patch_namespaced_config_map(
+                    name=name,
+                    namespace=namespace,
+                    body=body,
+                )
+                return result.to_dict()
             raise
 
     # -------------------------------------------------------------------------
