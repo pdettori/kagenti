@@ -16,6 +16,11 @@ from app.core.constants import DEFAULT_OFF_CLUSTER_PORT
 logger = logging.getLogger(__name__)
 
 
+def sanitize_log(value: str) -> str:
+    """Strip newlines and control characters to prevent log injection (CWE-117)."""
+    return value.replace("\n", "").replace("\r", "").replace("\x00", "")
+
+
 def detect_platform(kube: KubernetesService) -> str:
     """
     Detect if running on OpenShift or regular Kubernetes.
@@ -267,6 +272,27 @@ def create_route_for_agent_or_tool(
         create_openshift_route(kube, name, namespace, service_name, service_port)
     else:
         create_httproute(kube, name, namespace, service_name, service_port)
+
+
+def lookup_service_port(
+    service_name: str,
+    namespace: str,
+    kube: KubernetesService,
+    default_port: int,
+) -> int:
+    """Look up the first port of a K8s Service, falling back to *default_port*."""
+    try:
+        service = kube.get_service(namespace=namespace, name=service_name)
+        ports = service.get("spec", {}).get("ports", [])
+        if ports:
+            return ports[0].get("port", default_port)
+    except ApiException:
+        logger.warning(
+            "Could not look up Service %s in %s, using default port",
+            sanitize_log(service_name),
+            sanitize_log(namespace),
+        )
+    return default_port
 
 
 def get_agent_url(name: str, namespace: str, port: int = DEFAULT_OFF_CLUSTER_PORT) -> str:
