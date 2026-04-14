@@ -811,7 +811,7 @@ async def delete_agent(
     This deletes:
     - Deployment, StatefulSet, or Job (whichever exists)
     - Service
-    - HTTPRoute (if exists)
+    - HTTPRoute or OpenShift Route (whichever exists)
     - Shipwright Build CR (if exists)
     - Shipwright BuildRun CRs (if exist)
     - Legacy: Agent CR (if exists, for backward compatibility)
@@ -875,6 +875,23 @@ async def delete_agent(
             pass
         else:
             logger.warning(f"Failed to delete HTTPRoute '{name}': {e.reason}")
+
+    # Delete the OpenShift Route (if exists)
+    try:
+        kube.delete_custom_resource(
+            group="route.openshift.io",
+            version="v1",
+            namespace=namespace,
+            plural="routes",
+            name=name,
+        )
+        messages.append(f"Route '{name}' deleted")
+    except ApiException as e:
+        if e.status == 404:
+            # Route doesn't exist, that's fine
+            pass
+        else:
+            logger.warning(f"Failed to delete Route '{name}': {e.reason}")
 
     # Delete the AgentRuntime CR (if exists)
     try:
@@ -1995,7 +2012,7 @@ def _ensure_authbridge_scc_rolebinding(
         name="agent-authbridge-scc",
         cluster_role_name=cluster_role_name,
         subjects=[
-            kubernetes.client.V1Subject(
+            kubernetes.client.RbacV1Subject(
                 kind="Group",
                 api_group="rbac.authorization.k8s.io",
                 name=f"system:serviceaccounts:{namespace}",
