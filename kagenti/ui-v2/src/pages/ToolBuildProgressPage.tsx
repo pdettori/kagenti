@@ -339,9 +339,9 @@ export const ToolBuildProgressPage: React.FC = () => {
               <DescriptionListGroup>
                 <DescriptionListTerm>Git URL</DescriptionListTerm>
                 <DescriptionListDescription>
-                  <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
+                  <a href={buildInfo.gitUrl} target="_blank" rel="noopener noreferrer">
                     {buildInfo.gitUrl}
-                  </ClipboardCopy>
+                  </a>
                 </DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>

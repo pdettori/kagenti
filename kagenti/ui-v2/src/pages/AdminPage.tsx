@@ -202,7 +202,9 @@ export const AdminPage: React.FC = () => {
                     <DescriptionListGroup>
                       <DescriptionListTerm>Server URL</DescriptionListTerm>
                       <DescriptionListDescription>
-                        <code style={{ fontSize: '0.85em' }}>{keycloakBaseUrl}</code>
+                        <a href={keycloakBaseUrl} target="_blank" rel="noopener noreferrer">
+                          {keycloakBaseUrl}
+                        </a>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   </DescriptionList>
