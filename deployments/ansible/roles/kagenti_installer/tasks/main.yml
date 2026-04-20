@@ -2004,6 +2004,44 @@
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
     - (charts['kagenti'] | default({})).get('chart') is defined
 
+# The kagenti chart creates the Gateway resource that MCPGatewayExtension targets,
+# so wait for the broker-router only after kagenti is installed.
+- name: Wait for mcp-gateway broker-router deployment
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: mcp-gateway
+    namespace: "{{ charts.mcpGateway.namespace | default('mcp-system') }}"
+  register: broker_router_deploy
+  retries: 30
+  delay: 10
+  until: broker_router_deploy.resources | length > 0
+  when: charts.mcpGateway.enabled | default(false)
+
+- name: Patch mcp-gateway broker-router with OTEL env vars
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    name: mcp-gateway
+    namespace: "{{ charts.mcpGateway.namespace | default('mcp-system') }}"
+    state: patched
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: mcp-gateway
+                env:
+                  - name: NAMESPACE
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.namespace
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: "http://{{ charts['kagenti-deps']['values']['otel']['collector']['service'] }}:8335"
+                  - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                    value: "http/protobuf"
+  when: charts.mcpGateway.enabled | default(false)
+
 # TektonConfig patching (set-security-context, SCC defaults, pruner) is now
 # handled by kagenti-operator's TektonConfigReconciler. The operator is deployed
 # as part of the kagenti chart above, so we wait for TektonConfig to be Ready

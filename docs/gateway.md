@@ -64,7 +64,7 @@ spec:
 and then create an `MCPServerRegistration` Custom Resource:
 
 ```
-echo 'apiVersion: mcp.kagenti.com/v1alpha1
+echo 'apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
 metadata:
   name: weather-tool-servers
@@ -147,7 +147,7 @@ echo $ACCESS_TOKEN
 Now, store the access token as a secret to be used by Broker to access the Slack MCP server:
 ```
 kubectl create secret generic slack-server-access-token --from-literal=token="Bearer $ACCESS_TOKEN" --namespace=default
-kubectl label secret slack-server-access-token mcp.kagenti.com/credential=true
+kubectl label secret slack-server-access-token mcp.kuadrant.io/credential=true
 ```
 
 Next, we create the HttpRoute resource for the Slack MCP server:
@@ -180,7 +180,7 @@ EOF
 Finally, we create the MCPServerRegistration resource with the access token:
 ```
 kubectl apply -f - <<EOF
-apiVersion: mcp.kagenti.com/v1alpha1
+apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
 metadata:
   name: slack-tool-servers
