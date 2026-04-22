@@ -70,6 +70,7 @@ ui:
   url: http://kagenti-ui.localtest.me:8080
   # Frontend (UI v2) configuration
   frontend:
+    enabled: true
     image: ghcr.io/kagenti/kagenti/ui-v2
     tag: latest
     resources:
@@ -306,10 +307,8 @@ mlflow:
 # ------------------------------------------------------------------
 #  MLflow OAuth Secret Creator Configuration
 # ------------------------------------------------------------------
-# TODO: Change back to ghcr.io/kagenti/kagenti/mlflow-oauth-secret once
-# the image is published via Build-Publish workflow (on version tag)
 mlflowOAuthSecret:
-  image: quay.io/ladas/mlflow-oauth-secret
+  image: ghcr.io/kagenti/kagenti/mlflow-oauth-secret
   tag: latest
   # Keycloak client ID for MLflow
   clientId: mlflow
