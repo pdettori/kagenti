@@ -227,6 +227,11 @@ otel:
           traces:
             span:
               - 'IsMatch(name, "^a2a\\..*")'
+              - 'attributes["http.method"] != nil'
+              - 'attributes["mcp.method.name"] == "initialize"'
+              - 'attributes["mcp.method.name"] == "notifications/initialized"'
+              - 'attributes["mcp.method.name"] == "notifications/cancelled"'
+              - 'attributes["mcp.method.name"] == "tools/list"'
         transform/genai_to_openinference:
           trace_statements:
             - context: span
@@ -289,6 +294,11 @@ otel:
           traces:
             span:
               - 'IsMatch(name, "^a2a\\..*")'
+              - 'attributes["http.method"] != nil'
+              - 'attributes["mcp.method.name"] == "initialize"'
+              - 'attributes["mcp.method.name"] == "notifications/initialized"'
+              - 'attributes["mcp.method.name"] == "notifications/cancelled"'
+              - 'attributes["mcp.method.name"] == "tools/list"'
       service:
         pipelines:
           traces/mlflow:
