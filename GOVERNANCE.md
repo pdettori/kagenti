@@ -15,7 +15,7 @@ explains how the project is run.
 
 ## Values
 
-The Kagenti and its leadership embrace the following values:
+The Kagenti project and its leadership embrace the following values:
 
 * Openness: Communication and decision-making happens in the open and is
   discoverable for future reference. As much as possible, all discussions and
@@ -71,10 +71,12 @@ To become a Maintainer you need to demonstrate the following:
   review, etc),
 * understanding of the project's code base and coding and documentation style.
 
-A new Maintainer must be proposed by an existing maintainer by sending a message
-to the [developer mailing list](mailto:kagenti-contributors@googlegroups.com).
-A simple majority vote of existing Maintainers approves the application.
-Maintainers nominations will be evaluated without prejudice
+A new Maintainer must be proposed by an existing Maintainer by opening a PR
+against the root of the [kagenti repository](https://github.com/kagenti/kagenti)
+adding the nominee to MAINTAINERS.md.  The nominee will add a comment to the PR
+testifying that they agree to all requirements of becoming a Maintainer.
+A simple majority of existing Maintainers must approve the PR.
+Maintainer nominations will be evaluated without prejudice
 to employer or demographics.
 
 Maintainers who are selected will be granted the necessary GitHub rights,
@@ -102,8 +104,7 @@ and can be rapidly returned to Maintainer status if their availability changes.
 ## Meetings
 
 Time zones permitting, Maintainers are expected to participate in the public
-developer meeting, which occurs weekly on the
-[Kagenti community calendar](mailto:kagenti-contributors@googlegroups.com).
+developer meeting, which occurs weekly.
 
 Maintainers will also have closed meetings in order to discuss security reports
 or Code of Conduct violations. Such meetings should be scheduled by any

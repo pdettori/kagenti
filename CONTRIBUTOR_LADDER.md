@@ -89,7 +89,7 @@ Process of becoming a Maintainer:
 
 It is important for contributors to be and stay active to set an example and
 show commitment to the project. Inactivity is harmful to the project as it may
-lead to unexpected delays, contributor attrition, and a lost of trust in the
+lead to unexpected delays, contributor attrition, and a loss of trust in the
 project.
 
 * Inactivity is measured by:
