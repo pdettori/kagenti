@@ -59,7 +59,7 @@ SPIRE_VERSION="0.27.0"
 GATEWAY_API_VERSION="v1.4.0"
 TEKTON_VERSION="v0.66.0"
 SHIPWRIGHT_VERSION="v0.14.0"
-MCP_GATEWAY_VERSION="0.5.0"
+MCP_GATEWAY_VERSION="0.6.0"
 KUADRANT_VERSION="1.4.2"
 
 # ── Colors & logging ────────────────────────────────────────────────────────
