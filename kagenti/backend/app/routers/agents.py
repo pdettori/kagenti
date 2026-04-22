@@ -814,7 +814,7 @@ async def get_agent(
 
     # Try to get the associated Service (not applicable for Jobs)
     service = None
-    if workload_type != WORKLOAD_TYPE_JOB:
+    if workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
         try:
             service = kube.get_service(namespace=namespace, name=name)
         except ApiException as e:
@@ -3058,8 +3058,11 @@ async def create_agent(
 
             message = f"Agent '{request.name}' deployed as {request.workloadType} successfully."
 
-            # Create HTTPRoute/Route if requested (not applicable for Jobs)
-            if request.createHttpRoute and request.workloadType != WORKLOAD_TYPE_JOB:
+            # Create HTTPRoute/Route if requested (not applicable for Jobs or Sandboxes)
+            if request.createHttpRoute and request.workloadType not in (
+                WORKLOAD_TYPE_JOB,
+                WORKLOAD_TYPE_SANDBOX,
+            ):
                 service_port = select_route_port(
                     request.servicePorts,
                     default_port=DEFAULT_OFF_CLUSTER_PORT,
@@ -3582,8 +3585,11 @@ async def finalize_shipwright_build(
 
         message = f"Agent '{name}' deployed as {final_workload_type} with image '{output_image}'."
 
-        # Step 4: Create HTTPRoute/Route if requested (not applicable for Jobs)
-        if final_create_route and final_workload_type != WORKLOAD_TYPE_JOB:
+        # Step 4: Create HTTPRoute/Route if requested (not applicable for Jobs or Sandboxes)
+        if final_create_route and final_workload_type not in (
+            WORKLOAD_TYPE_JOB,
+            WORKLOAD_TYPE_SANDBOX,
+        ):
             service_port = select_route_port(
                 final_service_ports,
                 default_port=DEFAULT_OFF_CLUSTER_PORT,
