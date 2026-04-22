@@ -3027,9 +3027,19 @@ async def create_agent(
                     body=workload_manifest,
                 )
                 logger.info(f"Created Job '{request.name}' in namespace '{request.namespace}'")
+            elif request.workloadType == WORKLOAD_TYPE_SANDBOX:
+                workload_manifest = _build_sandbox_manifest(
+                    request=request,
+                    image=request.containerImage,
+                )
+                kube.create_sandbox(
+                    namespace=request.namespace,
+                    body=workload_manifest,
+                )
+                logger.info(f"Created Sandbox '{request.name}' in namespace '{request.namespace}'")
 
-            # Create Service (not needed for Jobs)
-            if request.workloadType != WORKLOAD_TYPE_JOB:
+            # Create Service (not needed for Jobs or Sandboxes)
+            if request.workloadType not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
                 service_manifest = _build_service_manifest(request)
                 kube.create_service(
                     namespace=request.namespace,
@@ -3281,6 +3291,14 @@ async def finalize_shipwright_build(
             except ApiException as e:
                 if e.status != 404:
                     raise
+        if not workload_exists and settings.kagenti_feature_flag_agent_sandbox:
+            try:
+                kube.get_sandbox(namespace=namespace, name=name)
+                workload_exists = True
+                existing_workload_type = WORKLOAD_TYPE_SANDBOX
+            except ApiException as e:
+                if e.status != 404:
+                    raise
 
         if workload_exists:
             # Check if existing workload type matches expected type from config
@@ -3529,9 +3547,20 @@ async def finalize_shipwright_build(
             logger.info(
                 f"Created Job '{name}' with image '{container_image}' in namespace '{namespace}'"
             )
+        elif final_workload_type == WORKLOAD_TYPE_SANDBOX:
+            workload_manifest = _build_sandbox_manifest(
+                request=agent_request,
+                image=container_image,
+                shipwright_build_name=name,
+            )
+            kube.create_sandbox(
+                namespace=namespace,
+                body=workload_manifest,
+            )
+            logger.info(f"Created Sandbox '{name}' in namespace '{namespace}' from build")
 
-        # Create Service (not needed for Jobs)
-        if final_workload_type != WORKLOAD_TYPE_JOB:
+        # Create Service (not needed for Jobs or Sandboxes)
+        if final_workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
             service_manifest = _build_service_manifest(agent_request)
             # Add additional labels from Build
             service_manifest["metadata"]["labels"].update(
