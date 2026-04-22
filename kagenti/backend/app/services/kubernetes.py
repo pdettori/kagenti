@@ -491,6 +491,112 @@ class KubernetesService:
             logger.error(f"Error deleting Job {name} in {namespace}: {e}")
             raise
 
+    # -------------------------------------------------------------------------
+    # Sandbox Operations
+    # -------------------------------------------------------------------------
+
+    def create_sandbox(self, namespace: str, body: dict) -> dict:
+        """Create a Sandbox custom resource in the specified namespace."""
+        from app.core.constants import (
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            AGENT_SANDBOX_PLURAL,
+        )
+
+        try:
+            return self.custom_api.create_namespaced_custom_object(
+                group=AGENT_SANDBOX_CRD_GROUP,
+                version=AGENT_SANDBOX_CRD_VERSION,
+                namespace=namespace,
+                plural=AGENT_SANDBOX_PLURAL,
+                body=body,
+            )
+        except ApiException as e:
+            logger.error(f"Error creating Sandbox in {namespace}: {e}")
+            raise
+
+    def get_sandbox(self, namespace: str, name: str) -> dict:
+        """Get a Sandbox custom resource by name."""
+        from app.core.constants import (
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            AGENT_SANDBOX_PLURAL,
+        )
+
+        try:
+            return self.custom_api.get_namespaced_custom_object(
+                group=AGENT_SANDBOX_CRD_GROUP,
+                version=AGENT_SANDBOX_CRD_VERSION,
+                namespace=namespace,
+                plural=AGENT_SANDBOX_PLURAL,
+                name=name,
+            )
+        except ApiException as e:
+            logger.error(f"Error getting Sandbox {name} in {namespace}: {e}")
+            raise
+
+    def list_sandboxes(self, namespace: str, label_selector: Optional[str] = None) -> List[dict]:
+        """List Sandbox custom resources in a namespace with optional label selector."""
+        from app.core.constants import (
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            AGENT_SANDBOX_PLURAL,
+        )
+
+        try:
+            response = self.custom_api.list_namespaced_custom_object(
+                group=AGENT_SANDBOX_CRD_GROUP,
+                version=AGENT_SANDBOX_CRD_VERSION,
+                namespace=namespace,
+                plural=AGENT_SANDBOX_PLURAL,
+                label_selector=label_selector,
+            )
+            return response.get("items", [])
+        except ApiException as e:
+            logger.error(f"Error listing Sandboxes in {namespace}: {e}")
+            raise
+
+    def delete_sandbox(self, namespace: str, name: str) -> None:
+        """Delete a Sandbox custom resource by name."""
+        from app.core.constants import (
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            AGENT_SANDBOX_PLURAL,
+        )
+
+        try:
+            self.custom_api.delete_namespaced_custom_object(
+                group=AGENT_SANDBOX_CRD_GROUP,
+                version=AGENT_SANDBOX_CRD_VERSION,
+                namespace=namespace,
+                plural=AGENT_SANDBOX_PLURAL,
+                name=name,
+            )
+        except ApiException as e:
+            logger.error(f"Error deleting Sandbox {name} in {namespace}: {e}")
+            raise
+
+    def patch_sandbox(self, namespace: str, name: str, body: dict) -> dict:
+        """Patch a Sandbox custom resource with the provided body."""
+        from app.core.constants import (
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            AGENT_SANDBOX_PLURAL,
+        )
+
+        try:
+            return self.custom_api.patch_namespaced_custom_object(
+                group=AGENT_SANDBOX_CRD_GROUP,
+                version=AGENT_SANDBOX_CRD_VERSION,
+                namespace=namespace,
+                plural=AGENT_SANDBOX_PLURAL,
+                name=name,
+                body=body,
+            )
+        except ApiException as e:
+            logger.error(f"Error patching Sandbox {name} in {namespace}: {e}")
+            raise
+
 
 @lru_cache
 def get_kubernetes_service() -> KubernetesService:
