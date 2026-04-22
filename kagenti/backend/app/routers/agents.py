@@ -655,6 +655,46 @@ async def list_agents(
                 )
             )
 
+        # Query Sandboxes with agent label (feature-flagged)
+        if settings.kagenti_feature_flag_agent_sandbox:
+            try:
+                sandboxes = kube.list_sandboxes(
+                    namespace=namespace,
+                    label_selector=label_selector,
+                )
+                for sandbox in sandboxes:
+                    metadata = sandbox.get("metadata", {})
+                    name = metadata.get("name", "")
+                    if name in agent_names:
+                        logger.warning(
+                            f"Duplicate agent name '{name}' detected: Sandbox skipped because "
+                            f"a workload with the same name already exists in namespace '{namespace}'. "
+                            "This may indicate a configuration issue."
+                        )
+                        continue
+                    agent_names.add(name)
+                    labels = metadata.get("labels", {})
+
+                    agents.append(
+                        AgentSummary(
+                            name=name,
+                            namespace=metadata.get("namespace", namespace),
+                            description=_get_sandbox_description(sandbox),
+                            status=_is_sandbox_ready(sandbox),
+                            labels=_extract_labels(labels),
+                            workloadType=WORKLOAD_TYPE_SANDBOX,
+                            createdAt=_format_timestamp(
+                                metadata.get("creation_timestamp")
+                                or metadata.get("creationTimestamp")
+                            ),
+                        )
+                    )
+            except ApiException as e:
+                if e.status == 404:
+                    logger.debug("Sandbox CRD not installed")
+                elif e.status != 403:
+                    logger.warning(f"Failed to list Sandboxes: {e.reason}")
+
         # Backward compatibility: Also list legacy Agent CRDs (during migration period)
         if settings.enable_legacy_agent_crd:
             try:
@@ -754,12 +794,23 @@ async def get_agent(
             workload = kube.get_job(namespace=namespace, name=name)
             workload_type = WORKLOAD_TYPE_JOB
         except ApiException as e:
-            if e.status == 404:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Agent '{name}' not found in namespace '{namespace}'",
-                )
-            raise HTTPException(status_code=e.status, detail=str(e.reason))
+            if e.status != 404:
+                raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    # If still not found, try Sandbox (feature-flagged)
+    if workload is None and settings.kagenti_feature_flag_agent_sandbox:
+        try:
+            workload = kube.get_sandbox(namespace=namespace, name=name)
+            workload_type = WORKLOAD_TYPE_SANDBOX
+        except ApiException as e:
+            if e.status != 404:
+                raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    if workload is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent '{name}' not found in namespace '{namespace}'",
+        )
 
     # Try to get the associated Service (not applicable for Jobs)
     service = None
@@ -782,6 +833,8 @@ async def get_agent(
         ready_status = _is_statefulset_ready(workload)
     elif workload_type == WORKLOAD_TYPE_JOB:
         ready_status = _get_job_status(workload)
+    elif workload_type == WORKLOAD_TYPE_SANDBOX:
+        ready_status = _is_sandbox_ready(workload)
     else:
         ready_status = "Unknown"
 
@@ -878,6 +931,17 @@ async def delete_agent(
             logger.debug("Job '%s' not found", safe_name)
         else:
             logger.warning("Failed to delete Job '%s': %s", safe_name, e.reason)
+
+    # Delete the Sandbox (if exists)
+    if settings.kagenti_feature_flag_agent_sandbox:
+        try:
+            kube.delete_sandbox(namespace=namespace, name=name)
+            messages.append(f"Sandbox '{name}' deleted")
+        except ApiException as e:
+            if e.status == 404:
+                logger.debug(f"Sandbox '{name}' not found")
+            else:
+                logger.warning(f"Failed to delete Sandbox '{name}': {e.reason}")
 
     # Delete the Service
     try:
