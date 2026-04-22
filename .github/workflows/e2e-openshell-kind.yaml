@@ -2,9 +2,13 @@
 #
 # Experimental, non-voting workflow for the OpenShell PoC.
 # Runs the openshell-full-test.sh script which handles cluster creation,
-# platform install, OpenShell gateway deployment, and E2E tests.
+# platform install, OpenShell gateway deployment, agent builds, and E2E tests.
 #
 # This workflow never blocks merge (continue-on-error: true).
+#
+# Note: LLM-dependent tests (PR review, code review) are SKIPPED in CI
+# because there's no .env.maas file. Set OPENSHELL_LLM_AVAILABLE=true
+# and provide LiteMaaS credentials to enable them.
 #
 name: "[Experimental] E2E OpenShell (Kind)"
 
@@ -15,6 +19,7 @@ on:
       - 'deployments/openshell/**'
       - 'kagenti/tests/e2e/openshell/**'
       - '.github/scripts/local-setup/openshell-full-test.sh'
+      - '.github/scripts/local-setup/openshell-build-agents.sh'
       - '.github/workflows/e2e-openshell-kind.yaml'
   workflow_dispatch:
 
@@ -29,29 +34,36 @@ jobs:
   e2e-openshell:
     name: OpenShell PoC (Kind)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Non-voting: never blocks merge
+    timeout-minutes: 45
     continue-on-error: true
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install kubectl
         uses: azure/setup-kubectl@15650b3ad78fff148532a140b8a4c821796b2d7b  # v5.0.0
 
-      - name: Install Helm
+      - name: Install Helm v3
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2  # v5.0.0
         with:
           version: 'v3.17.0'
 
+      - name: Install Kind
+        run: |
+          KIND_VERSION="v0.27.0"
+          curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind version
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac1f950a3cb4083c8c3c04dc0  # v3.10.0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -67,14 +79,22 @@ jobs:
 
       - name: Run OpenShell full test
         run: ./.github/scripts/local-setup/openshell-full-test.sh
+        env:
+          PLATFORM: kind
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4.6.0
         with:
-          name: openshell-e2e-test-results
-          path: test-results/
+          name: openshell-kind-e2e-results
+          path: |
+            test-results/
+            /tmp/kagenti/
 
       - name: Collect logs on failure
         if: failure()
-        run: bash .github/scripts/common/99-collect-logs.sh
+        run: |
+          mkdir -p /tmp/kagenti/ci-logs
+          kubectl get pods -A > /tmp/kagenti/ci-logs/all-pods.txt 2>&1 || true
+          kubectl logs -n openshell-system openshell-gateway-0 --tail=100 > /tmp/kagenti/ci-logs/gateway.log 2>&1 || true
+          kubectl get events -n team1 --sort-by='.lastTimestamp' > /tmp/kagenti/ci-logs/team1-events.txt 2>&1 || true
