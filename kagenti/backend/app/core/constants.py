@@ -57,13 +57,21 @@ TOOL_SERVICE_SUFFIX = "-mcp"
 WORKLOAD_TYPE_DEPLOYMENT = "deployment"
 WORKLOAD_TYPE_STATEFULSET = "statefulset"
 WORKLOAD_TYPE_JOB = "job"
+WORKLOAD_TYPE_SANDBOX = "sandbox"
 
-# Supported workload types
+# agent-sandbox CRD coordinates (kubernetes-sigs/agent-sandbox)
+AGENT_SANDBOX_CRD_GROUP = "agents.x-k8s.io"
+AGENT_SANDBOX_CRD_VERSION = "v1alpha1"
+AGENT_SANDBOX_PLURAL = "sandboxes"
+
+# Supported workload types (sandbox added conditionally at startup)
 SUPPORTED_WORKLOAD_TYPES = [
     WORKLOAD_TYPE_DEPLOYMENT,
     WORKLOAD_TYPE_STATEFULSET,
     WORKLOAD_TYPE_JOB,
 ]
+if settings.kagenti_feature_flag_agent_sandbox:
+    SUPPORTED_WORKLOAD_TYPES.append(WORKLOAD_TYPE_SANDBOX)
 
 # Namespace labels
 ENABLED_NAMESPACE_LABEL_KEY = settings.enabled_namespace_label_key
