@@ -2005,7 +2005,8 @@
     - (charts['kagenti'] | default({})).get('chart') is defined
 
 # The kagenti chart creates the Gateway resource that MCPGatewayExtension targets,
-# so wait for the broker-router only after kagenti is installed.
+# so wait for the broker-router only after kagenti is installed, using retries: 30,
+# delay: 10 = ~5 minutes for the controller to reconcile and create the deployment.
 - name: Wait for mcp-gateway broker-router deployment
   kubernetes.core.k8s_info:
     api_version: apps/v1
@@ -2018,6 +2019,8 @@
   until: broker_router_deploy.resources | length > 0
   when: charts.mcpGateway.enabled | default(false)
 
+# The container name "mcp-gateway" matches the upstream kuadrant/mcp-gateway chart. Strategic merge
+# patch uses container name as the merge key — update if upstream renames it.
 - name: Patch mcp-gateway broker-router with OTEL env vars
   kubernetes.core.k8s:
     api_version: apps/v1
