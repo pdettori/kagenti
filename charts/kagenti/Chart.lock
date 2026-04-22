@@ -3,4 +3,4 @@ dependencies:
   repository: oci://ghcr.io/kagenti/kagenti-operator
   version: 0.2.0-alpha.26
 digest: sha256:480de61974052a540cd086536be68d63f98a517f3c4e6bf7d07e94e3838df367
-generated: "2026-04-17T15:42:08.267754-06:00"
+generated: "2026-04-20T18:33:18.942174-04:00"
