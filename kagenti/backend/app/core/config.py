@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     kagenti_feature_flag_sandbox: bool = False
     kagenti_feature_flag_integrations: bool = False
     kagenti_feature_flag_triggers: bool = False
+    kagenti_feature_flag_agent_sandbox: bool = False
     kagenti_feature_flag_sidecars: bool = (
         False  # sidecar agents (looper, hallucination, context guardian)
     )

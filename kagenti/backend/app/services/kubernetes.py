@@ -16,7 +16,13 @@ import kubernetes.config
 from kubernetes.client import ApiException
 from kubernetes.config import ConfigException
 
-from app.core.constants import ENABLED_NAMESPACE_LABEL_KEY, ENABLED_NAMESPACE_LABEL_VALUE
+from app.core.constants import (
+    AGENT_SANDBOX_CRD_GROUP,
+    AGENT_SANDBOX_CRD_VERSION,
+    AGENT_SANDBOX_PLURAL,
+    ENABLED_NAMESPACE_LABEL_KEY,
+    ENABLED_NAMESPACE_LABEL_VALUE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +243,29 @@ class KubernetesService:
             )
         except ApiException as e:
             logger.error(f"Error creating {plural} in {namespace}: {e}")
+            raise
+
+    def patch_custom_resource(
+        self,
+        group: str,
+        version: str,
+        namespace: str,
+        plural: str,
+        name: str,
+        body: dict,
+    ) -> dict:
+        """Patch a custom resource."""
+        try:
+            return self.custom_api.patch_namespaced_custom_object(
+                group=group,
+                version=version,
+                namespace=namespace,
+                plural=plural,
+                name=name,
+                body=body,
+            )
+        except ApiException as e:
+            logger.error(f"Error patching {plural}/{name} in {namespace}: {e}")
             raise
 
     # -------------------------------------------------------------------------
@@ -680,6 +709,61 @@ class KubernetesService:
         except ApiException as e:
             logger.error(f"Error deleting Job {name} in {namespace}: {e}")
             raise
+
+    # -------------------------------------------------------------------------
+    # Sandbox Operations
+    # -------------------------------------------------------------------------
+
+    def create_sandbox(self, namespace: str, body: dict) -> dict:
+        """Create a Sandbox custom resource in the specified namespace."""
+        return self.create_custom_resource(
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            namespace,
+            AGENT_SANDBOX_PLURAL,
+            body,
+        )
+
+    def get_sandbox(self, namespace: str, name: str) -> dict:
+        """Get a Sandbox custom resource by name."""
+        return self.get_custom_resource(
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            namespace,
+            AGENT_SANDBOX_PLURAL,
+            name,
+        )
+
+    def list_sandboxes(self, namespace: str, label_selector: Optional[str] = None) -> List[dict]:
+        """List Sandbox custom resources in a namespace."""
+        return self.list_custom_resources(
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            namespace,
+            AGENT_SANDBOX_PLURAL,
+            label_selector,
+        )
+
+    def delete_sandbox(self, namespace: str, name: str) -> None:
+        """Delete a Sandbox custom resource by name."""
+        self.delete_custom_resource(
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            namespace,
+            AGENT_SANDBOX_PLURAL,
+            name,
+        )
+
+    def patch_sandbox(self, namespace: str, name: str, body: dict) -> dict:
+        """Patch a Sandbox custom resource."""
+        return self.patch_custom_resource(
+            AGENT_SANDBOX_CRD_GROUP,
+            AGENT_SANDBOX_CRD_VERSION,
+            namespace,
+            AGENT_SANDBOX_PLURAL,
+            name,
+            body,
+        )
 
 
 @lru_cache

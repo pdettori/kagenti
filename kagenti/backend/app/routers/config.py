@@ -6,7 +6,7 @@ Configuration API endpoints.
 """
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.auth import require_roles, ROLE_VIEWER
 from app.core.config import settings
@@ -16,9 +16,10 @@ from app.models.responses import DashboardConfigResponse
 class FeatureFlagsResponse(BaseModel):
     """Response model for feature flag status."""
 
-    sandbox: bool
-    integrations: bool
-    triggers: bool
+    sandbox: bool = Field(description="Interactive sandbox session UI (Legion)")
+    integrations: bool = Field(description="Third-party integration endpoints")
+    triggers: bool = Field(description="Event-driven trigger system")
+    agentSandbox: bool = Field(description="agent-sandbox (k8s-sigs) as a workload type")
 
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -35,6 +36,7 @@ async def get_feature_flags() -> FeatureFlagsResponse:
         sandbox=settings.kagenti_feature_flag_sandbox,
         integrations=settings.kagenti_feature_flag_integrations,
         triggers=settings.kagenti_feature_flag_triggers,
+        agentSandbox=settings.kagenti_feature_flag_agent_sandbox,
     )
 
 
