@@ -3557,11 +3557,12 @@ async def finalize_shipwright_build(
                 image=container_image,
                 shipwright_build_name=name,
             )
-            workload_manifest["metadata"]["labels"].update(
-                {k: v for k, v in build_labels.items() if k.startswith("kagenti.io/")}
-            )
+            kagenti_build_labels = {
+                k: v for k, v in build_labels.items() if k.startswith(settings.kagenti_label_prefix)
+            }
+            workload_manifest["metadata"]["labels"].update(kagenti_build_labels)
             workload_manifest["spec"]["podTemplate"]["metadata"]["labels"].update(
-                {k: v for k, v in build_labels.items() if k.startswith("kagenti.io/")}
+                kagenti_build_labels
             )
             kube.create_sandbox(
                 namespace=namespace,
