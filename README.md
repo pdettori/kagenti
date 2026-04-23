@@ -121,7 +121,7 @@ cd kagenti
 
 # Check out the latest stable release (recommended)
 # Find the current version at https://github.com/kagenti/kagenti/releases/latest
-git checkout v0.5.0
+git checkout v0.5.1
 
 # Copy and configure secrets
 cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
