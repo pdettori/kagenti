@@ -140,8 +140,7 @@ periodically the Maintainers may need to vote on specific actions or changes.
 A vote can be taken on
 [the developer mailing list](mailto:kagenti-contributors@googlegroups.com) or
 [the private Maintainer mailing list](mailto:kagenti-maintainers@googlegroups.com)
-for security or conduct matters. Votes may also be taken at
-[the developer meeting](mailto:kagenti-contributors@googlegroups.com). Any Maintainer may demand a vote be taken.
+for security or conduct matters. Any Maintainer may demand a vote be taken.
 
 Most votes require a simple majority of all Maintainers to succeed, except where
 otherwise noted. Two-thirds majority votes mean at least two-thirds of all
