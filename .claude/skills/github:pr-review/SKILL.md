@@ -278,7 +278,8 @@ Severity levels:
 - **must-fix** - Blocks merge. Security issues, broken functionality, missing sign-off.
 - **suggestion** - Should fix but not blocking. Better patterns, missing tests.
 - **nit** - Trivial. Style, naming, minor improvements.
-- **praise** - Highlight good patterns worth calling out.
+
+Do NOT include praise comments — they clutter the review without adding value.
 
 ### 4.2 Summary Comment
 
@@ -293,10 +294,14 @@ Severity levels:
 
 ### 4.3 Verdict
 
-One of:
-- **APPROVE** - No must-fix issues, PR follows conventions
-- **REQUEST_CHANGES** - Has must-fix issues that block merge
-- **COMMENT** - Suggestions only, author can decide
+Decision tree (follow in order):
+
+1. **Any must-fix issues?** → **REQUEST_CHANGES**
+2. **No must-fix issues?** → **APPROVE**
+
+That's it. Suggestions and nits are included as inline comments within the
+APPROVE review — they do NOT downgrade the verdict. Never use COMMENT as the event;
+it withholds approval unnecessarily when there are no blocking issues.
 
 ### 4.4 User Approval
 
@@ -317,11 +322,11 @@ After user approves, post the review via GitHub API.
 ```bash
 # Build the review payload as JSON (gh api does NOT support array params via -f)
 # For each inline comment: path, line (in the file on HEAD side), body
-# event: APPROVE, REQUEST_CHANGES, or COMMENT
+# event: APPROVE (default when no must-fix) or REQUEST_CHANGES (when must-fix exists)
 
 cat <<'EOF' | gh api repos/{owner}/{repo}/pulls/<number>/reviews --method POST --input -
 {
-  "event": "COMMENT",
+  "event": "APPROVE",
   "body": "Review summary text...",
   "comments": [
     {"path": "path/to/file.py", "line": 42, "body": "Comment text..."},
@@ -330,6 +335,9 @@ cat <<'EOF' | gh api repos/{owner}/{repo}/pulls/<number>/reviews --method POST -
 }
 EOF
 ```
+
+> **Note**: Use `"event": "APPROVE"` when there are no must-fix issues (even if there
+> are suggestions/nits). Only use `"event": "REQUEST_CHANGES"` when must-fix issues exist.
 
 > **Note**: `gh api` is NOT auto-approved. The user will be prompted to approve
 > the review submission. This is intentional — reviews are write operations.
@@ -428,7 +436,7 @@ Use JSON input instead:
 ```bash
 cat <<'EOF' | gh api repos/{owner}/{repo}/pulls/<number>/reviews --method POST --input -
 {
-  "event": "COMMENT",
+  "event": "APPROVE",
   "body": "Review summary...",
   "comments": [
     {"path": "file.py", "line": 42, "body": "Comment text..."}
