@@ -8,7 +8,7 @@ This document provides context for AI assistants working across the Kagenti orga
 
 **Website**: [kagenti.io](http://kagenti.io)
 **GitHub Organization**: [github.com/kagenti](https://github.com/kagenti)
-**Discord**: [Kagenti Discord](https://discord.gg/aJ92dNDzqB)
+**Slack**: [Kagenti Slack](https://ibm.biz/kagenti-slack)
 
 ## Repository Structure
 
@@ -189,7 +189,7 @@ mcp-gateway/
 
 **CRD**:
 ```yaml
-apiVersion: mcp.kagenti.com/v1alpha1
+apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
 metadata:
   name: weather-tool-servers

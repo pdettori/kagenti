@@ -835,11 +835,383 @@
     - (charts['kagenti-deps'] | default({})).get('enabled', false) | bool
     - (charts['kagenti-deps'] | default({})).get('chart') is defined
 
+
 #
+#  Patch SPIRE OIDC Discovery Provider ConfigMap
+#  WORKAROUND: Neither the SPIRE helm chart (versions <=0.28.2) nor the ZTWIM operator (OCP 4.19+)
+#  configures the set_key_use option in the OIDC Discovery Provider ConfigMap.
+#  Keycloak's SPIFFE provider requires "use": "sig" field in JWKS keys.
+#  This task patches the ConfigMap post-install to add set_key_use: true.
+#
+#  NOTE: The SPIFFE IdP setup job (below) depends on this patch. If this block's
+#  `when` condition changes, verify the job condition still aligns. See issue #1267.
+#
+# Patch SPIRE OIDC ConfigMap with set_key_use (must run AFTER kagenti-deps installs SPIRE)
+- name: Patch SPIRE OIDC ConfigMap with set_key_use
+  block:
+    - name: Wait for SPIRE OIDC Discovery Provider ConfigMap to be created
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        name: spire-spiffe-oidc-discovery-provider
+        namespace: "{{ charts.spire.server_namespace }}"
+      register: spire_oidc_cm_check
+      until:
+        - spire_oidc_cm_check.resources | length > 0
+        - spire_oidc_cm_check.resources[0].data is defined
+        - spire_oidc_cm_check.resources[0].data['oidc-discovery-provider.conf'] is defined
+      retries: 90
+      delay: 2
+      failed_when: false
+
+    - name: Debug ConfigMap availability
+      debug:
+        msg: "ConfigMap found: {{ spire_oidc_cm_check.resources | length > 0 }}"
+
+    - name: Get current OIDC config
+      set_fact:
+        spire_oidc_config: "{{ spire_oidc_cm_check.resources[0].data['oidc-discovery-provider.conf'] | from_json }}"
+        spire_oidc_cm_data: "{{ spire_oidc_cm_check.resources[0].data }}"
+      when:
+        - spire_oidc_cm_check.resources | length > 0
+        - spire_oidc_cm_check.resources[0].data is defined
+        - spire_oidc_cm_check.resources[0].data['oidc-discovery-provider.conf'] is defined
+
+    - name: Debug parsed config
+      debug:
+        msg:
+          - "Config parsed: {{ spire_oidc_config is defined }}"
+          - "set_key_use value: {{ spire_oidc_config.set_key_use | default('NOT_SET') }}"
+      when: spire_oidc_config is defined
+
+    - name: Check if set_key_use already configured
+      set_fact:
+        set_key_use_present: "{{ (spire_oidc_config.set_key_use | default(None)) is not none and (spire_oidc_config.set_key_use | bool) }}"
+      when: spire_oidc_config is defined
+
+    - name: Debug set_key_use check
+      debug:
+        msg: "set_key_use present and true: {{ set_key_use_present | default(false) }}"
+      when: spire_oidc_config is defined
+
+    - name: Patch SPIRE OIDC ConfigMap to add set_key_use
+      block:
+        - name: Add set_key_use to OIDC config
+          set_fact:
+            patched_oidc_config: "{{ spire_oidc_config | combine({'set_key_use': true}) }}"
+
+        - name: Apply patched ConfigMap
+          command: >
+            kubectl patch configmap spire-spiffe-oidc-discovery-provider
+            -n {{ charts.spire.server_namespace }}
+            --type merge
+            -p '{"data":{"oidc-discovery-provider.conf":{{ patched_oidc_config | to_json | to_json }}}}'
+          register: oidc_cm_patch_result
+
+        - name: Restart SPIRE OIDC Discovery Provider deployment
+          command: kubectl rollout restart deployment/spire-spiffe-oidc-discovery-provider -n {{ charts.spire.server_namespace }}
+
+        - name: Wait for SPIRE OIDC Discovery Provider rollout
+          command: >
+            kubectl rollout status deployment/spire-spiffe-oidc-discovery-provider
+            -n {{ charts.spire.server_namespace }} --timeout=2m
+          register: oidc_rollout_result
+          retries: 3
+          delay: 10
+          until: oidc_rollout_result is not failed
+
+        - name: Log OIDC ConfigMap patch status
+          debug:
+            msg: "✅ SPIRE OIDC ConfigMap patched with set_key_use: true and deployment restarted"
+      when:
+        - spire_oidc_config is defined
+        - not (set_key_use_present | default(false) | bool)
+
+    - name: Log set_key_use already configured
+      debug:
+        msg: "✅ SPIRE OIDC ConfigMap already has set_key_use: true - no patch needed"
+      when:
+        - spire_oidc_config is defined
+        - set_key_use_present | default(false) | bool
+
+    - name: Log OIDC ConfigMap already configured
+      debug:
+        msg: "✅ SPIRE OIDC ConfigMap already has set_key_use configured"
+      when:
+        - spire_oidc_config is defined
+        - set_key_use_present | default(false) | bool
+
+    - name: Warn if OIDC ConfigMap not found
+      debug:
+        msg: "⚠️  Warning: spire-spiffe-oidc-discovery-provider ConfigMap not found. Skipping set_key_use patch."
+      when: spire_oidc_cm_check.resources | length == 0
+  when: >
+    (
+      (charts.spire.enabled | default(false)) and
+      (charts.spire.values['spiffe-oidc-discovery-provider'].enabled | default(true)) and
+      (not (enable_openshift | default(false)) or (use_spire_helm_chart | default(false)))
+    ) or
+    (
+      (enable_openshift | default(false)) and
+      (not (use_spire_helm_chart | default(false))) and
+      (charts['kagenti-deps']['values']['components']['spire']['enabled'] | default(false))
+    )
+
+# Run SPIFFE IdP setup job AFTER set_key_use patch completes
+# This ensures the job doesn't fail due to missing "use" field in JWKS
+- name: Run SPIFFE IdP setup job after SPIRE patch
+  block:
+    - name: Get kagenti-deps release values
+      command: >
+        helm get values {{ (charts['kagenti-deps'] | default({})).get('release_name', 'kagenti-deps') }}
+        -n {{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}
+        --all --output json
+      register: kagenti_deps_values_raw
+      changed_when: false
+
+    - name: Parse kagenti-deps values
+      set_fact:
+        kagenti_deps_values: "{{ kagenti_deps_values_raw.stdout | from_json }}"
+
+    - name: Create ServiceAccount for SPIFFE IdP setup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: kagenti-spiffe-idp-setup
+            namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+
+    - name: Create ClusterRole for SPIFFE IdP setup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: kagenti-spiffe-idp-reader
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          rules:
+            - apiGroups: [""]
+              resources: ["secrets"]
+              resourceNames: ["{{ kagenti_deps_values.keycloak.adminSecretName }}"]
+              verbs: ["get"]
+
+    - name: Create RoleBinding for SPIFFE IdP setup (Keycloak secrets)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: kagenti-spiffe-idp-keycloak-reader
+            namespace: "{{ kagenti_deps_values.keycloak.namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          subjects:
+            - kind: ServiceAccount
+              name: kagenti-spiffe-idp-setup
+              namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+          roleRef:
+            kind: ClusterRole
+            name: kagenti-spiffe-idp-reader
+            apiGroup: rbac.authorization.k8s.io
+
+    - name: Create Role for SPIFFE IdP setup (SPIRE pod reading)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: kagenti-spiffe-idp-pod-reader
+            namespace: "{{ charts.spire.server_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          rules:
+            - apiGroups: [""]
+              resources: ["pods"]
+              verbs: ["get", "list", "watch"]
+
+    - name: Create RoleBinding for SPIFFE IdP setup (SPIRE pod reading)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: kagenti-spiffe-idp-pod-reader
+            namespace: "{{ charts.spire.server_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          subjects:
+            - kind: ServiceAccount
+              name: kagenti-spiffe-idp-setup
+              namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+          roleRef:
+            kind: Role
+            name: kagenti-spiffe-idp-pod-reader
+            apiGroup: rbac.authorization.k8s.io
+
+    - name: Create Role for SPIFFE IdP setup (Keycloak pod reading)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: kagenti-spiffe-idp-pod-reader
+            namespace: "{{ kagenti_deps_values.keycloak.namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          rules:
+            - apiGroups: [""]
+              resources: ["pods"]
+              verbs: ["get", "list", "watch"]
+
+    - name: Create RoleBinding for SPIFFE IdP setup (Keycloak pod reading)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: kagenti-spiffe-idp-pod-reader
+            namespace: "{{ kagenti_deps_values.keycloak.namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          subjects:
+            - kind: ServiceAccount
+              name: kagenti-spiffe-idp-setup
+              namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+          roleRef:
+            kind: Role
+            name: kagenti-spiffe-idp-pod-reader
+            apiGroup: rbac.authorization.k8s.io
+
+    - name: Delete existing SPIFFE IdP setup job if it exists
+      kubernetes.core.k8s:
+        state: absent
+        api_version: batch/v1
+        kind: Job
+        name: kagenti-spiffe-idp-setup-job
+        namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+      failed_when: false
+
+    - name: Create SPIFFE IdP setup job
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: kagenti-spiffe-idp-setup-job
+            namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+            labels:
+              app.kubernetes.io/managed-by: ansible
+              app.kubernetes.io/part-of: kagenti
+          spec:
+            backoffLimit: 10
+            template:
+              metadata:
+                labels:
+                  app: kagenti-spiffe-idp-setup
+              spec:
+                serviceAccountName: kagenti-spiffe-idp-setup
+                restartPolicy: OnFailure
+                initContainers:
+                  - name: wait-for-spire
+                    image: "{{ kagenti_deps_values.common.kubectlImage | default('bitnami/kubectl:latest') }}"
+                    command:
+                      - sh
+                      - -c
+                      - |
+                        echo "Waiting for SPIRE server to be ready..."
+                        kubectl wait --for=condition=ready pod \
+                          -l app.kubernetes.io/name=server \
+                          -n {{ charts.spire.server_namespace }} \
+                          --timeout=300s
+                        echo "SPIRE server is ready"
+
+                        echo "Waiting for SPIRE OIDC discovery provider to be ready..."
+                        kubectl wait --for=condition=ready pod \
+                          -l app.kubernetes.io/name=spire-spiffe-oidc-discovery-provider \
+                          -n {{ charts.spire.server_namespace }} \
+                          --timeout=300s
+                        echo "SPIRE OIDC discovery provider is ready"
+                containers:
+                  - name: setup-spiffe-idp
+                    image: "{{ kagenti_deps_values.spiffeIdp.image.repository }}:{{ kagenti_deps_values.spiffeIdp.image.tag | default('latest') }}"
+                    imagePullPolicy: "{{ kagenti_deps_values.spiffeIdp.image.pullPolicy | default('IfNotPresent') }}"
+                    env:
+                      - name: KEYCLOAK_BASE_URL
+                        value: "{{ kagenti_deps_values.keycloak.url }}"
+                      - name: KEYCLOAK_REALM
+                        value: "{{ kagenti_deps_values.keycloak.realm }}"
+                      - name: KEYCLOAK_NAMESPACE
+                        value: "{{ kagenti_deps_values.keycloak.namespace }}"
+                      - name: KEYCLOAK_ADMIN_SECRET_NAME
+                        value: "{{ kagenti_deps_values.keycloak.adminSecretName }}"
+                      - name: KEYCLOAK_ADMIN_USERNAME_KEY
+                        value: "{{ kagenti_deps_values.keycloak.adminUsernameKey }}"
+                      - name: KEYCLOAK_ADMIN_PASSWORD_KEY
+                        value: "{{ kagenti_deps_values.keycloak.adminPasswordKey }}"
+                      - name: SPIFFE_TRUST_DOMAIN
+                        value: "spiffe://{{ kagenti_deps_values.domain }}"
+                      - name: SPIFFE_BUNDLE_ENDPOINT
+                        value: "http://spire-spiffe-oidc-discovery-provider.{{ charts.spire.server_namespace }}.svc.cluster.local/keys"
+                      - name: SPIFFE_IDP_ALIAS
+                        value: "{{ kagenti_deps_values.authBridge.spiffeIdpAlias | default('spire-spiffe') }}"
+
+    - name: Wait for SPIFFE IdP setup job to complete
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: Job
+        name: kagenti-spiffe-idp-setup-job
+        namespace: "{{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }}"
+      register: spiffe_idp_job_status
+      until: >
+        spiffe_idp_job_status.resources | length > 0 and
+        spiffe_idp_job_status.resources[0].status.succeeded is defined and
+        spiffe_idp_job_status.resources[0].status.succeeded > 0
+      retries: 60
+      delay: 5
+      failed_when: false
+
+    - name: Check if SPIFFE IdP job succeeded
+      debug:
+        msg: "✅ SPIFFE IdP setup job completed successfully"
+      when: >
+        spiffe_idp_job_status.resources | length > 0 and
+        spiffe_idp_job_status.resources[0].status.succeeded is defined and
+        spiffe_idp_job_status.resources[0].status.succeeded > 0
+
+    - name: Warn if SPIFFE IdP job failed
+      debug:
+        msg: "⚠️  Warning: SPIFFE IdP setup job did not complete successfully. Check logs with: kubectl logs -n {{ (charts['kagenti-deps'] | default({})).get('namespace', 'kagenti-system') }} job/kagenti-spiffe-idp-setup-job"
+      when: >
+        spiffe_idp_job_status.resources | length == 0 or
+        spiffe_idp_job_status.resources[0].status.succeeded is not defined or
+        spiffe_idp_job_status.resources[0].status.succeeded == 0
+  when: >
+    charts['kagenti-deps']['enabled'] | default(false) and
+    charts['kagenti-deps']['values']['components']['spire']['enabled'] | default(false) and
+    charts['kagenti-deps']['values']['components']['keycloak']['enabled'] | default(false)
+
 #  RHOAI (Red Hat OpenShift AI) - wait for operator and create DataScienceCluster
 #  The operator subscription is created by the kagenti-deps Helm chart.
 #  Ansible waits for CSV, CRD readiness, and creates the DataScienceCluster CR.
-#
 - name: Wait for RHOAI operator and create DataScienceCluster
   ansible.builtin.import_tasks: 05_install_rhoai.yaml
 
@@ -1377,6 +1749,53 @@
   ansible.builtin.import_tasks: 03_setup_kind_registry_dns.yaml
 
 #
+#  Kuadrant Operator (AuthPolicy for MCP Gateway JWT validation and authorization)
+#
+- name: Install Kuadrant operator
+  block:
+    - name: Install kuadrant-operator via Helm
+      kubernetes.core.helm:
+        release_name: kuadrant-operator
+        chart_ref: kuadrant-operator
+        chart_repo_url: https://kuadrant.io/helm-charts/
+        chart_version: "{{ charts.kuadrant.version }}"
+        release_namespace: "{{ charts.kuadrant.namespace }}"
+        create_namespace: true
+        state: present
+        wait: true
+        timeout: "{{ helm_wait_timeout }}s"
+        values: "{{ (charts.kuadrant | default({})).get('values', {}) | default({}) }}"
+      register: kuadrant_operator_result
+      retries: 3
+      delay: 30
+      until: kuadrant_operator_result is not failed
+
+    - name: Wait for Kuadrant operator to be ready
+      command: >-
+        kubectl rollout status deployment/kuadrant-operator-controller-manager
+        -n {{ charts.kuadrant.namespace }} --timeout=300s
+      register: kuadrant_operator_ready
+      retries: 3
+      delay: 15
+      until: kuadrant_operator_ready.rc == 0
+      changed_when: false
+
+    - name: Create Kuadrant CR to instantiate Authorino
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kuadrant.io/v1beta1
+          kind: Kuadrant
+          metadata:
+            name: kuadrant
+            namespace: "{{ charts.kuadrant.namespace }}"
+      register: kuadrant_cr_result
+      retries: 3
+      delay: 15
+      until: kuadrant_cr_result is not failed
+  when: charts.kuadrant.enabled | default(false)
+
+#
 #  Namespace needed by MCP Gateway, that its own chart doesn't install
 #
 - name: Create gateway-system namespace for mcp-gateway
@@ -1460,6 +1879,55 @@
         kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'agentOAuthSecret': {'spiffePrefix': 'spiffe://' + ocp_trust_domain + '/sa'}}, recursive=True) }}"
       when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
 
+    # Discover Keycloak public URL from OpenShift Route.
+    # The authbridge-unified sidecar fetches JWKS at startup and validates JWT
+    # issuer claims, so keycloak.publicUrl must be the externally-reachable URL
+    # that matches the "iss" claim in tokens issued by Keycloak.
+    - name: Discover Keycloak Route host on OpenShift
+      command: >-
+        kubectl get route keycloak -n {{ (charts['kagenti'] | default({})).get('values', {}).get('keycloak', {}).get('namespace', 'keycloak') }}
+        -o jsonpath='{.spec.host}'
+      register: keycloak_route_host
+      failed_when: false
+      changed_when: false
+
+    - name: Override keycloak.publicUrl from discovered Route
+      set_fact:
+        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'keycloak': {'publicUrl': 'https://' + keycloak_route_host.stdout}}, recursive=True) }}"
+      when: keycloak_route_host.rc == 0 and keycloak_route_host.stdout | trim | length > 0
+
+    # Read the actual Keycloak master admin credentials on OpenShift.
+    # The RHBK operator creates keycloak-initial-admin with a random password.
+    # The Helm chart creates keycloak-admin-secret in agent namespaces for the
+    # client-registration sidecar. These must match — client-registration
+    # authenticates to the master realm to register OAuth clients.
+    - name: Read Keycloak initial admin username
+      command: >-
+        kubectl get secret {{ (charts['kagenti'] | default({})).get('values', {}).get('keycloak', {}).get('adminSecretName', 'keycloak-initial-admin') }}
+        -n {{ (charts['kagenti'] | default({})).get('values', {}).get('keycloak', {}).get('namespace', 'keycloak') }}
+        -o jsonpath='{.data.username}'
+      register: keycloak_admin_username_b64
+      failed_when: false
+      changed_when: false
+
+    - name: Read Keycloak initial admin password
+      command: >-
+        kubectl get secret {{ (charts['kagenti'] | default({})).get('values', {}).get('keycloak', {}).get('adminSecretName', 'keycloak-initial-admin') }}
+        -n {{ (charts['kagenti'] | default({})).get('values', {}).get('keycloak', {}).get('namespace', 'keycloak') }}
+        -o jsonpath='{.data.password}'
+      register: keycloak_admin_password_b64
+      failed_when: false
+      changed_when: false
+
+    - name: Override keycloak admin credentials from initial-admin secret
+      set_fact:
+        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'keycloak': {'adminUsername': (keycloak_admin_username_b64.stdout | b64decode), 'adminPassword': (keycloak_admin_password_b64.stdout | b64decode)}}, recursive=True) }}"
+      when:
+        - keycloak_admin_username_b64.rc == 0
+        - keycloak_admin_password_b64.rc == 0
+        - keycloak_admin_username_b64.stdout | trim | length > 0
+        - keycloak_admin_password_b64.stdout | trim | length > 0
+
     - name: Debug kagenti OpenShift overrides
       debug:
         msg: "Kagenti OpenShift overrides: {{ kagenti_openshift_overrides }}"
@@ -1535,6 +2003,47 @@
   when:
     - (charts['kagenti'] | default({})).get('enabled', false) | bool
     - (charts['kagenti'] | default({})).get('chart') is defined
+
+# The kagenti chart creates the Gateway resource that MCPGatewayExtension targets,
+# so wait for the broker-router only after kagenti is installed, using retries: 30,
+# delay: 10 = ~5 minutes for the controller to reconcile and create the deployment.
+- name: Wait for mcp-gateway broker-router deployment
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: mcp-gateway
+    namespace: "{{ charts.mcpGateway.namespace | default('mcp-system') }}"
+  register: broker_router_deploy
+  retries: 30
+  delay: 10
+  until: broker_router_deploy.resources | length > 0
+  when: charts.mcpGateway.enabled | default(false)
+
+# The container name "mcp-gateway" matches the upstream kuadrant/mcp-gateway chart. Strategic merge
+# patch uses container name as the merge key — update if upstream renames it.
+- name: Patch mcp-gateway broker-router with OTEL env vars
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    name: mcp-gateway
+    namespace: "{{ charts.mcpGateway.namespace | default('mcp-system') }}"
+    state: patched
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: mcp-gateway
+                env:
+                  - name: NAMESPACE
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.namespace
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: "http://{{ charts['kagenti-deps']['values']['otel']['collector']['service'] }}:8335"
+                  - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                    value: "http/protobuf"
+  when: charts.mcpGateway.enabled | default(false)
 
 # TektonConfig patching (set-security-context, SCC defaults, pruner) is now
 # handled by kagenti-operator's TektonConfigReconciler. The operator is deployed

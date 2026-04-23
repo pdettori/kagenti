@@ -16,9 +16,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.core.auth import require_roles, ROLE_VIEWER, ROLE_OPERATOR
+from app.core.auth import require_roles, get_required_user, ROLE_VIEWER, ROLE_OPERATOR, TokenData
 from app.core.config import settings
-from app.utils.routes import get_agent_url
+from app.services.kubernetes import KubernetesService, get_kubernetes_service
+from app.utils.routes import resolve_agent_url
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -58,6 +59,7 @@ class ChatResponse(BaseModel):
     content: str
     session_id: str
     is_complete: bool = True
+    username: Optional[str] = None
 
 
 @router.get(
@@ -68,13 +70,15 @@ class ChatResponse(BaseModel):
 async def get_agent_card(
     namespace: str,
     name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> AgentCardResponse:
     """
     Fetch the A2A agent card for an agent.
 
     The agent card describes the agent's capabilities, skills, and metadata.
+    All agents are reached via their cluster-internal URL through AuthBridge.
     """
-    agent_url = get_agent_url(name, namespace)
+    agent_url = resolve_agent_url(name, namespace, kube)
     card_url = f"{agent_url}{A2A_AGENT_CARD_PATH}"
 
     try:
@@ -138,6 +142,8 @@ async def send_message(
     name: str,
     request: ChatRequest,
     http_request: Request,
+    user: TokenData = Depends(get_required_user),
+    kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> ChatResponse:
     """
     Send a message to an A2A agent and get the response.
@@ -148,7 +154,7 @@ async def send_message(
     Forwards the Authorization header from the client to the agent for
     authenticated requests.
     """
-    agent_url = get_agent_url(name, namespace)
+    agent_url = resolve_agent_url(name, namespace, kube)
     session_id = request.session_id or uuid4().hex
 
     # Build A2A message payload
@@ -208,6 +214,7 @@ async def send_message(
                 content=content or "No response from agent",
                 session_id=session_id,
                 is_complete=True,
+                username=user.username,
             )
 
     except httpx.HTTPStatusError as e:
@@ -276,7 +283,11 @@ def _extract_text_from_parts(parts: list) -> str:
 
 
 async def _stream_a2a_response(
-    agent_url: str, message: str, session_id: str, authorization: Optional[str] = None
+    agent_url: str,
+    message: str,
+    session_id: str,
+    authorization: Optional[str] = None,
+    username: Optional[str] = None,
 ):
     """Generator for streaming A2A responses with event metadata."""
     import json
@@ -316,38 +327,53 @@ async def _stream_a2a_response(
                 headers=headers,
             ) as response:
                 response.raise_for_status()
-                logger.info(f"Connected to agent, status={response.status_code}")
+                logger.debug("Connected to agent, status=%d", response.status_code)
+
+                # Resolve sidecar manager once before the loop (not per-chunk)
+                _sidecar_mgr = None
+                if getattr(settings, "kagenti_feature_flag_sidecars", False):
+                    try:
+                        from app.services.sidecar_manager import get_sidecar_manager
+
+                        _sidecar_mgr = get_sidecar_manager()
+                    except ImportError:
+                        pass
 
                 async for line in response.aiter_lines():
                     if not line:
                         continue
 
-                    logger.info(f"Received line from agent: {line[:300]}")
-
                     # Parse SSE format
                     if line.startswith("data: "):
                         data = line[6:]
                         if data == "[DONE]":
-                            logger.info("Received [DONE] signal from agent")
-                            yield f"data: {json.dumps({'done': True, 'session_id': session_id})}\n\n"
+                            done_payload = {"done": True, "session_id": session_id}
+                            if username:
+                                done_payload["username"] = username
+                            yield f"data: {json.dumps(done_payload)}\n\n"
                             break
 
                         try:
                             chunk = json.loads(data)
-                            logger.info(f"Parsed chunk keys: {list(chunk.keys())}")
-                            if "result" in chunk:
-                                logger.info(f"Result keys: {list(chunk['result'].keys())}")
+
+                            # Fan out event to sidecars (resolved once above)
+                            if _sidecar_mgr is not None:
+                                try:
+                                    _sidecar_mgr.fan_out_event(session_id, chunk)
+                                except Exception:
+                                    logger.debug("Sidecar fan-out failed", exc_info=True)
 
                             if "result" not in chunk:
-                                logger.info("Skipping chunk - no 'result' field")
                                 continue
 
                             result = chunk["result"]
                             payload = {"session_id": session_id}
+                            if username:
+                                payload["username"] = username
 
                             # TaskArtifactUpdateEvent
                             if "artifact" in result:
-                                logger.info("Processing TaskArtifactUpdateEvent")
+                                logger.debug("Processing TaskArtifactUpdateEvent")
                                 artifact = result.get("artifact", {})
                                 parts = artifact.get("parts", [])
                                 content = _extract_text_from_parts(parts)
@@ -361,7 +387,7 @@ async def _stream_a2a_response(
                                 if content:
                                     payload["content"] = content
 
-                                logger.info(f"Yielding artifact event: {artifact.get('name')}")
+                                logger.debug("Yielding artifact event")
                                 yield f"data: {json.dumps(payload)}\n\n"
 
                             # TaskStatusUpdateEvent
@@ -370,9 +396,8 @@ async def _stream_a2a_response(
                                 is_final = result.get("final", False)
                                 state = status.get("state", "UNKNOWN")
 
-                                logger.info(
-                                    f"Processing TaskStatusUpdateEvent: taskId={result.get('taskId')}, "
-                                    f"state={state}, final={is_final}"
+                                logger.debug(
+                                    "TaskStatusUpdateEvent: state=%s final=%s", state, is_final
                                 )
 
                                 # Extract status message text if present
@@ -381,8 +406,14 @@ async def _stream_a2a_response(
                                     parts = status["message"].get("parts", [])
                                     status_message = _extract_text_from_parts(parts)
 
+                                # Detect HITL (Human-in-the-Loop) requests
+                                event_type = "status"
+                                if state == "INPUT_REQUIRED":
+                                    event_type = "hitl_request"
+                                    logger.info("HITL request detected")
+
                                 payload["event"] = {
-                                    "type": "status",
+                                    "type": event_type,
                                     "taskId": result.get("taskId", ""),
                                     "state": state,
                                     "final": is_final,
@@ -459,7 +490,12 @@ async def _stream_a2a_response(
 
     except httpx.HTTPStatusError as e:
         error_msg = f"Agent error: {e.response.status_code}"
-        logger.error(f"{error_msg}: {e.response.text[:500]}")
+        try:
+            await e.response.aread()
+            detail = e.response.text[:500]
+        except Exception:
+            detail = str(e)
+        logger.error(f"{error_msg}: {detail}")
         yield f"data: {json.dumps({'error': error_msg, 'session_id': session_id})}\n\n"
     except httpx.RequestError as e:
         error_msg = f"Connection error: {str(e)}"
@@ -477,6 +513,8 @@ async def stream_message(
     name: str,
     request: ChatRequest,
     http_request: Request,
+    user: TokenData = Depends(get_required_user),
+    kube: KubernetesService = Depends(get_kubernetes_service),
 ):
     """
     Send a message to an A2A agent and stream the response.
@@ -487,14 +525,14 @@ async def stream_message(
     Forwards the Authorization header from the client to the agent for
     authenticated requests.
     """
-    agent_url = get_agent_url(name, namespace)
+    agent_url = resolve_agent_url(name, namespace, kube)
     session_id = request.session_id or uuid4().hex
 
     # Extract Authorization header if present
     authorization = http_request.headers.get("Authorization")
 
     return StreamingResponse(
-        _stream_a2a_response(agent_url, request.message, session_id, authorization),
+        _stream_a2a_response(agent_url, request.message, session_id, authorization, user.username),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

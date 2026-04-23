@@ -6,10 +6,23 @@ source "$SCRIPT_DIR/../lib/logging.sh"
 
 log_step "92" "Running UI E2E tests (Playwright)"
 
-# Check Node.js is available
+# Ensure Node.js >= 22 (required by mermaid/chevrotain)
+MIN_NODE_MAJOR=22
 if ! command -v node &>/dev/null; then
     log_info "Node.js not available, skipping UI tests"
     exit 0
+fi
+NODE_MAJOR=$(node --version | sed 's/v\([0-9]*\).*/\1/')
+if [ "$NODE_MAJOR" -lt "$MIN_NODE_MAJOR" ]; then
+    log_info "Node.js $(node --version) < v${MIN_NODE_MAJOR}, upgrading via nvm..."
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    # shellcheck disable=SC1091
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    if command -v nvm &>/dev/null; then
+        nvm install "$MIN_NODE_MAJOR" && nvm use "$MIN_NODE_MAJOR"
+    else
+        log_info "nvm not available — falling back to npm ci with current Node"
+    fi
 fi
 log_info "Using Node.js $(node --version)"
 
@@ -38,14 +51,19 @@ if [ -z "${KAGENTI_UI_URL:-}" ]; then
 fi
 export KAGENTI_UI_URL
 
-# Auto-detect Keycloak credentials from cluster secret
+# Auto-detect Keycloak credentials from kagenti-test-user secret (kagenti realm).
+# Falls back to keycloak-initial-admin (master realm) for backwards compatibility.
 if [ -z "${KEYCLOAK_USER:-}" ]; then
-    KC_USER=$(kubectl get secret keycloak-initial-admin -n keycloak -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || echo "admin")
+    KC_USER=$(kubectl get secret kagenti-test-user -n keycloak -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null \
+        || kubectl get secret keycloak-initial-admin -n keycloak -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null \
+        || echo "admin")
     export KEYCLOAK_USER="$KC_USER"
     log_info "Keycloak user: $KC_USER"
 fi
 if [ -z "${KEYCLOAK_PASSWORD:-}" ]; then
-    KC_PASS=$(kubectl get secret keycloak-initial-admin -n keycloak -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || echo "admin")
+    KC_PASS=$(kubectl get secret kagenti-test-user -n keycloak -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null \
+        || kubectl get secret keycloak-initial-admin -n keycloak -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null \
+        || echo "admin")
     export KEYCLOAK_PASSWORD="$KC_PASS"
     log_info "Keycloak password: ${KC_PASS:0:4}..."
 fi

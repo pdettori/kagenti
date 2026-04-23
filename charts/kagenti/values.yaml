@@ -1,5 +1,7 @@
 # Global settings
 openshift: true
+# Domain name for SPIFFE trust domain and service URLs
+domain: localtest.me
 
 # ------------------------------------------------------------------
 #  Feature flags: experimental features disabled by default
@@ -19,13 +21,13 @@ components:
     enabled: true
   agentOperator:
     enabled: true
-  platformWebhook:
-    enabled: true
   ui:
     enabled: true
   istio:
     enabled: true
   phoenix:
+    enabled: false
+  mlflow:
     enabled: false
 
 # Secrets — override via a .secrets.yaml file or --set secrets.<key>=<value>.
@@ -68,6 +70,7 @@ ui:
   url: http://kagenti-ui.localtest.me:8080
   # Frontend (UI v2) configuration
   frontend:
+    enabled: true
     image: ghcr.io/kagenti/kagenti/ui-v2
     tag: latest
     resources:
@@ -84,6 +87,8 @@ ui:
   backend:
     image: ghcr.io/kagenti/kagenti/backend
     tag: latest
+    # Default registry for source-based builds (Kind: registry.cr-system.svc.cluster.local:5000)
+    defaultRegistryUrl: ""
     resources:
       limits:
         cpu: 250m
@@ -160,6 +165,46 @@ keycloak:
   publicUrl: http://keycloak.localtest.me:8080
   realm: kagenti
   autoBootstrapRealm: true
+  # Session/token lifetimes for long-running dev clusters (e.g. Kind).
+  # Keycloak defaults (30min idle, 10h max) cause "Signature has expired"
+  # errors after a few hours. These values extend lifetimes for dev use.
+  #
+  # ⚠️  PRODUCTION WARNING: These defaults are intentionally permissive for
+  # developer convenience. For production deployments, override with values
+  # appropriate for your security policy (e.g. 30min idle, 8h max session).
+  # Long-lived sessions increase the window for token theft/session hijacking.
+  sessionLifetimes:
+    # SSO Session Idle timeout in seconds (default: 7 days)
+    # Keycloak default is 1800 (30 min)
+    ssoSessionIdle: 604800
+    # SSO Session Max lifespan in seconds (default: 30 days)
+    # Keycloak default is 36000 (10 hours)
+    ssoSessionMax: 2592000
+    # Access token lifespan in seconds (default: 30 min)
+    # Keycloak default is 300 (5 min)
+    accessTokenLifespan: 1800
+
+# ------------------------------------------------------------------
+#  AuthBridge Configuration
+# ------------------------------------------------------------------
+authBridge:
+  # CLIENT_AUTH_TYPE: Controls how Keycloak clients authenticate
+  #   - "client-secret": Traditional client_secret authentication (default)
+  #   - "federated-jwt": JWT-SVID authentication via SPIFFE identity provider
+  # For federated-jwt, you must configure a SPIFFE identity provider in Keycloak
+  clientAuthType: "client-secret"
+  # SPIFFE_IDP_ALIAS: Keycloak SPIFFE identity provider alias (only used with federated-jwt)
+  spiffeIdpAlias: "spire-spiffe"
+
+# ------------------------------------------------------------------
+#  SPIFFE Identity Provider Setup Job Configuration
+#  (Only runs when SPIRE is enabled)
+# ------------------------------------------------------------------
+spiffeIdp:
+  image:
+    repository: ghcr.io/kagenti/kagenti/spiffe-idp-setup
+    tag: latest
+    pullPolicy: IfNotPresent
 
 # ------------------------------------------------------------------
 #  Kagenti Webhook Configuration
@@ -170,24 +215,27 @@ keycloak:
 kagenti-webhook-chart:
   defaults:
     images:
-      envoyProxy: ghcr.io/kagenti/kagenti-extensions/envoy-with-processor:v0.4.0-alpha.10
-      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.4.0-alpha.10
-      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.4.0-alpha.10
-      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.4.0-alpha.10
+      envoyProxy: ghcr.io/kagenti/kagenti-extensions/envoy-with-processor:v0.4.0-alpha.9
+      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.4.0-alpha.9
+      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.4.0-alpha.9
 
 # ------------------------------------------------------------------
-#  Kagenti Operator Configuration
+#  Kagenti Operator Configuration (includes AuthBridge webhook)
 # ------------------------------------------------------------------
 kagenti-operator-chart:
   controllerManager:
     container:
+      cmd: /manager
       image:
-        tag: 0.2.0-alpha.22
+        tag: 0.2.0-alpha.30
       args:
       - "--leader-elect"
       - "--metrics-bind-address=:8443"
       - "--health-probe-bind-address=:8081"
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
+      - "--config-path=/etc/kagenti/config.yaml"
+      - "--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml"
+      - "--enable-client-registration=true"
       resources:
         limits:
           cpu: 150m
@@ -195,6 +243,14 @@ kagenti-operator-chart:
         requests:
           cpu: 50m
           memory: 128Mi
+  # Pin sidecar image tags injected by the AuthBridge webhook.
+  defaults:
+    images:
+      envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-alpha.5
+      authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-alpha.5
+      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-alpha.5
+      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-alpha.5
+      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.5.0-alpha.5
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration
@@ -251,10 +307,8 @@ mlflow:
 # ------------------------------------------------------------------
 #  MLflow OAuth Secret Creator Configuration
 # ------------------------------------------------------------------
-# TODO: Change back to ghcr.io/kagenti/kagenti/mlflow-oauth-secret once
-# the image is published via Build-Publish workflow (on version tag)
 mlflowOAuthSecret:
-  image: quay.io/ladas/mlflow-oauth-secret
+  image: ghcr.io/kagenti/kagenti/mlflow-oauth-secret
   tag: latest
   # Keycloak client ID for MLflow
   clientId: mlflow

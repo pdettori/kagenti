@@ -50,6 +50,9 @@ jobs:
           - name: mlflow-oauth-secret
             context: ./kagenti
             dockerfile: auth/mlflow-oauth-secret/Dockerfile
+          - name: spiffe-idp-setup
+            context: ./kagenti
+            dockerfile: auth/spiffe-idp-setup/Dockerfile
 
     steps:
       # 1. Checkout the repository code
@@ -66,7 +69,7 @@ jobs:
 
       # 4. Log in to the GitHub Container Registry (ghcr.io)
       - name: Log in to ghcr.io
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2  # v4.0.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -106,7 +109,7 @@ jobs:
             type=raw,value=latest,enable=${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')) || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
 
       - name: Build and push ${{ matrix.image_config.name }}
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294  # v7.0.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
         with:
           context: ${{ matrix.image_config.context }}
           file: ${{ matrix.image_config.context }}/${{ matrix.image_config.dockerfile }}
@@ -132,7 +135,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2  # v4.0.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

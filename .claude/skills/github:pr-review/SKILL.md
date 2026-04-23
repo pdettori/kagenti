@@ -19,12 +19,22 @@ flowchart TD
 
 # PR Review
 
-Automated code review workflow for the kagenti/kagenti repository. Gathers PR data,
+Automated code review workflow. Gathers PR data,
 analyzes the diff, checks against repo conventions and CI, drafts inline review
 comments, and posts a GitHub review after user approval.
 
+## Variables
+
+Set at session start:
+
+```bash
+export OWNER=<org-or-user>
+export REPO=<repo-name>
+```
+
 ## Table of Contents
 
+- [Variables](#variables)
 - [When to Use](#when-to-use)
 - [Context-Safe Execution](#context-safe-execution-mandatory)
 - [Phase 1: Gather PR Data](#phase-1-gather-pr-data)
@@ -329,7 +339,7 @@ EOF
 After posting, confirm with a link:
 
 ```markdown
-Review submitted on PR #<number>: https://github.com/kagenti/kagenti/pull/<number>
+Review submitted on PR #<number>: https://github.com/$OWNER/$REPO/pull/<number>
 - Verdict: APPROVE / REQUEST_CHANGES / COMMENT
 - Inline comments: N
 ```
@@ -362,7 +372,7 @@ Use the diff file for all analysis.
 ### Cross-repo reviews
 
 When verifying cross-repo dependency files (e.g. checking whether `kagenti-extensions`
-already handles something being removed from `kagenti/kagenti`), **always fetch directly
+already handles something being removed from `$OWNER/$REPO`), **always fetch directly
 from GitHub — never trust a local clone:**
 
 ```bash

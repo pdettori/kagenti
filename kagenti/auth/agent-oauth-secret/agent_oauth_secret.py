@@ -22,6 +22,8 @@ from kubernetes.client.rest import ApiException
 
 from keycloak import KeycloakAdmin, KeycloakPostError
 
+from kagenti.auth.shared_utils import get_session_lifetime_payload
+
 # Import common utilities
 from common import (
     get_optional_env as _get_optional_env,
@@ -175,8 +177,9 @@ class KeycloakSetup:
         """
         Initializes the KeycloakAdmin client and verifies the connection.
 
-        This method will poll the Keycloak server until a connection and
-        authentication are successful, or until the timeout is reached.
+        This method connects to the master realm for administrative operations
+        like creating realms. After creating the target realm, call switch_to_realm()
+        to perform operations within that realm.
 
         Args:
             timeout (int): The maximum time in seconds to wait for a connection.
@@ -219,16 +222,83 @@ class KeycloakSetup:
         self.keycloak_admin = None  # Ensure no unusable client object is stored
         return False
 
+    def switch_to_realm(self, timeout=120, interval=5):
+        """
+        Switches the KeycloakAdmin client to operate on the target realm.
+
+        Call this after create_realm() to perform operations (create_user, create_client)
+        in the target realm instead of master.
+
+        Args:
+            timeout (int): The maximum time in seconds to wait for the realm to be ready.
+            interval (int): The time in seconds to wait between connection attempts.
+
+        Returns:
+            bool: True if the switch was successful, False otherwise.
+        """
+        typer.echo(f"Switching KeycloakAdmin to realm '{self.realm_name}'...")
+        start_time = time.monotonic()
+
+        while time.monotonic() - start_time < timeout:
+            try:
+                # Create a new KeycloakAdmin instance connected to the target realm
+                self.keycloak_admin = KeycloakAdmin(
+                    server_url=self.server_url,
+                    username=self.admin_username,
+                    password=self.admin_password,
+                    realm_name=self.realm_name,  # Target realm for operations
+                    user_realm_name="master",  # Authentication still happens in master
+                    verify=self.verify_ssl,
+                )
+
+                # Verify connection by getting realm info
+                self.keycloak_admin.get_realm(self.realm_name)
+
+                typer.echo(f"✅ Successfully switched to realm '{self.realm_name}'")
+                return True
+
+            except Exception as e:
+                elapsed_time = int(time.monotonic() - start_time)
+                typer.echo(
+                    f"⏳ Switch failed ({type(e).__name__}). "
+                    f"Retrying in {interval}s... ({elapsed_time}s/{timeout}s elapsed)"
+                )
+                time.sleep(interval)
+
+        typer.echo(
+            f"❌ Failed to switch to realm '{self.realm_name}' after {timeout} seconds."
+        )
+        return False
+
     def create_realm(self):
+        session_lifetimes = get_session_lifetime_payload()
+        realm_payload = {
+            "realm": self.realm_name,
+            "enabled": True,
+            **session_lifetimes,
+        }
+
         try:
-            self.keycloak_admin.create_realm(
-                payload={"realm": self.realm_name, "enabled": True}, skip_exists=False
+            self.keycloak_admin.create_realm(payload=realm_payload, skip_exists=False)
+            typer.echo(
+                f'Created realm "{self.realm_name}" with session lifetimes: '
+                f"{session_lifetimes}"
             )
-            typer.echo(f'Created realm "{self.realm_name}"')
         except KeycloakPostError as e:
-            # Keycloak returns 409 if the realm already exists
+            # Keycloak returns 409 if the realm already exists — update it
+            # instead. The update is idempotent so concurrent job pods are safe.
             if hasattr(e, "response_code") and e.response_code == 409:
-                typer.echo(f'Realm "{self.realm_name}" already exists')
+                typer.echo(
+                    f'Realm "{self.realm_name}" already exists, '
+                    f"updating session lifetimes"
+                )
+                try:
+                    self.keycloak_admin.update_realm(self.realm_name, realm_payload)
+                except Exception as update_err:
+                    typer.echo(
+                        f'Warning: failed to update realm "{self.realm_name}": '
+                        f"{update_err}. Session lifetimes may not be configured."
+                    )
             else:
                 typer.echo(f'Failed to create realm "{self.realm_name}": {e}')
         except Exception as e:
@@ -354,6 +424,11 @@ def setup_keycloak(v1_api: Optional[client.CoreV1Api] = None) -> str:
         typer.secho("Failed to connect to Keycloak", fg="red", err=True)
         raise typer.Exit(1)
     setup.create_realm()
+
+    # Switch to the target realm for user and client operations
+    if not setup.switch_to_realm():
+        typer.secho(f"Failed to switch to realm '{realm_name}'", fg="red", err=True)
+        raise typer.Exit(1)
 
     # Create a test user in the configured realm for UI/MLflow login.
     # Generates a random password and stores credentials in a K8s secret.

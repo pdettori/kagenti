@@ -14,7 +14,7 @@ echo ""
 TEAM_NAMESPACES=("team1" "team2")
 
 # Platform namespaces
-PLATFORM_NAMESPACES=("kagenti-system" "kagenti-webhook-system" "mcp-system" "spire-mgmt" "spire-server" "spire-system" "gateway-system")
+PLATFORM_NAMESPACES=("kagenti-system" "kagenti-webhook-system" "mcp-system" "spire-mgmt" "zero-trust-workload-identity-manager" "spire-system" "gateway-system")
 
 # OpenShift operator namespaces (managed by OLM, may have finalizers)
 OPENSHIFT_OPERATOR_NAMESPACES=("openshift-builds" "cert-manager-operator" "zero-trust-workload-identity-manager")
@@ -33,7 +33,7 @@ for ns in "${TEAM_NAMESPACES[@]}"; do
     kubectl delete agents.agent.kagenti.dev --all -n "$ns" --ignore-not-found 2>/dev/null || true
     kubectl delete agentcards.agent.kagenti.dev --all -n "$ns" --ignore-not-found 2>/dev/null || true
     # Delete MCP Gateway CRs
-    kubectl delete mcpserverregistrations.mcp.kagenti.com --all -n "$ns" --ignore-not-found 2>/dev/null || true
+    kubectl delete mcpserverregistrations.mcp.kuadrant.io --all -n "$ns" --ignore-not-found 2>/dev/null || true
   fi
 done
 echo ""

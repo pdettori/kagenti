@@ -25,13 +25,9 @@ from app.core.constants import (
     KAGENTI_TYPE_LABEL,
     PROTOCOL_LABEL_PREFIX,
     KAGENTI_FRAMEWORK_LABEL,
-    RESOURCE_TYPE_AGENT,
-    RESOURCE_TYPE_TOOL,
     SHIPWRIGHT_CRD_GROUP,
     SHIPWRIGHT_CRD_VERSION,
     SHIPWRIGHT_GIT_SECRET_NAME,
-    SHIPWRIGHT_DEFAULT_DOCKERFILE,
-    SHIPWRIGHT_DEFAULT_TIMEOUT,
     SHIPWRIGHT_DEFAULT_RETENTION_SUCCEEDED,
     SHIPWRIGHT_DEFAULT_RETENTION_FAILED,
     SHIPWRIGHT_STRATEGY_INSECURE,
@@ -372,7 +368,7 @@ def extract_buildrun_info(
     """
     metadata = buildrun.get("metadata", {})
     status = buildrun.get("status", {})
-    conditions = status.get("conditions", [])
+    conditions = status.get("conditions") or []
 
     # Parse phase
     phase, failure_message = parse_buildrun_phase(conditions)
@@ -401,7 +397,7 @@ def is_build_succeeded(buildrun: Dict[str, Any]) -> bool:
     Returns:
         True if the build succeeded, False otherwise
     """
-    conditions = buildrun.get("status", {}).get("conditions", [])
+    conditions = buildrun.get("status", {}).get("conditions") or []
     phase, _ = parse_buildrun_phase(conditions)
     return phase == "Succeeded"
 

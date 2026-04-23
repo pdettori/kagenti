@@ -123,10 +123,15 @@ stringData:
 
 # ——————————————————————————————————————————————————————————————————————————————
 #  ConfigMap for AuthBridge in Namespace: {{ . }}
-#  Unified config for both client-registration and envoy-proxy (go-processor).
-#  client-registration reads: KEYCLOAK_URL, KEYCLOAK_REALM, PLATFORM_CLIENT_IDS
-#  go-processor reads: KEYCLOAK_URL, KEYCLOAK_REALM (to derive TOKEN_URL/ISSUER),
-#                      ISSUER (explicit override for split-horizon DNS)
+#  Consolidated config consumed by injected sidecars:
+#  - kagenti-webhook (injects CLIENT_AUTH_TYPE, SPIFFE_IDP_ALIAS, JWT_AUDIENCE into client-registration)
+#  - client-registration sidecar (reads KEYCLOAK_URL, KEYCLOAK_REALM, CLIENT_AUTH_TYPE, SPIFFE_IDP_ALIAS, JWT_AUDIENCE)
+#  - envoy-proxy go-processor (reads ISSUER, EXPECTED_AUDIENCE for inbound JWT validation)
+#
+#  NOTE: KEYCLOAK_NAMESPACE is NOT used by injected sidecars (credentials come from
+#  local keycloak-admin-secret, replicated to this namespace by agent-oauth-secret Job).
+#  KEYCLOAK_NAMESPACE is only used by Helm-hook Jobs (spiffe-idp-setup, agent-oauth-secret)
+#  that run at install time with cross-namespace RBAC to read from the Keycloak namespace.
 # ——————————————————————————————————————————————————————————————————————————————
 apiVersion: v1
 kind: ConfigMap
@@ -134,13 +139,26 @@ metadata:
   name: authbridge-config
   namespace: {{ . }}
 data:
+  # Keycloak connection (used by client-registration sidecar)
   KEYCLOAK_URL: "http://keycloak-service.{{ $root.Values.keycloak.namespace }}.svc:8080"
   KEYCLOAK_REALM: {{ $root.Values.keycloak.realm | quote }}
-  # ISSUER: Optional. Auto-derived from KEYCLOAK_URL + KEYCLOAK_REALM if not set.
+  # KEYCLOAK_NAMESPACE: Not used by sidecars. Included for reference by Helm-hook Jobs.
+  # Sidecars get credentials from local keycloak-admin-secret (replicated by agent-oauth-secret Job).
+  KEYCLOAK_NAMESPACE: "{{ $root.Values.keycloak.namespace }}"
+  # ISSUER: Used by envoy-proxy go-processor for inbound JWT validation.
+  # Optional - auto-derived from KEYCLOAK_URL + KEYCLOAK_REALM if not set.
   # Set explicitly when the internal KEYCLOAK_URL differs from the frontend URL
   # that appears in token "iss" claims (split-horizon DNS).
   ISSUER: "{{ $root.Values.keycloak.publicUrl }}/realms/{{ $root.Values.keycloak.realm }}"
   SPIRE_ENABLED: {{ if $root.Values.spire.enabled }}"true"{{ else }}"false"{{ end }}
+  # Authentication configuration (used by webhook injector and client-registration)
+  CLIENT_AUTH_TYPE: "{{ $root.Values.authBridge.clientAuthType }}"
+  SPIFFE_IDP_ALIAS: "{{ $root.Values.authBridge.spiffeIdpAlias }}"
+  JWT_AUDIENCE: "{{ $root.Values.keycloak.publicUrl }}/realms/{{ $root.Values.keycloak.realm }}"
+  # EXPECTED_AUDIENCE: Read by authbridge-unified ext_proc (envoy-proxy sidecar)
+  # for inbound JWT "aud" claim validation. Must match the audience mapper value
+  # configured in Keycloak (kagenti-platform-audience scope).
+  EXPECTED_AUDIENCE: "{{ $root.Values.keycloak.publicUrl }}/realms/{{ $root.Values.keycloak.realm }}"
 ---
 # ——————————————————————————————————————————————————————————————————————————————
 #  ConfigMap for Envoy in Namespace: {{ . }}
@@ -298,6 +316,46 @@ data:
                   socket_address:
                     address: 127.0.0.1
                     port_value: 9090
+---
+# ——————————————————————————————————————————————————————————————————————————————
+#  ConfigMap for AuthBridge in Namespace: {{ . }}
+#  YAML config for the authbridge binary (cmd/authbridge).
+#  Supports envoy-sidecar and proxy-sidecar modes. The mode is selected
+#  by the operator via annotation; listener addresses are injected as env
+#  vars and expanded via ${...} at startup.
+# ——————————————————————————————————————————————————————————————————————————————
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authbridge-runtime-config
+  namespace: {{ . }}
+  labels:
+    {{- include "kagenti.labels" $root | nindent 4 }}
+data:
+  config.yaml: |
+    mode: envoy-sidecar
+    inbound:
+      issuer: "{{ $root.Values.keycloak.publicUrl }}/realms/{{ $root.Values.keycloak.realm }}"
+    outbound:
+      keycloak_url: "http://keycloak-service.{{ $root.Values.keycloak.namespace }}.svc:8080"
+      keycloak_realm: {{ $root.Values.keycloak.realm | quote }}
+      default_policy: "passthrough"
+    identity:
+      # Map Helm clientAuthType to authbridge identity.type:
+      #   "client-secret"  → "client-secret" (traditional)
+      #   "federated-jwt"  → "spiffe" (SPIFFE JWT-SVID authentication)
+      type: {{ eq $root.Values.authBridge.clientAuthType "federated-jwt" | ternary "spiffe" $root.Values.authBridge.clientAuthType | quote }}
+      client_id_file: "/shared/client-id.txt"
+      client_secret_file: "/shared/client-secret.txt"
+{{- if eq $root.Values.authBridge.clientAuthType "federated-jwt" }}
+      jwt_svid_path: "/opt/jwt_svid.token"
+{{- end }}
+    bypass:
+      inbound_paths:
+        - "/.well-known/*"
+        - "/healthz"
+        - "/readyz"
+        - "/livez"
 ---
 {{- if $.Values.openshift }}
 # ——————————————————————————————————————————————————————————————————————————————

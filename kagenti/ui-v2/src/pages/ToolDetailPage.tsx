@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { copyToClipboard } from '../utils/clipboard';
 import {
   PageSection,
   Title,
@@ -29,7 +28,6 @@ import {
   Alert,
   Grid,
   GridItem,
-  ClipboardCopy,
   Split,
   SplitItem,
   Flex,
@@ -286,17 +284,19 @@ export const ToolDetailPage: React.FC = () => {
   // If route check fails or is loading, default to false (in-cluster URL is safer default)
   const hasRoute = routeStatusData?.hasRoute ?? false;
 
+  // Prefer the real port from the Service; fall back to 8000
+  const servicePort = tool?.service?.ports?.[0]?.port || 8000;
+
   // Determine the appropriate URL based on route existence
   // External URL: http://{name}.{namespace}.{domainName}:8080/mcp (via HTTPRoute)
-  // In-cluster URL: http://{name}-mcp.{namespace}.svc.cluster.local:8000/mcp
+  // In-cluster URL: http://{name}-mcp.{namespace}.svc.cluster.local:{port}/mcp
   const domainName = dashboardConfig?.domainName || 'localtest.me';
   const toolExternalUrl = hasRoute
     ? `http://${name}.${namespace}.${domainName}:8080/mcp`
-    : `http://${name}-mcp.${namespace}.svc.cluster.local:8000/mcp`;
+    : `http://${name}-mcp.${namespace}.svc.cluster.local:${servicePort}/mcp`;
 
   // In-cluster URL for MCP server (used by MCP Inspector which runs in-cluster)
-  // Service naming: {name}-mcp on port 8000
-  const mcpInClusterUrl = `http://${name}-mcp.${namespace}.svc.cluster.local:8000/mcp`;
+  const mcpInClusterUrl = `http://${name}-mcp.${namespace}.svc.cluster.local:${servicePort}/mcp`;
 
   // Construct MCP Inspector URL with pre-configured server
   // MCP Inspector runs in-cluster, so it needs the in-cluster URL
@@ -483,9 +483,9 @@ export const ToolDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>MCP Server URL</DescriptionListTerm>
                         <DescriptionListDescription>
-                          <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                          <a href={toolExternalUrl} target="_blank" rel="noopener noreferrer">
                             {toolExternalUrl}
-                          </ClipboardCopy>
+                          </a>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                     </DescriptionList>
@@ -636,9 +636,9 @@ export const ToolDetailPage: React.FC = () => {
                             <DescriptionListGroup>
                               <DescriptionListTerm>Git URL</DescriptionListTerm>
                               <DescriptionListDescription>
-                                <code style={{ fontSize: '0.85em' }}>
+                                <a href={shipwrightBuildStatus.gitUrl} target="_blank" rel="noopener noreferrer">
                                   {shipwrightBuildStatus.gitUrl}
-                                </code>
+                                </a>
                               </DescriptionListDescription>
                             </DescriptionListGroup>
                             <DescriptionListGroup>
@@ -846,9 +846,9 @@ export const ToolDetailPage: React.FC = () => {
                   <DescriptionListGroup>
                     <DescriptionListTerm>MCP Server URL (in-cluster)</DescriptionListTerm>
                     <DescriptionListDescription>
-                      <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                      <a href={mcpInClusterUrl} target="_blank" rel="noopener noreferrer">
                         {mcpInClusterUrl}
-                      </ClipboardCopy>
+                      </a>
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>

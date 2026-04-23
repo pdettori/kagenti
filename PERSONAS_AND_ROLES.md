@@ -122,7 +122,7 @@ Kagenti is a cloud-native middleware platform that provides framework-neutral, s
 **CRDs Managed**:
 
 - `agents.agent.kagenti.dev/v1alpha1` (legacy, being replaced by standard Deployments)
-- `mcpserverregistrations.mcp.kagenti.com/v1alpha1`
+- `mcpserverregistrations.mcp.kuadrant.io/v1alpha1`
 
 **Technical Skills**:
 
@@ -405,6 +405,6 @@ The Kagenti platform serves **10 core personas** across eight specialized reposi
 **Get Involved**:
 
 - 🌐 **Website**: [kagenti.io](http://kagenti.io)
-- 💬 **Discord**: [Join our community](https://discord.gg/aJ92dNDzqB)
+- 💬 **Slack**: [Join our community](https://ibm.biz/kagenti-slack)
 - 📖 **Blog**: [Kagenti Medium Publication](https://medium.com/kagenti-the-agentic-platform)
 - 🐙 **GitHub**: [github.com/kagenti](https://github.com/kagenti)

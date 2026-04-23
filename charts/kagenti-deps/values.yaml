@@ -59,7 +59,7 @@ common:
 keycloak:
   image:
     repository: quay.io/keycloak/keycloak
-    tag: "26.3.3"
+    tag: "26.5.2"
   namespace: keycloak
   # Set to false to disable the bundled PostgreSQL and run Keycloak in dev mode (H2 database)
   database:
@@ -99,6 +99,20 @@ keycloak:
       - path:
           type: PathPrefix
           value: /
+
+# ------------------------------------------------------------------
+#  SPIFFE Identity Provider Setup Job Configuration
+#  (Only runs when SPIRE is enabled)
+# ------------------------------------------------------------------
+spiffeIdp:
+  # SPIFFE IdP setup job configuration
+  # NOTE: Job is NOT included in Helm chart to avoid race conditions
+  # - Ansible installer creates job automatically after patching SPIRE ConfigMap
+  # - Standalone Helm users must create job manually (see docs)
+  image:
+    repository: ghcr.io/kagenti/kagenti/spiffe-idp-setup
+    tag: latest
+    pullPolicy: IfNotPresent
 
 
 # ------------------------------------------------------------------
@@ -154,6 +168,13 @@ istio:
 # receivers/processors/exporters), provide the full array.
 #
 otel:
+  # MLflow OTEL pipeline for externally managed MLflow (e.g. RHOAI DSC).
+  # Also activates when components.mlflow.enabled is true.
+  # TODO: Replace with a single mlflow.mode enum (none|managed|external).
+  mlflow:
+    enabled: false
+    workspace: "team1"     # RHOAI workspace namespace for x-mlflow-workspace header
+    experimentId: "1"      # MLflow experiment ID for x-mlflow-experiment-id header
   collector:
     image:
       repository: otel/opentelemetry-collector-contrib
@@ -206,18 +227,42 @@ otel:
           traces:
             span:
               - 'IsMatch(name, "^a2a\\..*")'
+              - 'attributes["http.method"] != nil'
+              - 'attributes["mcp.method.name"] == "initialize"'
+              - 'attributes["mcp.method.name"] == "notifications/initialized"'
+              - 'attributes["mcp.method.name"] == "notifications/cancelled"'
+              - 'attributes["mcp.method.name"] == "tools/list"'
         transform/genai_to_openinference:
           trace_statements:
             - context: span
               statements:
-                - set(attributes["llm.model_name"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil
-                - set(attributes["llm.model_name"], attributes["gen_ai.response.model"]) where attributes["gen_ai.response.model"] != nil and attributes["llm.model_name"] == nil
-                - set(attributes["llm.token_count.prompt"], attributes["gen_ai.usage.input_tokens"]) where attributes["gen_ai.usage.input_tokens"] != nil
-                - set(attributes["llm.token_count.completion"], attributes["gen_ai.usage.output_tokens"]) where attributes["gen_ai.usage.output_tokens"] != nil
-                - set(attributes["llm.token_count.total"], attributes["gen_ai.usage.input_tokens"] + attributes["gen_ai.usage.output_tokens"]) where attributes["gen_ai.usage.input_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] != nil
-                - set(attributes["llm.provider"], attributes["gen_ai.system"]) where attributes["gen_ai.system"] != nil
-                - set(attributes["llm.system"], attributes["gen_ai.system"]) where attributes["gen_ai.system"] != nil
-                - set(attributes["llm.invocation_parameters"], Concat(["{\"temperature\":", Concat([attributes["gen_ai.request.temperature"], "}"], "")], "")) where attributes["gen_ai.request.temperature"] != nil
+                - >-
+                  set(attributes["llm.model_name"], attributes["gen_ai.request.model"])
+                  where attributes["gen_ai.request.model"] != nil
+                - >-
+                  set(attributes["llm.model_name"], attributes["gen_ai.response.model"])
+                  where attributes["gen_ai.response.model"] != nil and attributes["llm.model_name"] == nil
+                - >-
+                  set(attributes["llm.token_count.prompt"], attributes["gen_ai.usage.input_tokens"])
+                  where attributes["gen_ai.usage.input_tokens"] != nil
+                - >-
+                  set(attributes["llm.token_count.completion"], attributes["gen_ai.usage.output_tokens"])
+                  where attributes["gen_ai.usage.output_tokens"] != nil
+                - >-
+                  set(attributes["llm.token_count.total"],
+                  attributes["gen_ai.usage.input_tokens"] + attributes["gen_ai.usage.output_tokens"])
+                  where attributes["gen_ai.usage.input_tokens"] != nil
+                  and attributes["gen_ai.usage.output_tokens"] != nil
+                - >-
+                  set(attributes["llm.provider"], attributes["gen_ai.system"])
+                  where attributes["gen_ai.system"] != nil
+                - >-
+                  set(attributes["llm.system"], attributes["gen_ai.system"])
+                  where attributes["gen_ai.system"] != nil
+                - >-
+                  set(attributes["llm.invocation_parameters"],
+                  Concat(["{\"temperature\":", Concat([attributes["gen_ai.request.temperature"], "}"], "")], ""))
+                  where attributes["gen_ai.request.temperature"] != nil
       service:
         pipelines:
           traces/phoenix:
@@ -227,6 +272,9 @@ otel:
     mlflowConfig:
       exporters:
         otlphttp/mlflow:
+          # Default points to the in-cluster MLflow deployed by kagenti-deps.
+          # Override with the DSC-managed MLflow service when otel.mlflow.enabled=true:
+          # https://<mlflow-svc>.<namespace>.svc.cluster.local:8443/v1/traces
           traces_endpoint: http://mlflow:5000/v1/traces
           tls:
             insecure: true
@@ -246,6 +294,11 @@ otel:
           traces:
             span:
               - 'IsMatch(name, "^a2a\\..*")'
+              - 'attributes["http.method"] != nil'
+              - 'attributes["mcp.method.name"] == "initialize"'
+              - 'attributes["mcp.method.name"] == "notifications/initialized"'
+              - 'attributes["mcp.method.name"] == "notifications/cancelled"'
+              - 'attributes["mcp.method.name"] == "tools/list"'
       service:
         pipelines:
           traces/mlflow:
@@ -263,6 +316,15 @@ otel:
           timeout: 10s
       service:
         extensions: [health_check, oauth2client/mlflow]
+    # RHOAI MLflow auth config - auto-merged when otel.mlflow.enabled && openshift.
+    # Uses the collector's ServiceAccount token for authentication against
+    # RHOAI MLflow's Kubernetes authorization plugin.
+    rhoaiMlflowAuthConfig:
+      extensions:
+        bearertokenauth/mlflow:
+          filename: /var/run/secrets/kubernetes.io/serviceaccount/token
+      service:
+        extensions: [health_check, bearertokenauth/mlflow]
 
 httpGateway:
   name: http
@@ -376,4 +438,3 @@ mlflow:
     # Set to true in ocp_values.yaml for production deployments
     enabled: false
     secretName: mlflow-oauth-secret
-

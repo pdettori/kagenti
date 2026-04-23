@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { copyToClipboard } from '../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -32,7 +31,6 @@ import {
   Alert,
   Grid,
   GridItem,
-  ClipboardCopy,
   Split,
   SplitItem,
   Flex,
@@ -302,13 +300,14 @@ export const AgentDetailPage: React.FC = () => {
   // If route check fails or is loading, default to false (in-cluster URL is safer default)
   const hasRoute = routeStatusData?.hasRoute ?? false;
 
-  // Determine the appropriate URL based on route existence
-  // External URL: http://{name}.{namespace}.{domainName}:8080 (via HTTPRoute)
-  // In-cluster URL: http://{name}.{namespace}.svc.cluster.local:8000
+  // Prefer the real URL from the agent card or derive from the actual Service port.
+  // Fall back to convention defaults (8080 external, 8000 in-cluster) when neither is available.
+  const servicePort = serviceInfo?.ports?.[0]?.port;
   const domainName = dashboardConfig?.domainName || 'localtest.me';
-  const agentUrl = hasRoute
-    ? `http://${name}.${namespace}.${domainName}:8080`
-    : `http://${name}.${namespace}.svc.cluster.local:8000`;
+  const agentUrl = agentCard?.url
+    || (hasRoute
+      ? `http://${name}.${namespace}.${domainName}:${servicePort || 8080}`
+      : `http://${name}.${namespace}.svc.cluster.local:${servicePort || 8000}`);
 
   return (
     <>
@@ -471,9 +470,9 @@ export const AgentDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>Agent URL</DescriptionListTerm>
                         <DescriptionListDescription>
-                          <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                          <a href={agentUrl} target="_blank" rel="noopener noreferrer">
                             {agentUrl}
-                          </ClipboardCopy>
+                          </a>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                       {serviceInfo && (
@@ -567,12 +566,6 @@ export const AgentDetailPage: React.FC = () => {
                                         </DescriptionListDescription>
                                       </DescriptionListGroup>
                                     )}
-                                    <DescriptionListGroup>
-                                      <DescriptionListTerm>URL</DescriptionListTerm>
-                                      <DescriptionListDescription>
-                                        <code style={{ fontSize: '0.85em' }}>{agentCard.url}</code>
-                                      </DescriptionListDescription>
-                                    </DescriptionListGroup>
                                   </DescriptionList>
                                 </CardBody>
                               </Card>
@@ -856,9 +849,9 @@ export const AgentDetailPage: React.FC = () => {
                             <DescriptionListGroup>
                               <DescriptionListTerm>Git URL</DescriptionListTerm>
                               <DescriptionListDescription>
-                                <code style={{ fontSize: '0.85em' }}>
+                                <a href={shipwrightBuildStatus.gitUrl} target="_blank" rel="noopener noreferrer">
                                   {shipwrightBuildStatus.gitUrl}
-                                </code>
+                                </a>
                               </DescriptionListDescription>
                             </DescriptionListGroup>
                             <DescriptionListGroup>

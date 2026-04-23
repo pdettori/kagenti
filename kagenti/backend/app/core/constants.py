@@ -11,6 +11,7 @@ from app.core.config import settings
 CRD_GROUP = settings.crd_group
 CRD_VERSION = settings.crd_version
 AGENTS_PLURAL = settings.agents_plural
+AGENTRUNTIMES_PLURAL = settings.agentruntimes_plural
 
 # Labels - Keys
 KAGENTI_TYPE_LABEL = settings.kagenti_type_label
@@ -32,6 +33,15 @@ APP_KUBERNETES_IO_COMPONENT = "app.kubernetes.io/component"
 # SPIRE identity labels (matched by kagenti-webhook pod_mutator.go)
 KAGENTI_SPIRE_LABEL = "kagenti.io/spire"
 KAGENTI_SPIRE_ENABLED_VALUE = "enabled"
+
+# Per-sidecar injection labels (matched by kagenti-webhook precedence evaluator)
+KAGENTI_ENVOY_PROXY_INJECT_LABEL = "kagenti.io/envoy-proxy-inject"
+KAGENTI_SPIFFE_HELPER_INJECT_LABEL = "kagenti.io/spiffe-helper-inject"
+KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL = "kagenti.io/client-registration-inject"
+
+# Port exclusion annotations (matched by kagenti-webhook init-iptables.sh)
+KAGENTI_OUTBOUND_PORTS_EXCLUDE = "kagenti.io/outbound-ports-exclude"
+KAGENTI_INBOUND_PORTS_EXCLUDE = "kagenti.io/inbound-ports-exclude"
 
 # Labels - Values
 KAGENTI_UI_CREATOR_LABEL = "kagenti-ui"
@@ -113,8 +123,8 @@ SHIPWRIGHT_STRATEGY_INSECURE = "buildah-insecure-push"
 # For external registries with TLS (quay.io, ghcr.io, docker.io)
 SHIPWRIGHT_STRATEGY_SECURE = "buildah"
 
-# Default internal registry URL (for dev/kind clusters)
-DEFAULT_INTERNAL_REGISTRY = "registry.cr-system.svc.cluster.local:5000"
+# Default internal registry URL (configurable via DEFAULT_REGISTRY_URL env var)
+DEFAULT_INTERNAL_REGISTRY = settings.default_registry_url
 
 # Default resource limits
 DEFAULT_RESOURCE_LIMITS = {"cpu": "500m", "memory": "1Gi"}

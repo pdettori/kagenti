@@ -2,7 +2,8 @@ import logging
 import sys
 from typing import Dict
 from keycloak import KeycloakAdmin
-from kagenti.auth.shared_utils import register_client
+from keycloak.exceptions import KeycloakPostError
+from kagenti.auth.shared_utils import register_client, get_session_lifetime_payload
 from kubernetes import client, dynamic
 from kubernetes.client import api_client
 
@@ -277,27 +278,43 @@ def main() -> None:
             logger.info(
                 f"AUTO_BOOTSTRAP_REALM is enabled; ensuring realm '{keycloak_realm}' exists"
             )
+            session_lifetimes = get_session_lifetime_payload()
+            realm_payload = {
+                "realm": keycloak_realm,
+                "enabled": True,
+                "registrationAllowed": False,
+                **session_lifetimes,
+            }
+
             try:
-                existing_realms = keycloak_admin.get_realms()
-                if not any(r["realm"] == keycloak_realm for r in existing_realms):
-                    keycloak_admin.create_realm(
-                        payload={
-                            "realm": keycloak_realm,
-                            "enabled": True,
-                            "registrationAllowed": False,
-                            # Token lifespans to prevent premature expiry (issue #1009).
-                            # Keycloak defaults to 5-minute access tokens, which causes
-                            # "Signature has expired" errors when refresh timing is imperfect.
-                            "accessTokenLifespan": 3600,  # 1 hour
-                            "ssoSessionIdleTimeout": 86400,  # 24 hours
-                            "ssoSessionMaxLifespan": 604800,  # 7 days
-                        }
-                    )
-                    logger.info(f"Created Keycloak realm '{keycloak_realm}'")
-                else:
+                # Create-first, catch-409: avoids the TOCTOU race of
+                # get_realms → create when multiple job pods run concurrently.
+                keycloak_admin.create_realm(payload=realm_payload)
+                logger.info(
+                    f"Created Keycloak realm '{keycloak_realm}' with session "
+                    f"lifetimes: {session_lifetimes}"
+                )
+            except KeycloakPostError as e:
+                if hasattr(e, "response_code") and e.response_code == 409:
                     logger.info(
-                        f"Realm '{keycloak_realm}' already exists, skipping creation"
+                        f"Realm '{keycloak_realm}' already exists, "
+                        f"updating session lifetimes"
                     )
+                    try:
+                        keycloak_admin.update_realm(keycloak_realm, realm_payload)
+                    except Exception as update_err:
+                        logger.warning(
+                            f"Failed to update realm '{keycloak_realm}': "
+                            f"{update_err}. Session lifetimes may not be configured."
+                        )
+                else:
+                    logger.error(
+                        f"Failed to bootstrap realm '{keycloak_realm}': {e}. "
+                        "Ensure the Keycloak admin has realm-management permissions, "
+                        "or set AUTO_BOOTSTRAP_REALM=false if the realm is "
+                        "pre-provisioned."
+                    )
+                    raise
             except Exception as e:
                 logger.error(
                     f"Failed to bootstrap realm '{keycloak_realm}': {e}. "
@@ -307,7 +324,7 @@ def main() -> None:
                 raise
 
             # Create a default user so the UI has someone to log in as.
-            # Uses the same credentials as the Keycloak admin (e.g. admin/admin).
+            # Uses the same credentials as the Keycloak admin.
             # Only creates if absent; never resets an existing user's password.
             # User creation is FATAL when bootstrap is enabled — without a
             # user the UI login will fail downstream.
@@ -337,68 +354,67 @@ def main() -> None:
                         f"Created default user '{keycloak_admin_username}' "
                         f"in realm '{keycloak_realm}'"
                     )
-
-                    # Grant realm-admin client role so the user can access
-                    # the Keycloak admin console for this realm.
-                    try:
-                        realm_mgmt_client_id = keycloak_admin.get_client_id(
-                            "realm-management"
-                        )
-                        realm_admin_role = keycloak_admin.get_client_role(
-                            realm_mgmt_client_id, "realm-admin"
-                        )
-                        keycloak_admin.assign_client_role(
-                            user_id, realm_mgmt_client_id, [realm_admin_role]
-                        )
-                        logger.info(
-                            f"Assigned 'realm-admin' role to "
-                            f"'{keycloak_admin_username}' in realm "
-                            f"'{keycloak_realm}'"
-                        )
-                    except Exception as role_err:
-                        logger.warning(
-                            f"Could not assign realm-admin role (non-fatal): {role_err}"
-                        )
-
-                    # Create and assign an 'admin' realm role. The Kagenti
-                    # backend maps this to kagenti-admin (which inherits
-                    # kagenti-operator and kagenti-viewer) via a temporary
-                    # mapping in auth.py until proper realm roles are
-                    # provisioned by a dedicated Keycloak setup job.
-                    try:
-                        try:
-                            keycloak_admin.create_realm_role(
-                                {
-                                    "name": "admin",
-                                    "description": (
-                                        "Admin realm role for Kagenti "
-                                        "backend RBAC mapping"
-                                    ),
-                                }
-                            )
-                            logger.info(
-                                f"Created 'admin' realm role in '{keycloak_realm}'"
-                            )
-                        except Exception:
-                            logger.info(
-                                "'admin' realm role already exists, skipping creation"
-                            )
-
-                        admin_realm_role = keycloak_admin.get_realm_role("admin")
-                        keycloak_admin.assign_realm_roles(user_id, [admin_realm_role])
-                        logger.info(
-                            f"Assigned 'admin' realm role to "
-                            f"'{keycloak_admin_username}' in realm "
-                            f"'{keycloak_realm}'"
-                        )
-                    except Exception as role_err:
-                        logger.warning(
-                            f"Could not assign admin realm role (non-fatal): {role_err}"
-                        )
                 else:
+                    user_id = existing_users[0]["id"]
                     logger.info(
                         f"User '{keycloak_admin_username}' already exists "
-                        f"in realm '{keycloak_realm}', skipping"
+                        f"in realm '{keycloak_realm}', ensuring roles"
+                    )
+
+                # Ensure realm-admin client role so the user can access
+                # the Keycloak admin console for this realm.
+                # Idempotent — Keycloak ignores duplicate role assignments.
+                try:
+                    realm_mgmt_client_id = keycloak_admin.get_client_id(
+                        "realm-management"
+                    )
+                    realm_admin_role = keycloak_admin.get_client_role(
+                        realm_mgmt_client_id, "realm-admin"
+                    )
+                    keycloak_admin.assign_client_role(
+                        user_id, realm_mgmt_client_id, [realm_admin_role]
+                    )
+                    logger.info(
+                        f"Ensured 'realm-admin' role for "
+                        f"'{keycloak_admin_username}' in realm "
+                        f"'{keycloak_realm}'"
+                    )
+                except Exception as role_err:
+                    logger.warning(
+                        f"Could not assign realm-admin role (non-fatal): {role_err}"
+                    )
+
+                # Ensure 'admin' realm role. The Kagenti backend maps this
+                # to kagenti-admin (which inherits kagenti-operator and
+                # kagenti-viewer) via a temporary mapping in auth.py until
+                # proper realm roles are provisioned by a dedicated
+                # Keycloak setup job.
+                try:
+                    try:
+                        keycloak_admin.create_realm_role(
+                            {
+                                "name": "admin",
+                                "description": (
+                                    "Admin realm role for Kagenti backend RBAC mapping"
+                                ),
+                            }
+                        )
+                        logger.info(f"Created 'admin' realm role in '{keycloak_realm}'")
+                    except Exception:
+                        logger.info(
+                            "'admin' realm role already exists, skipping creation"
+                        )
+
+                    admin_realm_role = keycloak_admin.get_realm_role("admin")
+                    keycloak_admin.assign_realm_roles(user_id, [admin_realm_role])
+                    logger.info(
+                        f"Ensured 'admin' realm role for "
+                        f"'{keycloak_admin_username}' in realm "
+                        f"'{keycloak_realm}'"
+                    )
+                except Exception as role_err:
+                    logger.warning(
+                        f"Could not assign admin realm role (non-fatal): {role_err}"
                     )
             except Exception as e:
                 logger.error(

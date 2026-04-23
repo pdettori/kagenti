@@ -7,7 +7,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/kagenti/kagenti/badge)](https://scorecard.dev/viewer/?uri=github.com/kagenti/kagenti)
 [![GitHub Release](https://img.shields.io/github/v/release/kagenti/kagenti)](https://github.com/kagenti/kagenti/releases/latest)
 [![License](https://img.shields.io/github/license/kagenti/kagenti)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/aJ92dNDzqB)
+[![Slack](https://img.shields.io/badge/Slack-Join%20us-4A154B?logo=slack&logoColor=white)](https://ibm.biz/kagenti-slack)
 
 **Kagenti** is a cloud-native middleware providing a *framework-neutral*, *scalable*, and *secure* platform for deploying and orchestrating AI agents through standardized agent communication protocols (A2A, MCP).
 
@@ -145,7 +145,7 @@ Use `deployments/ansible/run-install.sh --help` for options. For more detailed i
 .github/scripts/local-setup/show-services.sh
 
 open http://kagenti-ui.localtest.me:8080
-# Login with credentials from show-services.sh output (default: admin / admin)
+# Login with credentials from show-services.sh output
 ```
 
 From the UI you can:
@@ -154,7 +154,7 @@ From the UI you can:
 - Test agents interactively
 - Monitor traces and network traffic
 
-To learn how to deploy agents and MCP tools, follow the **[Weather Agent Demo](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/weather-agent/demo-ui.md)** — the recommended getting-started tutorial that walks you through deploying an agent and tool via the UI and chatting with it end-to-end. For more demos, see the [full demo list](./docs/demos/README.md).
+To learn how to deploy agents and MCP tools, follow the **[Weather Agent Demo](https://github.com/kagenti/kagenti-extensions/blob/main/authbridge/demos/weather-agent/demo-ui.md)** — the recommended getting-started tutorial that walks you through deploying an agent and tool via the UI and chatting with it end-to-end. For more demos, see the [full demo list](./docs/demos/README.md).
 
 ## Documentation
 
@@ -182,7 +182,7 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 
 ## Contact
 
-To reach the maintainer team, email **kagenti-maintainers@googlegroups.com** or join us on [Discord](https://discord.gg/aJ92dNDzqB).
+To reach the maintainer team, email **kagenti-maintainers@googlegroups.com** or join us on [Slack](https://ibm.biz/kagenti-slack).
 
 ## License
 

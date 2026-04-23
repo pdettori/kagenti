@@ -17,6 +17,11 @@ data:
   {{- else }}
   TRACES_DASHBOARD_URL: ""
   {{- end }}
+  {{- if .Values.components.mlflow.enabled }}
+  MLFLOW_DASHBOARD_URL: "http://mlflow.{{ .Values.ui.domainName }}:8080"
+  {{- else }}
+  MLFLOW_DASHBOARD_URL: ""
+  {{- end }}
   NETWORK_TRAFFIC_DASHBOARD_URL: "http://kiali.{{ .Values.ui.domainName }}:8080"
   MCP_INSPECTOR_URL: "http://mcp-inspector.{{ .Values.ui.domainName }}:8080"
   MCP_PROXY_FULL_ADDRESS: "http://mcp-proxy.{{ .Values.ui.domainName }}:8080"
@@ -114,6 +119,10 @@ spec:
                   optional: true
             - name: ENABLE_AUTH
               value: "{{ .Values.ui.auth.enabled }}"
+            {{- if .Values.ui.backend.defaultRegistryUrl }}
+            - name: DEFAULT_REGISTRY_URL
+              value: {{ .Values.ui.backend.defaultRegistryUrl | quote }}
+            {{- end }}
             # Feature flags
             - name: KAGENTI_FEATURE_FLAG_SANDBOX
               value: "{{ .Values.featureFlags.sandbox }}"
@@ -123,6 +132,8 @@ spec:
               value: "{{ .Values.featureFlags.triggers }}"
             - name: KEYCLOAK_URL
               value: {{ .Values.keycloak.url | quote }}
+            - name: KEYCLOAK_PUBLIC_URL
+              value: {{ .Values.keycloak.publicUrl | quote }}
             # Dashboard URLs from ConfigMap (populated by ui-routes-job)
             - name: TRACES_DASHBOARD_URL
               valueFrom:
@@ -136,6 +147,12 @@ spec:
                   name: "{{ .Values.ui.configmap }}"
                   key: "NETWORK_TRAFFIC_DASHBOARD_URL"
                   optional: {{ (not .Values.openshift) }}
+            - name: MLFLOW_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.ui.configmap }}"
+                  key: "MLFLOW_DASHBOARD_URL"
+                  optional: true
             - name: MCP_INSPECTOR_URL
               valueFrom:
                 configMapKeyRef:
@@ -252,6 +269,7 @@ spec:
   selector:
     app.kubernetes.io/name: kagenti-backend
 ---
+{{- if .Values.ui.frontend.enabled }}
 # Frontend Deployment
 apiVersion: apps/v1
 kind: Deployment
@@ -331,6 +349,7 @@ spec:
       name: http
   selector:
     app.kubernetes.io/name: kagenti-ui
+{{- end }}
 ---
 # Backend RBAC
 apiVersion: rbac.authorization.k8s.io/v1
@@ -347,6 +366,10 @@ rules:
   - apiGroups: ["agent.kagenti.dev"]
     resources: ["agents"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # AgentRuntime CRs trigger sidecar injection by the AuthBridge webhook
+  - apiGroups: ["agent.kagenti.dev"]
+    resources: ["agentruntimes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Shipwright build resources for building agents and tools from source
   - apiGroups: ["shipwright.io"]
     resources: ["builds", "buildruns"]
@@ -357,9 +380,11 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
+  # ConfigMaps: list/get for reads; create/update/patch for AuthBridge finalize
+  # (authbridge-config, envoy-config, spiffe-helper-config, authproxy-routes merge)
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "create", "update", "patch"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
@@ -393,6 +418,11 @@ rules:
   # webhook's SPIFFE identity uses the workload name (see kagenti#959)
   - apiGroups: [""]
     resources: ["serviceaccounts"]
+    verbs: ["get", "create"]
+  # RoleBindings — ensure_rolebinding() creates agent-authbridge-scc so service
+  # accounts in each agent namespace can use the kagenti-authbridge SCC (OpenShift).
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
     verbs: ["get", "create"]
   {{- if .Values.featureFlags.sandbox }}
   # PersistentVolumeClaims for agent workspace storage (sandbox)
@@ -430,6 +460,7 @@ subjects:
     namespace: "{{ .Values.ui.namespace }}"
 ---
 {{- if .Values.openshift }}
+{{- if .Values.ui.frontend.enabled }}
 # OpenShift Route for UI
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -452,6 +483,7 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 ---
+{{- end }}
 # OpenShift Route for Backend API (direct external access)
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -474,7 +506,8 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 {{- else }}
-# HTTPRoute for Kubernetes Gateway API
+{{- if .Values.ui.frontend.enabled }}
+# HTTPRoute for Kubernetes Gateway API (frontend + backend on UI hostname)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -507,6 +540,7 @@ spec:
         - name: kagenti-ui
           port: 8080
 ---
+{{- end }}
 # HTTPRoute for Backend API (direct external access)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

@@ -5,7 +5,10 @@
 # Installs the Kagenti stack (SPIRE, cert-manager, Keycloak, operator, webhook,
 # MCP Gateway) on an OpenShift cluster. Run this BEFORE setup.sh --with-a2a.
 # Prometheus/Kiali are disabled. UI/backend installed by default (use --skip-ui to disable).
-# MLflow/Shipwright disabled (not needed).
+# Shipwright disabled by default.
+#
+# MLflow: provisions an MLflow instance via RHOAI's DSC mlflowoperator
+# and wires the OTEL collector to export traces to it.
 #
 # Usage:
 #   ./scripts/ocp/setup-kagenti.sh                              # Auto-clones kagenti main to ~/.cache/kagenti
@@ -14,12 +17,19 @@
 #   ./scripts/ocp/setup-kagenti.sh --realm nerc                 # Custom Keycloak realm (default: kagenti)
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
 #   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway install
+#   ./scripts/ocp/setup-kagenti.sh --skip-mlflow                # Disable Kagenti-Operator <-> MLflow integration
+#   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator  # Use local operator chart
+#   ./scripts/ocp/setup-kagenti.sh --operator-image quay.io/user/kagenti-operator:dev  # Custom operator image
+#   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator --operator-image quay.io/user/op:dev  # Both
 #
 # Prerequisites:
 #   - oc / kubectl with cluster-admin
 #   - helm >= 3.18.0 < 4
 #
 # Tested on: OCP 4.19+ (ROSA)
+#
+# Before running:
+#   - Add agent namespaces to the agentNamespaces list in charts/kagenti/values.yaml (defaults: team1, team2)
 # ============================================================================
 
 set -euo pipefail
@@ -36,9 +46,15 @@ KC_NAMESPACE="${KEYCLOAK_NAMESPACE:-keycloak}"
 SKIP_OVN_PATCH=false
 SKIP_MCP_GATEWAY=false
 SKIP_UI=false
+SKIP_MLFLOW=false
 SHOW_SECRETS=false
 MCP_GATEWAY_VERSION="0.5.1"
+OPERATOR_REPO=""
+OPERATOR_IMAGE=""
 DRY_RUN=false
+MLFLOW_NAMESPACE="redhat-ods-applications"
+MLFLOW_INSTANCE_NAME="mlflow"
+MLFLOW_TRACES_ENDPOINT=""
 
 # Colors
 RED='\033[0;31m'
@@ -61,7 +77,10 @@ while [[ $# -gt 0 ]]; do
     --skip-ovn-patch)     SKIP_OVN_PATCH=true; shift ;;
     --skip-mcp-gateway)   SKIP_MCP_GATEWAY=true; shift ;;
     --skip-ui)            SKIP_UI=true; shift ;;
+    --skip-mlflow)        SKIP_MLFLOW=true; shift ;;
     --show-secrets)       SHOW_SECRETS=true; shift ;;
+    --operator-repo)      OPERATOR_REPO="$2"; shift 2 ;;
+    --operator-image)     OPERATOR_IMAGE="$2"; shift 2 ;;
     --mcp-gateway-version) MCP_GATEWAY_VERSION="$2"; shift 2 ;;
     --dry-run)            DRY_RUN=true; shift ;;
     -h|--help)
@@ -74,7 +93,10 @@ while [[ $# -gt 0 ]]; do
       echo "  --skip-ovn-patch          Skip OVN gateway routing patch"
       echo "  --skip-mcp-gateway        Skip MCP Gateway installation"
       echo "  --skip-ui                 Skip Kagenti UI and backend installation"
+      echo "  --skip-mlflow             Skip MLflow integration (OTel traces + operator auto-config)"
       echo "  --show-secrets            Print Keycloak admin credentials to stdout (omitted by default for CI safety)"
+      echo "  --operator-repo PATH      Local path to kagenti-operator repo (overrides Chart.yaml dependency)"
+      echo "  --operator-image IMG:TAG  Custom operator image (e.g. quay.io/user/kagenti-operator:dev)"
       echo "  --mcp-gateway-version VER MCP Gateway chart version (default: $MCP_GATEWAY_VERSION)"
       echo "  --dry-run                 Show commands without executing"
       echo "  -h, --help                Show this help"
@@ -192,6 +214,7 @@ if [ ! -d "$KAGENTI_REPO/charts/kagenti-deps" ] || [ ! -d "$KAGENTI_REPO/charts/
   exit 1
 fi
 log_success "Kagenti repo: $KAGENTI_SOURCE"
+
 echo ""
 
 # ============================================================================
@@ -227,6 +250,158 @@ if [ "$DOMAIN" = "apps." ] || [ -z "$DOMAIN" ]; then
 fi
 export DOMAIN
 log_success "Trust domain: $DOMAIN"
+echo ""
+
+# ============================================================================
+# Step 2.5: MLflow via RHOAI DSC
+# ============================================================================
+#
+# Verifies that RHOAI's DataScienceCluster has the mlflowoperator managed,
+# creates an MLflow CR if one does not already exist, then waits for the
+# Service and pod to be ready. Sets MLFLOW_TRACES_ENDPOINT for use by the
+# kagenti-deps Helm install that follows.
+
+_mlflow_check_dsc() {
+  log_info "Checking RHOAI DSC mlflowoperator..."
+  local state
+  state=$($KUBECTL get datasciencecluster default-dsc \
+    -o jsonpath='{.spec.components.mlflowoperator.managementState}' 2>/dev/null || echo "")
+  if [ "$state" != "Managed" ]; then
+    log_error "RHOAI DSC mlflowoperator is not Managed (got: '${state:-<not set>}')"
+    log_error "Patch your DataScienceCluster:"
+    log_error "  kubectl patch datasciencecluster default-dsc --type=merge \\"
+    log_error "    -p '{\"spec\":{\"components\":{\"mlflowoperator\":{\"managementState\":\"Managed\"}}}}'"
+    exit 1
+  fi
+  log_success "RHOAI DSC mlflowoperator is Managed"
+}
+
+_mlflow_create_cr() {
+  if $KUBECTL get mlflow "$MLFLOW_INSTANCE_NAME" -n "$MLFLOW_NAMESPACE" &>/dev/null; then
+    log_info "MLflow CR '$MLFLOW_INSTANCE_NAME' already exists in $MLFLOW_NAMESPACE — skipping creation"
+    return 0
+  fi
+  log_info "Creating MLflow CR '$MLFLOW_INSTANCE_NAME' in $MLFLOW_NAMESPACE..."
+  if $DRY_RUN; then
+    echo "  [dry-run] kubectl apply MLflow CR $MLFLOW_INSTANCE_NAME -n $MLFLOW_NAMESPACE"
+    return 0
+  fi
+  $KUBECTL apply -f - <<EOF
+apiVersion: mlflow.opendatahub.io/v1
+kind: MLflow
+metadata:
+  name: ${MLFLOW_INSTANCE_NAME}
+  namespace: ${MLFLOW_NAMESPACE}
+spec:
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi
+  backendStoreUri: "sqlite:////mlflow/mlflow.db"
+  artifactsDestination: "file:///mlflow/artifacts"
+  serveArtifacts: true
+EOF
+  log_success "MLflow CR created"
+}
+
+_mlflow_wait_ready() {
+  if $DRY_RUN; then
+    MLFLOW_TRACES_ENDPOINT="https://${MLFLOW_INSTANCE_NAME}.${MLFLOW_NAMESPACE}.svc.cluster.local:8443/v1/traces"
+    echo "  [dry-run] would wait for MLflow Service and pod in $MLFLOW_NAMESPACE"
+    return 0
+  fi
+
+  log_info "Waiting for MLflow Service to appear in $MLFLOW_NAMESPACE..."
+  local tries=0
+  while ! $KUBECTL get service "$MLFLOW_INSTANCE_NAME" -n "$MLFLOW_NAMESPACE" &>/dev/null; do
+    tries=$((tries + 1))
+    if [ $tries -ge 60 ]; then
+      log_error "MLflow Service '$MLFLOW_INSTANCE_NAME' not found in $MLFLOW_NAMESPACE after 5m"
+      log_error "Check that the mlflowoperator reconciled the CR: kubectl get mlflow -n $MLFLOW_NAMESPACE"
+      exit 1
+    fi
+    sleep 5
+  done
+  log_success "MLflow Service found"
+
+  MLFLOW_TRACES_ENDPOINT="https://${MLFLOW_INSTANCE_NAME}.${MLFLOW_NAMESPACE}.svc.cluster.local:8443/v1/traces"
+  log_success "MLflow traces endpoint: $MLFLOW_TRACES_ENDPOINT"
+
+  log_info "Waiting for MLflow pod to be Running..."
+  tries=0
+  while ! $KUBECTL get pods -n "$MLFLOW_NAMESPACE" \
+      -l "app=${MLFLOW_INSTANCE_NAME}" \
+      -o jsonpath='{.items[0].status.phase}' 2>/dev/null | grep -q "^Running$"; do
+    tries=$((tries + 1))
+    if [ $tries -ge 60 ]; then
+      log_warn "MLflow pod not Running after 5m — proceeding anyway (OTEL will retry)"
+      return 0
+    fi
+    sleep 5
+  done
+
+  # Verify the Service has at least one ready endpoint (pod is actually serving)
+  tries=0
+  while ! $KUBECTL get endpoints "$MLFLOW_INSTANCE_NAME" -n "$MLFLOW_NAMESPACE" \
+      -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null | grep -q .; do
+    tries=$((tries + 1))
+    if [ $tries -ge 12 ]; then
+      log_warn "MLflow Service has no ready endpoints after 1m — proceeding anyway"
+      return 0
+    fi
+    sleep 5
+  done
+  log_success "MLflow is ready"
+}
+
+_mlflow_grant_otel_rbac() {
+  # The RHOAI MLflow operator creates the mlflow-operator-mlflow-integration ClusterRole
+  # with pseudo-resources (mlflow.kubeflow.org/*) checked via SubjectAccessReview.
+  # The otel-collector SA needs a RoleBinding in each agent namespace (workspace)
+  # so the collector can send traces with the correct workspace context.
+  local cr_name="mlflow-operator-mlflow-integration"
+  if ! $KUBECTL get clusterrole "$cr_name" &>/dev/null; then
+    log_error "ClusterRole '$cr_name' not found — is the RHOAI MLflow operator running?"
+    log_error "The mlflowoperator should create this ClusterRole automatically."
+    return 1
+  fi
+  log_success "ClusterRole $cr_name exists"
+
+  local agent_ns
+  agent_ns=$(python3 -c "
+import yaml, sys
+with open('$KAGENTI_REPO/charts/kagenti/values.yaml') as f:
+    v = yaml.safe_load(f)
+for ns in v.get('agentNamespaces', ['team1', 'team2']):
+    print(ns)
+" 2>/dev/null || echo -e "team1\nteam2")
+
+  while IFS= read -r ns; do
+    [ -z "$ns" ] && continue
+    log_info "Creating MLflow RBAC for otel-collector in $ns..."
+    if $DRY_RUN; then
+      echo "  [dry-run] kubectl create rolebinding otel-collector-mlflow --clusterrole=$cr_name --serviceaccount=kagenti-system:otel-collector -n $ns"
+    else
+      $KUBECTL create rolebinding otel-collector-mlflow \
+        --clusterrole="$cr_name" \
+        --serviceaccount=kagenti-system:otel-collector \
+        -n "$ns" \
+        --dry-run=client -o yaml | $KUBECTL apply -f -
+    fi
+    log_success "RoleBinding otel-collector-mlflow created in $ns"
+  done <<< "$agent_ns"
+}
+
+log_info "Step 2.5: MLflow DSC preflight + provisioning"
+if ! $KUBECTL get crd datascienceclusters.datasciencecluster.opendatahub.io &>/dev/null; then
+  log_warn "RHOAI not installed (DataScienceCluster CRD not found) — skipping MLflow provisioning"
+else
+  _mlflow_check_dsc
+  _mlflow_create_cr
+  _mlflow_wait_ready
+fi
 echo ""
 
 # ============================================================================
@@ -291,55 +466,59 @@ _wait_ns_gone() {
 
 # Wait for the components we need before proceeding to the kagenti chart.
 # Skips MLflow (its oauth-secret is created by the kagenti chart's post-install hook).
-_wait_kagenti_deps_ready() {
-  if $DRY_RUN; then return; fi
-  log_info "Waiting for Keycloak..."
-  $KUBECTL rollout status deployment/keycloak -n "$KC_NAMESPACE" --timeout=300s 2>/dev/null || \
-    log_warn "Keycloak rollout not ready within 5m"
-  log_info "Waiting for Istio..."
-  $KUBECTL rollout status deployment/istiod -n istio-system --timeout=300s 2>/dev/null || \
-    log_warn "istiod rollout not ready within 5m"
+_wait_deployment_ready() {
+  local deploy="$1" ns="$2" label="${3:-$1}" kind="${4:-deployment}"
+  local tries=0
+  if ! $KUBECTL get "$kind"/"$deploy" -n "$ns" &>/dev/null; then
+    log_info "Waiting for $label to appear..."
+    until $KUBECTL get "$kind"/"$deploy" -n "$ns" &>/dev/null; do
+      [ $((++tries)) -ge 60 ] && { log_warn "$label $kind not found after 5m"; return 1; }
+      sleep 5
+    done
+  fi
+  log_info "Checking $label rollout..."
+  $KUBECTL rollout status "$kind"/"$deploy" -n "$ns" --timeout=300s || \
+    log_warn "$label rollout not ready within 5m"
 }
 
-_helm_kagenti_deps() {
-  # Pre-flight: ensure namespaces managed by this chart are not stuck terminating
-  # from a previous failed install/uninstall cycle
-  for _ns in keycloak istio-cni istio-system istio-ztunnel; do
-    _wait_ns_gone "$_ns"
+_wait_kagenti_deps_ready() {
+  if $DRY_RUN; then return; fi
+
+  # Parallel chains for cert-manager and Istio
+  _wait_deployment_ready cert-manager-webhook cert-manager cert-manager &
+  local pid_cm=$!
+  _wait_deployment_ready istiod istio-system Istio &
+  local pid_istio=$!
+
+  # Keycloak chain — sequential (each step creates the next resource)
+  _wait_deployment_ready rhbk-operator "$KC_NAMESPACE" "RHBK operator"
+  _wait_deployment_ready postgres-kc "$KC_NAMESPACE" "Keycloak PostgreSQL" statefulset
+  _wait_deployment_ready keycloak "$KC_NAMESPACE" Keycloak statefulset
+
+  # Collect parallel results
+  wait $pid_cm || log_warn "cert-manager readiness check failed"
+  wait $pid_istio || log_warn "Istio readiness check failed"
+}
+
+# Apply operand CRs that --no-hooks skipped.
+# Called on both fresh install AND upgrade so reruns fix missing CRs.
+_apply_operand_crs() {
+  if $DRY_RUN; then return; fi
+
+  # Wait for the Keycloak CRD before applying — the operator subscription was
+  # just installed and needs time to register the CRD.
+  log_info "Waiting for Keycloak CRD..."
+  local tries=0
+  while ! $KUBECTL get crd keycloaks.k8s.keycloak.org &>/dev/null; do
+    tries=$((tries + 1))
+    if [ $tries -ge 60 ]; then
+      log_error "Keycloak CRD not found after 5m — cannot proceed without Keycloak"
+      return 1
+    fi
+    sleep 5
   done
+  log_success "Keycloak CRD available"
 
-  if helm status kagenti-deps -n kagenti-system &>/dev/null; then
-    # Upgrade path: skip hooks (operands already exist, and the kiali hook will fail
-    # on any cluster where cluster-monitoring-config is managed by another operator)
-    log_info "kagenti-deps already installed — upgrading (hooks skipped)"
-    run_cmd helm upgrade kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
-      -n kagenti-system \
-      --set spire.trustDomain="${DOMAIN}" \
-      --set components.kiali.enabled=false \
-      --set components.rhoai.enabled=true \
-      --set components.mlflow.enabled=false \
-      --set components.shipwright.enabled=false \
-      --set mlflow.auth.enabled=false \
-      --no-hooks
-    _wait_kagenti_deps_ready
-    return $?
-  fi
-
-  # Fresh install: skip hooks (they commonly timeout or conflict with managed
-  # operators like cluster-monitoring-config). Operand CRs are applied manually after.
-  log_info "Installing kagenti-deps..."
-  run_cmd helm dependency update "$KAGENTI_REPO/charts/kagenti-deps/"
-  run_cmd helm install kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
-    -n kagenti-system --create-namespace \
-    --set spire.trustDomain="${DOMAIN}" \
-    --set components.kiali.enabled=false \
-    --set components.rhoai.enabled=true \
-    --set components.mlflow.enabled=false \
-    --set components.shipwright.enabled=false \
-    --set mlflow.auth.enabled=false \
-    --no-hooks
-
-  # Apply operand CRs that --no-hooks skipped (excluding the conflicting ConfigMap).
   log_info "Applying operand CRs..."
   helm get hooks kagenti-deps -n kagenti-system 2>/dev/null | python3 -c "
 import sys
@@ -361,30 +540,72 @@ for doc in docs:
              if 'helm.sh/hook' not in l and 'helm.sh/hook-weight' not in l and 'helm.sh/hook-delete-policy' not in l]
     print('---')
     print('\n'.join(lines))
-" | $KUBECTL apply -f - 2>/dev/null || true
-  # Create otel-ingress-ca ConfigMap (normally done by pre-install hook Job,
-  # skipped by --no-hooks). MLflow and OTEL collector need this to verify
-  # Keycloak's TLS certificate via the OpenShift ingress CA.
-  if ! $KUBECTL get configmap otel-ingress-ca -n kagenti-system &>/dev/null; then
-    log_info "Creating otel-ingress-ca ConfigMap..."
-    INGRESS_CA=$($KUBECTL get configmap default-ingress-cert \
-      -n openshift-config-managed -o jsonpath='{.data.ca-bundle\.crt}' 2>/dev/null || echo "")
-    ROOT_CA=$($KUBECTL get configmap kube-root-ca.crt \
-      -n openshift-config -o jsonpath='{.data.ca\.crt}' 2>/dev/null || echo "")
-    if [ -n "$INGRESS_CA" ]; then
-      CA_BUNDLE="$INGRESS_CA"
-      if [ -n "$ROOT_CA" ]; then
-        CA_BUNDLE="${CA_BUNDLE}"$'\n'"${ROOT_CA}"
-      fi
-      $KUBECTL create configmap otel-ingress-ca \
-        --from-literal=ca-bundle.crt="$CA_BUNDLE" \
-        -n kagenti-system 2>/dev/null || true
-      log_success "otel-ingress-ca ConfigMap created"
-    else
-      log_warn "Could not fetch ingress CA — otel-ingress-ca ConfigMap not created"
-    fi
+" | $KUBECTL apply -f - || true
+}
+
+_helm_kagenti_deps() {
+  # Pre-flight: ensure namespaces managed by this chart are not stuck terminating
+  # from a previous failed install/uninstall cycle
+  for _ns in keycloak istio-cni istio-system istio-ztunnel; do
+    _wait_ns_gone "$_ns"
+  done
+
+  # Build MLflow OTEL flags: enable the pipeline and point it at the DSC-managed endpoint.
+  local _mlflow_vals_file=""
+  if [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
+    _mlflow_vals_file=$(mktemp /tmp/kagenti-mlflow-vals-XXXXXX.yaml)
+    cat > "$_mlflow_vals_file" <<EOF
+otel:
+  mlflow:
+    enabled: true
+  collector:
+    mlflowConfig:
+      exporters:
+        otlphttp/mlflow:
+          traces_endpoint: "${MLFLOW_TRACES_ENDPOINT}"
+EOF
+    log_info "MLflow OTEL values: otel.mlflow.enabled=true, endpoint=${MLFLOW_TRACES_ENDPOINT}"
   fi
 
+  if helm status kagenti-deps -n kagenti-system &>/dev/null; then
+    # Upgrade path: skip hooks (the kiali hook will fail on any cluster where
+    # cluster-monitoring-config is managed by another operator)
+    log_info "kagenti-deps already installed — upgrading (hooks skipped)"
+    run_cmd helm upgrade kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
+      -n kagenti-system \
+      --set spire.trustDomain="${DOMAIN}" \
+      --set components.kiali.enabled=false \
+      --set components.rhoai.enabled=true \
+      --set components.mlflow.enabled=false \
+      --set components.shipwright.enabled=false \
+      --set mlflow.auth.enabled=false \
+      ${_mlflow_vals_file:+-f "$_mlflow_vals_file"} \
+      --no-hooks
+    # Apply operand CRs on upgrade too — catches CRs missed by a previous
+    # failed install (e.g. Keycloak CRD wasn't ready yet on first run)
+    _apply_operand_crs
+    [ -n "$_mlflow_vals_file" ] && rm -f "$_mlflow_vals_file"
+    _wait_kagenti_deps_ready
+    return $?
+  fi
+
+  # Fresh install: skip hooks (they commonly timeout or conflict with managed
+  # operators like cluster-monitoring-config). Operand CRs are applied manually after.
+  log_info "Installing kagenti-deps..."
+  run_cmd helm dependency update "$KAGENTI_REPO/charts/kagenti-deps/"
+  run_cmd helm install kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
+    -n kagenti-system --create-namespace \
+    --set spire.trustDomain="${DOMAIN}" \
+    --set components.kiali.enabled=false \
+    --set components.rhoai.enabled=true \
+    --set components.mlflow.enabled=false \
+    --set components.shipwright.enabled=false \
+    --set mlflow.auth.enabled=false \
+    ${_mlflow_vals_file:+-f "$_mlflow_vals_file"} \
+    --no-hooks
+
+  _apply_operand_crs
+  [ -n "$_mlflow_vals_file" ] && rm -f "$_mlflow_vals_file"
   _wait_kagenti_deps_ready
 }
 _helm_kagenti_deps
@@ -408,10 +629,10 @@ _adopt_for_helm() {
   if [ -n "$ns" ]; then ns_flag=(-n "$ns"); fi
   if $KUBECTL get "$kind" "$name" "${ns_flag[@]}" &>/dev/null; then
     $KUBECTL label "$kind" "$name" "${ns_flag[@]}" \
-      app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+      app.kubernetes.io/managed-by=Helm --overwrite || true
     $KUBECTL annotate "$kind" "$name" "${ns_flag[@]}" \
       meta.helm.sh/release-name=kagenti-deps \
-      meta.helm.sh/release-namespace=kagenti-system --overwrite 2>/dev/null || true
+      meta.helm.sh/release-namespace=kagenti-system --overwrite || true
   fi
 }
 
@@ -450,7 +671,7 @@ _ensure_rhoai_shared_trust() {
     fi
     sleep 5
   done
-  $KUBECTL rollout status deployment/cert-manager-webhook -n cert-manager --timeout=180s 2>/dev/null || true
+  $KUBECTL rollout status deployment/cert-manager-webhook -n cert-manager --timeout=180s || true
 
   log_info "Waiting for cert-manager webhook endpoints..."
   tries=0
@@ -463,7 +684,10 @@ _ensure_rhoai_shared_trust() {
     sleep 5
   done
   # Webhook endpoint has an IP but may still be bootstrapping TLS serving certs
-  sleep 10
+  tries=0
+  until $KUBECTL get secret cert-manager-webhook-ca -n cert-manager &>/dev/null; do
+    [ $((++tries)) -ge 12 ] && break; sleep 5
+  done
   log_success "cert-manager is ready"
 
   # --- Create shared trust resources (fallback if Helm lookup skipped them) ---
@@ -602,30 +826,30 @@ ${ROOT_CERT}"
   log_info "Restarting istiods..."
   if $KUBECTL get deployment/istiod -n istio-system &>/dev/null; then
     $KUBECTL rollout restart deployment/istiod -n istio-system
-    $KUBECTL rollout status deployment/istiod -n istio-system --timeout=300s 2>/dev/null || true
+    $KUBECTL rollout status deployment/istiod -n istio-system --timeout=300s || true
   else
     log_warn "deployment/istiod not found in istio-system — check kagenti-deps hooks"
   fi
   $KUBECTL rollout restart deployment/istiod-openshift-gateway -n openshift-ingress 2>/dev/null || true
-  $KUBECTL rollout status deployment/istiod-openshift-gateway -n openshift-ingress --timeout=300s 2>/dev/null || true
+  $KUBECTL rollout status deployment/istiod-openshift-gateway -n openshift-ingress --timeout=300s || true
 
   # --- Delete stale istio-ca-root-cert ConfigMaps and restart ztunnel ---
   log_info "Cleaning up stale CA ConfigMaps and restarting ztunnel..."
   for ns in kagenti-system gateway-system keycloak mcp-system istio-system istio-ztunnel; do
-    $KUBECTL delete configmap istio-ca-root-cert -n "$ns" --ignore-not-found 2>/dev/null || true
+    $KUBECTL delete configmap istio-ca-root-cert -n "$ns" --ignore-not-found || true
   done
 
   $KUBECTL rollout restart daemonset/ztunnel -n istio-ztunnel 2>/dev/null || true
-  $KUBECTL rollout status daemonset/ztunnel -n istio-ztunnel --timeout=300s 2>/dev/null || true
+  $KUBECTL rollout status daemonset/ztunnel -n istio-ztunnel --timeout=300s || true
   log_success "Shared trust reconciliation complete"
 }
 _ensure_rhoai_shared_trust
 echo ""
 
 # ============================================================================
-# Step 4: Install Kagenti (Keycloak + operator + webhook + UI)
+# Step 4: Install Kagenti (operator + webhook + UI)
 # ============================================================================
-log_info "Step 4: Install Kagenti (Keycloak + operator + webhook + UI)"
+log_info "Step 4: Install Kagenti (operator + webhook + UI)"
 
 # Secrets file
 SECRETS_FILE="$KAGENTI_REPO/charts/kagenti/.secrets.yaml"
@@ -658,7 +882,27 @@ else
   KAGENTI_UI_FLAGS+=(--set "ui.backend.tag=v${LATEST_TAG}")
 fi
 
-run_cmd helm dependency update "$KAGENTI_REPO/charts/kagenti/"
+# Override operator chart dependency with local repo if provided
+if [ -n "$OPERATOR_REPO" ]; then
+  OPERATOR_REPO="$(cd "$OPERATOR_REPO" && pwd)"
+  if [ ! -f "$OPERATOR_REPO/charts/kagenti-operator/Chart.yaml" ]; then
+    log_error "Invalid operator repo: $OPERATOR_REPO (missing charts/kagenti-operator/Chart.yaml)"
+    exit 1
+  fi
+  log_info "Using local operator chart: $OPERATOR_REPO/charts/kagenti-operator"
+  # Place local chart directly into Helm's charts/ subdir — bypasses OCI dependency.
+  # Remove any existing tgz first — Helm prefers tgz over directory.
+  mkdir -p "$KAGENTI_REPO/charts/kagenti/charts"
+  rm -f "$KAGENTI_REPO/charts/kagenti/charts"/kagenti-operator-chart-*.tgz
+  cp -r "$OPERATOR_REPO/charts/kagenti-operator" \
+        "$KAGENTI_REPO/charts/kagenti/charts/kagenti-operator-chart"
+  # Clean up the copied chart on exit so it doesn't pollute git state
+  trap 'rm -rf "$KAGENTI_REPO/charts/kagenti/charts/kagenti-operator-chart"' EXIT
+fi
+
+if [ -z "$OPERATOR_REPO" ]; then
+  run_cmd helm dependency update "$KAGENTI_REPO/charts/kagenti/"
+fi
 
 # Detect Keycloak public URL from route (for OIDC redirects in the browser).
 # The internal URL (keycloak-service.KC_NAMESPACE:8080) is NOT reachable from outside the cluster.
@@ -674,21 +918,37 @@ fi
 
 log_info "Keycloak: realm=$KC_REALM namespace=$KC_NAMESPACE"
 
+# Build operator image override flags
+OPERATOR_IMAGE_FLAGS=()
+if [ -n "$OPERATOR_IMAGE" ]; then
+  OP_TAG="${OPERATOR_IMAGE##*:}"
+  OP_REPO="${OPERATOR_IMAGE%:*}"
+  OPERATOR_IMAGE_FLAGS+=(--set "kagenti-operator-chart.controllerManager.container.image.repository=${OP_REPO}")
+  OPERATOR_IMAGE_FLAGS+=(--set "kagenti-operator-chart.controllerManager.container.image.tag=${OP_TAG}")
+  OPERATOR_IMAGE_FLAGS+=(--set "kagenti-operator-chart.controllerManager.container.image.pullPolicy=Always")
+  log_info "Operator image: ${OPERATOR_IMAGE}"
+fi
+
 run_cmd $KUBECTL create namespace mcp-system --dry-run=client -o yaml | $KUBECTL apply -f -
 
 run_cmd helm upgrade --install kagenti "$KAGENTI_REPO/charts/kagenti/" \
   -n kagenti-system --create-namespace \
   -f "$SECRETS_FILE" \
   "${KAGENTI_UI_FLAGS[@]}" \
+  "${OPERATOR_IMAGE_FLAGS[@]}" \
   --set "agentOAuthSecret.spiffePrefix=spiffe://${DOMAIN}/sa" \
   --set uiOAuthSecret.useServiceAccountCA=false \
   --set agentOAuthSecret.useServiceAccountCA=false \
   --set mlflowOAuthSecret.useServiceAccountCA=false \
   --set mlflow.auth.enabled=false \
   --set "keycloak.publicUrl=${KEYCLOAK_PUBLIC_URL}" \
-  --set "keycloak.realm=${KC_REALM}"
+  --set "keycloak.realm=${KC_REALM}" \
+  --set "kagenti-operator-chart.mlflow.enable=$([ "$SKIP_MLFLOW" = true ] && echo false || echo true)"
 
 log_success "Kagenti installed"
+
+# Grant otel-collector SA MLflow RBAC in agent namespaces (created by kagenti chart above)
+_mlflow_grant_otel_rbac
 echo ""
 
 # ============================================================================
@@ -782,7 +1042,8 @@ echo ""
 echo "============================================"
 echo "  Kagenti platform is ready!  (Time elapsed:${MINS}m ${SECS}s)"
 echo ""
-echo "  Before deploying agents, add your namespace to the agentNamespaces"
-echo "  list in charts/kagenti/values.yaml so the platform provisions the"
-echo "  required resources in your namespace."
+echo "  Note: Some pods (SPIRE agents, operator-managed workloads)"
+echo "  may still be starting. Allow a few minutes for all components"
+echo "  to become fully available."
+echo "============================================"
 echo ""

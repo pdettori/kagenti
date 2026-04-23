@@ -13,7 +13,7 @@
 # Show service URLs
 ./.github/scripts/local-setup/show-services.sh
 
-# Access UI at http://kagenti-ui.localtest.me:8080 (admin/admin)
+# Access UI at http://kagenti-ui.localtest.me:8080 (see show-services.sh for credentials)
 ```
 
 ## Repository Structure
@@ -271,6 +271,6 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg
 - [Components](docs/components.md)
 - [AI Ops / Claude Code](docs/ai-ops/README.md)
 - [Demos](docs/demos/README.md)
-- [AuthBridge Demos](https://github.com/kagenti/kagenti-extensions/blob/main/AuthBridge/demos/README.md) — Zero-trust agent demos (weather agent, github issue, webhook, multi-target) in kagenti-extensions
+- [AuthBridge Demos](https://github.com/kagenti/kagenti-extensions/blob/main/authbridge/demos/README.md) — Zero-trust agent demos (weather agent, github issue, webhook, multi-target) in kagenti-extensions
 - [Skills and Patterns](docs/skills/README.md)
 - [Keycloak Patterns](docs/auth/keycloak-patterns.md)

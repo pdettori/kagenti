@@ -224,6 +224,14 @@ export const agentService = {
     authBridgeEnabled?: boolean;
     // SPIRE identity
     spireEnabled?: boolean;
+    // Per-sidecar injection controls
+    envoyProxyInject?: boolean;
+    spiffeHelperInject?: boolean;
+    clientRegistrationInject?: boolean;
+    outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+    outboundPortsExclude?: string;
+    inboundPortsExclude?: string;
+    defaultOutboundPolicy?: string;
     shipwrightConfig?: ShipwrightBuildConfig;
   }): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
     return apiFetch('/agents', {
@@ -429,6 +437,13 @@ export const shipwrightService = {
       }>;
       createHttpRoute?: boolean;
       authBridgeEnabled?: boolean;
+      envoyProxyInject?: boolean;
+      spiffeHelperInject?: boolean;
+      clientRegistrationInject?: boolean;
+      outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+    outboundPortsExclude?: string;
+    inboundPortsExclude?: string;
+    defaultOutboundPolicy?: string;
       imagePullSecret?: string;
     }
   ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
@@ -514,6 +529,14 @@ export const toolService = {
     authBridgeEnabled?: boolean;
     // SPIRE identity
     spireEnabled?: boolean;
+    // Per-sidecar injection controls
+    envoyProxyInject?: boolean;
+    spiffeHelperInject?: boolean;
+    clientRegistrationInject?: boolean;
+    outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+    outboundPortsExclude?: string;
+    inboundPortsExclude?: string;
+    defaultOutboundPolicy?: string;
   }): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
     return apiFetch('/tools', {
       method: 'POST',
@@ -644,6 +667,13 @@ export const toolShipwrightService = {
       }>;
       createHttpRoute?: boolean;
       authBridgeEnabled?: boolean;
+      envoyProxyInject?: boolean;
+      spiffeHelperInject?: boolean;
+      clientRegistrationInject?: boolean;
+      outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+    outboundPortsExclude?: string;
+    inboundPortsExclude?: string;
+    defaultOutboundPolicy?: string;
       imagePullSecret?: string;
     }
   ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
@@ -663,6 +693,7 @@ export const toolShipwrightService = {
 export interface DashboardConfig {
   traces: string;
   network: string;
+  mlflow: string;
   mcpInspector: string;
   mcpProxy: string;
   keycloakConsole: string;

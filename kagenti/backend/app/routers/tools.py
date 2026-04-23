@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # Copyright 2025 IBM Corp.
 # Licensed under the Apache License, Version 2.0
 
@@ -7,9 +8,10 @@ Tool API endpoints.
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from contextlib import AsyncExitStack
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from kubernetes.client import ApiException
 from mcp import ClientSession
@@ -48,6 +50,12 @@ from app.core.constants import (
     # SPIRE identity constants
     KAGENTI_SPIRE_LABEL,
     KAGENTI_SPIRE_ENABLED_VALUE,
+    # Per-sidecar injection labels
+    KAGENTI_ENVOY_PROXY_INJECT_LABEL,
+    KAGENTI_SPIFFE_HELPER_INJECT_LABEL,
+    KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL,
+    KAGENTI_OUTBOUND_PORTS_EXCLUDE,
+    KAGENTI_INBOUND_PORTS_EXCLUDE,
 )
 from app.models.responses import (
     ToolSummary,
@@ -75,7 +83,18 @@ from app.services.shipwright import (
     get_output_image_from_buildrun,
     resolve_clone_secret,
 )
-from app.utils.routes import create_route_for_agent_or_tool, route_exists
+from app.utils.routes import (
+    create_route_for_agent_or_tool,
+    lookup_service_port,
+    route_exists,
+    sanitize_log,
+    select_route_port,
+)
+from app.routers.agents import (
+    _ensure_authbridge_configmaps,
+    _ensure_authproxy_routes,
+    OutboundRoute,
+)
 
 
 class SecretKeyRef(BaseModel):
@@ -213,6 +232,21 @@ class CreateToolRequest(BaseModel):
     # SPIRE identity (spiffe-helper sidecar injection)
     spireEnabled: bool = False
 
+    # Per-sidecar injection controls (None = use webhook defaults)
+    envoyProxyInject: Optional[bool] = None
+    spiffeHelperInject: Optional[bool] = None
+    clientRegistrationInject: Optional[bool] = None
+
+    # Port exclusion annotations
+    outboundPortsExclude: Optional[str] = None
+    inboundPortsExclude: Optional[str] = None
+
+    # AuthBridge config overrides
+    defaultOutboundPolicy: Optional[Literal["passthrough", "exchange"]] = None
+
+    # Outbound routing rules (authproxy-routes ConfigMap)
+    outboundRoutes: Optional[List["OutboundRoute"]] = None
+
 
 class FinalizeToolBuildRequest(BaseModel):
     """Request to finalize a tool Shipwright build by creating the Deployment/StatefulSet."""
@@ -226,9 +260,16 @@ class FinalizeToolBuildRequest(BaseModel):
     createHttpRoute: Optional[bool] = None
     authBridgeEnabled: Optional[bool] = None
     imagePullSecret: Optional[str] = None
+    envoyProxyInject: Optional[bool] = None
+    spiffeHelperInject: Optional[bool] = None
+    clientRegistrationInject: Optional[bool] = None
+    outboundRoutes: Optional[List[OutboundRoute]] = None
+    outboundPortsExclude: Optional[str] = None
+    inboundPortsExclude: Optional[str] = None
+    defaultOutboundPolicy: Optional[Literal["passthrough", "exchange"]] = None
 
 
-class ToolShipwrightBuildInfoResponse(BaseModel):
+class ToolShipwrightBuildInfoResponse(BaseModel):  # pylint: disable=too-many-instance-attributes
     """Full Shipwright Build information for tools."""
 
     # Build info
@@ -370,7 +411,7 @@ def _get_workload_status(workload: dict) -> str:
     available_replicas = status.get("available_replicas") or status.get("availableReplicas", 0)
 
     # Check conditions for more detail
-    conditions = status.get("conditions", [])
+    conditions = status.get("conditions") or []
     for condition in conditions:
         cond_type = condition.get("type", "")
         cond_status = condition.get("status", "")
@@ -475,7 +516,18 @@ def _build_tool_shipwright_build_manifest(
         "workloadType": request.workloadType,
         "authBridgeEnabled": request.authBridgeEnabled,
         "spireEnabled": request.spireEnabled,
+        "envoyProxyInject": request.envoyProxyInject,
+        "spiffeHelperInject": request.spiffeHelperInject,
+        "clientRegistrationInject": request.clientRegistrationInject,
     }
+    if request.outboundRoutes:
+        resource_config["outboundRoutes"] = [r.model_dump() for r in request.outboundRoutes]
+    if request.outboundPortsExclude:
+        resource_config["outboundPortsExclude"] = request.outboundPortsExclude
+    if request.inboundPortsExclude:
+        resource_config["inboundPortsExclude"] = request.inboundPortsExclude
+    if request.defaultOutboundPolicy:
+        resource_config["defaultOutboundPolicy"] = request.defaultOutboundPolicy
     # Add persistent storage config if present (for StatefulSet)
     if request.persistentStorage:
         resource_config["persistentStorage"] = request.persistentStorage.model_dump()
@@ -725,6 +777,7 @@ async def delete_tool(
     2. Shipwright Build (if any)
     3. Deployment or StatefulSet
     4. Service
+    5. HTTPRoute or OpenShift Route (whichever exists)
     """
     deleted_resources = []
 
@@ -792,6 +845,34 @@ async def delete_tool(
     except ApiException as e:
         if e.status != 404:
             logger.warning(f"Failed to delete Service '{service_name}': {e}")
+
+    # Delete the HTTPRoute (if exists)
+    try:
+        kube.delete_custom_resource(
+            group="gateway.networking.k8s.io",
+            version="v1",
+            namespace=namespace,
+            plural="httproutes",
+            name=name,
+        )
+        deleted_resources.append(f"HTTPRoute/{name}")
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning(f"Failed to delete HTTPRoute '{name}': {e}")
+
+    # Delete the OpenShift Route (if exists)
+    try:
+        kube.delete_custom_resource(
+            group="route.openshift.io",
+            version="v1",
+            namespace=namespace,
+            plural="routes",
+            name=name,
+        )
+        deleted_resources.append(f"Route/{name}")
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning(f"Failed to delete Route '{name}': {e}")
 
     if deleted_resources:
         return DeleteResponse(
@@ -881,6 +962,11 @@ def _build_tool_deployment_manifest(
     shipwright_build_name: Optional[str] = None,
     auth_bridge_enabled: bool = False,
     spire_enabled: bool = False,
+    envoy_proxy_inject: Optional[bool] = None,
+    spiffe_helper_inject: Optional[bool] = None,
+    client_registration_inject: Optional[bool] = None,
+    outbound_ports_exclude: Optional[str] = None,
+    inbound_ports_exclude: Optional[str] = None,
 ) -> dict:
     """
     Build a Kubernetes Deployment manifest for an MCP tool.
@@ -935,13 +1021,27 @@ def _build_tool_deployment_manifest(
     if spire_enabled:
         labels[KAGENTI_SPIRE_LABEL] = KAGENTI_SPIRE_ENABLED_VALUE
         pod_labels[KAGENTI_SPIRE_LABEL] = KAGENTI_SPIRE_ENABLED_VALUE
+    if envoy_proxy_inject is False:
+        labels[KAGENTI_ENVOY_PROXY_INJECT_LABEL] = "false"
+        pod_labels[KAGENTI_ENVOY_PROXY_INJECT_LABEL] = "false"
+    if spiffe_helper_inject is False:
+        labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
+        pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
+    if client_registration_inject is True:
+        labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
+        pod_labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
 
     # Build annotations
     annotations = {}
+    pod_annotations: Dict[str, str] = {}
     if description:
         annotations[KAGENTI_DESCRIPTION_ANNOTATION] = description
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
+    if outbound_ports_exclude:
+        pod_annotations[KAGENTI_OUTBOUND_PORTS_EXCLUDE] = outbound_ports_exclude
+    if inbound_ports_exclude:
+        pod_annotations[KAGENTI_INBOUND_PORTS_EXCLUDE] = inbound_ports_exclude
 
     manifest = {
         "apiVersion": "apps/v1",
@@ -963,6 +1063,7 @@ def _build_tool_deployment_manifest(
             "template": {
                 "metadata": {
                     "labels": pod_labels,
+                    "annotations": pod_annotations,
                 },
                 "spec": {
                     "serviceAccountName": name,
@@ -1026,6 +1127,11 @@ def _build_tool_statefulset_manifest(
     storage_size: str = "1Gi",
     auth_bridge_enabled: bool = False,
     spire_enabled: bool = False,
+    envoy_proxy_inject: Optional[bool] = None,
+    spiffe_helper_inject: Optional[bool] = None,
+    client_registration_inject: Optional[bool] = None,
+    outbound_ports_exclude: Optional[str] = None,
+    inbound_ports_exclude: Optional[str] = None,
 ) -> dict:
     """
     Build a Kubernetes StatefulSet manifest for an MCP tool.
@@ -1084,13 +1190,27 @@ def _build_tool_statefulset_manifest(
     if spire_enabled:
         labels[KAGENTI_SPIRE_LABEL] = KAGENTI_SPIRE_ENABLED_VALUE
         pod_labels[KAGENTI_SPIRE_LABEL] = KAGENTI_SPIRE_ENABLED_VALUE
+    if envoy_proxy_inject is False:
+        labels[KAGENTI_ENVOY_PROXY_INJECT_LABEL] = "false"
+        pod_labels[KAGENTI_ENVOY_PROXY_INJECT_LABEL] = "false"
+    if spiffe_helper_inject is False:
+        labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
+        pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
+    if client_registration_inject is True:
+        labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
+        pod_labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
 
     # Build annotations
     annotations = {}
+    pod_annotations: Dict[str, str] = {}
     if description:
         annotations[KAGENTI_DESCRIPTION_ANNOTATION] = description
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
+    if outbound_ports_exclude:
+        pod_annotations[KAGENTI_OUTBOUND_PORTS_EXCLUDE] = outbound_ports_exclude
+    if inbound_ports_exclude:
+        pod_annotations[KAGENTI_INBOUND_PORTS_EXCLUDE] = inbound_ports_exclude
 
     manifest = {
         "apiVersion": "apps/v1",
@@ -1113,6 +1233,7 @@ def _build_tool_statefulset_manifest(
             "template": {
                 "metadata": {
                     "labels": pod_labels,
+                    "annotations": pod_annotations,
                 },
                 "spec": {
                     "serviceAccountName": name,
@@ -1348,6 +1469,28 @@ async def create_tool(
             # SPIFFE identity uses the workload name, not the ReplicaSet hash.
             kube.ensure_service_account(namespace=request.namespace, name=request.name)
 
+            if request.authBridgeEnabled:
+                _ensure_authbridge_configmaps(
+                    kube=kube,
+                    namespace=request.namespace,
+                    spire_enabled=request.spireEnabled,
+                )
+                if request.outboundRoutes:
+                    _ensure_authproxy_routes(
+                        kube=kube,
+                        namespace=request.namespace,
+                        routes=request.outboundRoutes,
+                    )
+                if request.defaultOutboundPolicy:
+                    extra = {
+                        "DEFAULT_OUTBOUND_POLICY": request.defaultOutboundPolicy,
+                    }
+                    kube.upsert_configmap(
+                        namespace=request.namespace,
+                        name="authbridge-config",
+                        data=extra,
+                    )
+
             # Create workload (Deployment or StatefulSet)
             if request.workloadType == WORKLOAD_TYPE_STATEFULSET:
                 # Determine storage size
@@ -1368,6 +1511,11 @@ async def create_tool(
                     description=description,
                     auth_bridge_enabled=request.authBridgeEnabled,
                     spire_enabled=request.spireEnabled,
+                    envoy_proxy_inject=request.envoyProxyInject,
+                    spiffe_helper_inject=request.spiffeHelperInject,
+                    client_registration_inject=request.clientRegistrationInject,
+                    outbound_ports_exclude=request.outboundPortsExclude,
+                    inbound_ports_exclude=request.inboundPortsExclude,
                 )
                 kube.create_statefulset(request.namespace, workload_manifest)
                 logger.info(
@@ -1387,6 +1535,11 @@ async def create_tool(
                     description=description,
                     auth_bridge_enabled=request.authBridgeEnabled,
                     spire_enabled=request.spireEnabled,
+                    envoy_proxy_inject=request.envoyProxyInject,
+                    spiffe_helper_inject=request.spiffeHelperInject,
+                    client_registration_inject=request.clientRegistrationInject,
+                    outbound_ports_exclude=request.outboundPortsExclude,
+                    inbound_ports_exclude=request.inboundPortsExclude,
                 )
                 kube.create_deployment(request.namespace, workload_manifest)
                 logger.info(
@@ -1410,10 +1563,10 @@ async def create_tool(
             # Create HTTPRoute/Route if requested
             # Service is now {name}-mcp on port 8000
             if request.createHttpRoute:
-                service_port = DEFAULT_IN_CLUSTER_PORT
-                if service_ports and len(service_ports) > 0:
-                    service_port = service_ports[0].get("port", DEFAULT_IN_CLUSTER_PORT)
-
+                service_port = select_route_port(
+                    service_ports,
+                    default_port=DEFAULT_IN_CLUSTER_PORT,
+                )
                 create_route_for_agent_or_tool(
                     kube=kube,
                     name=request.name,
@@ -1733,9 +1886,73 @@ async def finalize_tool_shipwright_build(
         # Propagate SPIRE identity setting from stored config
         spire_enabled = tool_config_dict.get("spireEnabled", False)
 
+        # Outbound routing rules
+        final_outbound_routes = None
+        stored_routes = tool_config_dict.get("outboundRoutes")
+        if request.outboundRoutes is not None:
+            final_outbound_routes = request.outboundRoutes
+        elif stored_routes:
+            final_outbound_routes = [OutboundRoute(**r) for r in stored_routes]
+
+        # Per-sidecar injection controls
+        envoy_proxy_inject = (
+            request.envoyProxyInject
+            if request.envoyProxyInject is not None
+            else tool_config_dict.get("envoyProxyInject")
+        )
+        spiffe_helper_inject = (
+            request.spiffeHelperInject
+            if request.spiffeHelperInject is not None
+            else tool_config_dict.get("spiffeHelperInject")
+        )
+        client_registration_inject = (
+            request.clientRegistrationInject
+            if request.clientRegistrationInject is not None
+            else tool_config_dict.get("clientRegistrationInject")
+        )
+
+        # Port exclusion and policy overrides
+        outbound_ports_exclude = (
+            request.outboundPortsExclude
+            if request.outboundPortsExclude is not None
+            else tool_config_dict.get("outboundPortsExclude")
+        )
+        inbound_ports_exclude = (
+            request.inboundPortsExclude
+            if request.inboundPortsExclude is not None
+            else tool_config_dict.get("inboundPortsExclude")
+        )
+        final_default_outbound_policy = (
+            request.defaultOutboundPolicy
+            if request.defaultOutboundPolicy is not None
+            else tool_config_dict.get("defaultOutboundPolicy")
+        )
+
         # Ensure a dedicated ServiceAccount exists so the webhook's
         # SPIFFE identity uses the workload name, not the ReplicaSet hash.
         kube.ensure_service_account(namespace=namespace, name=name)
+
+        if auth_bridge_enabled:
+            _ensure_authbridge_configmaps(
+                kube=kube,
+                namespace=namespace,
+                spire_enabled=spire_enabled,
+            )
+            if final_outbound_routes:
+                _ensure_authproxy_routes(
+                    kube=kube,
+                    namespace=namespace,
+                    routes=final_outbound_routes,
+                )
+            if final_default_outbound_policy:
+                extra = {
+                    "DEFAULT_OUTBOUND_POLICY": final_default_outbound_policy,
+                }
+                kube.upsert_configmap(
+                    namespace=namespace,
+                    name="authbridge-config",
+                    data=extra,
+                )
 
         # Create workload (Deployment or StatefulSet)
         if workload_type == WORKLOAD_TYPE_STATEFULSET:
@@ -1760,6 +1977,11 @@ async def finalize_tool_shipwright_build(
                 storage_size=storage_size,
                 auth_bridge_enabled=auth_bridge_enabled,
                 spire_enabled=spire_enabled,
+                envoy_proxy_inject=envoy_proxy_inject,
+                spiffe_helper_inject=spiffe_helper_inject,
+                client_registration_inject=client_registration_inject,
+                outbound_ports_exclude=outbound_ports_exclude,
+                inbound_ports_exclude=inbound_ports_exclude,
             )
             kube.create_statefulset(namespace, workload_manifest)
             logger.info(
@@ -1780,6 +2002,11 @@ async def finalize_tool_shipwright_build(
                 shipwright_build_name=name,
                 auth_bridge_enabled=auth_bridge_enabled,
                 spire_enabled=spire_enabled,
+                envoy_proxy_inject=envoy_proxy_inject,
+                spiffe_helper_inject=spiffe_helper_inject,
+                client_registration_inject=client_registration_inject,
+                outbound_ports_exclude=outbound_ports_exclude,
+                inbound_ports_exclude=inbound_ports_exclude,
             )
             kube.create_deployment(namespace, workload_manifest)
             logger.info(
@@ -1802,10 +2029,10 @@ async def finalize_tool_shipwright_build(
 
         # Create HTTPRoute if requested
         if create_http_route:
-            service_port = DEFAULT_IN_CLUSTER_PORT
-            if service_ports and len(service_ports) > 0:
-                service_port = service_ports[0].get("port", DEFAULT_IN_CLUSTER_PORT)
-
+            service_port = select_route_port(
+                service_ports,
+                default_port=DEFAULT_IN_CLUSTER_PORT,
+            )
             create_route_for_agent_or_tool(
                 kube=kube,
                 name=name,
@@ -1836,23 +2063,28 @@ async def finalize_tool_shipwright_build(
         raise HTTPException(status_code=e.status, detail=str(e.reason))
 
 
-def _get_tool_url(name: str, namespace: str) -> str:
+def _get_tool_url(name: str, namespace: str, kube: KubernetesService) -> str:
     """Get the URL for an MCP tool server.
+
+    Looks up the K8s Service to find the actual port instead of assuming
+    the default.  Falls back to DEFAULT_IN_CLUSTER_PORT when the Service
+    is missing or has no ports.
 
     Service naming convention:
     - Service name: {name}-mcp
-    - Port: 8000
 
     Returns different URL formats based on deployment context:
-    - In-cluster: http://{name}-mcp.{namespace}.svc.cluster.local:8000
+    - In-cluster: http://{name}-mcp.{namespace}.svc.cluster.local:{port}
     - Off-cluster (local dev): http://{name}.{domain}:8080 (via HTTPRoute)
     """
+    service_name = _get_tool_service_name(name)
+    port = lookup_service_port(service_name, namespace, kube, DEFAULT_IN_CLUSTER_PORT)
+
     if settings.is_running_in_cluster:
-        # In-cluster: use service DNS with new naming convention
-        service_name = _get_tool_service_name(name)
-        return f"http://{service_name}.{namespace}.svc.cluster.local:{DEFAULT_IN_CLUSTER_PORT}"
+        return f"http://{service_name}.{namespace}.svc.cluster.local:{port}"
     else:
-        # Off-cluster: use external domain (e.g., localtest.me) via HTTPRoute
+        # Off-cluster: HTTPRoute handles mapping to the Service port;
+        # the URL only needs the gateway listener port (8080).
         domain = settings.domain_name
         return f"http://{name}.{domain}:8080"
 
@@ -1865,6 +2097,7 @@ def _get_tool_url(name: str, namespace: str) -> str:
 async def connect_to_tool(
     namespace: str,
     name: str,
+    kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> MCPToolsResponse:
     """
     Connect to an MCP server and list available tools.
@@ -1872,10 +2105,10 @@ async def connect_to_tool(
     This endpoint connects to the MCP server and retrieves the list of
     available tools using the MCP client library.
     """
-    tool_url = _get_tool_url(name, namespace)
+    tool_url = _get_tool_url(name, namespace, kube)
     mcp_endpoint = f"{tool_url}/mcp"
 
-    logger.info(f"Connecting to MCP server at {mcp_endpoint}")
+    logger.info("Connecting to MCP server at %s", sanitize_log(mcp_endpoint))
 
     exit_stack = AsyncExitStack()
     try:
@@ -1889,7 +2122,7 @@ async def connect_to_tool(
             session: ClientSession = await session_context.__aenter__()
             await session.initialize()
 
-            logger.info(f"MCP session initialized for tool '{name}'")
+            logger.info("MCP session initialized for tool %s", sanitize_log(name))
 
             # List available tools
             response = await session.list_tools()
@@ -1905,18 +2138,30 @@ async def connect_to_tool(
                             ),
                         )
                     )
-                logger.info(f"Listed {len(tools)} tools from MCP server '{name}'")
+                logger.info("Listed %d tools from MCP server %s", len(tools), sanitize_log(name))
 
             return MCPToolsResponse(tools=tools)
 
-    except ConnectionError as e:
-        logger.error(f"Connection error to MCP server: {e}")
+    except (ConnectionError, httpx.NetworkError):
+        logger.error("Connection error to MCP server (connect)")
         raise HTTPException(
-            status_code=503,
+            status_code=502,
+            detail=f"Failed to connect to MCP server at {tool_url}",
+        )
+    except httpx.TimeoutException:
+        logger.error("Timeout connecting to MCP server (connect)")
+        raise HTTPException(
+            status_code=504,
+            detail=f"Timeout connecting to MCP server at {tool_url}",
+        )
+    except httpx.HTTPError:
+        logger.error("HTTP error connecting to MCP server (connect)")
+        raise HTTPException(
+            status_code=502,
             detail=f"Failed to connect to MCP server at {tool_url}",
         )
     except Exception as e:
-        logger.error(f"Unexpected error connecting to MCP server: {e}")
+        logger.error("Unexpected error connecting to MCP server: %s", type(e).__name__)
         raise HTTPException(
             status_code=500,
             detail=f"Error connecting to MCP server: {str(e)}",
@@ -1932,6 +2177,7 @@ async def invoke_tool(
     namespace: str,
     name: str,
     request: MCPInvokeRequest,
+    kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> MCPInvokeResponse:
     """
     Invoke an MCP tool with the given arguments.
@@ -1939,7 +2185,7 @@ async def invoke_tool(
     This endpoint calls a specific tool on the MCP server with
     the provided arguments and returns the result.
     """
-    tool_url = _get_tool_url(name, namespace)
+    tool_url = _get_tool_url(name, namespace, kube)
     mcp_endpoint = f"{tool_url}/mcp"
 
     exit_stack = AsyncExitStack()
@@ -1954,12 +2200,16 @@ async def invoke_tool(
             session: ClientSession = await session_context.__aenter__()
             await session.initialize()
 
-            logger.info(f"MCP session initialized for tool invocation on '{name}'")
+            logger.info("MCP session initialized for tool invocation on %s", sanitize_log(name))
 
             # Call the tool using the MCP client library
             result = await session.call_tool(request.tool_name, request.arguments)
 
-            logger.info(f"Tool '{request.tool_name}' invoked successfully on '{name}'")
+            logger.info(
+                "Tool %s invoked successfully on %s",
+                sanitize_log(request.tool_name),
+                sanitize_log(name),
+            )
 
             # Convert the result to a serializable format
             result_data = {}
@@ -1980,16 +2230,28 @@ async def invoke_tool(
 
             return MCPInvokeResponse(result=result_data)
 
-    except ConnectionError as e:
-        logger.error(f"Connection error to MCP server: {e}")
+    except (ConnectionError, httpx.NetworkError):
+        logger.error("Connection error to MCP server (invoke)")
         raise HTTPException(
-            status_code=503,
+            status_code=502,
+            detail=f"Failed to connect to MCP server at {tool_url}",
+        )
+    except httpx.TimeoutException:
+        logger.error("Timeout connecting to MCP server (invoke)")
+        raise HTTPException(
+            status_code=504,
+            detail=f"Timeout connecting to MCP server at {tool_url}",
+        )
+    except httpx.HTTPError:
+        logger.error("HTTP error connecting to MCP server (invoke)")
+        raise HTTPException(
+            status_code=502,
             detail=f"Failed to connect to MCP server at {tool_url}",
         )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error invoking MCP tool: {e}")
+        logger.error("Unexpected error invoking MCP tool: %s", type(e).__name__)
         raise HTTPException(
             status_code=500,
             detail=f"Error invoking MCP tool: {str(e)}",
