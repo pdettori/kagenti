@@ -190,7 +190,9 @@ if [[ -n "$SECRET_FILE" ]]; then
 
   # Check existence: if the user explicitly provided --secret and the file
   # is missing, fail early. If we're using the default and it's missing,
-  # warn and skip adding the secret (the playbook will behave accordingly).
+  # warn and skip. We must pass an empty secret_values_file to override the
+  # default in default_values.yaml (secrets.file), otherwise the playbook
+  # resolves that default path, stats it, and fails.
   if [[ -f "$secret_resolved" ]]; then
     JSON_ENTRIES+=("\"secret_values_file\": \"$secret_resolved\"")
   else
@@ -199,6 +201,7 @@ if [[ -n "$SECRET_FILE" ]]; then
       exit 2
     else
       echo "WARNING: default secret values file not found at $secret_resolved; continuing without secrets." >&2
+      JSON_ENTRIES+=("\"secret_values_file\": \"\"")
     fi
   fi
 fi
