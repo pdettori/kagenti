@@ -19,7 +19,7 @@ The current Maintainers Group for the Kagenti Project consists of:
 | [Morgan Foster](https://github.com/usize) | Red Hat | Workload Identity and Security |
 | [Paolo Dettori](https://github.com/pdettori) | IBM | Project Technical Lead, Agent Lifecycle Management |
 | [Ryan Jenkins](https://github.com/RyanJenkins99) | IBM | Automation, HyperShift CI |
-| [Varsha Prasad Narsing](https://github.com/varshaprasad96) | IBM | |
+| [Varsha Prasad Narsing](https://github.com/varshaprasad96) | Red Hat | |
 
 ## Contact
 
