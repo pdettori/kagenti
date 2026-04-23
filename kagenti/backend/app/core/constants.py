@@ -65,13 +65,15 @@ AGENT_SANDBOX_CRD_VERSION = "v1alpha1"
 AGENT_SANDBOX_PLURAL = "sandboxes"
 
 # Supported workload types (sandbox added conditionally at startup)
-SUPPORTED_WORKLOAD_TYPES = [
+_BASE_WORKLOAD_TYPES = (
     WORKLOAD_TYPE_DEPLOYMENT,
     WORKLOAD_TYPE_STATEFULSET,
     WORKLOAD_TYPE_JOB,
-]
-if settings.kagenti_feature_flag_agent_sandbox:
-    SUPPORTED_WORKLOAD_TYPES.append(WORKLOAD_TYPE_SANDBOX)
+)
+SUPPORTED_WORKLOAD_TYPES = list(
+    _BASE_WORKLOAD_TYPES
+    + ((WORKLOAD_TYPE_SANDBOX,) if settings.kagenti_feature_flag_agent_sandbox else ())
+)
 
 # Namespace labels
 ENABLED_NAMESPACE_LABEL_KEY = settings.enabled_namespace_label_key
