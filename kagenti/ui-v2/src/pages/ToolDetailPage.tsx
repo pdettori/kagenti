@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { copyToClipboard } from '../utils/clipboard';
 import {
   PageSection,
   Title,
@@ -29,7 +28,6 @@ import {
   Alert,
   Grid,
   GridItem,
-  ClipboardCopy,
   Split,
   SplitItem,
   Flex,
@@ -485,9 +483,9 @@ export const ToolDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>MCP Server URL</DescriptionListTerm>
                         <DescriptionListDescription>
-                          <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                          <a href={toolExternalUrl} target="_blank" rel="noopener noreferrer">
                             {toolExternalUrl}
-                          </ClipboardCopy>
+                          </a>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                     </DescriptionList>
@@ -638,9 +636,9 @@ export const ToolDetailPage: React.FC = () => {
                             <DescriptionListGroup>
                               <DescriptionListTerm>Git URL</DescriptionListTerm>
                               <DescriptionListDescription>
-                                <code style={{ fontSize: '0.85em' }}>
+                                <a href={shipwrightBuildStatus.gitUrl} target="_blank" rel="noopener noreferrer">
                                   {shipwrightBuildStatus.gitUrl}
-                                </code>
+                                </a>
                               </DescriptionListDescription>
                             </DescriptionListGroup>
                             <DescriptionListGroup>
@@ -848,9 +846,9 @@ export const ToolDetailPage: React.FC = () => {
                   <DescriptionListGroup>
                     <DescriptionListTerm>MCP Server URL (in-cluster)</DescriptionListTerm>
                     <DescriptionListDescription>
-                      <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                      <a href={mcpInClusterUrl} target="_blank" rel="noopener noreferrer">
                         {mcpInClusterUrl}
-                      </ClipboardCopy>
+                      </a>
                     </DescriptionListDescription>
                   </DescriptionListGroup>
                   <DescriptionListGroup>

@@ -274,9 +274,9 @@ export const BuildProgressView: React.FC<BuildProgressViewProps> = ({
             <DescriptionListGroup>
               <DescriptionListTerm>Git URL</DescriptionListTerm>
               <DescriptionListDescription>
-                <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied">
+                <a href={buildInfo.gitUrl} target="_blank" rel="noopener noreferrer">
                   {buildInfo.gitUrl}
-                </ClipboardCopy>
+                </a>
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>

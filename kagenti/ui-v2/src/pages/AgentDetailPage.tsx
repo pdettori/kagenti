@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { copyToClipboard } from '../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -32,7 +31,6 @@ import {
   Alert,
   Grid,
   GridItem,
-  ClipboardCopy,
   Split,
   SplitItem,
   Flex,
@@ -472,9 +470,9 @@ export const AgentDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>Agent URL</DescriptionListTerm>
                         <DescriptionListDescription>
-                          <ClipboardCopy isReadOnly hoverTip="Copy" clickTip="Copied" onCopy={copyToClipboard}>
+                          <a href={agentUrl} target="_blank" rel="noopener noreferrer">
                             {agentUrl}
-                          </ClipboardCopy>
+                          </a>
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                       {serviceInfo && (
@@ -568,12 +566,6 @@ export const AgentDetailPage: React.FC = () => {
                                         </DescriptionListDescription>
                                       </DescriptionListGroup>
                                     )}
-                                    <DescriptionListGroup>
-                                      <DescriptionListTerm>URL</DescriptionListTerm>
-                                      <DescriptionListDescription>
-                                        <code style={{ fontSize: '0.85em' }}>{agentCard.url}</code>
-                                      </DescriptionListDescription>
-                                    </DescriptionListGroup>
                                   </DescriptionList>
                                 </CardBody>
                               </Card>
@@ -857,9 +849,9 @@ export const AgentDetailPage: React.FC = () => {
                             <DescriptionListGroup>
                               <DescriptionListTerm>Git URL</DescriptionListTerm>
                               <DescriptionListDescription>
-                                <code style={{ fontSize: '0.85em' }}>
+                                <a href={shipwrightBuildStatus.gitUrl} target="_blank" rel="noopener noreferrer">
                                   {shipwrightBuildStatus.gitUrl}
-                                </code>
+                                </a>
                               </DescriptionListDescription>
                             </DescriptionListGroup>
                             <DescriptionListGroup>
