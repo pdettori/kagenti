@@ -63,7 +63,6 @@ from app.core.constants import (
     WORKLOAD_TYPE_SANDBOX,
     AGENT_SANDBOX_CRD_GROUP,
     AGENT_SANDBOX_CRD_VERSION,
-    AGENT_SANDBOX_PLURAL,
     SUPPORTED_WORKLOAD_TYPES,
     # Migration constants (Phase 4)
     MIGRATION_SOURCE_ANNOTATION,
@@ -552,7 +551,7 @@ async def list_agents(
     """
     List all agents in the specified namespace.
 
-    Returns agents deployed as Deployments, StatefulSets, or Jobs with the
+    Returns agents deployed as Deployments, StatefulSets, Jobs, or Sandboxes with the
     kagenti.io/type=agent label.
     During migration period, also includes legacy Agent CRDs that haven't been
     migrated yet (controlled by enable_legacy_agent_crd setting).
@@ -892,7 +891,7 @@ async def delete_agent(
     """Delete an agent and its associated resources from the cluster.
 
     This deletes:
-    - Deployment, StatefulSet, or Job (whichever exists)
+    - Deployment, StatefulSet, Job, or Sandbox (whichever exists)
     - Service
     - HTTPRoute or OpenShift Route (whichever exists)
     - Shipwright Build CR (if exists)
@@ -939,9 +938,9 @@ async def delete_agent(
             messages.append(f"Sandbox '{name}' deleted")
         except ApiException as e:
             if e.status == 404:
-                logger.debug(f"Sandbox '{name}' not found")
+                logger.debug("Sandbox '%s' not found (may be other workload type)", safe_name)
             else:
-                logger.warning(f"Failed to delete Sandbox '{name}': {e.reason}")
+                logger.warning("Failed to delete Sandbox '%s': %s", safe_name, e.reason)
 
     # Delete the Service
     try:
@@ -2868,6 +2867,7 @@ def _build_sandbox_manifest(
                     "labels": {
                         **labels,
                     },
+                    "annotations": _build_common_annotations(request),
                 },
                 "spec": {
                     "serviceAccountName": request.name,
@@ -2927,10 +2927,11 @@ async def create_agent(
     - 'source': Build from git repository using Shipwright Build + BuildRun
     - 'image': Deploy from existing container image as workload + Service
 
-    Supports three workload types:
+    Supports four workload types:
     - 'deployment': Standard Kubernetes Deployment (default)
     - 'statefulset': StatefulSet for stateful agents
     - 'job': Job for batch/one-time agents
+    - 'sandbox': Sandbox CR for isolated agents (requires feature flag)
     """
     logger.info(
         f"Creating agent '{request.name}' in namespace '{request.namespace}', "
@@ -3048,7 +3049,7 @@ async def create_agent(
                 logger.info(f"Created Service '{request.name}' in namespace '{request.namespace}'")
 
             # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
-            if request.workloadType != WORKLOAD_TYPE_JOB:
+            if request.workloadType not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
                 _ensure_agentruntime(
                     kube=kube,
                     name=request.name,
@@ -3556,6 +3557,12 @@ async def finalize_shipwright_build(
                 image=container_image,
                 shipwright_build_name=name,
             )
+            workload_manifest["metadata"]["labels"].update(
+                {k: v for k, v in build_labels.items() if k.startswith("kagenti.io/")}
+            )
+            workload_manifest["spec"]["podTemplate"]["metadata"]["labels"].update(
+                {k: v for k, v in build_labels.items() if k.startswith("kagenti.io/")}
+            )
             kube.create_sandbox(
                 namespace=namespace,
                 body=workload_manifest,
@@ -3575,7 +3582,10 @@ async def finalize_shipwright_build(
         # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
         # Only for agents — tools don't need sidecar injection
         resource_type = build_labels.get(KAGENTI_TYPE_LABEL, RESOURCE_TYPE_AGENT)
-        if final_workload_type != WORKLOAD_TYPE_JOB and resource_type == RESOURCE_TYPE_AGENT:
+        if (
+            final_workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX)
+            and resource_type == RESOURCE_TYPE_AGENT
+        ):
             _ensure_agentruntime(
                 kube=kube,
                 name=name,
