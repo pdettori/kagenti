@@ -475,8 +475,11 @@ DEPS_FLAGS=(
 )
 
 log_info "Installing kagenti-deps..."
+# --skip-crds: Gateway API CRDs already installed in Step 5 at a newer version;
+# the bundled crds/ in the chart would conflict with the kubectl field manager.
 run_cmd helm upgrade --install kagenti-deps "$REPO_ROOT/charts/kagenti-deps/" \
   -n kagenti-system --create-namespace --wait --timeout 20m \
+  --skip-crds \
   "${DEPS_FLAGS[@]}"
 
 # Label kagenti-system for shared gateway access
