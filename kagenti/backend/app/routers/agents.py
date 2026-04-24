@@ -60,6 +60,9 @@ from app.core.constants import (
     WORKLOAD_TYPE_DEPLOYMENT,
     WORKLOAD_TYPE_STATEFULSET,
     WORKLOAD_TYPE_JOB,
+    WORKLOAD_TYPE_SANDBOX,
+    AGENT_SANDBOX_CRD_GROUP,
+    AGENT_SANDBOX_CRD_VERSION,
     SUPPORTED_WORKLOAD_TYPES,
     # Migration constants (Phase 4)
     MIGRATION_SOURCE_ANNOTATION,
@@ -482,6 +485,25 @@ def _get_job_description(job: dict) -> str:
     )
 
 
+def _is_sandbox_ready(sandbox: dict) -> str:
+    """Check if a Sandbox CR is ready by examining its status conditions."""
+    status = sandbox.get("status", {})
+    conditions = status.get("conditions", [])
+    for cond in conditions:
+        if cond.get("type") == "Ready":
+            if cond.get("status") == "True":
+                return "Ready"
+            return "Not Ready"
+    return "Pending"
+
+
+def _get_sandbox_description(sandbox: dict) -> str:
+    """Extract description from a Sandbox CR."""
+    metadata = sandbox.get("metadata", {})
+    annotations = metadata.get("annotations", {})
+    return annotations.get(KAGENTI_DESCRIPTION_ANNOTATION, "No description")
+
+
 def _format_timestamp(timestamp) -> Optional[str]:
     """Convert a timestamp to ISO format string.
 
@@ -529,7 +551,7 @@ async def list_agents(
     """
     List all agents in the specified namespace.
 
-    Returns agents deployed as Deployments, StatefulSets, or Jobs with the
+    Returns agents deployed as Deployments, StatefulSets, Jobs, or Sandboxes with the
     kagenti.io/type=agent label.
     During migration period, also includes legacy Agent CRDs that haven't been
     migrated yet (controlled by enable_legacy_agent_crd setting).
@@ -632,6 +654,48 @@ async def list_agents(
                 )
             )
 
+        # Query Sandboxes with agent label (feature-flagged)
+        if settings.kagenti_feature_flag_agent_sandbox:
+            try:
+                sandboxes = kube.list_sandboxes(
+                    namespace=namespace,
+                    label_selector=label_selector,
+                )
+                for sandbox in sandboxes:
+                    metadata = sandbox.get("metadata", {})
+                    name = metadata.get("name", "")
+                    if name in agent_names:
+                        logger.warning(
+                            f"Duplicate agent name '{name}' detected: Sandbox skipped because "
+                            f"a workload with the same name already exists in namespace '{namespace}'. "
+                            "This may indicate a configuration issue."
+                        )
+                        continue
+                    agent_names.add(name)
+                    labels = metadata.get("labels", {})
+
+                    agents.append(
+                        AgentSummary(
+                            name=name,
+                            namespace=metadata.get("namespace", namespace),
+                            description=_get_sandbox_description(sandbox),
+                            status=_is_sandbox_ready(sandbox),
+                            labels=_extract_labels(labels),
+                            workloadType=WORKLOAD_TYPE_SANDBOX,
+                            createdAt=_format_timestamp(
+                                metadata.get("creation_timestamp")
+                                or metadata.get("creationTimestamp")
+                            ),
+                        )
+                    )
+            except ApiException as e:
+                if e.status == 404:
+                    logger.debug("Sandbox CRD not installed")
+                elif e.status == 403:
+                    logger.debug("Sandbox RBAC: insufficient permissions")
+                else:
+                    logger.warning(f"Failed to list Sandboxes: {e.reason}")
+
         # Backward compatibility: Also list legacy Agent CRDs (during migration period)
         if settings.enable_legacy_agent_crd:
             try:
@@ -731,16 +795,27 @@ async def get_agent(
             workload = kube.get_job(namespace=namespace, name=name)
             workload_type = WORKLOAD_TYPE_JOB
         except ApiException as e:
-            if e.status == 404:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Agent '{name}' not found in namespace '{namespace}'",
-                )
-            raise HTTPException(status_code=e.status, detail=str(e.reason))
+            if e.status != 404:
+                raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    # If still not found, try Sandbox (feature-flagged)
+    if workload is None and settings.kagenti_feature_flag_agent_sandbox:
+        try:
+            workload = kube.get_sandbox(namespace=namespace, name=name)
+            workload_type = WORKLOAD_TYPE_SANDBOX
+        except ApiException as e:
+            if e.status != 404:
+                raise HTTPException(status_code=e.status, detail=str(e.reason))
+
+    if workload is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent '{name}' not found in namespace '{namespace}'",
+        )
 
     # Try to get the associated Service (not applicable for Jobs)
     service = None
-    if workload_type != WORKLOAD_TYPE_JOB:
+    if workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
         try:
             service = kube.get_service(namespace=namespace, name=name)
         except ApiException as e:
@@ -759,6 +834,8 @@ async def get_agent(
         ready_status = _is_statefulset_ready(workload)
     elif workload_type == WORKLOAD_TYPE_JOB:
         ready_status = _get_job_status(workload)
+    elif workload_type == WORKLOAD_TYPE_SANDBOX:
+        ready_status = _is_sandbox_ready(workload)
     else:
         ready_status = "Unknown"
 
@@ -816,7 +893,7 @@ async def delete_agent(
     """Delete an agent and its associated resources from the cluster.
 
     This deletes:
-    - Deployment, StatefulSet, or Job (whichever exists)
+    - Deployment, StatefulSet, Job, or Sandbox (whichever exists)
     - Service
     - HTTPRoute or OpenShift Route (whichever exists)
     - Shipwright Build CR (if exists)
@@ -855,6 +932,17 @@ async def delete_agent(
             logger.debug("Job '%s' not found", safe_name)
         else:
             logger.warning("Failed to delete Job '%s': %s", safe_name, e.reason)
+
+    # Delete the Sandbox (if exists)
+    if settings.kagenti_feature_flag_agent_sandbox:
+        try:
+            kube.delete_sandbox(namespace=namespace, name=name)
+            messages.append(f"Sandbox '{name}' deleted")
+        except ApiException as e:
+            if e.status == 404:
+                logger.debug("Sandbox '%s' not found (may be other workload type)", safe_name)
+            else:
+                logger.warning("Failed to delete Sandbox '%s': %s", safe_name, e.reason)
 
     # Delete the Service
     try:
@@ -2747,6 +2835,86 @@ def _build_job_manifest(
     return manifest
 
 
+def _build_sandbox_manifest(
+    request: "CreateAgentRequest",
+    image: str,
+    shipwright_build_name: Optional[str] = None,
+) -> dict:
+    """Build a Sandbox CR manifest for an agent (agents.x-k8s.io/v1alpha1)."""
+    env_vars = _build_env_vars(request)
+    labels = _build_common_labels(request, WORKLOAD_TYPE_SANDBOX)
+
+    annotations: Dict[str, str] = {
+        KAGENTI_DESCRIPTION_ANNOTATION: f"Agent '{request.name}' deployed from UI.",
+    }
+    if shipwright_build_name:
+        annotations["kagenti.io/shipwright-build"] = shipwright_build_name
+
+    container_port = DEFAULT_IN_CLUSTER_PORT
+    if request.servicePorts and len(request.servicePorts) > 0:
+        container_port = request.servicePorts[0].targetPort
+
+    manifest = {
+        "apiVersion": f"{AGENT_SANDBOX_CRD_GROUP}/{AGENT_SANDBOX_CRD_VERSION}",
+        "kind": "Sandbox",
+        "metadata": {
+            "name": request.name,
+            "namespace": request.namespace,
+            "labels": labels,
+            "annotations": annotations,
+        },
+        "spec": {
+            "podTemplate": {
+                "metadata": {
+                    "labels": {
+                        **labels,
+                    },
+                    "annotations": _build_common_annotations(request),
+                },
+                "spec": {
+                    "serviceAccountName": request.name,
+                    "containers": [
+                        {
+                            "name": "agent",
+                            "image": image,
+                            "imagePullPolicy": DEFAULT_IMAGE_POLICY,
+                            "resources": {
+                                "limits": DEFAULT_RESOURCE_LIMITS,
+                                "requests": DEFAULT_RESOURCE_REQUESTS,
+                            },
+                            "env": env_vars,
+                            "ports": [
+                                {
+                                    "name": "http",
+                                    "containerPort": container_port,
+                                    "protocol": "TCP",
+                                },
+                            ],
+                            "volumeMounts": [
+                                {"name": "cache", "mountPath": "/app/.cache"},
+                                {"name": "marvin", "mountPath": "/.marvin"},
+                                {"name": "shared-data", "mountPath": "/shared"},
+                            ],
+                        }
+                    ],
+                    "volumes": [
+                        {"name": "cache", "emptyDir": {}},
+                        {"name": "marvin", "emptyDir": {}},
+                        {"name": "shared-data", "emptyDir": {}},
+                    ],
+                },
+            },
+        },
+    }
+
+    if request.imagePullSecret:
+        manifest["spec"]["podTemplate"]["spec"]["imagePullSecrets"] = [
+            {"name": request.imagePullSecret}
+        ]
+
+    return manifest
+
+
 @router.post(
     "", response_model=CreateAgentResponse, dependencies=[Depends(require_roles(ROLE_OPERATOR))]
 )
@@ -2761,10 +2929,11 @@ async def create_agent(
     - 'source': Build from git repository using Shipwright Build + BuildRun
     - 'image': Deploy from existing container image as workload + Service
 
-    Supports three workload types:
+    Supports four workload types:
     - 'deployment': Standard Kubernetes Deployment (default)
     - 'statefulset': StatefulSet for stateful agents
     - 'job': Job for batch/one-time agents
+    - 'sandbox': Sandbox CR for isolated agents (requires feature flag)
     """
     logger.info(
         f"Creating agent '{request.name}' in namespace '{request.namespace}', "
@@ -2861,9 +3030,19 @@ async def create_agent(
                     body=workload_manifest,
                 )
                 logger.info(f"Created Job '{request.name}' in namespace '{request.namespace}'")
+            elif request.workloadType == WORKLOAD_TYPE_SANDBOX:
+                workload_manifest = _build_sandbox_manifest(
+                    request=request,
+                    image=request.containerImage,
+                )
+                kube.create_sandbox(
+                    namespace=request.namespace,
+                    body=workload_manifest,
+                )
+                logger.info(f"Created Sandbox '{request.name}' in namespace '{request.namespace}'")
 
-            # Create Service (not needed for Jobs)
-            if request.workloadType != WORKLOAD_TYPE_JOB:
+            # Create Service (not needed for Jobs or Sandboxes)
+            if request.workloadType not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
                 service_manifest = _build_service_manifest(request)
                 kube.create_service(
                     namespace=request.namespace,
@@ -2872,7 +3051,7 @@ async def create_agent(
                 logger.info(f"Created Service '{request.name}' in namespace '{request.namespace}'")
 
             # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
-            if request.workloadType != WORKLOAD_TYPE_JOB:
+            if request.workloadType not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
                 _ensure_agentruntime(
                     kube=kube,
                     name=request.name,
@@ -2882,8 +3061,11 @@ async def create_agent(
 
             message = f"Agent '{request.name}' deployed as {request.workloadType} successfully."
 
-            # Create HTTPRoute/Route if requested (not applicable for Jobs)
-            if request.createHttpRoute and request.workloadType != WORKLOAD_TYPE_JOB:
+            # Create HTTPRoute/Route if requested (not applicable for Jobs or Sandboxes)
+            if request.createHttpRoute and request.workloadType not in (
+                WORKLOAD_TYPE_JOB,
+                WORKLOAD_TYPE_SANDBOX,
+            ):
                 service_port = select_route_port(
                     request.servicePorts,
                     default_port=DEFAULT_OFF_CLUSTER_PORT,
@@ -3112,6 +3294,14 @@ async def finalize_shipwright_build(
                 kube.get_job(namespace=namespace, name=name)
                 workload_exists = True
                 existing_workload_type = WORKLOAD_TYPE_JOB
+            except ApiException as e:
+                if e.status != 404:
+                    raise
+        if not workload_exists and settings.kagenti_feature_flag_agent_sandbox:
+            try:
+                kube.get_sandbox(namespace=namespace, name=name)
+                workload_exists = True
+                existing_workload_type = WORKLOAD_TYPE_SANDBOX
             except ApiException as e:
                 if e.status != 404:
                     raise
@@ -3363,9 +3553,27 @@ async def finalize_shipwright_build(
             logger.info(
                 f"Created Job '{name}' with image '{container_image}' in namespace '{namespace}'"
             )
+        elif final_workload_type == WORKLOAD_TYPE_SANDBOX:
+            workload_manifest = _build_sandbox_manifest(
+                request=agent_request,
+                image=container_image,
+                shipwright_build_name=name,
+            )
+            kagenti_build_labels = {
+                k: v for k, v in build_labels.items() if k.startswith(settings.kagenti_label_prefix)
+            }
+            workload_manifest["metadata"]["labels"].update(kagenti_build_labels)
+            workload_manifest["spec"]["podTemplate"]["metadata"]["labels"].update(
+                kagenti_build_labels
+            )
+            kube.create_sandbox(
+                namespace=namespace,
+                body=workload_manifest,
+            )
+            logger.info(f"Created Sandbox '{name}' in namespace '{namespace}' from build")
 
-        # Create Service (not needed for Jobs)
-        if final_workload_type != WORKLOAD_TYPE_JOB:
+        # Create Service (not needed for Jobs or Sandboxes)
+        if final_workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
             service_manifest = _build_service_manifest(agent_request)
             # Add additional labels from Build
             service_manifest["metadata"]["labels"].update(
@@ -3377,7 +3585,10 @@ async def finalize_shipwright_build(
         # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
         # Only for agents — tools don't need sidecar injection
         resource_type = build_labels.get(KAGENTI_TYPE_LABEL, RESOURCE_TYPE_AGENT)
-        if final_workload_type != WORKLOAD_TYPE_JOB and resource_type == RESOURCE_TYPE_AGENT:
+        if (
+            final_workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX)
+            and resource_type == RESOURCE_TYPE_AGENT
+        ):
             _ensure_agentruntime(
                 kube=kube,
                 name=name,
@@ -3387,8 +3598,11 @@ async def finalize_shipwright_build(
 
         message = f"Agent '{name}' deployed as {final_workload_type} with image '{output_image}'."
 
-        # Step 4: Create HTTPRoute/Route if requested (not applicable for Jobs)
-        if final_create_route and final_workload_type != WORKLOAD_TYPE_JOB:
+        # Step 4: Create HTTPRoute/Route if requested (not applicable for Jobs or Sandboxes)
+        if final_create_route and final_workload_type not in (
+            WORKLOAD_TYPE_JOB,
+            WORKLOAD_TYPE_SANDBOX,
+        ):
             service_port = select_route_port(
                 final_service_ports,
                 default_port=DEFAULT_OFF_CLUSTER_PORT,
