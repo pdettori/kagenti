@@ -9,7 +9,8 @@
 #                  (istio-base + istiod), Keycloak, kagenti-operator, kagenti-webhook
 # Optional:        --with-istio (ambient mesh), --with-spire, --with-backend,
 #                  --with-ui, --with-mcp-gateway, --with-kuadrant, --with-otel,
-#                  --with-mlflow, --with-builds, --with-kiali, --with-all
+#                  --with-mlflow, --with-builds, --with-kiali,
+#                  --with-agent-sandbox, --with-all
 #
 # Idempotent: safe to re-run. Uses helm upgrade --install and kubectl apply.
 # Re-running with additional --with-* flags adds components incrementally.
@@ -45,6 +46,7 @@ WITH_MLFLOW=false
 WITH_BUILDS=false
 WITH_KIALI=false
 WITH_KUADRANT=false
+WITH_AGENT_SANDBOX=false
 SKIP_CLUSTER=false
 BUILD_IMAGES=false
 DRY_RUN=false
@@ -61,6 +63,7 @@ TEKTON_VERSION="v0.66.0"
 SHIPWRIGHT_VERSION="v0.14.0"
 MCP_GATEWAY_VERSION="0.6.0"
 KUADRANT_VERSION="1.4.2"
+AGENT_SANDBOX_VERSION="v0.3.10"
 
 # ── Colors & logging ────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -86,10 +89,12 @@ while [[ $# -gt 0 ]]; do
     --with-mlflow)      WITH_MLFLOW=true; shift ;;
     --with-builds)      WITH_BUILDS=true; shift ;;
     --with-kiali)       WITH_KIALI=true; shift ;;
+    --with-agent-sandbox) WITH_AGENT_SANDBOX=true; shift ;;
     --with-all)
       WITH_ISTIO=true; WITH_SPIRE=true; WITH_BACKEND=true; WITH_UI=true
       WITH_MCP_GATEWAY=true; WITH_KUADRANT=true; WITH_OTEL=true
       WITH_MLFLOW=true; WITH_BUILDS=true; WITH_KIALI=true
+      WITH_AGENT_SANDBOX=true
       shift ;;
     --skip-cluster)     SKIP_CLUSTER=true; shift ;;
     --build-images)     BUILD_IMAGES=true; shift ;;
@@ -112,6 +117,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --with-mlflow       Install MLflow trace backend (auto-enables OTel)"
       echo "  --with-builds       Install Tekton + Shipwright"
       echo "  --with-kiali        Install Kiali + Prometheus (auto-enables Istio)"
+      echo "  --with-agent-sandbox Install agent-sandbox controller (kubernetes-sigs)"
       echo "  --with-all          Enable all optional components"
       echo ""
       echo "Other options:"
@@ -173,6 +179,7 @@ echo "    OTel:          $WITH_OTEL"
 echo "    MLflow:        $WITH_MLFLOW"
 echo "    Builds:        $WITH_BUILDS"
 echo "    Kiali:         $WITH_KIALI"
+echo "    Agent Sandbox: $WITH_AGENT_SANDBOX"
 echo "    Skip cluster:  $SKIP_CLUSTER"
 echo "    Build images:  $BUILD_IMAGES"
 echo ""
@@ -405,6 +412,35 @@ else
   log_success "Gateway API CRDs installed"
 fi
 echo ""
+
+# ============================================================================
+# Step 5b: Install agent-sandbox (optional, --with-agent-sandbox)
+# ============================================================================
+if $WITH_AGENT_SANDBOX; then
+  log_info "Step 5b: agent-sandbox (kubernetes-sigs)"
+
+  if kubectl get crd sandboxes.agents.x-k8s.io &>/dev/null; then
+    log_success "agent-sandbox CRDs already installed — skipping"
+  else
+    log_info "Installing agent-sandbox ${AGENT_SANDBOX_VERSION} (controller)..."
+    run_cmd kubectl apply -f \
+      "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${AGENT_SANDBOX_VERSION}/manifest.yaml"
+
+    log_info "Installing agent-sandbox ${AGENT_SANDBOX_VERSION} (extensions)..."
+    run_cmd kubectl apply -f \
+      "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${AGENT_SANDBOX_VERSION}/extensions.yaml"
+
+    if ! $DRY_RUN; then
+      log_info "Waiting for agent-sandbox CRDs to become established..."
+      kubectl wait --for=condition=Established crd \
+        sandboxes.agents.x-k8s.io \
+        --timeout=60s
+    fi
+    _wait_deployment_ready agent-sandbox-controller-manager agent-sandbox-system agent-sandbox
+    log_success "agent-sandbox installed"
+  fi
+  echo ""
+fi
 
 # ============================================================================
 # Step 6: Install kagenti-deps chart (core: Keycloak + toggles)
@@ -965,6 +1001,7 @@ KAGENTI_FLAGS=(
   --set "ui.frontend.enabled=${WITH_UI}"
   --set "components.istio.enabled=${WITH_ISTIO}"
   --set "components.mcpGateway.enabled=${WITH_MCP_GATEWAY}"
+  --set "featureFlags.agentSandbox=${WITH_AGENT_SANDBOX}"
   --set "components.phoenix.enabled=false"
   --set "components.mlflow.enabled=${WITH_MLFLOW}"
   --set "ui.frontend.tag=${KAGENTI_TAG}"
