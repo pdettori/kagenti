@@ -1152,8 +1152,8 @@
                         echo "SPIRE OIDC discovery provider is ready"
                 containers:
                   - name: setup-spiffe-idp
-                    image: "{{ kagenti_deps_values.spiffeIdp.image.repository }}:{{ kagenti_deps_values.spiffeIdp.image.tag | default('latest') }}"
-                    imagePullPolicy: "{{ kagenti_deps_values.spiffeIdp.image.pullPolicy | default('IfNotPresent') }}"
+                    image: "{{ ((kagenti_deps_values.spiffeIdp | default({})).image | default({})).repository | default('ghcr.io/kagenti/kagenti/spiffe-idp-setup') }}:{{ ((kagenti_deps_values.spiffeIdp | default({})).image | default({})).tag | default('latest') }}"
+                    imagePullPolicy: "{{ ((kagenti_deps_values.spiffeIdp | default({})).image | default({})).pullPolicy | default('IfNotPresent') }}"
                     env:
                       - name: KEYCLOAK_BASE_URL
                         value: "{{ kagenti_deps_values.keycloak.url }}"
@@ -1172,7 +1172,9 @@
                       - name: SPIFFE_BUNDLE_ENDPOINT
                         value: "https://spire-spiffe-oidc-discovery-provider.{{ charts.spire.server_namespace }}.svc.cluster.local/keys"
                       - name: SPIFFE_IDP_ALIAS
-                        value: "{{ kagenti_deps_values.authBridge.spiffeIdpAlias | default('spire-spiffe') }}"
+                        value: "{{ (kagenti_deps_values.authBridge | default({})).spiffeIdpAlias | default('spire-spiffe') }}"
+                      - name: SPIFFE_TLS_VERIFY
+                        value: "{{ 'false' if (enable_openshift | default(false)) else 'true' }}"
 
     - name: Wait for SPIFFE IdP setup job to complete
       kubernetes.core.k8s_info:
@@ -1816,6 +1818,23 @@
 #
 #  MCP Gateway
 #
+- name: Remove legacy mcp.kagenti.com CRDs (pre-v0.6.0 migration)
+  block:
+    - name: Check for legacy mcp.kagenti.com CRDs
+      command: kubectl get crd mcpgatewayextensions.mcp.kagenti.com
+      register: legacy_mcp_crd_check
+      failed_when: false
+      changed_when: false
+
+    - name: Delete legacy mcp.kagenti.com CRDs
+      command: "kubectl delete crd {{ item }} --ignore-not-found"
+      loop:
+        - mcpgatewayextensions.mcp.kagenti.com
+        - mcpserverregistrations.mcp.kagenti.com
+        - mcpvirtualservers.mcp.kagenti.com
+      when: legacy_mcp_crd_check.rc == 0
+  when: charts.mcpGateway.enabled | default(false)
+
 - name: Install/upgrade mcp-gateway chart
   kubernetes.core.helm:
     release_name: mcp-gateway
