@@ -10,6 +10,7 @@ featureFlags:
   sandbox: false
   integrations: false
   triggers: false
+  agentSandbox: false
 
 # ------------------------------------------------------------------
 #  Control Panel: Enable or disable components here

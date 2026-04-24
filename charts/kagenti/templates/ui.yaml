@@ -130,6 +130,8 @@ spec:
               value: "{{ .Values.featureFlags.integrations }}"
             - name: KAGENTI_FEATURE_FLAG_TRIGGERS
               value: "{{ .Values.featureFlags.triggers }}"
+            - name: KAGENTI_FEATURE_FLAG_AGENT_SANDBOX
+              value: "{{ .Values.featureFlags.agentSandbox }}"
             - name: KEYCLOAK_URL
               value: {{ .Values.keycloak.url | quote }}
             - name: KEYCLOAK_PUBLIC_URL
@@ -436,6 +438,12 @@ rules:
   - apiGroups: ["route.openshift.io"]
     resources: ["routes"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  {{- if .Values.featureFlags.agentSandbox }}
+  # agent-sandbox (kubernetes-sigs) Sandbox CRs
+  - apiGroups: ["agents.x-k8s.io"]
+    resources: ["sandboxes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  {{- end }}
   {{- if .Values.featureFlags.integrations }}
   # Integration CRDs for repository integrations
   - apiGroups: ["kagenti.io"]
