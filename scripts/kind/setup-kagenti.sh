@@ -436,7 +436,7 @@ if $WITH_AGENT_SANDBOX; then
         sandboxes.agents.x-k8s.io \
         --timeout=60s
     fi
-    _wait_deployment_ready agent-sandbox-controller-manager agent-sandbox-system agent-sandbox
+    _wait_deployment_ready agent-sandbox-controller agent-sandbox-system agent-sandbox
     log_success "agent-sandbox installed"
   fi
   echo ""
