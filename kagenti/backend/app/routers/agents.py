@@ -691,7 +691,9 @@ async def list_agents(
             except ApiException as e:
                 if e.status == 404:
                     logger.debug("Sandbox CRD not installed")
-                elif e.status != 403:
+                elif e.status == 403:
+                    logger.debug("Sandbox RBAC: insufficient permissions")
+                else:
                     logger.warning(f"Failed to list Sandboxes: {e.reason}")
 
         # Backward compatibility: Also list legacy Agent CRDs (during migration period)
