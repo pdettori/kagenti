@@ -126,7 +126,7 @@ jobs:
         run: bash .github/scripts/hypershift/ci/40-clone-hypershift-automation.sh
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081  # v5
 
       - name: Install dependencies
         run: uv sync --frozen
