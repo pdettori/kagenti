@@ -419,8 +419,9 @@ echo ""
 if $WITH_AGENT_SANDBOX; then
   log_info "Step 5b: agent-sandbox (kubernetes-sigs)"
 
-  if kubectl get crd sandboxes.agents.x-k8s.io &>/dev/null; then
-    log_success "agent-sandbox CRDs already installed — skipping"
+  if kubectl get crd sandboxes.agents.x-k8s.io &>/dev/null \
+     && kubectl get deployment agent-sandbox-controller -n agent-sandbox-system &>/dev/null; then
+    log_success "agent-sandbox already installed — skipping"
   else
     log_info "Installing agent-sandbox ${AGENT_SANDBOX_VERSION} (controller)..."
     run_cmd kubectl apply -f \
