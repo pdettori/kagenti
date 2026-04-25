@@ -36,8 +36,11 @@ logger = logging.getLogger(__name__)
 
 
 def _workload_exists(kube: KubernetesService, namespace: str, name: str) -> bool:
-    """Check if any workload (Deployment, StatefulSet, or Job) exists for the given name."""
-    for getter in (kube.get_deployment, kube.get_statefulset, kube.get_job):
+    """Check if any workload (Deployment, StatefulSet, Job, or Sandbox) exists for the given name."""
+    getters = [kube.get_deployment, kube.get_statefulset, kube.get_job]
+    if settings.kagenti_feature_flag_agent_sandbox:
+        getters.append(kube.get_sandbox)
+    for getter in getters:
         try:
             getter(namespace=namespace, name=name)
             return True
