@@ -201,7 +201,7 @@ export const agentService = {
       };
     }>;
     // Workload type
-    workloadType?: 'deployment' | 'statefulset' | 'job';
+    workloadType?: 'deployment' | 'statefulset' | 'job' | 'sandbox';
     // New fields for deployment method
     deploymentMethod?: 'source' | 'image';
     // Build from source fields
