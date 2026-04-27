@@ -86,6 +86,8 @@ jobs:
     if: needs.authorize.outputs.authorized == 'true'
     timeout-minutes: 90
     continue-on-error: true
+    outputs:
+      test_outcome: ${{ steps.run-tests.outcome }}
     permissions:
       contents: read
     env:
@@ -138,6 +140,7 @@ jobs:
           PULL_SECRET: ${{ secrets.PULL_SECRET }}
 
       - name: Run OpenShell full test (HyperShift)
+        id: run-tests
         run: |
           ./.github/scripts/local-setup/openshell-full-test.sh \
             --platform ocp \
@@ -149,6 +152,8 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
           HCP_ROLE_NAME: ${{ secrets.HCP_ROLE_NAME }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload test results
         if: always()
@@ -213,7 +218,11 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
         with:
           script: |
-            const passed = '${{ needs.e2e-openshell.result }}' === 'success';
+            // With continue-on-error, 'result' is always 'success'.
+            // Use step outcome via job outputs; default to 'failure' if
+            // the output is empty (step skipped or not reached).
+            const outcome = '${{ needs.e2e-openshell.outputs.test_outcome }}' || 'failure';
+            const passed = outcome === 'success';
             const emoji = passed ? '✅' : '❌';
             const status = passed ? 'Passed' : 'Failed';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
