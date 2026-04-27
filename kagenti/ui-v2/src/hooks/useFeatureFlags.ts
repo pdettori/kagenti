@@ -5,15 +5,19 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts';
 
 export interface FeatureFlags {
+  /** Sandboxed agent runtime UI and APIs (legacy runtime sandbox). */
   sandbox: boolean;
   integrations: boolean;
   triggers: boolean;
+  /** agent-sandbox (kubernetes-sigs) as a fourth workload type. */
+  agentSandbox: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
   sandbox: false,
   integrations: false,
   triggers: false,
+  agentSandbox: false,
 };
 
 let cachedFlags: FeatureFlags | null = null;
@@ -35,6 +39,7 @@ export function useFeatureFlags(): FeatureFlags {
           sandbox: data.sandbox === true,
           integrations: data.integrations === true,
           triggers: data.triggers === true,
+          agentSandbox: data.agentSandbox === true,
         };
         cachedFlags = validated;
         setFlags(validated);

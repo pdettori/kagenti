@@ -6,7 +6,7 @@
  */
 
 // Workload types for agent deployment
-export type WorkloadType = 'deployment' | 'statefulset' | 'job';
+export type WorkloadType = 'deployment' | 'statefulset' | 'job' | 'sandbox';
 
 // Agent types
 export interface AgentLabels {
