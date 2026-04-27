@@ -219,8 +219,9 @@ jobs:
         with:
           script: |
             // With continue-on-error, 'result' is always 'success'.
-            // Use 'outcome' to get the real test result (via outputs).
-            const outcome = '${{ needs.e2e-openshell.outputs.test_outcome }}' || '${{ needs.e2e-openshell.result }}';
+            // Use step outcome via job outputs; default to 'failure' if
+            // the output is empty (step skipped or not reached).
+            const outcome = '${{ needs.e2e-openshell.outputs.test_outcome }}' || 'failure';
             const passed = outcome === 'success';
             const emoji = passed ? '✅' : '❌';
             const status = passed ? 'Passed' : 'Failed';
