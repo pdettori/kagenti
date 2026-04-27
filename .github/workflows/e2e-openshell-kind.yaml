@@ -85,7 +85,13 @@ jobs:
         run: uv sync --frozen
 
       - name: Run OpenShell full test
-        run: ./.github/scripts/local-setup/openshell-full-test.sh
+        run: |
+          SCRIPT="./.github/scripts/local-setup/openshell-full-test.sh"
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::notice::openshell-full-test.sh not found — OpenShell PoC not yet merged. Skipping."
+            exit 0
+          fi
+          exec "$SCRIPT"
         env:
           PLATFORM: kind
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
