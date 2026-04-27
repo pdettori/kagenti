@@ -81,6 +81,8 @@ jobs:
         run: ./.github/scripts/local-setup/openshell-full-test.sh
         env:
           PLATFORM: kind
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Collect logs on failure
         if: failure()
