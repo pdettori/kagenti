@@ -29,12 +29,15 @@ permissions:
 # Version tracking - keep in sync with kind-config in scripts/kind/setup-kagenti.sh
 env:
   K8S_VERSION: '1.35.0'  # Must match kindest/node version in kind-config
+  # kagenti-extensions ref for AuthBridge weather E2E (pin to a release tag once the demo is in a tagged release).
+  KAGENTI_EXTENSIONS_GIT_REF: 'main'
 
 jobs:
   e2e-dev-kagenti-operator:
     name: Deploy & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Includes kagenti-extensions AuthBridge E2E (clone, Keycloak, advanced deploys).
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -125,6 +128,27 @@ jobs:
       - name: Run backend E2E tests
         if: success()
         run: bash .github/scripts/kagenti-operator/90-run-e2e-tests.sh
+
+      # See e2e-kind-pr.yaml: single-node Kind cannot run wave-90 and wave-91
+      # full weather stacks concurrently without Insufficient cpu on the agent.
+      - name: Free capacity for AuthBridge weather (scale baseline weather)
+        if: success()
+        run: bash .github/scripts/kind/90b-free-capacity-for-advanced-weather.sh
+        env:
+          NAMESPACE: team1
+
+      # kagenti-extensions: authbridge/demos/weather-agent (token exchange + tool inbound JWT). Not a lightweight check.
+      - name: AuthBridge Weather (advanced) E2E
+        if: success()
+        run: bash .github/scripts/kind/91-run-authbridge-weather-e2e.sh
+        env:
+          NAMESPACE: team1
+
+      - name: Restore baseline weather for UI E2E
+        if: success()
+        run: bash .github/scripts/kind/90c-restore-baseline-weather-for-ui.sh
+        env:
+          NAMESPACE: team1
 
       - name: Run UI E2E tests
         if: success()
