@@ -508,7 +508,7 @@ class KubernetesService:
             return result.to_dict()
         except ApiException as e:
             logger.error(
-                f"Error getting EndpointSlices for Service %s/%s", namespace, name, exc_info=True
+                "Error getting EndpointSlices for Service %s/%s", namespace, name, exc_info=True
             )
             raise
 
