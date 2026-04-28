@@ -14,7 +14,6 @@ import ipaddress
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 from urllib.parse import urlparse
-from urllib.request import urlopen
 
 import httpx
 import yaml
@@ -3866,7 +3865,9 @@ async def fetch_env_from_url(request: FetchEnvUrlRequest) -> FetchEnvUrlResponse
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-@router.get("/{namespace}/{name}/identity-config", dependencies=[Depends(require_roles(ROLE_OPERATOR))])
+@router.get(
+    "/{namespace}/{name}/identity-config", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def get_agent_identity_config(
     namespace: str,
     name: str,
@@ -3890,14 +3891,25 @@ async def get_agent_identity_config(
     for endpoint_slice in endpoint_slices.get("items", []):
         for endpoint in endpoint_slice.get("endpoints", []):
             for address in endpoint.get("addresses", []):
-                attempts = attempts+1
+                attempts += 1
                 # AuthBridge serves config and status on port 9093
                 url = f"http://{address}:9093/config"
                 try:
-                    r = urlopen(url, timeout=10)
-                    data = json.loads(r.read())
-                    data["AuthBridge"] = True
-                    return data
+                    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                        logger.debug(f"Making HTTP request to {url}")
+                        response = await client.get(url)
+                        response.raise_for_status()
+
+                        # Validate content isn't too large (max 1MB)
+                        content = response.text
+                        if len(content) > 1024 * 1024:
+                            raise HTTPException(
+                                status_code=413, detail="File content too large (max 1MB)"
+                            )
+
+                        data = json.loads(content)
+                        data["AuthBridge"] = True
+                        return data
                 except Exception as e:
                     # Ignore exceptions -- it could mean a pod is not ready,
                     # Check the next endpoint.
@@ -3907,10 +3919,13 @@ async def get_agent_identity_config(
     if attempts == 0:
         raise HTTPException(status_code=404, detail=f"{name} not found")
 
-    logger.info(f"Could not invoke any AuthBridge endpoints for {namespace}/{name}")
+    logger.info("Could not invoke any AuthBridge endpoints for %s/%s", namespace, name)
     return {"AuthBridge": False}
 
-@router.get("/{namespace}/{name}/identity-status", dependencies=[Depends(require_roles(ROLE_OPERATOR))])
+
+@router.get(
+    "/{namespace}/{name}/identity-status", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+)
 async def get_agent_identity_status(
     namespace: str,
     name: str,
@@ -3930,14 +3945,25 @@ async def get_agent_identity_status(
     for endpoint_slice in endpoint_slices.get("items", []):
         for endpoint in endpoint_slice.get("endpoints", []):
             for address in endpoint.get("addresses", []):
-                attempts = attempts+1
+                attempts += 1
                 # AuthBridge serves config and status on port 9093
                 url = f"http://{address}:9093/stats"
                 try:
-                    r = urlopen(url, timeout=10)
-                    data = json.loads(r.read())
-                    data["AuthBridge"] = True
-                    return data
+                    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                        logger.debug(f"Making HTTP request to {url}")
+                        response = await client.get(url)
+                        response.raise_for_status()
+
+                        # Validate content isn't too large (max 1MB)
+                        content = response.text
+                        if len(content) > 1024 * 1024:
+                            raise HTTPException(
+                                status_code=413, detail="File content too large (max 1MB)"
+                            )
+
+                        data = json.loads(content)
+                        data["AuthBridge"] = True
+                        return data
                 except Exception as e:
                     # Ignore exceptions -- it could mean a pod is not ready,
                     # Check the next endpoint.
@@ -3947,5 +3973,5 @@ async def get_agent_identity_status(
     if attempts == 0:
         raise HTTPException(status_code=404, detail=f"{name} not found")
 
-    logger.info(f"Could not invoke any AuthBridge endpoints for {namespace}/{name}")
+    logger.info("Could not invoke any AuthBridge endpoints for %s/%s", namespace, name)
     return {"AuthBridge": False}
