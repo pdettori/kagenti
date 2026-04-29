@@ -948,7 +948,9 @@ run_cmd helm upgrade --install kagenti "$KAGENTI_REPO/charts/kagenti/" \
 log_success "Kagenti installed"
 
 # Grant otel-collector SA MLflow RBAC in agent namespaces (created by kagenti chart above)
-_mlflow_grant_otel_rbac
+if ! $SKIP_MLFLOW; then
+  _mlflow_grant_otel_rbac
+fi
 echo ""
 
 # ============================================================================
