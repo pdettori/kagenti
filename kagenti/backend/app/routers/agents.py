@@ -3937,3 +3937,125 @@ async def fetch_env_from_url(request: FetchEnvUrlRequest) -> FetchEnvUrlResponse
     except Exception as e:
         logger.error(f"Unexpected error fetching URL {request.url}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+if settings.kagenti_feature_flag_authbridge_api:
+
+    @router.get(
+        "/{namespace}/{name}/identity-config", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+    )
+    async def get_agent_identity_config(
+        namespace: str,
+        name: str,
+        kube: KubernetesService = Depends(get_kubernetes_service),
+    ) -> dict:
+        """
+        Fetch the AuthBridge configuration for an Agent.
+        """
+
+        namespace = sanitize_log(namespace)
+        name = sanitize_log(name)
+
+        try:
+            addresses = _get_service_endpoints(kube=kube, namespace=namespace, name=name)
+        except ApiException as e:
+            raise HTTPException(status_code=502, detail=e.reason)
+
+        attempts = 0
+        for address in addresses:
+            attempts += 1
+            # AuthBridge serves config and status on port 9093
+            url = f"http://{address}:9093/config"
+            try:
+                data = await _fetch_authbridge_json(url)
+                data["AuthBridge"] = True
+                return data
+            except Exception:
+                # It isn't an error for an endpoint to be unreachable, only for all pods to be unreachable
+                logger.info("Failed to talk to url %s; skipping", url, exc_info=True)
+
+        if attempts == 0:
+            raise HTTPException(status_code=404, detail=f"{name} not found")
+
+        logger.info("Could not invoke any AuthBridge endpoints for %s/%s", namespace, name)
+        # We return HTTP 200 if no pods respond - this might be a valid agent w/o AuthBridge
+        return {"AuthBridge": False}
+
+    @router.get(
+        "/{namespace}/{name}/identity-status", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
+    )
+    async def get_agent_identity_status(
+        namespace: str,
+        name: str,
+        kube: KubernetesService = Depends(get_kubernetes_service),
+    ) -> dict:
+        """
+        Fetch the AuthBridge statistics and status for an Agent.
+        """
+
+        namespace = sanitize_log(namespace)
+        name = sanitize_log(name)
+
+        try:
+            addresses = _get_service_endpoints(kube=kube, namespace=namespace, name=name)
+        except ApiException as e:
+            raise HTTPException(status_code=502, detail=e.reason)
+
+        attempts = 0
+        for address in addresses:
+            attempts += 1
+            # AuthBridge serves config and status on port 9093
+            url = f"http://{address}:9093/stats"
+            try:
+                data = await _fetch_authbridge_json(url)
+                data["AuthBridge"] = True
+                return data
+            except Exception:
+                # It isn't an error for an endpoint to be unreachable, only for all pods to be unreachable
+                logger.info("Failed to talk to url %s; skipping", url, exc_info=True)
+
+        if attempts == 0:
+            raise HTTPException(status_code=404, detail=f"{name} not found")
+
+        logger.info("Could not invoke any AuthBridge endpoints for %s/%s", namespace, name)
+        # We return HTTP 200 if no pods respond - this might be a valid agent w/o AuthBridge
+        return {"AuthBridge": False}
+
+
+def _get_service_endpoints(kube: KubernetesService, namespace: str, name: str) -> List[str]:
+    """
+    Get addresses for a K8s service
+    """
+
+    addresses: list[str] = []
+    endpoint_slices = kube.get_endpoint_slices(namespace=namespace, name=name)
+
+    for endpoint_slice in endpoint_slices.get("items", []):
+        for endpoint in endpoint_slice.get("endpoints", []):
+            for address in endpoint.get("addresses", []):
+                addresses.append(address)
+
+    return addresses
+
+
+async def _fetch_authbridge_json(url: str) -> dict:
+    """
+    Fetch JSON from an AuthBridge sidecar endpoint.
+
+    Raises on HTTP errors, oversized responses, or non-dict payloads.
+    """
+
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        logger.debug("Making HTTP request to %s", url)
+        response = await client.get(url)
+        response.raise_for_status()
+
+        content = response.text
+        if len(content) > 1024 * 1024:
+            raise HTTPException(status_code=502, detail="File content too large (max 1MB)")
+
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise HTTPException(status_code=502, detail="File content not AuthBridge JSON")
+
+        return data
