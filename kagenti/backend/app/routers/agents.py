@@ -3864,7 +3864,9 @@ async def fetch_env_from_url(request: FetchEnvUrlRequest) -> FetchEnvUrlResponse
         logger.error(f"Unexpected error fetching URL {request.url}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
+
 if settings.kagenti_feature_flag_authbridge_api:
+
     @router.get(
         "/{namespace}/{name}/identity-config", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
     )
@@ -3903,7 +3905,6 @@ if settings.kagenti_feature_flag_authbridge_api:
 
         logger.info("Could not invoke any AuthBridge endpoints for %s/%s", namespace, name)
         return {"AuthBridge": False}
-
 
     @router.get(
         "/{namespace}/{name}/identity-status", dependencies=[Depends(require_roles(ROLE_OPERATOR))]
@@ -3945,8 +3946,7 @@ if settings.kagenti_feature_flag_authbridge_api:
         return {"AuthBridge": False}
 
 
-def _get_service_endpoints(
-    kube: KubernetesService, namespace: str, name: str) -> List[str]:
+def _get_service_endpoints(kube: KubernetesService, namespace: str, name: str) -> List[str]:
     """
     Get addresses for a K8s service
     """
