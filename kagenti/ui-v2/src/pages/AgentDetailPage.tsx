@@ -5,6 +5,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { workloadTypeColor, WORKLOAD_META } from '@/utils/workloadType';
 import {
   PageSection,
   Title,
@@ -424,7 +425,7 @@ export const AgentDetailPage: React.FC = () => {
                       <DescriptionListGroup>
                         <DescriptionListTerm>Workload Type</DescriptionListTerm>
                         <DescriptionListDescription>
-                          <Label color={workloadType === 'job' ? 'orange' : workloadType === 'statefulset' ? 'gold' : 'grey'} isCompact>
+                          <Label color={workloadTypeColor(workloadType)} isCompact>
                             {workloadType.charAt(0).toUpperCase() + workloadType.slice(1)}
                           </Label>
                         </DescriptionListDescription>
@@ -989,8 +990,8 @@ export const AgentDetailPage: React.FC = () => {
                 >
                   {yaml.dump(
                     {
-                      apiVersion: agent.workloadType === 'statefulset' ? 'apps/v1' : agent.workloadType === 'job' ? 'batch/v1' : 'apps/v1',
-                      kind: agent.workloadType === 'statefulset' ? 'StatefulSet' : agent.workloadType === 'job' ? 'Job' : 'Deployment',
+                      apiVersion: (WORKLOAD_META[agent.workloadType ?? 'deployment'] ?? WORKLOAD_META.deployment).apiVersion,
+                      kind: (WORKLOAD_META[agent.workloadType ?? 'deployment'] ?? WORKLOAD_META.deployment).kind,
                       metadata: {
                         ...agent.metadata,
                         managedFields: undefined,
