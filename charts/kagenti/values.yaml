@@ -157,9 +157,10 @@ keycloak:
   adminSecretName: keycloak-initial-admin
   adminUsernameKey: username
   adminPasswordKey: password
-  # Keycloak admin credentials for agent namespaces (keycloak-admin-secret).
-  # Used by the client-registration sidecar to register agents as OAuth clients.
-  # For production, override via .secret_values.yaml or use an existing secret.
+  # Keycloak admin credentials (keycloak-admin-secret in kagenti-system namespace).
+  # Used by the kagenti-operator client registration controller to register
+  # agents as OAuth clients. For production, override via .secret_values.yaml
+  # or use an existing secret.
   adminUsername: admin
   adminPassword: admin
   # Set to an existing Secret name to skip creating keycloak-admin-secret.
@@ -213,6 +214,20 @@ spiffeIdp:
     pullPolicy: IfNotPresent
 
 # ------------------------------------------------------------------
+#  Kagenti Webhook Configuration
+# ------------------------------------------------------------------
+# Pin sidecar image tags to the webhook chart version to prevent
+# breakage when :latest is updated by newer kagenti-extensions builds.
+# These MUST be updated together with the chart version in Chart.yaml.
+# NOTE: The client-registration sidecar has been sunset. Client registration
+# is now handled by the kagenti-operator controller.
+kagenti-webhook-chart:
+  defaults:
+    images:
+      envoyProxy: ghcr.io/kagenti/kagenti-extensions/envoy-with-processor:v0.4.0-alpha.9
+      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.4.0-alpha.9
+
+# ------------------------------------------------------------------
 #  Kagenti Operator Configuration (includes AuthBridge webhook)
 # ------------------------------------------------------------------
 kagenti-operator-chart:
@@ -228,10 +243,7 @@ kagenti-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       - "--config-path=/etc/kagenti/config.yaml"
       - "--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml"
-      # operator alpha.36 simplified the client-registration flags:
-      # --enable-operator-client-registration was removed, and this flag
-      # now controls operator-based registration directly (legacy sidecar
-      # path is gone). See kagenti-operator commit f5df832.
+      # Enable client registration controller (operator-managed, not sidecar)
       - "--enable-client-registration=true"
       resources:
         limits:
@@ -249,16 +261,13 @@ kagenti-operator-chart:
   signatureVerification:
     spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
-  # v0.5.0-rc.3: per-plugin config, keycloak_url/realm fields,
-  # lite binaries, a2a-parser contextId fix. Paired with operator
-  # v0.2.0-rc.4.
+  # NOTE: The client-registration sidecar has been sunset.
   defaults:
     images:
       envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-rc.3
       authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-rc.3
       proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-rc.3
       spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-rc.3
-      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.5.0-rc.3
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration
