@@ -21,13 +21,13 @@ import os
 import subprocess
 
 import pytest
-import requests
 
 from .conftest import (
     KEYCLOAK_PROVIDER,
     KEYCLOAK_URL,
     TX_AGENT_URL,
     TX_CLIENT_ID,
+    http,
     TX_NAMESPACE,
     TX_REALM,
     _decode_jwt,
@@ -44,10 +44,9 @@ class TestKeycloakReadiness:
 
     def test_keycloak_realm_exists(self, kc_admin_token):
         """Realm exists and is enabled."""
-        resp = requests.get(
+        resp = http.get(
             f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}",
             headers={"Authorization": f"Bearer {kc_admin_token}"},
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"Realm {TX_REALM} not found"
@@ -56,11 +55,10 @@ class TestKeycloakReadiness:
 
     def test_keycloak_client_exists(self, kc_admin_token):
         """TX client exists in realm."""
-        resp = requests.get(
+        resp = http.get(
             f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}/clients",
             params={"clientId": TX_CLIENT_ID},
             headers={"Authorization": f"Bearer {kc_admin_token}"},
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -70,11 +68,10 @@ class TestKeycloakReadiness:
     def test_keycloak_users_exist(self, kc_admin_token):
         """Test users alice and bob exist."""
         for username in ["alice", "bob"]:
-            resp = requests.get(
+            resp = http.get(
                 f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}/users",
                 params={"username": username, "exact": "true"},
                 headers={"Authorization": f"Bearer {kc_admin_token}"},
-                verify=False,
                 timeout=10,
             )
             assert resp.status_code == 200
@@ -84,11 +81,10 @@ class TestKeycloakReadiness:
     def test_keycloak_token_exchange_feature(self, kc_admin_token):
         """Token exchange feature is enabled."""
         # Check realm-management has token-exchange scope
-        resp = requests.get(
+        resp = http.get(
             f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}/clients",
             params={"clientId": "realm-management"},
             headers={"Authorization": f"Bearer {kc_admin_token}"},
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -177,14 +173,13 @@ class TestClientCredentials:
         if "agent" not in agent_credentials:
             pytest.skip("Agent credentials not found")
         creds = agent_credentials["agent"]
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": creds["client_id"],
                 "client_secret": creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"client_credentials failed: {resp.text}"
@@ -200,14 +195,13 @@ class TestClientCredentials:
         if "tool" not in agent_credentials:
             pytest.skip("Tool credentials not found")
         creds = agent_credentials["tool"]
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": creds["client_id"],
                 "client_secret": creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"client_credentials failed: {resp.text}"
@@ -263,7 +257,7 @@ class TestTokenExchange:
         user_token = get_user_token("alice", "alice123")
         agent_creds = agent_credentials["agent"]
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -274,7 +268,6 @@ class TestTokenExchange:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, (
@@ -294,21 +287,20 @@ class TestTokenExchange:
         tool_creds = agent_credentials["tool"]
 
         # First get agent token
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": agent_creds["client_id"],
                 "client_secret": agent_creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
         agent_token = resp.json()["access_token"]
 
         # Exchange for tool audience
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -319,7 +311,6 @@ class TestTokenExchange:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": tool_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, (
@@ -337,7 +328,7 @@ class TestTokenExchange:
         bob_token = get_user_token("bob", "bob123")
         agent_creds = agent_credentials["agent"]
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -348,7 +339,6 @@ class TestTokenExchange:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -433,7 +423,7 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
         jwt_svid = jwt_result.stdout.strip()
         client_id = cid_result.stdout.strip()
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
@@ -441,7 +431,6 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-spiffe",
                 "client_assertion": jwt_svid,
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"SPIFFE client_credentials failed: {resp.text}"
@@ -466,7 +455,7 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
         jwt_svid = jwt_result.stdout.strip()
         client_id = cid_result.stdout.strip()
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -478,7 +467,6 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": TX_CLIENT_ID,
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"SPIFFE token exchange failed: {resp.text}"
@@ -579,14 +567,13 @@ class TestAuthbridgeExtProc:
         agent_creds = agent_credentials["agent"]
 
         # 1. Get agent's own token
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": agent_creds["client_id"],
                 "client_secret": agent_creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"client_credentials failed: {resp.text}"
@@ -634,14 +621,13 @@ class TestAuthbridgeExtProc:
             pytest.skip("Agent credentials not found")
         agent_creds = agent_credentials["agent"]
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": agent_creds["client_id"],
                 "client_secret": agent_creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -684,7 +670,7 @@ class TestAuthbridgeExtProc:
         original_claims = _decode_jwt(user_token)
 
         # Exchange user token for agent-scoped token (simulating inbound flow)
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -695,7 +681,6 @@ class TestAuthbridgeExtProc:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200, f"User->agent exchange failed: {resp.text}"
@@ -728,7 +713,7 @@ class TestAuthbridgeExtProc:
         bob_token = get_user_token("bob", "bob123")
 
         # Exchange user → agent
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -739,7 +724,6 @@ class TestAuthbridgeExtProc:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -763,14 +747,13 @@ class TestAuthbridgeExtProc:
         agent_creds = agent_credentials["agent"]
 
         # Trigger an exchange first
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": agent_creds["client_id"],
                 "client_secret": agent_creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         if resp.status_code == 200:
@@ -905,14 +888,13 @@ class TestInboundJwtValidation:
             pytest.skip("Agent credentials not found")
         agent_creds = agent_credentials["agent"]
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": agent_creds["client_id"],
                 "client_secret": agent_creds["client_secret"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -955,7 +937,7 @@ class TestEndToEndChain:
         #  then the agent calls the tool with the same or a new token.
         #  Here we exchange manually to simulate the inbound flow, then
         #  let authbridge handle the outbound exchange automatically.)
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -966,7 +948,6 @@ class TestEndToEndChain:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200
@@ -1007,7 +988,7 @@ class TestEndToEndChain:
 
         bob_token = get_user_token("bob", "bob123")
 
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -1018,7 +999,6 @@ class TestEndToEndChain:
                 "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "audience": agent_creds["client_id"],
             },
-            verify=False,
             timeout=10,
         )
         assert resp.status_code == 200

@@ -6,7 +6,31 @@ import os
 
 import pytest
 import requests
+import urllib3
 from kubernetes import client, config
+
+# E2E tests talk to in-cluster Keycloak over self-signed / internal certs.
+# Disable the noisy InsecureRequestWarning globally for this test suite and
+# create a shared session with verify=False so every call goes through one
+# place (keeps CodeQL happy with a single, documented suppression point).
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def _make_http_session() -> requests.Session:
+    """Create a requests.Session that skips TLS verification.
+
+    Keycloak in CI runs behind self-signed certificates (Kind) or
+    internal service CAs (OpenShift). Certificate validation is not
+    meaningful for these E2E tests — the tests verify OAuth token
+    semantics, not TLS chain correctness.
+    """
+    s = requests.Session()
+    s.verify = False  # CodeQL [py/request-without-cert-validation]
+    return s
+
+
+# Shared HTTP session — every Keycloak call in this suite uses this.
+http = _make_http_session()
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +99,7 @@ def kc_admin_token():
         username = "admin"
         password = "admin"
 
-    resp = requests.post(
+    resp = http.post(
         f"{KEYCLOAK_URL}/realms/master/protocol/openid-connect/token",
         data={
             "grant_type": "password",
@@ -83,7 +107,6 @@ def kc_admin_token():
             "username": username,
             "password": password,
         },
-        verify=False,
         timeout=10,
     )
     resp.raise_for_status()
@@ -93,11 +116,10 @@ def kc_admin_token():
 @pytest.fixture(scope="session")
 def kc_client_secret(kc_admin_token):
     """Get the TX_CLIENT_ID's client secret (after it was made confidential)."""
-    resp = requests.get(
+    resp = http.get(
         f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}/clients",
         params={"clientId": TX_CLIENT_ID},
         headers={"Authorization": f"Bearer {kc_admin_token}"},
-        verify=False,
         timeout=10,
     )
     resp.raise_for_status()
@@ -106,10 +128,9 @@ def kc_client_secret(kc_admin_token):
         pytest.skip(f"Client {TX_CLIENT_ID} not found in realm {TX_REALM}")
     client_uuid = clients[0]["id"]
 
-    resp = requests.get(
+    resp = http.get(
         f"{KEYCLOAK_URL}/admin/realms/{TX_REALM}/clients/{client_uuid}/client-secret",
         headers={"Authorization": f"Bearer {kc_admin_token}"},
-        verify=False,
         timeout=10,
     )
     resp.raise_for_status()
@@ -156,10 +177,9 @@ def get_user_token(kc_client_secret):
         }
         if kc_client_secret:
             data["client_secret"] = kc_client_secret
-        resp = requests.post(
+        resp = http.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data=data,
-            verify=False,
             timeout=10,
         )
         resp.raise_for_status()
