@@ -238,6 +238,9 @@ if [ "$SKIP_INSTALL" = "false" ]; then
     log_phase "PHASE 2: Install Kagenti Platform (OpenShell profile)"
 
     if [ "$PLATFORM" = "ocp" ]; then
+        # OCP: Use the Helm-based installer (scripts/ocp/setup-kagenti.sh)
+        # This handles cert-manager, Keycloak, SPIRE, Istio, and the operator.
+        # Skip UI/MLflow/MCP Gateway for OpenShell PoC.
         log_step "Running Helm-based OCP installer..."
         "$REPO_ROOT/scripts/ocp/setup-kagenti.sh" \
             --kagenti-repo "$REPO_ROOT" \
@@ -246,7 +249,11 @@ if [ "$SKIP_INSTALL" = "false" ]; then
             --skip-mcp-gateway \
             --skip-ovn-patch
     else
+        # Kind: Use the platform installer with the openshell env profile
+        log_step "Creating secrets..."
         ./.github/scripts/common/20-create-secrets.sh
+
+        log_step "Running platform installer (--env $KAGENTI_ENV)..."
         ./.github/scripts/kagenti-operator/30-run-installer.sh --env "$KAGENTI_ENV"
         ./.github/scripts/common/40-wait-platform-ready.sh
         ./.github/scripts/common/70-configure-dockerhost.sh
