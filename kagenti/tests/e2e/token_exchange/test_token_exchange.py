@@ -108,12 +108,19 @@ class TestSidecarInjection:
         """Get container names for a deployment's pod."""
         result = subprocess.run(
             [
-                "kubectl", "get", "pods",
-                "-n", TX_NAMESPACE,
-                "-l", f"app={deploy_name}",
-                "-o", "jsonpath={.items[0].spec.containers[*].name}",
+                "kubectl",
+                "get",
+                "pods",
+                "-n",
+                TX_NAMESPACE,
+                "-l",
+                f"app={deploy_name}",
+                "-o",
+                "jsonpath={.items[0].spec.containers[*].name}",
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         return result.stdout.split() if result.returncode == 0 else []
 
@@ -138,12 +145,19 @@ class TestSidecarInjection:
         # client-registration may be an init container instead
         result = subprocess.run(
             [
-                "kubectl", "get", "pods",
-                "-n", TX_NAMESPACE,
-                "-l", "app=tx-e2e-agent",
-                "-o", "jsonpath={.items[0].spec.initContainers[*].name}",
+                "kubectl",
+                "get",
+                "pods",
+                "-n",
+                TX_NAMESPACE,
+                "-l",
+                "app=tx-e2e-agent",
+                "-o",
+                "jsonpath={.items[0].spec.initContainers[*].name}",
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         init_containers = result.stdout.split() if result.returncode == 0 else []
         has_cr = has_cr or any("client-registration" in c for c in init_containers)
@@ -176,8 +190,10 @@ class TestClientCredentials:
         assert resp.status_code == 200, f"client_credentials failed: {resp.text}"
         token = resp.json()["access_token"]
         claims = _decode_jwt(token)
-        assert claims.get("azp") == creds["client_id"] or \
-            claims.get("clientId") == creds["client_id"]
+        assert (
+            claims.get("azp") == creds["client_id"]
+            or claims.get("clientId") == creds["client_id"]
+        )
 
     def test_tool_client_credentials(self, agent_credentials):
         """Tool can get a token via client_credentials grant."""
@@ -237,8 +253,9 @@ class TestPasswordGrant:
 class TestTokenExchange:
     """Test RFC 8693 token exchange flows."""
 
-    def test_user_to_agent_exchange(self, get_user_token, agent_credentials,
-                                    kc_client_secret):
+    def test_user_to_agent_exchange(
+        self, get_user_token, agent_credentials, kc_client_secret
+    ):
         """Exchange alice's user token for agent-scoped token."""
         if "agent" not in agent_credentials:
             pytest.skip("Agent credentials not found")
@@ -310,8 +327,9 @@ class TestTokenExchange:
             f"{resp.json().get('error_description', resp.text)}"
         )
 
-    def test_admin_user_exchange_preserves_roles(self, get_user_token,
-                                                  agent_credentials):
+    def test_admin_user_exchange_preserves_roles(
+        self, get_user_token, agent_credentials
+    ):
         """Token exchange preserves bob's admin role."""
         if "agent" not in agent_credentials:
             pytest.skip("Agent credentials not found")
@@ -354,13 +372,22 @@ class TestSpiffeTokenExchange:
         """Execute command in a pod."""
         result = subprocess.run(
             [
-                "kubectl", "exec",
-                "-n", TX_NAMESPACE,
-                "-l", f"app={deploy}",
-                "-c", container,
-                "--", "sh", "-c", cmd,
+                "kubectl",
+                "exec",
+                "-n",
+                TX_NAMESPACE,
+                "-l",
+                f"app={deploy}",
+                "-c",
+                container,
+                "--",
+                "sh",
+                "-c",
+                cmd,
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         return result
 
@@ -369,7 +396,8 @@ class TestSpiffeTokenExchange:
         if not spiffe_mode:
             pytest.skip("SPIFFE mode not enabled")
         result = self._exec_in_pod(
-            "tx-e2e-agent", "envoy-proxy",
+            "tx-e2e-agent",
+            "envoy-proxy",
             "cat /opt/jwt_svid.token 2>/dev/null | head -c 20",
         )
         assert result.returncode == 0 and len(result.stdout) > 10, (
@@ -392,8 +420,12 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
   -d "grant_type=client_credentials"
 """
         # First read creds from envoy-proxy
-        jwt_result = self._exec_in_pod("tx-e2e-agent", "envoy-proxy", "cat /opt/jwt_svid.token")
-        cid_result = self._exec_in_pod("tx-e2e-agent", "envoy-proxy", "cat /shared/client-id.txt")
+        jwt_result = self._exec_in_pod(
+            "tx-e2e-agent", "envoy-proxy", "cat /opt/jwt_svid.token"
+        )
+        cid_result = self._exec_in_pod(
+            "tx-e2e-agent", "envoy-proxy", "cat /shared/client-id.txt"
+        )
 
         if jwt_result.returncode != 0 or cid_result.returncode != 0:
             pytest.skip("Could not read SPIFFE credentials from pod")
@@ -412,9 +444,7 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
             verify=False,
             timeout=10,
         )
-        assert resp.status_code == 200, (
-            f"SPIFFE client_credentials failed: {resp.text}"
-        )
+        assert resp.status_code == 200, f"SPIFFE client_credentials failed: {resp.text}"
 
     def test_spiffe_token_exchange(self, spiffe_mode, get_user_token):
         """Token exchange using SPIFFE identity (federated-jwt)."""
@@ -423,8 +453,12 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
 
         user_token = get_user_token("alice", "alice123")
 
-        jwt_result = self._exec_in_pod("tx-e2e-agent", "envoy-proxy", "cat /opt/jwt_svid.token")
-        cid_result = self._exec_in_pod("tx-e2e-agent", "envoy-proxy", "cat /shared/client-id.txt")
+        jwt_result = self._exec_in_pod(
+            "tx-e2e-agent", "envoy-proxy", "cat /opt/jwt_svid.token"
+        )
+        cid_result = self._exec_in_pod(
+            "tx-e2e-agent", "envoy-proxy", "cat /shared/client-id.txt"
+        )
 
         if jwt_result.returncode != 0 or cid_result.returncode != 0:
             pytest.skip("Could not read SPIFFE credentials from pod")
@@ -447,9 +481,7 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
             verify=False,
             timeout=10,
         )
-        assert resp.status_code == 200, (
-            f"SPIFFE token exchange failed: {resp.text}"
-        )
+        assert resp.status_code == 200, f"SPIFFE token exchange failed: {resp.text}"
         claims = _decode_jwt(resp.json()["access_token"])
         assert claims.get("preferred_username") == "alice"
 
@@ -489,13 +521,23 @@ def _call_tool_from_agent(token: str, path: str = "/echo") -> dict:
     )
     result = subprocess.run(
         [
-            "kubectl", "exec",
-            "-n", TX_NAMESPACE,
-            "-l", "app=tx-e2e-agent",
-            "-c", "agent",
-            "--", "python3", "-c", script, token,
+            "kubectl",
+            "exec",
+            "-n",
+            TX_NAMESPACE,
+            "-l",
+            "app=tx-e2e-agent",
+            "-c",
+            "agent",
+            "--",
+            "python3",
+            "-c",
+            script,
+            token,
         ],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if result.returncode != 0:
         return {"_exec_error": result.stderr}
@@ -621,8 +663,9 @@ class TestAuthbridgeExtProc:
                 f"Exchanged token audience '{aud}' != expected '{TX_CLIENT_ID}'"
             )
 
-    def test_user_identity_preserved_through_exchange(self, get_user_token,
-                                                       agent_credentials):
+    def test_user_identity_preserved_through_exchange(
+        self, get_user_token, agent_credentials
+    ):
         """User identity (sub, preferred_username) survives token exchange.
 
         Flow:
@@ -655,9 +698,7 @@ class TestAuthbridgeExtProc:
             verify=False,
             timeout=10,
         )
-        assert resp.status_code == 200, (
-            f"User->agent exchange failed: {resp.text}"
-        )
+        assert resp.status_code == 200, f"User->agent exchange failed: {resp.text}"
         agent_scoped_token = resp.json()["access_token"]
 
         # Agent calls tool — authbridge exchanges again for tool audience
@@ -673,12 +714,12 @@ class TestAuthbridgeExtProc:
             f"Final: {final_claims.get('preferred_username')}"
         )
         assert final_claims.get("sub") == original_claims.get("sub"), (
-            f"Subject changed: {original_claims.get('sub')} → "
-            f"{final_claims.get('sub')}"
+            f"Subject changed: {original_claims.get('sub')} → {final_claims.get('sub')}"
         )
 
-    def test_admin_role_preserved_through_exchange(self, get_user_token,
-                                                    agent_credentials):
+    def test_admin_role_preserved_through_exchange(
+        self, get_user_token, agent_credentials
+    ):
         """Bob's admin role survives double exchange (user→agent→tool)."""
         if "agent" not in agent_credentials:
             pytest.skip("Agent credentials not found")
@@ -712,8 +753,7 @@ class TestAuthbridgeExtProc:
         final_claims = _decode_jwt(received_token)
         realm_roles = final_claims.get("realm_access", {}).get("roles", [])
         assert "admin" in realm_roles, (
-            f"Admin role lost after double exchange. "
-            f"Final roles: {realm_roles}"
+            f"Admin role lost after double exchange. Final roles: {realm_roles}"
         )
 
     def test_authbridge_logs_show_exchange(self, agent_credentials):
@@ -739,19 +779,28 @@ class TestAuthbridgeExtProc:
         # Check authbridge logs in the agent pod
         result = subprocess.run(
             [
-                "kubectl", "logs",
-                "-n", TX_NAMESPACE,
-                "-l", "app=tx-e2e-agent",
-                "-c", "envoy-proxy",
+                "kubectl",
+                "logs",
+                "-n",
+                TX_NAMESPACE,
+                "-l",
+                "app=tx-e2e-agent",
+                "-c",
+                "envoy-proxy",
                 "--tail=100",
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         logs = result.stdout + result.stderr
         # Authbridge logs evidence of exchange — look for typical markers
         exchange_markers = [
-            "token_exchange", "token-exchange", "exchange",
-            "outbound", "ext_proc",
+            "token_exchange",
+            "token-exchange",
+            "exchange",
+            "outbound",
+            "ext_proc",
         ]
         has_evidence = any(marker in logs.lower() for marker in exchange_markers)
         # This is a soft check — log format may vary
@@ -759,24 +808,29 @@ class TestAuthbridgeExtProc:
             # Also check authbridge-light container if present
             result2 = subprocess.run(
                 [
-                    "kubectl", "logs",
-                    "-n", TX_NAMESPACE,
-                    "-l", "app=tx-e2e-agent",
-                    "-c", "authbridge-light",
+                    "kubectl",
+                    "logs",
+                    "-n",
+                    TX_NAMESPACE,
+                    "-l",
+                    "app=tx-e2e-agent",
+                    "-c",
+                    "authbridge-light",
                     "--tail=100",
                 ],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             logs2 = result2.stdout + result2.stderr
-            has_evidence = any(
-                marker in logs2.lower() for marker in exchange_markers
-            )
+            has_evidence = any(marker in logs2.lower() for marker in exchange_markers)
         # Don't fail on missing logs — the token comparison tests above
         # are the definitive proof. This is supplementary evidence.
         if has_evidence:
             pass  # Good: logs confirm exchange
         else:
             import warnings
+
             warnings.warn(
                 "Could not find token exchange evidence in authbridge logs. "
                 "The token comparison tests are the definitive verification."
@@ -811,13 +865,22 @@ class TestInboundJwtValidation:
         )
         result = subprocess.run(
             [
-                "kubectl", "exec",
-                "-n", TX_NAMESPACE,
-                "-l", "app=tx-e2e-agent",
-                "-c", "agent",
-                "--", "python3", "-c", script,
+                "kubectl",
+                "exec",
+                "-n",
+                TX_NAMESPACE,
+                "-l",
+                "app=tx-e2e-agent",
+                "-c",
+                "agent",
+                "--",
+                "python3",
+                "-c",
+                script,
             ],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode == 0 and result.stdout.strip():
             data = json.loads(result.stdout.strip())
