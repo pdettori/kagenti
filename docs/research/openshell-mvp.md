@@ -794,7 +794,7 @@ New Helm chart for per-tenant deployment. Templated values:
 
 All three existing TLS approaches are replaced by cert-manager `Certificate` CRs,
 following the pattern already established by Kagenti's Shipwright integration
-(`deployments/ansible/roles/kagenti_installer/tasks/04_install_shipwright.yaml`).
+(`deployments/ansible/roles/kagenti_installer/tasks/04_install_shipwright.yaml`) [historical reference — Ansible installer removed].
 
 **What this replaces:**
 

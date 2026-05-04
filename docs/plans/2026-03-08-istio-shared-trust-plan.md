@@ -1,5 +1,9 @@
 # Istio Shared Trust Implementation Plan
 
+> **[Historical — Ansible installer removed]** This plan contains references to the Ansible installer
+> (`deployments/ansible/`) which has been removed. The Helm chart now handles shared trust setup
+> directly, and OCP installs use `scripts/ocp/setup-kagenti.sh`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Replace the Shared Trust Pattern workaround with proper cert-manager-based shared CA for dual Istio control planes (Kagenti + RHOAI).

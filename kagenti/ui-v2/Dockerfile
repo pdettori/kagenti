@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 # Stage 1: Build the React application
-FROM node:25-alpine@sha256:ad82ecad30371c43f4057aaa4800a8ed88f9446553a2d21323710c7b937177fc AS builder
+FROM node:25-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,8 @@ COPY ui-v2/package.json ui-v2/package-lock.json ./
 
 # Install dependencies (locked via package-lock.json)
 # hadolint ignore=DL3016
-RUN npm ci --legacy-peer-deps
+RUN npm ci --legacy-peer-deps && \
+    npm install @rollup/rollup-linux-x64-gnu --save-optional
 
 # Copy source code
 COPY ui-v2/ .

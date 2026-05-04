@@ -32,7 +32,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
 CLUSTER_NAME="${CLUSTER_NAME:-kagenti}"
-KIND_CONFIG="${KIND_CONFIG:-$REPO_ROOT/deployments/ansible/kind/kind-config-registry.yaml}"
+KIND_CONFIG="${KIND_CONFIG:-$REPO_ROOT/scripts/kind/kind-config-registry.yaml}"
 DOMAIN="localtest.me"
 
 # Component flags (core is always true)
@@ -54,7 +54,7 @@ DRY_RUN=false
 SECRETS_FILE_ARG=""
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-docker}"
 
-# Versions — keep in sync with deployments/ansible/default_values.yaml
+# Versions
 CERT_MANAGER_VERSION="v1.17.2"
 ISTIO_VERSION="1.28.0"
 SPIRE_CRD_VERSION="0.5.0"

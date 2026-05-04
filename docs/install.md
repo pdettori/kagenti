@@ -273,17 +273,6 @@ helm upgrade --install kagenti ./charts/kagenti/ \
   --set agentOAuthSecret.useServiceAccountCA=false
 ```
 
-### Option D: Ansible-Based Installer
-
-```bash
-# Configure secrets
-cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit .secret_values.yaml
-
-# Run installer for OpenShift
-deployments/ansible/run-install.sh --env ocp
-```
-
 ### Verify SPIRE Daemonsets
 
 ```bash
@@ -345,7 +334,7 @@ The installer automatically creates `keycloak-admin-secret` in every agent names
 
 If your Keycloak admin credentials differ from the defaults, override them using a values file (preferred over `--set` to avoid exposing passwords in shell history and process listings):
 
-**Ansible installer** (via `.secret_values.yaml`):
+**OCP installer** (via `.secret_values.yaml`):
 
 Add to your `deployments/envs/.secret_values.yaml`:
 
