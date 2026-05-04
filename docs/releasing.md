@@ -56,7 +56,7 @@ GA release notes should include a compatibility table:
 | agent-examples | v0.2.0 |
 ```
 
-Users who install via the Ansible installer or Helm charts do not need to manage
+Users who install via Helm charts do not need to manage
 version compatibility manually — checking out a Kagenti release tag gives a
 consistent, tested set of components.
 

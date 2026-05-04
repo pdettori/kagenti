@@ -162,35 +162,7 @@ If you have an existing Kind cluster:
 scripts/kind/setup-kagenti.sh --skip-cluster --with-all
 ```
 
-For non-Kind clusters, use the [OpenShift installation](#openshift-installation) instructions.
-
-### Legacy: Ansible-based Installer (Deprecated)
-
-> **Deprecated:** The Ansible-based installer for Kind is deprecated and will be
-> removed in a future release. Use the [Bash Installer](#bash-installer-recommended)
-> above instead. The Ansible installer remains supported for
-> [OpenShift installations](#openshift-installation).
-> See [migration epic #1266](https://github.com/kagenti/kagenti/issues/1266) for details.
-
-<details>
-<summary>Ansible-based installer instructions (click to expand)</summary>
-
-```bash
-# Install additional prerequisites
-brew install ansible uv python@3.11  # macOS
-
-# Copy and configure secrets
-cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.yaml
-# Edit .secret_values.yaml with your values
-
-# Run installer
-deployments/ansible/run-install.sh --env dev
-```
-
-See [Ansible README](../deployments/ansible/README.md) for details and
-[override files](../deployments/ansible/README.md#using-override-files).
-
-</details>
+For non-Kind clusters, see the [OpenShift installation](#openshift-installation) instructions.
 
 ---
 
