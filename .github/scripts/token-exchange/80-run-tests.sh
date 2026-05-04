@@ -48,10 +48,8 @@ if [[ "$PLATFORM" == "kind" ]]; then
   trap cleanup_pf EXIT
 fi
 
-# Install test dependencies
-log_info "Installing test dependencies..."
-pip install --quiet pytest requests pyjwt 2>/dev/null || \
-  uv pip install --quiet pytest requests pyjwt 2>/dev/null || true
+# Test dependencies (pytest, requests, pyjwt, kubernetes) are installed by
+# the CI workflow before this script runs. See e2e-kind.yaml / e2e-hypershift.yaml.
 
 # Determine test strictness based on provider
 TEST_DIR="$REPO_ROOT/kagenti/tests/e2e/token_exchange"
