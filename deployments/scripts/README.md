@@ -99,7 +99,7 @@ If the script reports version incompatibility:
 1. **For OCP < 4.19 with SPIRE enabled:**
    - Option 1: Disable SPIRE in your values file
    - Option 2: Upgrade OpenShift to 4.19+
-   - The Ansible installer will auto-disable SPIRE on older versions
+   - Disable SPIRE manually in your values file if on OCP < 4.19
 
 2. **For missing tools:**
    - Install required tools (helm, oc/kubectl, jq)
@@ -109,18 +109,8 @@ If the script reports version incompatibility:
    - Verify you have cluster-admin role
    - Check your kubeconfig is correctly configured
 
-**Integration with Ansible Installer:**
-
-The Ansible installer (`deployments/ansible/run-install.sh`) includes similar version detection logic and will automatically:
-- Detect OpenShift version
-- Disable SPIRE if OCP < 4.19
-- Provide clear warnings and recommendations
-
-However, running the pre-flight check script first is recommended to catch issues early.
-
 ## See Also
 
 - [OpenShift Installation Guide](../../docs/ocp/openshift-install.md)
 - [Kagenti Installation Guide](../../docs/install.md)
-- [Ansible Installer README](../ansible/README.md)
 - [Version Compatibility Matrix](../../docs/ocp/openshift-install.md#openshift-version-compatibility)

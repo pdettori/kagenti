@@ -766,7 +766,7 @@ Becomes a thin orchestrator:
 
 ```
 Phase 1: Cluster create           (existing kind/hypershift scripts)
-Phase 2: Kagenti platform install (existing Ansible/Helm installer)
+Phase 2: Kagenti platform install (existing Helm installer) [Note: Ansible installer removed]
 Phase 3: build-images.sh          (forked gateway + drivers)
 Phase 4: deploy-shared.sh         (sandbox controller, cert-manager CA, Keycloak realm)
 Phase 5: deploy-tenant.sh team1   (gateway + driver + ingress)

@@ -4,9 +4,9 @@
 
 **Goal:** Replace the Shared Trust Pattern workaround with proper cert-manager-based shared CA for dual Istio control planes (Kagenti + RHOAI).
 
-**Architecture:** cert-manager generates a shared root CA and intermediate certificates. A Helm template creates the cert-manager resources (ClusterIssuers, Certificates). An Ansible task transforms the cert-manager secrets into Istio's `cacerts` format and restarts both istiods. Both istiods auto-detect the shared CA, eliminating the ConfigMap race condition.
+**Architecture:** cert-manager generates a shared root CA and intermediate certificates. A Helm template creates the cert-manager resources (ClusterIssuers, Certificates). An Ansible task transforms the cert-manager secrets into Istio's `cacerts` format and restarts both istiods. Both istiods auto-detect the shared CA, eliminating the ConfigMap race condition. [Note: Ansible installer removed; this logic is now in the Helm chart]
 
-**Tech Stack:** cert-manager (Certificate, ClusterIssuer), Kubernetes Secrets, Ansible, Helm templates
+**Tech Stack:** cert-manager (Certificate, ClusterIssuer), Kubernetes Secrets, Helm templates
 
 **Design doc:** `docs/plans/2026-03-08-istio-shared-trust-design.md`
 
@@ -134,6 +134,8 @@ git commit -s -m "feat: add cert-manager shared trust for dual Istio control pla
 ---
 
 ### Task 2: Add Ansible cacerts Secret Creation and istiod Restart
+
+> [Note: Ansible installer removed; this logic is now in the Helm chart]
 
 **Files:**
 - Modify: `deployments/ansible/roles/kagenti_installer/tasks/05_install_rhoai.yaml`
