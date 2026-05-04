@@ -455,101 +455,393 @@ curl -sk -X POST "${KEYCLOAK_URL}/realms/${TX_REALM}/protocol/openid-connect/tok
 
 
 # ---------------------------------------------------------------------------
-# 7. Inbound JWT validation
+# Helper: call tool from inside the agent pod and return echoed headers
+# ---------------------------------------------------------------------------
+
+
+def _call_tool_from_agent(token: str, path: str = "/echo") -> dict:
+    """
+    Execute an HTTP request from the agent container to the tool service.
+
+    Traffic flow:
+      agent container → iptables (proxy-init) → envoy outbound (:15123)
+      → ext_proc (authbridge) → [token exchange if route matches]
+      → tx-e2e-tool service → envoy inbound (:15124)
+      → ext_proc (validate JWT) → tool container
+
+    The tool echoes all received headers as JSON, so we can inspect the
+    Authorization header that actually arrived after authbridge processing.
+    """
+    # Use a Python script inside the pod so we get structured JSON back.
+    # We avoid shell escaping issues by writing minimal inline Python.
+    script = (
+        "import urllib.request, json, sys; "
+        "req = urllib.request.Request("
+        f"'http://tx-e2e-tool:8080{path}', "
+        "headers={'Authorization': 'Bearer ' + sys.argv[1]}); "
+        "try:\n"
+        "  resp = urllib.request.urlopen(req, timeout=15)\n"
+        "  print(resp.read().decode())\n"
+        "except urllib.error.HTTPError as e:\n"
+        "  print(json.dumps({'_http_error': e.code, '_body': e.read().decode()}))\n"
+        "except Exception as e:\n"
+        "  print(json.dumps({'_error': str(e)}))"
+    )
+    result = subprocess.run(
+        [
+            "kubectl", "exec",
+            "-n", TX_NAMESPACE,
+            "-l", "app=tx-e2e-agent",
+            "-c", "agent",
+            "--", "python3", "-c", script, token,
+        ],
+        capture_output=True, text=True, timeout=60,
+    )
+    if result.returncode != 0:
+        return {"_exec_error": result.stderr}
+    try:
+        return json.loads(result.stdout.strip())
+    except (json.JSONDecodeError, ValueError):
+        return {"_raw": result.stdout.strip()}
+
+
+def _extract_bearer_token(headers: dict) -> str | None:
+    """Extract the Bearer token from echoed headers (case-insensitive)."""
+    for key, value in headers.items():
+        if key.lower() == "authorization" and value.lower().startswith("bearer "):
+            return value.split(" ", 1)[1]
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 7. Authbridge ext_proc verification
+# ---------------------------------------------------------------------------
+
+
+class TestAuthbridgeExtProc:
+    """Verify that authbridge's envoy ext_proc filter intercepts traffic."""
+
+    def test_outbound_token_is_different(self, agent_credentials):
+        """Token arriving at tool must differ from what agent sent (exchanged).
+
+        Flow:
+          1. Agent gets its own token (client_credentials)
+          2. Agent calls tool with that token
+          3. Authbridge outbound ext_proc intercepts, matches authproxy-route
+             for host "tx-e2e-tool", exchanges token for target_audience
+          4. Tool echoes received headers
+          5. We verify the Authorization header token ≠ original agent token
+        """
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        # 1. Get agent's own token
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200, f"client_credentials failed: {resp.text}"
+        original_token = resp.json()["access_token"]
+
+        # 2. Call tool from agent pod (goes through envoy → ext_proc)
+        tool_response = _call_tool_from_agent(original_token)
+
+        assert "_http_error" not in tool_response, (
+            f"Tool returned HTTP {tool_response.get('_http_error')}: "
+            f"{tool_response.get('_body', '')}"
+        )
+        assert "_error" not in tool_response, (
+            f"Request failed: {tool_response.get('_error')}"
+        )
+        assert "_exec_error" not in tool_response, (
+            f"kubectl exec failed: {tool_response.get('_exec_error')}"
+        )
+        assert tool_response.get("service") == "tx-e2e-tool", (
+            f"Unexpected response: {tool_response}"
+        )
+
+        # 3. Extract token that the tool actually received
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, (
+            "Tool did not receive an Authorization header. "
+            "Authbridge may not be injecting tokens. "
+            f"Echoed headers: {tool_response.get('headers', {})}"
+        )
+
+        # 4. THE KEY ASSERTION: tokens must differ (exchange happened)
+        assert received_token != original_token, (
+            "Token received by tool is identical to what agent sent. "
+            "Authbridge ext_proc did NOT perform token exchange. "
+            "Check authproxy-routes ConfigMap and authbridge logs."
+        )
+
+    def test_exchanged_token_has_correct_audience(self, agent_credentials):
+        """Exchanged token must have target_audience from authproxy-routes.
+
+        authproxy-routes maps host "tx-e2e-tool" → target_audience TX_CLIENT_ID.
+        The exchanged token's 'aud' claim must contain that audience.
+        """
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        original_token = resp.json()["access_token"]
+
+        tool_response = _call_tool_from_agent(original_token)
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, "No token echoed by tool"
+
+        received_claims = _decode_jwt(received_token)
+        aud = received_claims.get("aud", "")
+        if isinstance(aud, list):
+            assert TX_CLIENT_ID in aud, (
+                f"Exchanged token audience {aud} does not contain "
+                f"expected target '{TX_CLIENT_ID}'"
+            )
+        else:
+            assert aud == TX_CLIENT_ID, (
+                f"Exchanged token audience '{aud}' != expected '{TX_CLIENT_ID}'"
+            )
+
+    def test_user_identity_preserved_through_exchange(self, get_user_token,
+                                                       agent_credentials):
+        """User identity (sub, preferred_username) survives token exchange.
+
+        Flow:
+          1. Alice gets a user token (password grant)
+          2. We manually exchange it for an agent-scoped token
+          3. Agent calls tool with the exchanged token
+          4. Authbridge exchanges again for tool audience
+          5. Tool echoes the token — we verify alice's identity is still there
+        """
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        # Get alice's user token
+        user_token = get_user_token("alice", "alice123")
+        original_claims = _decode_jwt(user_token)
+
+        # Exchange user token for agent-scoped token (simulating inbound flow)
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+                "subject_token": user_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "audience": agent_creds["client_id"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200, (
+            f"User->agent exchange failed: {resp.text}"
+        )
+        agent_scoped_token = resp.json()["access_token"]
+
+        # Agent calls tool — authbridge exchanges again for tool audience
+        tool_response = _call_tool_from_agent(agent_scoped_token)
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, "No token echoed by tool"
+
+        # Verify alice's identity survives the full chain
+        final_claims = _decode_jwt(received_token)
+        assert final_claims.get("preferred_username") == "alice", (
+            f"User identity lost after double exchange. "
+            f"Original: {original_claims.get('preferred_username')}, "
+            f"Final: {final_claims.get('preferred_username')}"
+        )
+        assert final_claims.get("sub") == original_claims.get("sub"), (
+            f"Subject changed: {original_claims.get('sub')} → "
+            f"{final_claims.get('sub')}"
+        )
+
+    def test_admin_role_preserved_through_exchange(self, get_user_token,
+                                                    agent_credentials):
+        """Bob's admin role survives double exchange (user→agent→tool)."""
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        bob_token = get_user_token("bob", "bob123")
+
+        # Exchange user → agent
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+                "subject_token": bob_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "audience": agent_creds["client_id"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        agent_scoped_token = resp.json()["access_token"]
+
+        # Agent → tool (authbridge exchanges automatically)
+        tool_response = _call_tool_from_agent(agent_scoped_token)
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, "No token echoed by tool"
+
+        final_claims = _decode_jwt(received_token)
+        realm_roles = final_claims.get("realm_access", {}).get("roles", [])
+        assert "admin" in realm_roles, (
+            f"Admin role lost after double exchange. "
+            f"Final roles: {realm_roles}"
+        )
+
+    def test_authbridge_logs_show_exchange(self, agent_credentials):
+        """Authbridge container logs contain evidence of token exchange."""
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        # Trigger an exchange first
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            _call_tool_from_agent(resp.json()["access_token"])
+
+        # Check authbridge logs in the agent pod
+        result = subprocess.run(
+            [
+                "kubectl", "logs",
+                "-n", TX_NAMESPACE,
+                "-l", "app=tx-e2e-agent",
+                "-c", "envoy-proxy",
+                "--tail=100",
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        logs = result.stdout + result.stderr
+        # Authbridge logs evidence of exchange — look for typical markers
+        exchange_markers = [
+            "token_exchange", "token-exchange", "exchange",
+            "outbound", "ext_proc",
+        ]
+        has_evidence = any(marker in logs.lower() for marker in exchange_markers)
+        # This is a soft check — log format may vary
+        if not has_evidence:
+            # Also check authbridge-light container if present
+            result2 = subprocess.run(
+                [
+                    "kubectl", "logs",
+                    "-n", TX_NAMESPACE,
+                    "-l", "app=tx-e2e-agent",
+                    "-c", "authbridge-light",
+                    "--tail=100",
+                ],
+                capture_output=True, text=True, timeout=30,
+            )
+            logs2 = result2.stdout + result2.stderr
+            has_evidence = any(
+                marker in logs2.lower() for marker in exchange_markers
+            )
+        # Don't fail on missing logs — the token comparison tests above
+        # are the definitive proof. This is supplementary evidence.
+        if has_evidence:
+            pass  # Good: logs confirm exchange
+        else:
+            import warnings
+            warnings.warn(
+                "Could not find token exchange evidence in authbridge logs. "
+                "The token comparison tests are the definitive verification."
+            )
+
+
+# ---------------------------------------------------------------------------
+# 8. Inbound JWT validation
 # ---------------------------------------------------------------------------
 
 
 class TestInboundJwtValidation:
-    """Test that authbridge validates inbound JWTs on the tool."""
+    """Verify authbridge inbound listener validates JWTs on the tool."""
 
-    def test_tool_rejects_no_auth(self):
-        """Tool rejects request without Authorization header."""
-        # This test verifies the inbound listener on the tool validates JWT.
-        # We call the tool directly (via port-forward or service) without a token.
+    def test_unauthenticated_request_rejected(self):
+        """Request without a token is rejected by tool's inbound ext_proc.
+
+        From the agent container, we call the tool without an Authorization
+        header. The tool's inbound envoy listener + ext_proc should reject
+        the request with 401 or 403.
+        """
+        script = (
+            "import urllib.request, json; "
+            "req = urllib.request.Request('http://tx-e2e-tool:8080/echo'); "
+            "try:\n"
+            "  resp = urllib.request.urlopen(req, timeout=10)\n"
+            "  print(json.dumps({'status': resp.status}))\n"
+            "except urllib.error.HTTPError as e:\n"
+            "  print(json.dumps({'status': e.code}))\n"
+            "except Exception as e:\n"
+            "  print(json.dumps({'error': str(e)}))"
+        )
         result = subprocess.run(
             [
                 "kubectl", "exec",
                 "-n", TX_NAMESPACE,
                 "-l", "app=tx-e2e-agent",
                 "-c", "agent",
-                "--", "python3", "-c",
-                (
-                    "import urllib.request, json; "
-                    "req = urllib.request.Request('http://tx-e2e-tool:8080/health'); "
-                    "try:\n"
-                    "  resp = urllib.request.urlopen(req)\n"
-                    "  print(json.dumps({'status': resp.status}))\n"
-                    "except urllib.error.HTTPError as e:\n"
-                    "  print(json.dumps({'status': e.code}))\n"
-                    "except Exception as e:\n"
-                    "  print(json.dumps({'error': str(e)}))"
-                ),
+                "--", "python3", "-c", script,
             ],
             capture_output=True, text=True, timeout=30,
         )
-        # With authbridge, unauthenticated requests to the tool should be rejected
-        # (401 or 403). If no inbound auth is configured, 200 is acceptable.
         if result.returncode == 0 and result.stdout.strip():
             data = json.loads(result.stdout.strip())
             status = data.get("status", 0)
-            # Either rejected (401/403) or passthrough (200) — both are valid
-            # depending on inbound auth config
-            assert status in [200, 401, 403], f"Unexpected status: {status}"
+            assert status in [401, 403], (
+                f"Expected 401/403 for unauthenticated request, got {status}. "
+                "Inbound JWT validation may not be configured."
+            )
 
-
-# ---------------------------------------------------------------------------
-# 8. End-to-end: user -> agent -> tool
-# ---------------------------------------------------------------------------
-
-
-class TestEndToEnd:
-    """End-to-end test: user authenticates, calls agent, agent calls tool."""
-
-    def test_e2e_with_user_token(self, get_user_token):
-        """Alice calls agent with her token, agent forwards to tool via authbridge."""
-        user_token = get_user_token("alice", "alice123")
-
-        # Call agent from inside the cluster
-        result = subprocess.run(
-            [
-                "kubectl", "exec",
-                "-n", TX_NAMESPACE,
-                "-l", "app=tx-e2e-agent",
-                "-c", "agent",
-                "--", "python3", "-c",
-                (
-                    "import urllib.request, json; "
-                    "req = urllib.request.Request("
-                    "'http://tx-e2e-tool:8080/echo', "
-                    f"headers={{'Authorization': 'Bearer {user_token}'}}); "
-                    "try:\n"
-                    "  resp = urllib.request.urlopen(req)\n"
-                    "  print(resp.read().decode())\n"
-                    "except Exception as e:\n"
-                    "  print(json.dumps({'error': str(e)}))"
-                ),
-            ],
-            capture_output=True, text=True, timeout=30,
+    def test_invalid_token_rejected(self):
+        """Request with a garbage token is rejected by inbound ext_proc."""
+        fake_token = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJmYWtlIn0.invalid_sig"
+        tool_response = _call_tool_from_agent(fake_token)
+        http_error = tool_response.get("_http_error")
+        assert http_error in [401, 403], (
+            f"Expected 401/403 for invalid token, got: {tool_response}"
         )
-        # If authbridge is performing token exchange on outbound, the tool
-        # should receive a request with an exchanged token.
-        if result.returncode == 0 and result.stdout.strip():
-            try:
-                data = json.loads(result.stdout.strip())
-                assert data.get("service") == "tx-e2e-tool" or "error" not in data, (
-                    f"Unexpected tool response: {data}"
-                )
-            except json.JSONDecodeError:
-                pass  # Non-JSON is acceptable (could be error output)
 
-    def test_e2e_agent_to_tool_exchange_via_authbridge(self, agent_credentials):
-        """Agent calls tool — authbridge should auto-exchange token outbound."""
+    def test_valid_exchanged_token_accepted(self, agent_credentials):
+        """Request with a validly exchanged token reaches the tool."""
         if "agent" not in agent_credentials:
             pytest.skip("Agent credentials not found")
-
         agent_creds = agent_credentials["agent"]
 
-        # Get agent token
         resp = requests.post(
             f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
             data={
@@ -563,29 +855,120 @@ class TestEndToEnd:
         assert resp.status_code == 200
         agent_token = resp.json()["access_token"]
 
-        # Call from agent pod to tool — authbridge outbound should exchange
-        result = subprocess.run(
-            [
-                "kubectl", "exec",
-                "-n", TX_NAMESPACE,
-                "-l", "app=tx-e2e-agent",
-                "-c", "agent",
-                "--", "python3", "-c",
-                (
-                    "import urllib.request, json; "
-                    "req = urllib.request.Request("
-                    "'http://tx-e2e-tool:8080/echo', "
-                    f"headers={{'Authorization': 'Bearer {agent_token}'}}); "
-                    "try:\n"
-                    "  resp = urllib.request.urlopen(req)\n"
-                    "  data = json.loads(resp.read().decode())\n"
-                    "  print(json.dumps(data))\n"
-                    "except urllib.error.HTTPError as e:\n"
-                    "  print(json.dumps({'status': e.code, 'body': e.read().decode()}))\n"
-                    "except Exception as e:\n"
-                    "  print(json.dumps({'error': str(e)}))"
-                ),
-            ],
-            capture_output=True, text=True, timeout=30,
+        tool_response = _call_tool_from_agent(agent_token)
+        assert tool_response.get("service") == "tx-e2e-tool", (
+            f"Valid token should reach tool. Response: {tool_response}"
         )
-        assert result.returncode == 0, f"kubectl exec failed: {result.stderr}"
+
+
+# ---------------------------------------------------------------------------
+# 9. End-to-end: full chain user → agent → tool with double exchange
+# ---------------------------------------------------------------------------
+
+
+class TestEndToEndChain:
+    """Full chain test: user authenticates → agent → authbridge → tool.
+
+    This class tests the real-world scenario where:
+      1. A user authenticates to Keycloak (password grant)
+      2. User's request arrives at the agent (with user token)
+      3. Agent makes an outbound call to the tool
+      4. Authbridge intercepts, exchanges the token for tool audience
+      5. Tool receives the exchanged token and processes the request
+    """
+
+    def test_full_chain_alice(self, get_user_token, agent_credentials):
+        """Alice's request flows through agent → authbridge → tool."""
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        # Step 1: Alice authenticates
+        user_token = get_user_token("alice", "alice123")
+        original_claims = _decode_jwt(user_token)
+
+        # Step 2-3: Simulate agent receiving the request and calling tool
+        # (In production, the inbound ext_proc validates alice's token,
+        #  then the agent calls the tool with the same or a new token.
+        #  Here we exchange manually to simulate the inbound flow, then
+        #  let authbridge handle the outbound exchange automatically.)
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+                "subject_token": user_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "audience": agent_creds["client_id"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        agent_scoped_token = resp.json()["access_token"]
+
+        # Step 4-5: Agent calls tool — authbridge exchanges automatically
+        tool_response = _call_tool_from_agent(agent_scoped_token)
+        assert tool_response.get("service") == "tx-e2e-tool", (
+            f"Tool not reached: {tool_response}"
+        )
+
+        # Step 6: Verify the full chain
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, "No token at tool"
+
+        # Token must have been exchanged (different from what agent sent)
+        assert received_token != agent_scoped_token, (
+            "Authbridge did not exchange token on outbound"
+        )
+
+        # Exchanged token has correct audience
+        final_claims = _decode_jwt(received_token)
+        aud = final_claims.get("aud", "")
+        aud_list = aud if isinstance(aud, list) else [aud]
+        assert TX_CLIENT_ID in aud_list, (
+            f"Final token audience {aud_list} missing '{TX_CLIENT_ID}'"
+        )
+
+        # Alice's identity survives the full chain
+        assert final_claims.get("preferred_username") == "alice"
+        assert final_claims.get("sub") == original_claims.get("sub")
+
+    def test_full_chain_bob_admin(self, get_user_token, agent_credentials):
+        """Bob (admin) — roles survive the full exchange chain."""
+        if "agent" not in agent_credentials:
+            pytest.skip("Agent credentials not found")
+        agent_creds = agent_credentials["agent"]
+
+        bob_token = get_user_token("bob", "bob123")
+
+        resp = requests.post(
+            f"{KEYCLOAK_URL}/realms/{TX_REALM}/protocol/openid-connect/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "client_id": agent_creds["client_id"],
+                "client_secret": agent_creds["client_secret"],
+                "subject_token": bob_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "audience": agent_creds["client_id"],
+            },
+            verify=False,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        agent_scoped_token = resp.json()["access_token"]
+
+        tool_response = _call_tool_from_agent(agent_scoped_token)
+        received_token = _extract_bearer_token(tool_response.get("headers", {}))
+        assert received_token is not None, "No token at tool"
+        assert received_token != agent_scoped_token, "No exchange happened"
+
+        final_claims = _decode_jwt(received_token)
+        assert final_claims.get("preferred_username") == "bob"
+        realm_roles = final_claims.get("realm_access", {}).get("roles", [])
+        assert "admin" in realm_roles, (
+            f"Bob's admin role lost. Final roles: {realm_roles}"
+        )
