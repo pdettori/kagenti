@@ -1,10 +1,16 @@
 # AuthBridge
 
-AuthBridge is the authentication and authorization layer for AI agents running on
-Kagenti. It makes auth invisible to agent developers — agents make HTTP calls and
-the right credentials appear automatically — while enforcing zero-trust security
-at the infrastructure level. The platform controls what each agent can access, not
-the agent itself.
+AuthBridge provides platform primitives to secure AI agents by managing agent
+identity, authentication, and authorization invisibly — and enforces network
+guardrails that scope access to minimum necessary permissions with full
+auditability.
+
+**Why it matters:** AI agents make autonomous, non-deterministic decisions about
+which tools or services to call, making it unsafe to trust them with secrets or
+self-authorization. AuthBridge shifts credential management to the platform layer
+where it is enforced (not advisory), surviving prompt injection and agent compromise
+while preserving the full identity delegation chain from end user through
+orchestrator to tool.
 
 ## What AuthBridge Does
 
