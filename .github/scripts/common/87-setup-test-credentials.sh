@@ -57,10 +57,17 @@ kc_api() {
 # Get admin token (master realm)
 # ============================================================================
 
-ADMIN_TOKEN=$(curl -sk -X POST \
-    "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
-    -d "grant_type=password&client_id=admin-cli&username=$ADMIN_USER&password=$ADMIN_PASS" \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])" 2>/dev/null || echo "")
+# Factored out so the scope-existence poll below can refresh the admin
+# token. The master-realm admin access token lives ~60s; a 5-minute wait
+# loop would otherwise fire API calls with an expired bearer.
+refresh_admin_token() {
+    ADMIN_TOKEN=$(curl -sk -X POST \
+        "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
+        -d "grant_type=password&client_id=admin-cli&username=$ADMIN_USER&password=$ADMIN_PASS" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])" 2>/dev/null || echo "")
+}
+
+refresh_admin_token
 
 if [ -z "$ADMIN_TOKEN" ]; then
     log_error "Failed to get Keycloak admin token"
@@ -223,7 +230,52 @@ log_success "Service account client ready (client_id=$E2E_CLIENT_ID)"
 #     that AuthBridge requires for inbound JWT validation.
 # ============================================================================
 
+# Gate: wait for at least one agent-*-aud scope to appear in the realm
+# before trying to attach them. These scopes are created asynchronously
+# by kagenti-operator's ClientRegistrationReconciler (default path) or
+# by the legacy client-registration sidecar (opt-in). If we query before
+# either path finishes, the test token is minted without an aud claim
+# and AuthBridge rejects every request with 401
+# "audience is required (prevents confused deputy attacks)".
+#
+# The wait is skipped when no agent deployments exist in team1 (dev runs
+# with no agent under test). SCOPE_WAIT_TIMEOUT overrides the default 5
+# minutes; in healthy runs the first iteration finds scopes immediately
+# so the happy path pays effectively nothing.
+AGENT_COUNT=$(kubectl get deployment -n team1 -l kagenti.io/type=agent \
+    -o name 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$AGENT_COUNT" -gt 0 ]; then
+    log_info "Waiting up to ${SCOPE_WAIT_TIMEOUT:-300}s for agent-*-aud scopes to appear in realm $REALM..."
+    MAX_WAIT="${SCOPE_WAIT_TIMEOUT:-300}"
+    SLEEP=5
+    ELAPSED=0
+    SCOPE_SEEN=false
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        refresh_admin_token
+        SCOPES_JSON=$(kc_api GET \
+            "$KEYCLOAK_URL/admin/realms/$REALM/default-default-client-scopes")
+        if echo "$SCOPES_JSON" | python3 -c "
+import sys, json
+scopes = json.load(sys.stdin)
+if any(s['name'].startswith('agent-') and s['name'].endswith('-aud') for s in scopes):
+    sys.exit(0)
+sys.exit(1)
+" 2>/dev/null; then
+            log_info "  Agent audience scope(s) detected after ${ELAPSED}s"
+            SCOPE_SEEN=true
+            break
+        fi
+        sleep $SLEEP
+        ELAPSED=$((ELAPSED + SLEEP))
+    done
+    if [ "$SCOPE_SEEN" = "false" ]; then
+        log_warn "No agent-*-aud scopes appeared after ${MAX_WAIT}s; tests will likely fail with 401 (kagenti-operator ClientRegistrationReconciler may be stuck)"
+    fi
+fi
+
 log_info "Attaching agent audience scopes to $E2E_CLIENT_ID..."
+refresh_admin_token
 REALM_DEFAULT_SCOPES=$(kc_api GET "$KEYCLOAK_URL/admin/realms/$REALM/default-default-client-scopes")
 AGENT_SCOPE_IDS=$(echo "$REALM_DEFAULT_SCOPES" | python3 -c "
 import sys, json
