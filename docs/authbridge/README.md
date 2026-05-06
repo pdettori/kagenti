@@ -17,7 +17,7 @@ orchestrator to tool.
 - **Transparent token injection** — agents never see or manage tokens used in outgoing calls; AuthBridge
   intercepts outbound requests and attaches audience-scoped credentials automatically
 - **Token exchange** — converts workload identity (SPIFFE JWT-SVID or K8s service account
-  token) into short-lived, audience-specific OAuth tokens via RFC 8693
+  token) to obtain a short-lived, audience-specific OAuth tokens via token exchange (RFC 8693)
 - **Tool access control** — restricts which external services (MCP tools, APIs, LLMs)
   each agent can reach, based on host allowlists and protocol-aware policies
 - **Inbound validation** — verifies JWT tokens on incoming requests, ensuring only
