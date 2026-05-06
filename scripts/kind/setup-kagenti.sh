@@ -1268,6 +1268,9 @@ if $WITH_UI; then
   fi
 fi
 echo ""
+echo "  For full service URLs and credentials, run:"
+echo "    .github/scripts/local-setup/show-services.sh"
+echo ""
 
 ELAPSED=$(( SECONDS - START_SECONDS ))
 MINS=$(( ELAPSED / 60 ))
