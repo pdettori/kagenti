@@ -30,7 +30,7 @@ curl -H "Authorization: Bearer $TOKEN" \
   -d '{"city": "New York"}'
 ```
 
-The agent responds with weather data. It made an outbound call to the weather API,
+The agent responds with weather data. It made an outbound call to the weather MCP tool,
 but the agent code contains zero auth logic — AuthBridge exchanged tokens transparently.
 
 **What you've seen:**
