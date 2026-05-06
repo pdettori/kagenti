@@ -77,7 +77,7 @@ Learn more: [Security Model](security-model.md)
 You don't need to do anything. AuthBridge handles auth transparently:
 
 - No SDKs to import, no auth code to write
-- Your agent makes normal HTTP calls; credentials are injected automatically
+- Your agent makes normal HTTP calls; adequante credentials are injected automatically
 - If a call is blocked, you get a clear 403 with a reason (not a cryptic TLS error)
 - Works with any framework (LangGraph, CrewAI, AG2, custom)
 
