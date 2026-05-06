@@ -64,7 +64,7 @@ interception.
 ## Configuration
 
 AuthBridge is configured via YAML with `${ENV_VAR}` expansion. The operator
-injects the configuration as a ConfigMap.
+mounts the configuration from a ConfigMap such as "authbridge-config-weather-service".
 
 ### Minimal Proxy-Sidecar Config
 
