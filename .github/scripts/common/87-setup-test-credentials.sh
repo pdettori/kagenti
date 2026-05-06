@@ -230,6 +230,99 @@ log_success "Service account client ready (client_id=$E2E_CLIENT_ID)"
 #     that AuthBridge requires for inbound JWT validation.
 # ============================================================================
 
+# On scope-gate timeout, dump the state of every input the operator's
+# ClientRegistrationReconciler depends on. Printed to the CI log so the
+# next failed run is self-diagnostic — no need to re-run with extra
+# debugging to figure out why the reconciler didn't create the scope.
+dump_scope_timeout_diagnostics() {
+    echo
+    echo "=========================================================================="
+    echo " DIAGNOSTICS: scope-gate timeout on ClientRegistrationReconciler"
+    echo "=========================================================================="
+
+    echo
+    echo "--- Agent deployments in team1 (pod template labels + annotations) ---"
+    kubectl get deployment -n team1 -l kagenti.io/type=agent \
+        -o 'custom-columns=NAME:.metadata.name,READY:.status.readyReplicas,AVAILABLE:.status.availableReplicas,AGE:.metadata.creationTimestamp' \
+        2>&1 || echo "  (failed to list)"
+    for dep in $(kubectl get deployment -n team1 -l kagenti.io/type=agent -o name 2>/dev/null); do
+        echo
+        echo "  Deployment: $dep"
+        echo "  Pod-template labels:"
+        kubectl get "$dep" -n team1 -o jsonpath='{.spec.template.metadata.labels}' 2>&1 | python3 -m json.tool 2>/dev/null | sed 's/^/    /' || echo "    (failed)"
+        echo "  Pod-template annotations (looking for kagenti.io/keycloak-client-credentials-secret-name):"
+        kubectl get "$dep" -n team1 -o jsonpath='{.spec.template.metadata.annotations}' 2>&1 | python3 -m json.tool 2>/dev/null | sed 's/^/    /' || echo "    (failed)"
+    done
+
+    echo
+    echo "--- team1 authbridge-config ConfigMap (what the reconciler reads) ---"
+    kubectl get configmap -n team1 authbridge-config -o yaml 2>&1 | \
+        grep -E '^  [A-Z_]+:|^data:' | head -30 || echo "  (not found — reconciler will requeue forever on 'waiting for KEYCLOAK_URL/KEYCLOAK_REALM')"
+
+    echo
+    echo "--- team1 keycloak-admin-secret (existence + key names, not values) ---"
+    kubectl get secret -n team1 keycloak-admin-secret \
+        -o jsonpath='{"  keys: "}{.data}{"\n"}' 2>&1 | python3 -c "
+import sys, json, re
+s = sys.stdin.read().strip()
+m = re.match(r'^\s*keys:\s*(\{.*\})\s*$', s, re.DOTALL)
+if m:
+    try:
+        d = json.loads(m.group(1).replace(\"'\", '\"'))
+        for k in d:
+            print(f'    - {k}')
+    except Exception:
+        print(s)
+else:
+    print(s)
+" 2>&1 || echo "  (not found — reconciler will requeue forever on 'waiting for keycloak-admin-secret')"
+
+    echo
+    echo "--- kagenti-operator controller pod status ---"
+    kubectl get pods -n kagenti-system -l app.kubernetes.io/name=kagenti-operator \
+        -o 'custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,RESTARTS:.status.containerStatuses[*].restartCount,PHASE:.status.phase,AGE:.metadata.creationTimestamp' \
+        2>&1 | head -5 || echo "  (failed to list)"
+
+    echo
+    echo "--- kagenti-operator recent logs (broader grep than 85-collect-failure-info.sh) ---"
+    kubectl logs -n kagenti-system deployment/kagenti-controller-manager --tail=200 2>/dev/null | \
+        grep -iE 'waiting for|cannot resolve|skip|reconcile|client.?regist|keycloak|credential|error|ERROR|audience' | \
+        tail -50 || echo "  (no operator logs matched — broaden the grep or increase --tail)"
+
+    echo
+    echo "--- Keycloak realm clients (is weather-service registered?) ---"
+    refresh_admin_token
+    kc_api GET "$KEYCLOAK_URL/admin/realms/$REALM/clients?clientId=team1/weather-service" 2>&1 | \
+        python3 -c "
+import sys, json
+try:
+    clients = json.load(sys.stdin)
+    if not clients:
+        print('  NO CLIENT — reconciler never reached Keycloak admin API')
+    else:
+        for c in clients:
+            print(f\"  clientId: {c.get('clientId')}, enabled: {c.get('enabled')}, defaultClientScopes: {c.get('defaultClientScopes', [])}\")
+except Exception as e:
+    print(f'  parse error: {e}')
+" 2>&1 || echo "  (API call failed)"
+
+    echo
+    echo "--- Keycloak realm default-default client scopes (what we were polling for) ---"
+    kc_api GET "$KEYCLOAK_URL/admin/realms/$REALM/default-default-client-scopes" 2>&1 | \
+        python3 -c "
+import sys, json
+try:
+    scopes = json.load(sys.stdin)
+    for s in scopes:
+        print(f\"  - {s['name']}\")
+except Exception as e:
+    print(f'  parse error: {e}')
+" 2>&1 | head -30 || echo "  (API call failed)"
+
+    echo "=========================================================================="
+    echo
+}
+
 # Gate: wait for at least one agent-*-aud scope to appear in the realm
 # before trying to attach them. These scopes are created asynchronously
 # by kagenti-operator's ClientRegistrationReconciler (default path) or
@@ -271,6 +364,8 @@ sys.exit(1)
     done
     if [ "$SCOPE_SEEN" = "false" ]; then
         log_warn "No agent-*-aud scopes appeared after ${MAX_WAIT}s; tests will likely fail with 401 (kagenti-operator ClientRegistrationReconciler may be stuck)"
+        log_warn "Dumping diagnostics so the next maintainer can debug the reconciler without a second CI run:"
+        dump_scope_timeout_diagnostics
     fi
 fi
 
