@@ -359,6 +359,8 @@ if $WITH_ISTIO; then
   log_info "Step 3a: Istio Ambient Mesh"
 
   log_info "Upgrading istiod to ambient profile..."
+  # Remove webhook managed by pilot-discovery to avoid Helm server-side apply conflict
+  kubectl delete validatingwebhookconfiguration istio-validator-istio-system --ignore-not-found
   run_cmd helm upgrade --install istiod istiod \
     --repo "$ISTIO_REPO" --version "$ISTIO_VERSION" \
     -n istio-system --wait \
