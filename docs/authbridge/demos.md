@@ -31,7 +31,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 The agent responds with weather data. It made an outbound call to the weather MCP tool,
-but the agent code contains zero auth logic — AuthBridge exchanged tokens transparently.
+but the agent code contains zero auth logic — AuthBridge exchanged the inbound JWT Authorization header token for a different outbound JWT token transparently when invoking the weather MCP tool.
 
 **What you've seen:**
 - Inbound: your JWT was validated before reaching the agent
