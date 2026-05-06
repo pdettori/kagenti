@@ -18,7 +18,7 @@ orchestrator to tool.
   intercepts outbound requests and attaches audience-scoped credentials automatically
 - **Token exchange** — converts workload identity (SPIFFE JWT-SVID or K8s service account
   token) to obtain a short-lived, audience-specific OAuth tokens via token exchange (RFC 8693)
-- **Tool access control** — restricts which external services (MCP tools, APIs, LLMs)
+- **Tool access control** — restricts which external services (MCP tools, Other Agents, APIs, LLMs)
   each agent can reach, based on host allowlists and protocol-aware policies
 - **Inbound validation** — verifies JWT tokens on incoming requests, ensuring only
   authorized callers can invoke an agent
