@@ -14,7 +14,7 @@ orchestrator to tool.
 
 ## What AuthBridge Does
 
-- **Transparent credential injection** — agents never see or manage tokens; AuthBridge
+- **Transparent token injection** — agents never see or manage tokens used in outgoing calls; AuthBridge
   intercepts outbound requests and attaches audience-scoped credentials automatically
 - **Token exchange** — converts workload identity (SPIFFE JWT-SVID or K8s service account
   token) into short-lived, audience-specific OAuth tokens via RFC 8693
