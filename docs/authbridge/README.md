@@ -14,11 +14,12 @@ orchestrator to tool.
 
 ## What AuthBridge Does
 
-- **Transparent token injection** — agents never see or manage tokens used in outgoing calls; AuthBridge
-  intercepts outbound requests and attaches audience-scoped tokens automatically
-- **Token exchange** — converts workload identity (SPIFFE JWT-SVID or K8s service account
-  token) to obtain a short-lived, audience-specific OAuth tokens via token exchange (RFC 8693)
-- **Tool access control** — restricts which external services (MCP tools, Other Agents, APIs, LLMs)
+- **Transparent token injection** — agents never see or manage tokens used in outgoing calls;
+  AuthBridge intercepts outbound requests and attaches audience-scoped tokens automatically
+- **Token exchange** — as an example, AuthBridge may use the agent workload identity
+  (SPIFFE JWT-SVID) or the K8s service account token to obtain short-lived,
+  audience-specific OAuth tokens via token exchange (RFC 8693)
+- **Tool access control** — restricts which external services (MCP tools, other agents, APIs, LLMs)
   each agent can reach, based on host allowlists and protocol-aware policies
 - **Inbound validation** — verifies JWT tokens on incoming requests, ensuring only
   authorized callers can invoke an agent
@@ -37,47 +38,51 @@ orchestrator to tool.
 │  │   Agent     │ ───────────────── │  AuthBridge Proxy    │     │
 │  │ (any        │                   │                      │     │
 │  │  framework) │ ◄──── reverse ─── │  - JWT validation    │     │
-│  │             │       proxy       │  - Token exchange    │     │
+│  │             │       proxy       │  - Token injection   │     │
 │  └─────────────┘                   │  - Access control    │     │
 │                                    └──────────┬───────────┘     │
 └───────────────────────────────────────────────┼─────────────────┘
                                                 │
-                    ┌───────────────────────────┼──────────────────┐
-                    │                           │                   │
-                    ▼                           ▼                   ▼
-            ┌──────────────┐         ┌──────────────┐    ┌──────────────┐
-            │  Keycloak    │         │  MCP Tools   │    │  LLM APIs    │
-            │  (token      │         │  (weather,   │    │  (OpenAI,    │
-            │   exchange)  │         │   github...) │    │   Anthropic) │
-            └──────────────┘         └──────────────┘    └──────────────┘
+                    ┌──────────────┬─────────────┼──────────────────┐
+                    │              │             │                   │
+                    ▼              ▼             ▼                   ▼
+            ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+            │  Keycloak    │ │Other Agents  │ │  MCP Tools   │ │  LLM APIs    │
+            │  (token      │ │  (A2A,       │ │  (weather,   │ │  (OpenAI,    │
+            │   exchange)  │ │   delegation)│ │   github...) │ │   Anthropic) │
+            └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘
+                                      ...                  ...
 ```
 
 **Inbound flow:** A request arrives at the agent → AuthBridge validates the caller's
 JWT → if valid, forwards to the agent container.
 
-**Outbound flow:** The agent makes an HTTP call to a tool or LLM → AuthBridge intercepts
-via HTTP_PROXY → exchanges the agent's workload identity for an audience-scoped token →
-attaches the token and forwards the request.
+**Outbound flow:** The agent makes an HTTP call to a tool, other agent or LLM → AuthBridge
+intercepts via HTTP_PROXY → ensures agent is allowed to make the call → injects an
+audience-scoped token → forwards the request to the destination.
 
 ## For End Users
 
 When you interact with an agent, AuthBridge is working behind the scenes to protect you:
 
-- The agent can only access tools and data it's explicitly authorized for — it cannot
-  reach arbitrary services even if compromised or hallucinating
-- The calling user identity is carried through the delegation chain so access decisions may reflect
-  *your* permissions, not a shared service account
-- Every tool call the agent makes is logged and auditable
+- The agent can only access tools, agents and data it's explicitly authorized for — it
+  cannot reach arbitrary services even if compromised or hallucinating
+- The calling user identity is carried through the delegation chain so access decisions
+  may reflect the calling user permissions, as well as supporting a shared service
+  account when desired
+- Every tool call and agent call the agent makes is logged and auditable
 - The platform enforces these guarantees — the agent cannot bypass them
 
 Learn more: [Security Model](security-model.md)
 
 ## For Agent Developers
 
-You don't need to do anything. AuthBridge handles auth transparently:
+You only need to pass the received token as-is to any outbound call you make.
+AuthBridge verifies the inbound token before it reaches you and handles auth for
+your outbound calls:
 
 - No SDKs to import, no auth code to write
-- Your agent makes normal HTTP calls; adequante credentials are injected automatically
+- Your agent makes normal HTTP calls; adequate credentials are injected automatically
 - If a call is blocked, you get a clear 403 with a reason (not a cryptic TLS error)
 - Works with any framework (LangGraph, CrewAI, AG2, custom)
 

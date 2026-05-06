@@ -2,8 +2,8 @@
 
 ## Deployment Modes
 
-AuthBridge supports two deployment modes. The proxy-sidecar mode is the recommended
-default for most environments.
+AuthBridge supports deployment modes `envoy-sidecar`, `waypoint`, and `proxy-sidecar`.
+The proxy-sidecar mode is the recommended default for most environments.
 
 | | Proxy-Sidecar (default) | Envoy-Sidecar (advanced) |
 |---|---|---|
@@ -58,13 +58,13 @@ metadata:
 ```
 
 This mode requires privileged mode for the iptables init container and adds
-Envoy as a dependency. Use it only when you need protocol-level transparent
-interception.
+a sidecar running [Envoy](https://www.envoyproxy.io/docs/envoy/latest/) as a
+dependency. Use it only when you need protocol-level transparent interception.
 
 ## Configuration
 
 AuthBridge is configured via YAML with `${ENV_VAR}` expansion. The operator
-mounts the configuration from a ConfigMap such as "authbridge-config-weather-service".
+mounts the configuration from a ConfigMap such as `authbridge-config-weather-service`.
 
 ### Minimal Proxy-Sidecar Config
 
@@ -158,7 +158,7 @@ Default: `info`.
 
 ```bash
 # Enable debug logging for an agent's AuthBridge sidecar
-kubectl set env deployment/weather-agent -n team1 -c authbridge-proxy LOG_LEVEL=debug
+kubectl set env deployment/weather-service -n team1 -c envoy-proxy LOG_LEVEL=debug
 ```
 
 ### Runtime Log Toggle
@@ -166,10 +166,10 @@ kubectl set env deployment/weather-agent -n team1 -c authbridge-proxy LOG_LEVEL=
 Toggle between `info` and `debug` without restart by sending `SIGUSR1`:
 
 ```bash
-kubectl exec deploy/weather-agent -n team1 -c authbridge-proxy -- \
-  bash -c 'for f in /proc/[0-9]*/cmdline; do [ -r "$f" ] || continue; \
-  c=$(<"$f"); [[ "$c" == /usr/local/bin/authbridge* ]] && \
-  kill -USR1 "${f//[!0-9]/}" && break; done'
+kubectl exec deploy/weather-service -n team1 -c envoy-proxy -- \
+  sh -c 'for f in /proc/[0-9]*/cmdline; do [ -r "$f" ] || continue; \
+  c=$(cat "$f"); case "$c" in /usr/local/bin/authbridge*) \
+  kill -USR1 "${f%%/cmdline}"; break;; esac; done'
 ```
 
 ### What to Look For
@@ -187,10 +187,10 @@ kubectl exec deploy/weather-agent -n team1 -c authbridge-proxy -- \
 
 ### Token Exchange Fails (503 from outbound calls)
 
-1. Check Keycloak connectivity:
+1. Check Keycloak connectivity from inside the cluster:
    ```bash
-   kubectl exec deploy/weather-agent -n team1 -c authbridge-proxy -- \
-     curl -s http://keycloak.keycloak.svc:8080/realms/kagenti/.well-known/openid-configuration
+   kubectl exec deploy/weather-service -n team1 -c weather-service -- \
+     wget -qO- http://keycloak-service.keycloak.svc:8080/realms/kagenti/.well-known/openid-configuration
    ```
 2. Verify the agent's client is registered in Keycloak
 3. Check that the target audience matches a registered client
@@ -207,7 +207,7 @@ kubectl exec deploy/weather-agent -n team1 -c authbridge-proxy -- \
 
 1. Verify `HTTP_PROXY`/`HTTPS_PROXY` env vars are set in the agent container:
    ```bash
-   kubectl exec deploy/weather-agent -n team1 -c weather-agent -- env | grep -i proxy
+   kubectl exec deploy/weather-service -n team1 -c weather-service -- env | grep -i proxy
    ```
 2. Check that the destination host is in the routes configuration
 3. If using NetworkPolicy, verify the proxy sidecar is allowed egress

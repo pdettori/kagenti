@@ -11,8 +11,10 @@ then peels back layers to show what's happening underneath.
 
 Quick cluster setup:
 ```bash
-./.github/scripts/local-setup/kind-full-test.sh --skip-cluster-destroy
+scripts/kind/setup-kagenti.sh --with-istio --with-spire --with-ui --with-backend
 ```
+
+Then deploy the weather agent example (see [Deployment Guide](deployment-guide.md) for details).
 
 ## Layer 1: See It Work
 
@@ -22,20 +24,40 @@ Deploy the weather agent and make a request:
 
 ```bash
 # Get a user token from Keycloak
-export TOKEN=$(python kagenti/examples/identity/get_token.py)
+export KAGENTI_TOKEN=$(curl -s -X POST \
+  http://keycloak.localtest.me:8080/realms/kagenti/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=kagenti&username=admin&password=${KAGENTI_UI_PW}" \
+  | jq -r '.access_token')
 
-# Call the weather agent — AuthBridge handles everything
-curl -H "Authorization: Bearer $TOKEN" \
-  http://weather-agent.team1.svc:8000/run \
-  -d '{"city": "New York"}'
+# (Optional) Inspect the token to see audience, subject, and other OIDC claims
+echo $KAGENTI_TOKEN | cut -d'.' -f2 | base64 -d | jq .
+
+# Call the weather agent from an in-cluster test pod — AuthBridge handles everything
+kubectl exec -n team1 deploy/test-client -- \
+  curl -s -H "Authorization: Bearer $KAGENTI_TOKEN" \
+  http://weather-service.team1.svc:8000/run \
+  -d '{"query": "What is the weather in New York?"}'
 ```
 
 The agent responds with weather data. It made an outbound call to the weather MCP tool,
-but the agent code contains zero auth logic — AuthBridge exchanged the inbound JWT Authorization header token for a different outbound JWT token transparently when invoking the weather MCP tool.
+but the agent code contains zero auth logic — AuthBridge exchanged the inbound JWT
+for a different outbound JWT transparently when invoking the weather MCP tool.
+
+Verify enforcement — try with an invalid token:
+
+```bash
+# Use a bogus token value to prove enforcement
+BAD_TOKEN="not-a-valid-jwt"
+kubectl exec -n team1 deploy/test-client -- \
+  curl -s -H "Authorization: Bearer ${BAD_TOKEN}" \
+  http://weather-service.team1.svc:8000/run \
+  -d '{"query": "What is the weather in New York?"}'
+# Returns: 401 Unauthorized
+```
 
 **What you've seen:**
-- Inbound: your JWT was validated before reaching the agent
-- Outbound: the agent's call to the weather API received credentials automatically
+- Inbound: your JWT was validated before reaching the agent (invalid tokens get 401)
+- Outbound: the agent's call to the weather MCP tool received credentials automatically
 - The agent code is a plain HTTP client — no SDKs, no secrets
 
 **Full demo instructions:**
@@ -48,60 +70,62 @@ but the agent code contains zero auth logic — AuthBridge exchanged the inbound
 Enable debug logging on the AuthBridge sidecar:
 
 ```bash
-kubectl set env deployment/weather-agent -n team1 -c authbridge-proxy LOG_LEVEL=debug
+kubectl set env deployment/weather-service -n team1 -c envoy-proxy LOG_LEVEL=debug
 ```
 
 Make the same request again and watch the logs:
 
 ```bash
 # In one terminal, stream AuthBridge logs
-kubectl logs -f deploy/weather-agent -n team1 -c authbridge-proxy
+kubectl logs -f deploy/weather-service -n team1 -c envoy-proxy
 
 # In another terminal, send the request
-curl -H "Authorization: Bearer $TOKEN" \
-  http://weather-agent.team1.svc:8000/run \
-  -d '{"city": "New York"}'
+kubectl exec -n team1 deploy/test-client -- \
+  curl -s -H "Authorization: Bearer $KAGENTI_TOKEN" \
+  http://weather-service.team1.svc:8000/run \
+  -d '{"query": "What is the weather in New York?"}'
 ```
 
 You'll see:
 ```
-INFO  jwt-validation: token valid, subject=user1, issuer=http://keycloak:8080/realms/kagenti
-INFO  token-exchange: success, audience=weather-api, expires_in=60s
-DEBUG token-exchange: subject_token=spiffe://kagenti.io/ns/team1/sa/weather-agent
-DEBUG forward-proxy: injecting Authorization header for weather-api.example.com
+INFO  jwt-validation: token valid, subject=admin, issuer=http://keycloak-service.keycloak.svc:8080/realms/kagenti
+INFO  token-exchange: success, audience=weather-tool, expires_in=60s
+DEBUG token-exchange: subject_token=spiffe://kagenti.io/ns/team1/sa/weather-service
+DEBUG forward-proxy: injecting Authorization header for weather-tool.team1.svc
 ```
 
 **What you've learned:**
-- The inbound JWT identifies the caller (user1)
+- The inbound JWT identifies the caller (admin, or whichever user obtained the token)
 - The agent's SPIFFE identity is used as the subject token for exchange
-- The resulting token is audience-scoped (weather-api only) and short-lived (60s)
+- The resulting token is audience-scoped (weather-tool only) and short-lived (60s)
 - The proxy injects the Authorization header — the agent never sees it
 
 ## Layer 3: Access Denied
 
 **Goal:** See what happens when an agent tries to reach an unauthorized service.
 
-Modify the weather agent's route configuration to remove access to the weather API:
+Modify the weather agent's route configuration to remove access to the weather tool:
 
 ```bash
-# Edit the AuthBridge ConfigMap to remove the weather-api route
-kubectl edit configmap authbridge-config -n team1
-# Remove the route rule for weather-api.example.com
+# Edit the AuthBridge ConfigMap to remove the weather-tool route
+kubectl edit configmap authbridge-config-weather-service -n team1
+# Remove the route rule for weather-tool.team1.svc
 ```
 
 Restart the agent pod and try the same request:
 
 ```bash
-kubectl rollout restart deployment/weather-agent -n team1
+kubectl rollout restart deployment/weather-service -n team1
 
-curl -H "Authorization: Bearer $TOKEN" \
-  http://weather-agent.team1.svc:8000/run \
-  -d '{"city": "New York"}'
+kubectl exec -n team1 deploy/test-client -- \
+  curl -s -H "Authorization: Bearer $KAGENTI_TOKEN" \
+  http://weather-service.team1.svc:8000/run \
+  -d '{"query": "What is the weather in New York?"}'
 ```
 
-The agent receives a 403 from AuthBridge when it tries to call the weather API:
+The agent receives a 403 from AuthBridge when it tries to call the weather tool:
 ```
-WARN  proxy: blocked host, destination=weather-api.example.com, reason=no matching route
+WARN  proxy: blocked host, destination=weather-tool.team1.svc, reason=no matching route
 ```
 
 The agent returns an error to the user — it cannot access the tool.
@@ -124,22 +148,26 @@ receives a user request, then delegates to the worker agent via A2A protocol.
 # See full instructions at the link below
 ```
 
-Watch the delegation chain in logs:
+Drive traffic to the orchestrator agent (e.g., via the Kagenti UI at
+`http://kagenti-ui.localtest.me:8080` or via curl) and watch the delegation chain
+in logs:
 
 ```
 # Orchestrator receives user request
-INFO  jwt-validation: token valid, subject=user1
+INFO  jwt-validation: token valid, subject=admin
 INFO  token-exchange: success, audience=worker-agent, subject=orchestrator-agent
 
 # Worker receives delegated request
-INFO  jwt-validation: token valid, subject=orchestrator-agent, act.sub=user1
+INFO  jwt-validation: token valid, subject=orchestrator-agent, act.sub=admin
 INFO  token-exchange: success, audience=github-api, subject=worker-agent
 ```
 
 **What you've learned:**
-- The user's identity is preserved through the chain (act.sub=user1)
+- The user's identity is preserved through the chain via the `act` (actor) claim —
+  `act.sub=admin` means the orchestrator is acting on behalf of the original user
+  (per [RFC 8693 Section 4.1](https://tools.ietf.org/html/rfc8693#section-4.1))
 - Each hop exchanges tokens with the appropriate audience
-- The worker knows it's acting on behalf of user1 via the orchestrator
+- The worker knows it's acting on behalf of the original user via the orchestrator
 - Access decisions at each hop reflect the original user's permissions
 
 **Full demo instructions:**
@@ -154,7 +182,7 @@ understand which tool is being called:
 
 ```bash
 # Enable the MCP parser in the pipeline config
-kubectl edit configmap authbridge-config -n team1
+kubectl edit configmap authbridge-config-weather-service -n team1
 # Add to inbound plugins: mcp-parser
 ```
 
@@ -183,3 +211,6 @@ aligns with the user's original intent before allowing it.
 
 - [Hands-on with MCP Gateway](https://medium.com/kagenti-the-agentic-platform/hands-on-with-mcp-gateway-from-local-setup-to-agent-integration-in-kagenti-f9bd3b7cc334)
 - [Introducing MCP Gateway in Kagenti](https://medium.com/kagenti-the-agentic-platform/introducing-mcp-gateway-in-kagenti-a-unified-front-door-for-your-mcp-servers-28db5b6ef62d)
+- [OAuth 2.0 Token Exchange (RFC 8693)](https://tools.ietf.org/html/rfc8693) — the standard AuthBridge uses for credential delegation
+- [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html) — if you're new to JWTs and OIDC
+- [jwt.io](https://jwt.io/) — online tool to decode and inspect JWT tokens
