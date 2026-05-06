@@ -65,7 +65,7 @@ When you interact with an agent, AuthBridge is working behind the scenes to prot
 
 - The agent can only access tools and data it's explicitly authorized for — it cannot
   reach arbitrary services even if compromised or hallucinating
-- Your identity is carried through the delegation chain so access decisions reflect
+- The calling user identity is carried through the delegation chain so access decisions may reflect
   *your* permissions, not a shared service account
 - Every tool call the agent makes is logged and auditable
 - The platform enforces these guarantees — the agent cannot bypass them
