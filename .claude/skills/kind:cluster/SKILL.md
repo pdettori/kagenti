@@ -124,7 +124,7 @@ Then run the suggested command and visit:
 
 ## Cluster Configuration
 
-Default Kind config: `deployments/kind/kind-config-registry.yaml`
+Default Kind config: `scripts/kind/kind-config-registry.yaml`
 
 Custom config:
 ```bash

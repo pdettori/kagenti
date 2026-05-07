@@ -26,6 +26,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ENV="${1:-dev}"
             shift
+            log_warn "--env is deprecated and ignored; setup-kagenti.sh does not use it"
             ;;
         *)
             EXTRA_ARGS+=("$1")
