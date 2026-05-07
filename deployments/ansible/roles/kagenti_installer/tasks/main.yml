@@ -1812,9 +1812,25 @@
     # flag. Required when authbridge-config has SPIRE_ENABLED=true: without it, the
     # ClientRegistrationReconciler loops with "cannot resolve Keycloak client id yet"
     # and no agent gets registered in Keycloak.
-    - name: Add kagenti-operator spireTrustDomain override
+    #
+    # The operator sub-chart gates --spire-trust-domain on signatureVerification.enabled
+    # (kagenti-operator-chart manager.yaml:37-47), so we cannot wire this through
+    # signatureVerification.spireTrustDomain alone. Instead we replace the full args
+    # list so the flag is appended verbatim. Keep in sync with
+    # charts/kagenti/values.yaml kagenti-operator-chart.controllerManager.container.args.
+    - name: Add kagenti-operator args override with --spire-trust-domain
       set_fact:
-        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'kagenti-operator-chart': {'signatureVerification': {'spireTrustDomain': ocp_trust_domain}}}, recursive=True) }}"
+        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'kagenti-operator-chart': {'controllerManager': {'container': {'args': [
+          '--leader-elect',
+          '--metrics-bind-address=:8443',
+          '--health-probe-bind-address=:8081',
+          '--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs',
+          '--config-path=/etc/kagenti/config.yaml',
+          '--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml',
+          '--enable-client-registration=false',
+          '--enable-operator-client-registration=true',
+          '--spire-trust-domain=' + ocp_trust_domain
+        ]}}}}, recursive=True) }}"
       when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
 
     # Discover Keycloak public URL from OpenShift Route.

@@ -242,6 +242,13 @@ kagenti-operator-chart:
       - "--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml"
       - "--enable-client-registration=false"
       - "--enable-operator-client-registration=true"
+      # --spire-trust-domain is required by the ClientRegistrationReconciler when
+      # authbridge-config has SPIRE_ENABLED=true. The operator sub-chart gates this
+      # flag on signatureVerification.enabled, so we inline it in args instead.
+      # Kind default: localtest.me (matches kagenti-deps spire.trustDomain).
+      # OpenShift: the ansible installer replaces this full args list with the
+      # detected ocp_trust_domain value.
+      - "--spire-trust-domain=localtest.me"
       resources:
         limits:
           cpu: 150m
@@ -249,13 +256,6 @@ kagenti-operator-chart:
         requests:
           cpu: 50m
           memory: 128Mi
-  # SPIRE trust domain for the operator's --spire-trust-domain flag. Must match
-  # the trust domain SPIRE is configured with; otherwise the ClientRegistrationReconciler
-  # cannot resolve SPIFFE client IDs when authbridge-config has SPIRE_ENABLED=true.
-  # Kind default matches kagenti-deps spire.trustDomain (localtest.me); OpenShift
-  # installs override this via the ansible installer's detected ocp_trust_domain.
-  signatureVerification:
-    spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
   defaults:
     images:
