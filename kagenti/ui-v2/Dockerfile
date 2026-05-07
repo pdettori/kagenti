@@ -10,8 +10,8 @@ WORKDIR /app
 COPY ui-v2/package.json ui-v2/package-lock.json ./
 
 # Install dependencies (locked via package-lock.json)
-# hadolint ignore=DL3016
 # Rollup needs the explicit glibc binary in slim/Debian (not auto-resolved like in alpine)
+# hadolint ignore=DL3016
 RUN npm ci --legacy-peer-deps && \
     npm install @rollup/rollup-linux-x64-gnu --save-optional
 
