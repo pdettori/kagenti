@@ -2008,32 +2008,43 @@ def _build_authbridge_runtime_yaml(
     merging in mode and listener addresses at injection time. The Helm chart
     creates an equivalent ConfigMap for pre-declared namespaces
     (see charts/kagenti/templates/agent-namespaces.yaml).
+
+    Emits the per-plugin schema: every plugin-specific setting lives under
+    its own `config:` block inside pipeline.inbound.plugins[] or
+    pipeline.outbound.plugins[]. Plugin-level defaults (audience_file,
+    bypass_paths, identity file paths) are intentionally omitted — the
+    authbridge binary applies them from its own convention layer
+    (see authbridge/authlib/plugins/CONVENTIONS.md). Leaving them out
+    here keeps the backend-generated ConfigMap minimal and the schema
+    source-of-truth in one place.
     """
     identity_type = "spiffe" if spire_enabled else "client-secret"
     config = {
         "mode": "envoy-sidecar",
-        "inbound": {"issuer": issuer},
-        "outbound": {
-            "keycloak_url": keycloak_url,
-            "keycloak_realm": realm,
-            "default_policy": "passthrough",
-        },
-        "identity": {
-            "type": identity_type,
-            "client_id_file": "/shared/client-id.txt",
-            "client_secret_file": "/shared/client-secret.txt",
-        },
-        "bypass": {
-            "inbound_paths": [
-                "/.well-known/*",
-                "/healthz",
-                "/readyz",
-                "/livez",
-            ]
+        "pipeline": {
+            "inbound": {
+                "plugins": [
+                    {
+                        "name": "jwt-validation",
+                        "config": {"issuer": issuer},
+                    }
+                ]
+            },
+            "outbound": {
+                "plugins": [
+                    {
+                        "name": "token-exchange",
+                        "config": {
+                            "keycloak_url": keycloak_url,
+                            "keycloak_realm": realm,
+                            "default_policy": "passthrough",
+                            "identity": {"type": identity_type},
+                        },
+                    }
+                ]
+            },
         },
     }
-    if spire_enabled:
-        config["identity"]["jwt_svid_path"] = "/opt/jwt_svid.token"
 
     return yaml.dump(config, default_flow_style=False)
 
