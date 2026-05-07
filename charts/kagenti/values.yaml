@@ -232,7 +232,7 @@ kagenti-operator-chart:
     container:
       cmd: /manager
       image:
-        tag: 0.2.0-alpha.32
+        tag: 0.2.0-alpha.34
       args:
       - "--leader-elect"
       - "--metrics-bind-address=:8443"
@@ -240,7 +240,8 @@ kagenti-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       - "--config-path=/etc/kagenti/config.yaml"
       - "--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml"
-      - "--enable-client-registration=true"
+      - "--enable-client-registration=false"
+      - "--enable-operator-client-registration=true"
       resources:
         limits:
           cpu: 150m
@@ -248,6 +249,14 @@ kagenti-operator-chart:
         requests:
           cpu: 50m
           memory: 128Mi
+  # SPIRE trust domain for the ClientRegistrationReconciler. Required when
+  # authbridge-config has SPIRE_ENABLED=true: the reconciler builds SPIFFE-shaped
+  # Keycloak client IDs (spiffe://<trust-domain>/ns/<ns>/sa/<sa>).
+  # Kind default: localtest.me (matches kagenti-deps spire.trustDomain).
+  # OpenShift: the ansible installer overrides this with the detected
+  # ocp_trust_domain.
+  signatureVerification:
+    spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
   defaults:
     images:
