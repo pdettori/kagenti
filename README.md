@@ -128,7 +128,7 @@ cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.y
 # Edit deployments/envs/.secret_values.yaml with your values
 
 # Deploy to Kind cluster
-scripts/kind/setup-kagenti.sh
+scripts/kind/setup-kagenti.sh --with-all
 ```
 
 > **Tip:** To find the latest stable version from the command line:
