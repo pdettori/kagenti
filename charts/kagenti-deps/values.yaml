@@ -111,7 +111,7 @@ spiffeIdp:
   # - Standalone Helm users must create job manually (see docs)
   image:
     repository: ghcr.io/kagenti/kagenti/spiffe-idp-setup
-    tag: v0.6.0-alpha.6
+    tag: v0.6.0-rc.1
     pullPolicy: IfNotPresent
 
 
