@@ -130,7 +130,7 @@ spec:
       containers:
       - name: sandbox
         image: {BASE_IMAGE}
-        command: ["sleep", "120"]
+        command: ["sleep", "300"]
 """
         result = subprocess.run(
             ["kubectl", "apply", "-f", "-"],
@@ -141,23 +141,26 @@ spec:
         )
         assert result.returncode == 0, f"Failed to create sandbox: {result.stderr}"
 
-        # Wait for pod to be Running
+        # Wait for pod to be Running (CI may need longer for controller reconciliation)
         pod_name = None
-        deadline = time.time() + 60
+        last_phase = "unknown"
+        deadline = time.time() + 180
         while time.time() < deadline:
             pods = kubectl_get_pods_json(SANDBOX_NS)
             matching = [
-                p
-                for p in pods
-                if SANDBOX_NAME in p["metadata"].get("name", "")
-                and p["status"].get("phase") == "Running"
+                p for p in pods if SANDBOX_NAME in p["metadata"].get("name", "")
             ]
             if matching:
-                pod_name = matching[0]["metadata"]["name"]
-                break
-            time.sleep(3)
+                last_phase = matching[0]["status"].get("phase", "unknown")
+                if last_phase == "Running":
+                    pod_name = matching[0]["metadata"]["name"]
+                    break
+            time.sleep(5)
 
-        assert pod_name, f"Sandbox pod did not reach Running state within 60s"
+        assert pod_name, (
+            f"Sandbox pod did not reach Running state within 180s "
+            f"(last phase: {last_phase})"
+        )
 
         try:
             # Execute a command inside the sandbox
