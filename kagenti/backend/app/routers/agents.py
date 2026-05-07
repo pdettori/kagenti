@@ -2019,6 +2019,11 @@ def _build_authbridge_runtime_yaml(
     source-of-truth in one place.
     """
     identity_type = "spiffe" if spire_enabled else "client-secret"
+    # jwt-validation receives keycloak_url + keycloak_realm so it can
+    # derive jwks_url from the INTERNAL keycloak URL rather than the
+    # public `issuer`. Required for split-horizon deployments where
+    # `issuer` isn't reachable from inside the pod. See
+    # kagenti-extensions#383.
     config = {
         "mode": "envoy-sidecar",
         "pipeline": {
@@ -2026,7 +2031,11 @@ def _build_authbridge_runtime_yaml(
                 "plugins": [
                     {
                         "name": "jwt-validation",
-                        "config": {"issuer": issuer},
+                        "config": {
+                            "issuer": issuer,
+                            "keycloak_url": keycloak_url,
+                            "keycloak_realm": realm,
+                        },
                     }
                 ]
             },

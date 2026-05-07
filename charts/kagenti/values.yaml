@@ -232,7 +232,7 @@ kagenti-operator-chart:
     container:
       cmd: /manager
       image:
-        tag: 0.2.0-alpha.35
+        tag: 0.2.0-alpha.36
       args:
       - "--leader-elect"
       - "--metrics-bind-address=:8443"
@@ -240,8 +240,11 @@ kagenti-operator-chart:
       - "--webhook-cert-path=/tmp/k8s-webhook-server/serving-certs"
       - "--config-path=/etc/kagenti/config.yaml"
       - "--feature-gates-path=/etc/kagenti/feature-gates/feature-gates.yaml"
-      - "--enable-client-registration=false"
-      - "--enable-operator-client-registration=true"
+      # operator alpha.36 simplified the client-registration flags:
+      # --enable-operator-client-registration was removed, and this flag
+      # now controls operator-based registration directly (legacy sidecar
+      # path is gone). See kagenti-operator commit f5df832.
+      - "--enable-client-registration=true"
       resources:
         limits:
           cpu: 150m
@@ -258,18 +261,21 @@ kagenti-operator-chart:
   signatureVerification:
     spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
-  # v0.5.0-alpha.13 is the first release that requires per-plugin
+  # v0.5.0-alpha.13 was the first release requiring per-plugin
   # authbridge config (schema cutover — old top-level inbound/
-  # outbound/identity/bypass/routes blocks are rejected). Paired
-  # with kagenti-operator v0.2.0-alpha.35 above; both must bump
-  # together.
+  # outbound/identity/bypass/routes blocks are rejected).
+  # v0.5.0-alpha.14 adds keycloak_url + keycloak_realm to
+  # jwt-validation so jwks_url derives from the internal URL
+  # (extensions#383); paired with operator v0.2.0-alpha.36 whose
+  # synthesizePipeline emits those fields (operator#336). Both
+  # pins must advance together.
   defaults:
     images:
-      envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-alpha.13
-      authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-alpha.13
-      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-alpha.13
-      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-alpha.13
-      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.5.0-alpha.13
+      envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-alpha.14
+      authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-alpha.14
+      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-alpha.14
+      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-alpha.14
+      clientRegistration: ghcr.io/kagenti/kagenti-extensions/client-registration:v0.5.0-alpha.14
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration

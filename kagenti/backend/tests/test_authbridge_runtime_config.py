@@ -39,6 +39,13 @@ def test_build_authbridge_runtime_yaml_client_secret():
 
     jwt = _plugin_config(cfg, "inbound", "jwt-validation")
     assert jwt["issuer"] == "http://keycloak.example.com/realms/kagenti"
+    # keycloak_url + keycloak_realm let jwt-validation derive jwks_url
+    # from the INTERNAL keycloak URL (see kagenti-extensions#383).
+    # Pinning the full jwks_url was the pre-plugin-fix workaround; the
+    # two hints are the supported contract now.
+    assert jwt["keycloak_url"] == "http://keycloak:8080"
+    assert jwt["keycloak_realm"] == "kagenti"
+    assert "jwks_url" not in jwt
 
     tok = _plugin_config(cfg, "outbound", "token-exchange")
     assert tok["keycloak_url"] == "http://keycloak:8080"

@@ -49,7 +49,18 @@ data:
         plugins:
           - name: jwt-validation
             config:
+              # `issuer` carries the PUBLIC Keycloak URL because that is what
+              # Keycloak stamps into the `iss` claim of issued tokens (must
+              # match bit-for-bit for validation to pass).
               issuer: "{{ .Values.keycloak.publicUrl }}/realms/{{ .Values.keycloak.realm }}"
+              # `keycloak_url` + `keycloak_realm` let jwt-validation derive
+              # `jwks_url` from the INTERNAL Keycloak URL — the sidecar
+              # fetches JWKS from inside the cluster, and the public
+              # hostname in `issuer` isn't reachable from inside the pod.
+              # Mirrors the pair already passed to token-exchange below.
+              # See kagenti-extensions#383.
+              keycloak_url: "http://keycloak-service.{{ .Values.keycloak.namespace }}.svc:8080"
+              keycloak_realm: {{ .Values.keycloak.realm | quote }}
       outbound:
         plugins:
           - name: token-exchange
