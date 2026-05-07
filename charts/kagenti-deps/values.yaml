@@ -107,7 +107,7 @@ keycloak:
 spiffeIdp:
   # SPIFFE IdP setup job configuration
   # NOTE: Job is NOT included in Helm chart to avoid race conditions
-  # - Ansible installer creates job automatically after patching SPIRE ConfigMap
+  # - Installer creates job automatically after patching SPIRE ConfigMap
   # - Standalone Helm users must create job manually (see docs)
   image:
     repository: ghcr.io/kagenti/kagenti/spiffe-idp-setup

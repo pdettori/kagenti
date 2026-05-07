@@ -164,7 +164,7 @@ jobs:
       - name: Free up disk space
         run: bash .github/scripts/common/05-free-disk-space.sh
 
-      - name: Setup Python and Ansible dependencies
+      - name: Setup dependencies
         run: bash .github/scripts/common/10-setup-dependencies.sh
 
       - name: Install Python project dependencies

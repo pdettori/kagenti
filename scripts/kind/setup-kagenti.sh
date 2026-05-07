@@ -32,7 +32,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
 CLUSTER_NAME="${CLUSTER_NAME:-kagenti}"
-KIND_CONFIG="${KIND_CONFIG:-$REPO_ROOT/deployments/ansible/kind/kind-config-registry.yaml}"
+KIND_CONFIG="${KIND_CONFIG:-$REPO_ROOT/scripts/kind/kind-config-registry.yaml}"
 DOMAIN="localtest.me"
 
 # Component flags (core is always true)
@@ -54,7 +54,7 @@ DRY_RUN=false
 SECRETS_FILE_ARG=""
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-docker}"
 
-# Versions — keep in sync with deployments/ansible/default_values.yaml
+# Versions
 CERT_MANAGER_VERSION="v1.17.2"
 ISTIO_VERSION="1.28.0"
 SPIRE_CRD_VERSION="0.5.0"
@@ -359,6 +359,8 @@ if $WITH_ISTIO; then
   log_info "Step 3a: Istio Ambient Mesh"
 
   log_info "Upgrading istiod to ambient profile..."
+  # Remove webhook managed by pilot-discovery to avoid Helm server-side apply conflict
+  kubectl delete validatingwebhookconfiguration istio-validator-istio-system --ignore-not-found
   run_cmd helm upgrade --install istiod istiod \
     --repo "$ISTIO_REPO" --version "$ISTIO_VERSION" \
     -n istio-system --wait \
@@ -1086,6 +1088,8 @@ fi
 KAGENTI_FLAGS=(
   --set "openshift=false"
   --set "domain=${DOMAIN}"
+  --set "keycloak.publicUrl=http://keycloak.${DOMAIN}:8080"
+  --set "mlflow.url=http://mlflow.${DOMAIN}:8080"
   --set "components.agentNamespaces.enabled=true"
   --set "components.agentOperator.enabled=true"
   --set "components.ui.enabled=${WITH_BACKEND}"
@@ -1267,6 +1271,9 @@ if $WITH_UI; then
     echo "    Kagenti UI login:       (pending — run show-services.sh once platform is ready)"
   fi
 fi
+echo ""
+echo "  For full service URLs and credentials, run:"
+echo "    .github/scripts/local-setup/show-services.sh"
 echo ""
 
 ELAPSED=$(( SECONDS - START_SECONDS ))
