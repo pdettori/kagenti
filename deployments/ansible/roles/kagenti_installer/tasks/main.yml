@@ -1808,6 +1808,15 @@
         kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'agentOAuthSecret': {'spiffePrefix': 'spiffe://' + ocp_trust_domain + '/sa'}}, recursive=True) }}"
       when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
 
+    # Plumb the detected trust domain into the kagenti-operator --spire-trust-domain
+    # flag. Required when authbridge-config has SPIRE_ENABLED=true: without it, the
+    # ClientRegistrationReconciler loops with "cannot resolve Keycloak client id yet"
+    # and no agent gets registered in Keycloak.
+    - name: Add kagenti-operator spireTrustDomain override
+      set_fact:
+        kagenti_openshift_overrides: "{{ kagenti_openshift_overrides | combine({'kagenti-operator-chart': {'signatureVerification': {'spireTrustDomain': ocp_trust_domain}}}, recursive=True) }}"
+      when: ocp_trust_domain is defined and ocp_trust_domain | trim | length > 0
+
     # Discover Keycloak public URL from OpenShift Route.
     # The authbridge-unified sidecar fetches JWKS at startup and validates JWT
     # issuer claims, so keycloak.publicUrl must be the externally-reachable URL

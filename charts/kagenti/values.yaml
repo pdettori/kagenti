@@ -249,6 +249,13 @@ kagenti-operator-chart:
         requests:
           cpu: 50m
           memory: 128Mi
+  # SPIRE trust domain for the operator's --spire-trust-domain flag. Must match
+  # the trust domain SPIRE is configured with; otherwise the ClientRegistrationReconciler
+  # cannot resolve SPIFFE client IDs when authbridge-config has SPIRE_ENABLED=true.
+  # Kind default matches kagenti-deps spire.trustDomain (localtest.me); OpenShift
+  # installs override this via the ansible installer's detected ocp_trust_domain.
+  signatureVerification:
+    spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
   defaults:
     images:
