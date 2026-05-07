@@ -67,6 +67,38 @@ Per-model: `llama-scout-17b` + `deepseek-r1` (both 100% via LiteMaaS).
 | Tenant isolation (credentials) | — | P |
 | Audit logging | — | P (Claude Code, OpenCode) |
 
+**Tier 5: Backend API (via kagenti-backend proxy)**
+
+| Capability | Claude SDK | ADK |
+|---|:---:|:---:|
+| Health check | — | — |
+| Agent card proxy | — | — |
+| Send proxy | — | — |
+| Stream proxy | — | — |
+| Multiturn proxy | — | — |
+| Agent list | — | — |
+| Error handling | — | — |
+| Concurrent proxy | — | — |
+
+Requires `OPENSHELL_BACKEND_AVAILABLE=true`. Tests go through
+`kagenti-backend` A2A proxy instead of direct port-forward.
+
+**Tier 6: ACP Protocol (WebSocket)**
+
+| Capability | Claude SDK | ADK |
+|---|:---:|:---:|
+| Initialize | — | — |
+| Session new/close | — | — |
+| Prompt relay | — | — |
+| Context preserved | — | — |
+| Session list | — | — |
+| Session resume | — | — |
+| Permission gate | — | — |
+| Error handling | — | — |
+
+Requires `KAGENTI_FEATURE_FLAG_ACP=true` on the backend.
+Tests the ACP WebSocket endpoint with JSON-RPC 2.0 lifecycle.
+
 ## Skip Reasons
 
 | Reason | Count | Agents | Resolution |
@@ -98,6 +130,8 @@ Per-model: `llama-scout-17b` + `deepseek-r1` (both 100% via LiteMaaS).
 | `test_T1_7_sandbox_connectivity.py` | 1 | 5 | Gateway health, endpoints, port-forward, kubectl exec |
 | `test_T4_1_hitl_network.py` | 4 | 3 | HITL network egress |
 | `test_T4_2_tenant_isolation.py` | 4 | 15 | JWT audience, RBAC scoping, credential isolation |
+| `test_T5_1_backend_api.py` | 5 | ~16 | Backend A2A proxy |
+| `test_T6_1_acp_protocol.py` | 6 | ~15 | ACP WebSocket protocol |
 
 ## Running Tests
 
