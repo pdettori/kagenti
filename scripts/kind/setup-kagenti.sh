@@ -1088,6 +1088,8 @@ fi
 KAGENTI_FLAGS=(
   --set "openshift=false"
   --set "domain=${DOMAIN}"
+  --set "keycloak.publicUrl=http://keycloak.${DOMAIN}:8080"
+  --set "mlflow.url=http://mlflow.${DOMAIN}:8080"
   --set "components.agentNamespaces.enabled=true"
   --set "components.agentOperator.enabled=true"
   --set "components.ui.enabled=${WITH_BACKEND}"
