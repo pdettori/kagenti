@@ -20,9 +20,7 @@ def _plugin_config(cfg, direction, name):
     for entry in plugins:
         if entry["name"] == name:
             return entry["config"]
-    raise AssertionError(
-        f"plugin {name!r} not found under pipeline.{direction}.plugins"
-    )
+    raise AssertionError(f"plugin {name!r} not found under pipeline.{direction}.plugins")
 
 
 def test_build_authbridge_runtime_yaml_client_secret():
