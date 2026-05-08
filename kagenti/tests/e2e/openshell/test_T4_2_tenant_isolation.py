@@ -375,7 +375,7 @@ class TestTenantIsolationAuth:
             else [bob_payload.get("aud", "")]
         )
 
-        tenant_overlap = alice_aud & bob_aud - {"account"}
+        tenant_overlap = (alice_aud & bob_aud) - {"account"}
         assert not tenant_overlap, (
             f"Tenant audiences overlap: {tenant_overlap}. "
             f"Alice: {alice_aud}, Bob: {bob_aud}"
