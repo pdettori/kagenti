@@ -25,7 +25,8 @@ Examined documentation structures from 5 CNCF graduated/incubating projects: Kub
 | Top-level governance files | All projects | README, CONTRIBUTING, CHANGELOG, SECURITY, CODE_OF_CONDUCT, GOVERNANCE |
 | OWNERS/CODEOWNERS per directory | Kubernetes | Add `CODEOWNERS` entries for doc paths |
 | Document status markers | OpenTelemetry | Add status (Draft/Stable/Deprecated) to design docs |
-| Design proposals in dedicated folder | Argo CD | Keep `docs/proposals/` for RFCs, archive completed ones |
+| Architecture Decision Records | Argo CD, Dapr | Preserve *why* behind decisions; delete implementation details |
+| Active proposals separate from decisions | Argo CD | `docs/proposals/` for in-flight RFCs, `docs/adr/` for decided |
 | Runbooks separate from user docs | Dapr | `docs/maintainers/` for operational procedures |
 
 ---
@@ -38,9 +39,9 @@ Examined documentation structures from 5 CNCF graduated/incubating projects: Kub
 | `TODO_CUSTOM_VISUALIZATIONS.md` | Internal passover document. Should be a GitHub issue. |
 | `docs/retrospectives/SKILL_RETROSPECTIVE_2026-04-14.md` | Internal session retrospective. No value to external users or contributors. |
 | `docs/agentic-runtime/questions.md` | Internal investigation notes with "OPEN"/"BLOCKED" markers. Not documentation. |
-| `docs/plans/migrate-agent-crd-to-workloads.md` | All phases completed. Historical only. |
-| `docs/plans/migrate-tool-mcpserver-to-workloads.md` | All 6 phases completed. Historical only. |
-| `docs/plans/shipwright-refactoring-plan.md` | All 3 phases completed. Historical only. |
+| `docs/plans/migrate-agent-crd-to-workloads.md` | All phases completed. No longer relevant. |
+| `docs/plans/migrate-tool-mcpserver-to-workloads.md` | All 6 phases completed. No longer relevant. |
+| `docs/plans/shipwright-refactoring-plan.md` | All 3 phases completed. No longer relevant. |
 | `docs/plans/2026-02-15-session-metadata-analytics-design.md` | Draft status, potentially abandoned. |
 | `docs/plans/2026-02-15-session-metadata-analytics-impl.md` | Implementation plan for abandoned design above. |
 | `docs/2025-10.Kagenti-Identity.pdf` | Binary PDF in docs folder. Should be linked externally or converted to markdown. |
@@ -94,8 +95,9 @@ kagenti/
 │   ├── README.md                      # Doc index with navigation
 │   │
 │   ├── getting-started/
-│   │   ├── installation.md            # Install on Kind + OpenShift
+│   │   ├── why-kagenti.md             # Value proposition + key concepts (NEW)
 │   │   ├── quickstart.md              # Zero-to-running in 15 min (NEW)
+│   │   ├── installation.md            # Install on Kind + OpenShift
 │   │   ├── configuration.md           # Essential config for first deploy (NEW)
 │   │   └── troubleshooting.md         # Common issues and fixes
 │   │
@@ -118,8 +120,8 @@ kagenti/
 │   │
 │   ├── operator-guide/
 │   │   ├── openshift-install.md       # OpenShift-specific deployment
-│   │   ├── helm-values-reference.md   # Complete Helm values reference (NEW)
-│   │   ├── config-reference.md        # Env vars + backend config (NEW)
+│   │   ├── helm-values-reference.md   # Helm values ref (NEW, auto-gen from operator)
+│   │   ├── config-reference.md        # Env vars + config (NEW, auto-gen from operator)
 │   │   ├── feature-flags.md           # All feature flags documented (NEW)
 │   │   ├── identity-guide.md          # Keycloak/SPIFFE/OIDC deep dive
 │   │   └── monitoring.md              # Kiali, Phoenix, observability (NEW)
@@ -143,8 +145,7 @@ kagenti/
 │   ├── reference/
 │   │   ├── api.md                     # API endpoint reference (NEW - link to /api/docs)
 │   │   ├── cli.md                     # CLI/script reference (NEW)
-│   │   ├── agent-catalog.md           # Available agent types
-│   │   └── e2e-test-matrix.md         # E2E test coverage matrix
+│   │   └── agent-catalog.md           # Available agent types
 │   │
 │   ├── development/
 │   │   ├── README.md                  # Developer guide index
@@ -152,16 +153,18 @@ kagenti/
 │   │   ├── local-dev-hypershift.md    # HyperShift development
 │   │   ├── claude-code.md             # Claude Code AI development
 │   │   ├── windows-wsl-setup.md       # Windows WSL setup
-│   │   ├── testing.md                 # Test suite guide (NEW)
 │   │   └── releasing.md               # Release process
 │   │
+│   ├── adr/                               # Architecture Decision Records
+│   │   ├── README.md                  # ADR process + template (NEW)
+│   │   ├── 001-api-bearer-token-auth.md       # Decided: bearer token auth model
+│   │   ├── 002-agent-context-isolation.md     # Decided: sandbox isolation approach
+│   │   ├── 003-istio-shared-trust.md          # Active: cross-namespace trust
+│   │   └── 004-agent-sandbox-workload-type.md # Decided: direct sandbox creation
+│   │
 │   ├── proposals/
-│   │   ├── README.md                  # Proposal index + template (NEW)
-│   │   ├── 2025-02-05-api-bearer-token-auth.md
-│   │   ├── 2026-02-14-agent-context-isolation.md
-│   │   ├── 2026-02-24-orchestrate-ci-expansion.md
-│   │   ├── 2026-03-08-istio-shared-trust.md
-│   │   └── 2026-04-22-agent-sandbox-workload-type.md
+│   │   ├── README.md                  # Proposal process + template (NEW)
+│   │   └── 2026-02-24-orchestrate-ci-expansion.md # Active proposal
 │   │
 │   ├── maintainers/
 │   │   ├── release-sop.md             # Release governance SOP
@@ -172,12 +175,7 @@ kagenti/
 │   │   ├── openshell-mvp.md           # OpenShell MVP design
 │   │   └── use-case-types.md          # Agent use case taxonomy
 │   │
-│   └── archive/
-│       ├── README.md                  # "These docs are historical reference only"
-│       ├── migrate-agent-crd-to-workloads.md
-│       ├── migrate-tool-mcpserver-to-workloads.md
-│       ├── shipwright-refactoring-plan.md
-│       └── env-import-feature-design.md
+│   └── images/                            # Shared diagrams and screenshots
 ```
 
 ### Note: Coordination with PR #1476 (AuthBridge Docs)
@@ -234,15 +232,15 @@ AuthBridge spans all audiences — security architects (trust model), operators 
 | `docs/release-sop.md` | **MOVE** | `docs/maintainers/release-sop.md` | Maintainer governance |
 | `docs/maintainers/rotate-hypershift-ci-credentials.md` | **KEEP** | `docs/maintainers/rotate-hypershift-ci-credentials.md` | Already well-placed |
 | `docs/demos/*` | **MOVE** | `docs/demos/*` | Rename to drop `demo-` prefix |
-| `docs/plans/migrate-*.md` | **MOVE** | `docs/archive/` | Completed migrations |
-| `docs/plans/shipwright-refactoring-plan.md` | **MOVE** | `docs/archive/` | Completed |
+| `docs/plans/migrate-*.md` | **DELETE** | — | Completed migrations, no longer relevant |
+| `docs/plans/shipwright-refactoring-plan.md` | **DELETE** | — | Completed, no longer relevant |
 | `docs/plans/2026-02-15-session-metadata-*.md` | **DELETE** | — | Abandoned draft |
-| `docs/plans/2025-02-05-*.md` | **MOVE + UPDATE** | `docs/proposals/` | Update status to "Implemented" |
-| `docs/plans/2026-02-14-*.md` | **SPLIT** | `docs/proposals/` (design only) | Remove impl plan, keep design |
+| `docs/plans/2025-02-05-*.md` | **CONVERT TO ADR** | `docs/adr/001-api-bearer-token-auth.md` | Strip impl details, preserve decision rationale |
+| `docs/plans/2026-02-14-*.md` | **CONVERT TO ADR** | `docs/adr/002-agent-context-isolation.md` | Strip code details, preserve architectural decisions |
 | `docs/plans/2026-02-24-*.md` | **MOVE** | `docs/proposals/` | Active proposal |
-| `docs/plans/2026-03-08-*.md` | **MOVE** | `docs/proposals/` | Active proposal |
-| `docs/superpowers/` | **MOVE** | `docs/proposals/` | Merge specs into proposals dir |
-| `docs/env-import-feature-design.md` | **MOVE** | `docs/archive/` | Implemented feature design |
+| `docs/plans/2026-03-08-*.md` | **CONVERT TO ADR** | `docs/adr/003-istio-shared-trust.md` | Active design decision |
+| `docs/superpowers/` | **CONVERT TO ADR** | `docs/adr/004-agent-sandbox-workload-type.md` | Implemented decision, strip code details |
+| `docs/env-import-feature-design.md` | **DELETE** | — | Implemented feature, no longer relevant |
 | `docs/hypershift-auto-cleanup.md` | **MOVE** | `docs/development/local-dev-hypershift.md` | Merge into HyperShift dev guide |
 | `docs/authbridge-combined-sidecar.md` | **DELETE** | — | Superseded by `docs/authbridge/` (PR #1476) |
 | `docs/use-case-types.md` | **MOVE** | `docs/research/` | Taxonomy research |
@@ -260,50 +258,69 @@ AuthBridge spans all audiences — security architects (trust model), operators 
 
 | Proposed Path | Audience | Outline |
 |---|---|---|
-| `docs/getting-started/quickstart.md` | **User** | Zero-to-running in 15 minutes. Covers: prerequisites, Kind cluster deploy via one command, access the UI, deploy the weather agent example, verify it works. No explanations — just steps. |
+| `docs/getting-started/why-kagenti.md` | **User** | Value proposition and elevator pitch. What problems kagenti solves, how it differs from running agents directly, who it's for. Help new users understand *why* before *how*. (Volunteer: @esnible) |
+| `docs/getting-started/quickstart.md` | **User** | Zero-to-running in 15 minutes. Covers: prerequisites, Kind cluster deploy via one command, access the UI, deploy the weather agent example, verify it works. No explanations — just steps. (Volunteer: @esnible) |
 | `docs/getting-started/configuration.md` | **User** | Essential configuration for first deployment: how to set LLM API keys, choose a backend model, configure the UI URL, set admin credentials. Links to full config reference for advanced options. |
 | `docs/concepts/agent-lifecycle.md` | **User** | Explains what happens when you "import" an agent: container image build (Shipwright), Deployment creation, sidecar injection (AuthBridge), service mesh enrollment (Istio), and readiness. Conceptual, not procedural. |
 | `docs/concepts/protocols.md` | **User** | Explains A2A and MCP protocols at a conceptual level: what each does, when to use which, how kagenti implements them, and how they interact with auth. |
-| `docs/operator-guide/config-reference.md` | **Operator** | Complete reference for all environment variables in `config.py` (~100 settings). Organized by category: server, auth, features, storage, observability. Include default values, types, and examples. |
-| `docs/operator-guide/helm-values-reference.md` | **Operator** | Structured reference for the Helm chart's `values.yaml`. Document every key, its type, default, and effect. Auto-generate if possible. |
+| `docs/operator-guide/config-reference.md` | **Operator** | Complete reference for all environment variables in `config.py` (~100 settings). Organized by category: server, auth, features, storage, observability. **Source:** auto-generate from kagenti-operator project. |
+| `docs/operator-guide/helm-values-reference.md` | **Operator** | Structured reference for the Helm chart's `values.yaml`. Document every key, its type, default, and effect. **Source:** auto-generate from kagenti-operator project. |
 | `docs/operator-guide/feature-flags.md` | **Operator** | Document all 7 feature flags: name, what it enables, how to activate (env var + Helm value), dependencies between flags, and current stability status. |
 | `docs/operator-guide/monitoring.md` | **Operator** | Unified monitoring guide: Phoenix for LLM observability, Kiali for service mesh visualization, OTel instrumentation for agents. Consolidates `docs/kiali/` and `docs/agents/otel-instrumentation.md`. |
 | `docs/reference/api.md` | **User** | API endpoint reference. Can be a maintained link to the live Swagger UI (`/api/docs`) plus a summary table of key endpoints, auth requirements, and rate limits. |
-| `docs/development/testing.md` | **Contributor** | Test suite overview: unit tests, E2E tests, test markers, how to run locally, how to add new tests. Consolidates scattered testing info from `kagenti/tests/README.md`. |
+| `docs/adr/README.md` | **Contributor** | ADR process: when to write one, template (Context/Decision/Consequences), numbering scheme. ADRs capture the *why* behind architectural decisions — implementation details belong in code. |
+| `docs/proposals/README.md` | **Contributor** | Proposal process: when to write one, template, review workflow, status lifecycle (Draft → Accepted → Implemented). Implemented proposals graduate to ADRs. |
 | `docs/maintainers/upgrade-guide.md` | **Operator** | Version-to-version upgrade notes. Breaking changes, migration steps, deprecated features per release. Start with 0.5→0.6 as template. |
-| `docs/proposals/README.md` | **Contributor** | Proposal process: when to write one, template, review workflow, status lifecycle (Draft → Accepted → Implemented → Archived). |
 | `CHANGELOG.md` | **All** | Release history. Can initially be generated from GitHub Releases, then maintained manually per release. |
+
+### Note on test documentation
+
+E2E test specs and the test matrix are maintained as part of CI PRs (by @Ladas) and live alongside the tests themselves. Dedicated `testing.md` or `e2e-test-matrix.md` docs are intentionally excluded — they would go stale immediately as devs add tests without updating separate documentation. The test suite is self-documenting through markers, fixtures, and CI workflow definitions.
+
+### Note on operator-generated docs
+
+Several operator-guide files (`config-reference.md`, `helm-values-reference.md`) should be auto-generated from the kagenti-operator project rather than hand-maintained. This ensures they stay in sync with the actual CRDs and Helm chart values. The mechanism (CI job, make target, or script) is TBD.
 
 ---
 
 ## 7. Quick Wins (Immediate High-Impact Changes)
 
-These 5 changes can be done today with maximum user impact:
+These 6 changes can be done immediately with maximum user impact:
 
 ### 1. Fix CLAUDE.md broken links and stale flag table
 **Impact:** Stops every Claude Code user from hitting dead references.
 **Effort:** 10 minutes.
-- Remove references to `docs/auth/keycloak-patterns.md`, `docs/skills/README.md`, `docs/ai-ops/README.md`
+- Remove references to `docs/skills/README.md`, `docs/ai-ops/README.md`
+- Replace `docs/auth/keycloak-patterns.md` → `docs/authbridge/` (after PR #1476)
 - Add the 4 missing feature flags to the table
 
-### 2. Delete root-level noise files
-**Impact:** Cleaner repo root = better first impression.
-**Effort:** 2 minutes.
-- Delete `AUTO-LABELING-FIX.md` and `TODO_CUSTOM_VISUALIZATIONS.md`
-- Convert their content to GitHub issues if needed
+### 2. Delete root-level noise files + completed plans
+**Impact:** Cleaner repo, fewer misleading docs.
+**Effort:** 5 minutes.
+- Delete `AUTO-LABELING-FIX.md`, `TODO_CUSTOM_VISUALIZATIONS.md`
+- Delete completed plans: `migrate-agent-crd-to-workloads.md`, `migrate-tool-mcpserver-to-workloads.md`, `shipwright-refactoring-plan.md`
+- Convert any useful content to GitHub issues if needed
 
-### 3. Create `docs/getting-started/quickstart.md`
-**Impact:** The single most important missing doc. A new user today has no clear "start here" path — `docs/install.md` is 600+ lines mixing Kind, OpenShift, and advanced config.
-**Effort:** 1 hour.
-- Extract the Kind happy-path from `install.md` into a focused 50-line quickstart
-- Prerequisites → one command → access UI → deploy example agent → verify
+### 3. Rewrite getting-started for new users (@esnible volunteered)
+**Impact:** The single most important missing doc. A new user today has no clear "start here" path — `docs/install.md` is 600+ lines mixing Kind, OpenShift, and advanced config. Users struggle to understand kagenti's value proposition.
+**Effort:** 2-3 hours.
+- Create `docs/getting-started/why-kagenti.md` — value proposition, what problems it solves
+- Create `docs/getting-started/quickstart.md` — zero-to-running in 15 min
+- Rewrite install flow from the admin perspective (not just "run this script")
 
-### 4. Add security notice to `docs/identity-guide.md`
+### 4. Convert implemented proposals to ADRs
+**Impact:** Preserves architectural decisions (the *why*) without cluttering the repo with stale implementation plans.
+**Effort:** 1-2 hours.
+- Create `docs/adr/` with README template
+- Convert sandbox, auth, and Istio decisions — strip code details, keep Context/Decision/Consequences
+- Delete raw implementation plans
+
+### 5. Add security notice to `docs/identity-guide.md`
 **Impact:** Prevents users from deploying with `admin`/`password` credentials in non-local environments.
 **Effort:** 5 minutes.
 - Add a callout box at the top: "All credentials in this guide are for LOCAL DEVELOPMENT ONLY."
 
-### 5. Fix `README.md` "Langflow" reference
+### 6. Fix `README.md` "Langflow" reference
 **Impact:** The main README is the project's front door. Referencing a tool not used in the project confuses new users.
 **Effort:** 2 minutes.
 - Replace "Langflow" with "Phoenix" (the actual observability tool).
@@ -312,13 +329,15 @@ These 5 changes can be done today with maximum user impact:
 
 ## 8. Implementation Roadmap
 
-| Phase | Scope | Effort |
-|---|---|---|
-| **Phase 0: AuthBridge** | Merge PR #1476 first — it lands `docs/authbridge/` which this reorg builds around | Reviewer time only |
-| **Phase 1: Cleanup** (Week 1) | Quick wins above + delete 11 files + fix broken links | 1 day |
-| **Phase 2: Restructure** (Week 2-3) | Create new directory structure, move files per migration table | 2-3 days |
-| **Phase 3: New Content** (Week 3-5) | Write quickstart, config-reference, feature-flags, API reference | 1 week |
-| **Phase 4: Polish** (Week 5-6) | Update `docs/README.md` index, add CODEOWNERS for docs, create CHANGELOG, add cross-links to `docs/authbridge/` | 1 day |
+| Phase | Scope | Owner | Effort |
+|---|---|---|---|
+| **Phase 0: AuthBridge** | Merge PR #1476 — lands `docs/authbridge/` which this reorg builds around | Reviewers | Days |
+| **Phase 1: Cleanup** (Week 1) | Delete noise files + completed plans, fix broken links in CLAUDE.md | Anyone | 1 day |
+| **Phase 2: ADRs** (Week 1-2) | Create `docs/adr/`, convert implemented proposals to decision records, delete raw plans | Maintainers | 1-2 days |
+| **Phase 3: Getting Started** (Week 2-3) | Write `why-kagenti.md`, `quickstart.md`, rewrite install for admin perspective | @esnible | 3-5 days |
+| **Phase 4: Restructure** (Week 3-4) | Create new directory structure, move files per migration table | Anyone | 2-3 days |
+| **Phase 5: Operator Docs** (Week 4-6) | Auto-generate config-reference and helm-values from operator project, write feature-flags doc | Operator team | 1 week |
+| **Phase 6: Polish** (Week 6-7) | Update `docs/README.md` index, add CODEOWNERS, create CHANGELOG, add cross-links | Anyone | 1 day |
 
 ---
 
