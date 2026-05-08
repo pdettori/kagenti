@@ -17,6 +17,7 @@ import time
 import pytest
 
 from kagenti.tests.e2e.openshell.conftest import (
+    find_free_port,
     kubectl_get_pods_json,
     kubectl_run,
 )
@@ -59,7 +60,7 @@ class TestGatewayConnectivity:
         """Gateway responds to HTTP requests via port-forward."""
         import socket
 
-        local_port = _find_free_port()
+        local_port = find_free_port()
         proc = subprocess.Popen(
             [
                 "kubectl",
@@ -88,7 +89,11 @@ class TestGatewayConnectivity:
             pytest.fail("Gateway port 8080 not reachable via port-forward")
         finally:
             proc.terminate()
-            proc.wait()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
 
 
 class TestSandboxExec:
@@ -164,11 +169,3 @@ class TestSandboxExec:
         )
         assert exec_result.returncode == 0, f"Shell exec failed: {exec_result.stderr}"
         assert "SESSION_OK" in exec_result.stdout
-
-
-def _find_free_port() -> int:
-    import socket
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]

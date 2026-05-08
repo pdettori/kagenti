@@ -23,7 +23,7 @@ import subprocess
 
 import pytest
 
-from kagenti.tests.e2e.openshell.conftest import kubectl_run
+from kagenti.tests.e2e.openshell.conftest import find_free_port, kubectl_run
 
 pytestmark = [pytest.mark.openshell, pytest.mark.mvp]
 
@@ -38,9 +38,17 @@ KEYCLOAK_NS = os.getenv("KEYCLOAK_NS", "keycloak")
 OIDC_CLIENT_ID = "openshell-cli"
 OIDC_REALM = "openshell"
 
-# Test users — passwords from deploy-shared.sh
-ALICE = {"username": "alice", "password": "alice123", "tenant": "team1"}
-BOB = {"username": "bob", "password": "bob123", "tenant": "team2"}
+# Test users — passwords default to deploy-shared.sh values, overridable via env
+ALICE = {
+    "username": os.getenv("OPENSHELL_ALICE_USERNAME", "alice"),
+    "password": os.getenv("OPENSHELL_ALICE_PASSWORD", "alice123"),
+    "tenant": "team1",
+}
+BOB = {
+    "username": os.getenv("OPENSHELL_BOB_USERNAME", "bob"),
+    "password": os.getenv("OPENSHELL_BOB_PASSWORD", "bob123"),
+    "tenant": "team2",
+}
 
 
 def _oidc_enabled() -> bool:
@@ -166,7 +174,12 @@ def keycloak_url():
     """Resolve and cache the Keycloak URL."""
     url = _get_keycloak_url()
     if not url:
-        pytest.skip("Keycloak URL not resolvable (no svc or env var)")
+        if _oidc_enabled():
+            pytest.fail(
+                "Keycloak URL not resolvable but OPENSHELL_OIDC_ENABLED=true — "
+                "Keycloak must be reachable for auth-isolation tests"
+            )
+        pytest.skip("Keycloak URL not resolvable and OIDC disabled")
     return url
 
 
@@ -175,7 +188,10 @@ def alice_token(keycloak_url):
     """Get a JWT for alice (team1 audience)."""
     token = _get_token(keycloak_url, ALICE["username"], ALICE["password"])
     if not token:
-        pytest.skip("Could not obtain token for alice")
+        pytest.fail(
+            f"Could not obtain token for alice from {keycloak_url} — "
+            "check Keycloak realm/user configuration"
+        )
     return token
 
 
@@ -184,7 +200,10 @@ def bob_token(keycloak_url):
     """Get a JWT for bob (team2 audience)."""
     token = _get_token(keycloak_url, BOB["username"], BOB["password"])
     if not token:
-        pytest.skip("Could not obtain token for bob")
+        pytest.fail(
+            f"Could not obtain token for bob from {keycloak_url} — "
+            "check Keycloak realm/user configuration"
+        )
     return token
 
 
@@ -226,7 +245,7 @@ class TestTenantIsolationAuth:
         import socket
         import time
 
-        local_port = _find_free_port()
+        local_port = find_free_port()
         proc = subprocess.Popen(
             [
                 "kubectl",
@@ -276,7 +295,11 @@ class TestTenantIsolationAuth:
                 )
         finally:
             proc.terminate()
-            proc.wait()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
 
     @skip_no_tenant2
     def test_bob_token_rejected_by_team1_gateway(self, bob_token):
@@ -284,7 +307,7 @@ class TestTenantIsolationAuth:
         import socket
         import time
 
-        local_port = _find_free_port()
+        local_port = find_free_port()
         proc = subprocess.Popen(
             [
                 "kubectl",
@@ -330,7 +353,11 @@ class TestTenantIsolationAuth:
                 )
         finally:
             proc.terminate()
-            proc.wait()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
 
     def test_tokens_have_different_audiences(self, alice_token, bob_token):
         """Alice and Bob tokens must have non-overlapping audience claims."""
@@ -600,16 +627,3 @@ class TestCredentialIsolation:
                     f"{tenant}:{sa} can access endpoints in {other} "
                     f"— potential credential proxy leakage"
                 )
-
-
-# ---------------------------------------------------------------------------
-# Helper (duplicated from conftest to keep this file self-contained for CI)
-# ---------------------------------------------------------------------------
-
-
-def _find_free_port() -> int:
-    import socket
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]

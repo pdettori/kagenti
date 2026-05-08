@@ -36,7 +36,10 @@ def _get_pod_name(agent: str, namespace: str) -> str:
             and pod["status"].get("phase") == "Running"
         ):
             return pod["metadata"]["name"]
-    pytest.skip(f"No running pod found for {agent} in {namespace}")
+    pytest.fail(
+        f"No running pod found for {agent} in {namespace} — "
+        "credential security tests require deployed agents"
+    )
 
 
 def _kubectl_exec(pod: str, ns: str, cmd: list[str]) -> subprocess.CompletedProcess:
