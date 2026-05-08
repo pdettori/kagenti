@@ -60,7 +60,7 @@ SKIP_TEST=false
 SKIP_AGENTS=false
 SKIP_INSTALL=false
 SKIP_IMAGES=false
-PYTEST_WORKERS="${PYTEST_WORKERS:-4}"
+PYTEST_WORKERS="${PYTEST_WORKERS:-2}"
 
 # ── Parse arguments ──────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do

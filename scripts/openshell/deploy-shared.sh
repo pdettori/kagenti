@@ -931,11 +931,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EORBAC
 
-  # 7d: Backend Deployment
-  if kubectl get deployment kagenti-backend -n "$BACKEND_NS" &>/dev/null \
-     && kubectl rollout status deploy/kagenti-backend -n "$BACKEND_NS" --timeout=5s &>/dev/null; then
-    log_success "kagenti-backend already deployed and ready — skipping"
-  else
+  # 7d: Backend Deployment (always apply — idempotent, picks up RBAC/config changes)
     log_info "Deploying kagenti-backend in $BACKEND_NS..."
     run_cmd kubectl apply -f - <<EOBACKEND
 apiVersion: apps/v1
@@ -1035,7 +1031,6 @@ EOBACKEND
       }
     fi
     log_success "kagenti-backend deployed"
-  fi
   echo ""
 fi
 
