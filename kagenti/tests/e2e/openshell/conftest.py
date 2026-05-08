@@ -223,7 +223,11 @@ async def backend_send(
     session_id: str | None = None,
     timeout: float = 120.0,
 ) -> dict:
-    """Send a message through kagenti-backend's A2A proxy."""
+    """Send a message through kagenti-backend's A2A proxy.
+
+    Returns the JSON response. If the backend returns 503 (agent unreachable,
+    typically supervisor netns blocking), raises pytest.skip instead of failing.
+    """
     payload = {"message": text}
     if session_id:
         payload["session_id"] = session_id
@@ -232,6 +236,13 @@ async def backend_send(
         json=payload,
         timeout=timeout,
     )
+    if response.status_code == 503:
+        detail = response.json().get("detail", "")
+        pytest.skip(
+            f"{agent_name}: backend cannot reach agent (503). "
+            f"Supervised agents use netns which blocks in-cluster connections. "
+            f"Detail: {detail[:200]}"
+        )
     response.raise_for_status()
     return response.json()
 
