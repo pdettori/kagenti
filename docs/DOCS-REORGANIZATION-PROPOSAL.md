@@ -56,7 +56,7 @@ Examined documentation structures from 5 CNCF graduated/incubating projects: Kub
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `CLAUDE.md` | References `docs/auth/keycloak-patterns.md`, `docs/skills/README.md`, `docs/ai-ops/README.md` — none exist | Remove links or create the files |
+| `CLAUDE.md` | References `docs/auth/keycloak-patterns.md`, `docs/skills/README.md`, `docs/ai-ops/README.md` — none exist | Replace `docs/auth/keycloak-patterns.md` with `docs/authbridge/` (after PR #1476); remove or create the other two |
 | `CLAUDE.md` | Feature flag table lists 3 flags, code has 7 | Add `agent_sandbox`, `authbridge_api`, `skills`, `sidecars` |
 | `docs/gateway.md` | References `--skip-install mcp_gateway` flag that doesn't exist | Replace with `--with-mcp-gateway` (the actual opt-in flag) |
 | `docs/research/openshell-mvp.md` | Links to `openshell-k8s-integration.md` and `openshell-driver-architecture.md` — don't exist | Remove dead links or create the referenced docs |
@@ -124,6 +124,13 @@ kagenti/
 │   │   ├── identity-guide.md          # Keycloak/SPIFFE/OIDC deep dive
 │   │   └── monitoring.md              # Kiali, Phoenix, observability (NEW)
 │   │
+│   ├── authbridge/                        # Component deep-dive (PR #1476)
+│   │   ├── README.md                  # Hub: architecture, persona links
+│   │   ├── security-model.md          # Trust model, token exchange, SPIFFE, threats
+│   │   ├── deployment-guide.md        # Proxy-sidecar vs envoy-sidecar, config ref
+│   │   ├── demos.md                   # Progressive 5-layer demo path
+│   │   └── roadmap.md                 # Current state + near-term epics
+│   │
 │   ├── demos/
 │   │   ├── README.md                  # Demo index
 │   │   ├── weather-agent.md           # Weather agent demo
@@ -163,7 +170,6 @@ kagenti/
 │   │
 │   ├── research/
 │   │   ├── openshell-mvp.md           # OpenShell MVP design
-│   │   ├── authbridge-combined-sidecar.md
 │   │   └── use-case-types.md          # Agent use case taxonomy
 │   │
 │   └── archive/
@@ -173,6 +179,21 @@ kagenti/
 │       ├── shipwright-refactoring-plan.md
 │       └── env-import-feature-design.md
 ```
+
+### Note: Coordination with PR #1476 (AuthBridge Docs)
+
+PR [#1476](https://github.com/kagenti/kagenti/pull/1476) adds a comprehensive `docs/authbridge/` section (949 lines, 5 files) organized by persona. It should be **merged first** since it is concrete and ready to land. This reorg proposal treats `docs/authbridge/` as a "keep in place" component deep-dive section.
+
+**Why a standalone section (not split across persona folders):**
+AuthBridge spans all audiences — security architects (trust model), operators (deployment), and users (demos). Splitting it would break the narrative flow. This mirrors how Argo CD keeps `docs/operator-manual/notifications/` as self-contained rather than scattering it.
+
+**Cross-links to add after both PRs land:**
+- `docs/concepts/identity-and-auth.md` → link to `docs/authbridge/security-model.md`
+- `docs/operator-guide/identity-guide.md` → link to `docs/authbridge/deployment-guide.md`
+- `docs/demos/README.md` → reference `docs/authbridge/demos.md` in the demo index
+- `CLAUDE.md` → replace dead `docs/auth/keycloak-patterns.md` link with `docs/authbridge/`
+
+**The missing `docs/auth/` directory** referenced in CLAUDE.md is effectively fulfilled by `docs/authbridge/`. After PR #1476 merges, update CLAUDE.md to point there instead.
 
 ---
 
@@ -223,7 +244,7 @@ kagenti/
 | `docs/superpowers/` | **MOVE** | `docs/proposals/` | Merge specs into proposals dir |
 | `docs/env-import-feature-design.md` | **MOVE** | `docs/archive/` | Implemented feature design |
 | `docs/hypershift-auto-cleanup.md` | **MOVE** | `docs/development/local-dev-hypershift.md` | Merge into HyperShift dev guide |
-| `docs/authbridge-combined-sidecar.md` | **MOVE** | `docs/research/` | Design research |
+| `docs/authbridge-combined-sidecar.md` | **DELETE** | — | Superseded by `docs/authbridge/` (PR #1476) |
 | `docs/use-case-types.md` | **MOVE** | `docs/research/` | Taxonomy research |
 | `docs/user-stories.md` | **MOVE + UPDATE** | `docs/concepts/` or **DELETE** | Fix broken link, evaluate value |
 | `docs/architecture/agent-sandbox.md` | **MOVE** | `docs/concepts/sandboxing.md` | Concepts section |
@@ -293,10 +314,11 @@ These 5 changes can be done today with maximum user impact:
 
 | Phase | Scope | Effort |
 |---|---|---|
+| **Phase 0: AuthBridge** | Merge PR #1476 first — it lands `docs/authbridge/` which this reorg builds around | Reviewer time only |
 | **Phase 1: Cleanup** (Week 1) | Quick wins above + delete 11 files + fix broken links | 1 day |
 | **Phase 2: Restructure** (Week 2-3) | Create new directory structure, move files per migration table | 2-3 days |
 | **Phase 3: New Content** (Week 3-5) | Write quickstart, config-reference, feature-flags, API reference | 1 week |
-| **Phase 4: Polish** (Week 5-6) | Update `docs/README.md` index, add CODEOWNERS for docs, create CHANGELOG | 1 day |
+| **Phase 4: Polish** (Week 5-6) | Update `docs/README.md` index, add CODEOWNERS for docs, create CHANGELOG, add cross-links to `docs/authbridge/` | 1 day |
 
 ---
 
