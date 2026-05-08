@@ -13,7 +13,7 @@ import subprocess
 
 import pytest
 
-from kagenti.tests.e2e.openshell.conftest import kubectl_get_pods_json
+from kagenti.tests.e2e.openshell.conftest import kubectl_get_pods_json, kubectl_run
 
 
 pytestmark = [pytest.mark.openshell, pytest.mark.mvp]
@@ -28,7 +28,15 @@ _AGENTS = [
 _LLM_AGENTS = ["adk-agent-supervised", "claude-sdk-agent"]
 
 
+def _deployment_exists(agent: str, namespace: str) -> bool:
+    """Check if a deployment exists (regardless of pod health)."""
+    result = kubectl_run("get", "deployment", agent, "-n", namespace)
+    return result.returncode == 0
+
+
 def _get_pod_name(agent: str, namespace: str) -> str:
+    if not _deployment_exists(agent, namespace):
+        pytest.skip(f"{agent} not deployed in {namespace}")
     pods = kubectl_get_pods_json(namespace)
     for pod in pods:
         if (
@@ -38,7 +46,7 @@ def _get_pod_name(agent: str, namespace: str) -> str:
             return pod["metadata"]["name"]
     pytest.fail(
         f"No running pod found for {agent} in {namespace} — "
-        "credential security tests require deployed agents"
+        "deployment exists but pod is not Running (crashloop?)"
     )
 
 

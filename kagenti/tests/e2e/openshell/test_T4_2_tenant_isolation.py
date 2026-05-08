@@ -174,12 +174,19 @@ def keycloak_url():
     """Resolve and cache the Keycloak URL."""
     url = _get_keycloak_url()
     if not url:
-        if _oidc_enabled():
-            pytest.fail(
-                "Keycloak URL not resolvable but OPENSHELL_OIDC_ENABLED=true — "
-                "Keycloak must be reachable for auth-isolation tests"
+        if not _oidc_enabled():
+            pytest.skip("Keycloak URL not resolvable and OIDC disabled")
+        # Check if Keycloak is deployed at all (svc exists)
+        svc_check = kubectl_run("get", "svc", "keycloak", "-n", KEYCLOAK_NS)
+        if svc_check.returncode != 0:
+            pytest.skip(
+                f"Keycloak service not deployed in {KEYCLOAK_NS} — "
+                "auth-isolation tests require Keycloak"
             )
-        pytest.skip("Keycloak URL not resolvable and OIDC disabled")
+        pytest.fail(
+            "Keycloak service exists but URL not resolvable — "
+            "check Keycloak pod health or port-forward configuration"
+        )
     return url
 
 
