@@ -128,7 +128,7 @@ cp deployments/envs/secret_values.yaml.example deployments/envs/.secret_values.y
 # Edit deployments/envs/.secret_values.yaml with your values
 
 # Deploy to Kind cluster
-scripts/kind/setup-kagenti.sh --with-all
+scripts/kind/setup-kagenti.sh --with-ui --with-spire --with-agent-sandbox --with-builds
 ```
 
 > **Tip:** To find the latest stable version from the command line:
@@ -136,7 +136,7 @@ scripts/kind/setup-kagenti.sh --with-all
 > git tag --list 'v*' --sort=-v:refname | grep -v -E '(alpha|rc)' | head -1
 > ```
 
-For more detailed installation instructions including OpenShift refer to [Installation Guide](./docs/install.md).
+For all available installer options and detailed instructions (including OpenShift), refer to the [Installation Guide](./docs/install.md).
 
 ### Access the UI
 
