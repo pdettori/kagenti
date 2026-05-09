@@ -54,12 +54,13 @@ if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
 fi
 
 # Preflight: Keycloak admin credentials for setup_keycloak_weather_advanced.py / token exchange
-if ! kubectl get secret keycloak-admin-secret -n "$NAMESPACE" &>/dev/null; then
-    log_error "Secret 'keycloak-admin-secret' not found in namespace '$NAMESPACE'."
-    log_error "The installer usually creates it in agent namespaces. Re-run platform deploy or create it (AuthBridge / Keycloak docs) before AuthBridge E2E."
+# Note: keycloak-admin-secret is now in kagenti-system (operator namespace) for security
+if ! kubectl get secret keycloak-admin-secret -n kagenti-system &>/dev/null; then
+    log_error "Secret 'keycloak-admin-secret' not found in namespace 'kagenti-system'."
+    log_error "The installer creates it in the operator namespace. Re-run platform deploy or create it (AuthBridge / Keycloak docs) before AuthBridge E2E."
     exit 1
 fi
-log_info "Preflight OK: keycloak-admin-secret present in $NAMESPACE"
+log_info "Preflight OK: keycloak-admin-secret present in kagenti-system"
 
 EXT_ROOT="${KAGENTI_EXTENSIONS_ROOT:-}"
 # Trim trailing slash so path joins are never authbridge//...
