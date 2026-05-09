@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 ACP_PROTOCOL_VERSION = 1
 A2A_STREAM_TIMEOUT = 120.0
 
+SANDBOX_AGENTS = {"openshell-claude", "openshell-opencode"}
+NEMOCLAW_AGENTS = {"nemoclaw-openclaw", "nemoclaw-hermes"}
+
 
 @dataclass
 class ACPSession:
@@ -115,13 +118,25 @@ class ACPBridge:
         session_id: str,
         text: str,
     ) -> AsyncIterator[dict]:
-        """Send a prompt via A2A message/stream and yield ACP update notifications."""
+        """Route prompt to the correct agent protocol and yield ACP updates."""
         async with self._lock:
             session = self._sessions.get(session_id)
         if not session:
             yield _acp_error("Session not found", session_id=session_id)
             return
 
+        if session.agent_name in SANDBOX_AGENTS:
+            async for update in self._prompt_sandbox(session, text):
+                yield update
+        elif session.agent_name in NEMOCLAW_AGENTS:
+            async for update in self._prompt_nemoclaw(session, text):
+                yield update
+        else:
+            async for update in self._prompt_a2a(session, text):
+                yield update
+
+    async def _prompt_a2a(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
+        """Send prompt via A2A message/send to standard agents."""
         kube = get_kubernetes_service()
         agent_url = resolve_agent_url(session.agent_name, session.namespace, kube)
 
@@ -156,24 +171,119 @@ class ACPBridge:
                 if context_id and not session.context_id:
                     session.context_id = context_id
 
-                text = _extract_text_from_a2a(result)
-                if text:
+                resp_text = _extract_text_from_a2a(result)
+                if resp_text:
                     yield {
                         "jsonrpc": "2.0",
                         "method": "session/update",
                         "params": {
-                            "sessionId": session_id,
+                            "sessionId": session.session_id,
                             "sessionUpdate": "agent_message_chunk",
-                            "content": [{"type": "text", "text": text}],
+                            "content": [{"type": "text", "text": resp_text}],
                         },
                     }
 
         except httpx.HTTPStatusError as e:
             logger.error("A2A HTTP error: %s", e)
-            yield _acp_error(f"Agent returned {e.response.status_code}", session_id=session_id)
+            yield _acp_error(
+                f"Agent returned {e.response.status_code}", session_id=session.session_id
+            )
         except httpx.RequestError as e:
             logger.error("A2A connection error: %s", e)
-            yield _acp_error(f"Cannot reach agent: {e}", session_id=session_id)
+            yield _acp_error(f"Cannot reach agent: {e}", session_id=session.session_id)
+
+    async def _prompt_sandbox(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
+        """Send prompt to sandbox agent via kubectl exec."""
+        import subprocess
+
+        cli = "claude" if "claude" in session.agent_name else "opencode"
+        cmd_args = (
+            ["--print", "--bare", "--model", "claude-sonnet-4-20250514", text]
+            if cli == "claude"
+            else ["run", text]
+        )
+
+        kube = get_kubernetes_service()
+        pods = kube.core_v1.list_namespaced_pod(
+            session.namespace,
+            label_selector=f"app.kubernetes.io/name={session.agent_name}",
+        )
+        pod_name = ""
+        for pod in pods.items:
+            if pod.status.phase == "Running":
+                pod_name = pod.metadata.name
+                break
+
+        if not pod_name:
+            yield _acp_error(
+                f"No running pod for {session.agent_name}", session_id=session.session_id
+            )
+            return
+
+        try:
+            result = subprocess.run(
+                ["kubectl", "exec", pod_name, "-n", session.namespace, "--", "timeout", "90", cli]
+                + cmd_args,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            output = result.stdout.strip()
+            if output:
+                yield {
+                    "jsonrpc": "2.0",
+                    "method": "session/update",
+                    "params": {
+                        "sessionId": session.session_id,
+                        "sessionUpdate": "agent_message_chunk",
+                        "content": [{"type": "text", "text": output}],
+                    },
+                }
+            elif result.returncode != 0:
+                yield _acp_error(
+                    f"Sandbox exec failed: {result.stderr[:200]}", session_id=session.session_id
+                )
+        except subprocess.TimeoutExpired:
+            yield _acp_error("Sandbox exec timed out", session_id=session.session_id)
+
+    async def _prompt_nemoclaw(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
+        """Send prompt to NemoClaw agent via LiteLLM OpenAI-compat format."""
+        litellm_url = f"http://litellm-model-proxy.{session.namespace}.svc.cluster.local:4000"
+
+        try:
+            async with httpx.AsyncClient(timeout=A2A_STREAM_TIMEOUT) as client:
+                response = await client.post(
+                    f"{litellm_url}/v1/chat/completions",
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [{"role": "user", "content": text}],
+                        "max_tokens": 2048,
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                choices = result.get("choices", [])
+                if choices:
+                    resp_text = choices[0].get("message", {}).get("content", "")
+                    if resp_text:
+                        yield {
+                            "jsonrpc": "2.0",
+                            "method": "session/update",
+                            "params": {
+                                "sessionId": session.session_id,
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": [{"type": "text", "text": resp_text}],
+                            },
+                        }
+
+        except httpx.HTTPStatusError as e:
+            yield _acp_error(
+                f"NemoClaw returned {e.response.status_code}", session_id=session.session_id
+            )
+        except httpx.RequestError as e:
+            yield _acp_error(f"Cannot reach NemoClaw: {e}", session_id=session.session_id)
 
         yield {
             "jsonrpc": "2.0",

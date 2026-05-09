@@ -234,6 +234,10 @@ if [[ "$BUILD_AGENTS" == "true" ]]; then
                     AGENTS_BUILT+=("$agent_name")
                     continue
                 fi
+                if grep -q "FROM.*openshell/supervisor" "$agent_dir/Dockerfile" 2>/dev/null; then
+                    echo "SKIP: $agent_name uses supervisor image (prebuilt only)"
+                    continue
+                fi
                 echo "Building agent: $agent_name (docker)"
                 docker build -t "$agent_name:latest" "$agent_dir" -q
                 if [[ -n "$KIND_CLUSTER" ]]; then

@@ -904,10 +904,9 @@ metadata:
     app.kubernetes.io/name: kagenti-backend
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: kagenti-backend
-  namespace: $BACKEND_NS
 rules:
 - apiGroups: ["", "apps", "batch"]
   resources: ["pods", "deployments", "statefulsets", "jobs", "services", "secrets", "configmaps"]
@@ -917,16 +916,15 @@ rules:
   verbs: ["get", "list", "watch", "create", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: kagenti-backend
-  namespace: $BACKEND_NS
 subjects:
 - kind: ServiceAccount
   name: kagenti-backend
   namespace: $BACKEND_NS
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: kagenti-backend
   apiGroup: rbac.authorization.k8s.io
 EORBAC
