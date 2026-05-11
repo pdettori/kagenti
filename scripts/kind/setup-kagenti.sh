@@ -137,8 +137,10 @@ while [[ $# -gt 0 ]]; do
       echo "                      openaiApiKey, slackBotToken, etc.)"
       echo "  --cluster-name NAME Kind cluster name (default: kagenti)"
       echo "  --domain DOMAIN     Domain for services (default: localtest.me)"
-      echo "  --kagenti-values FILE Helm override file to apply to Kagenti chart"
-      echo "  --kagenti-deps-values FILE Helm override file to apply to Kagenti-deps chart"
+      echo "  --kagenti-values FILE"
+      echo "                      Helm override file to apply to Kagenti chart"
+      echo "  --kagenti-deps-values FILE"
+      echo "                      Helm override file to apply to Kagenti-deps chart"
       echo "  --dry-run           Show commands without executing"
       echo "  -h, --help          Show this help"
       exit 0 ;;
@@ -194,8 +196,8 @@ echo "    Agent Sandbox: $WITH_AGENT_SANDBOX"
 echo "    Skip cluster:  $SKIP_CLUSTER"
 echo "    Build images:  $BUILD_IMAGES"
 echo "    Preload imgs:  $PRELOAD_IMAGES"
-echo "    Kagenti helm --values overrides: ${KAGENTI_VALUES_FILES[@]}"
-echo "    Kagenti-deps helm --values overrides: ${KAGENTI_DEPS_VALUES_FILES[@]}"
+echo "    Kagenti helm --values overrides: ${KAGENTI_VALUES_FILES[*]}"
+echo "    Kagenti-deps helm --values overrides: ${KAGENTI_DEPS_VALUES_FILES[*]}"
 echo ""
 
 for cmd in helm kubectl; do
