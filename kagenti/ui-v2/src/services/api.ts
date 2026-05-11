@@ -708,11 +708,34 @@ export interface DashboardConfig {
 }
 
 /**
+ * Platform status types
+ */
+export interface ComponentStatus {
+  name: string;
+  status: 'Ready' | 'Degraded' | 'Missing' | 'Unknown';
+}
+
+export interface RegistryBuildInfo {
+  clusterBuildStrategyPresent: boolean;
+  clusterBuildStrategies: string[];
+  registryEndpoint: string;
+}
+
+export interface PlatformStatusResponse {
+  components: ComponentStatus[];
+  registry: RegistryBuildInfo;
+}
+
+/**
  * Config service
  */
 export const configService = {
   async getDashboards(): Promise<DashboardConfig> {
     return apiFetch('/config/dashboards');
+  },
+
+  async getPlatformStatus(): Promise<PlatformStatusResponse> {
+    return apiFetch('/config/platform-status');
   },
 };
 
