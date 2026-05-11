@@ -634,24 +634,12 @@ The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/ma
 
 > **Note**: Client registration is fully automatic. The operator reads Keycloak admin credentials from `keycloak-admin-secret` in the operator namespace (not from agent namespaces), providing better security isolation.
 
-### Installation and Hands-On Demo
+### Hands-On Demos
 
-The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/main/authbridge) provides a complete end-to-end example:
+For step-by-step AuthBridge demos with real working examples, see:
 
-```bash
-# Clone and deploy
-cd AuthBridge
-python setup_keycloak.py           # Configure Keycloak
-kubectl apply -f k8s/authbridge-deployment.yaml  # Deploy demo
-
-# Test
-kubectl exec -it deployment/caller -n authbridge -c caller -- sh
-TOKEN=$(curl -s ... | jq -r '.access_token')
-curl -H "Authorization: Bearer $TOKEN" http://auth-target-service:8081/test
-# Returns: "authorized"
-```
-
-For detailed installation and demo instructions please see the [AuthBridge Demo](https://github.com/kagenti/kagenti-extensions/tree/main/authbridge)
+- **[AuthBridge Weather Demo](https://github.com/kagenti/kagenti-extensions/tree/main/authbridge/demos/weather-agent)** — Complete end-to-end example showing token exchange between a weather agent and weather tool
+- **[AuthBridge Documentation](https://github.com/kagenti/kagenti-extensions/tree/main/authbridge)** — Component documentation and additional examples
 
 ### AuthBridge Documentation
 
