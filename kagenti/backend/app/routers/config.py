@@ -8,7 +8,7 @@ Configuration API endpoints.
 import logging
 from typing import List, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from kubernetes.client import ApiException
 from pydantic import BaseModel, Field
 
@@ -34,6 +34,7 @@ class FeatureFlagsResponse(BaseModel):
     agentSandbox: bool = Field(description="agent-sandbox (k8s-sigs) as a workload type")
     skills: bool = Field(description="Skill management system (CRUD + catalog UI)")
     authbridgeAPI: bool = Field(description="AuthBridge statistics (API and UI)")
+    admin: bool = Field(description="Platform Status card and /platform-status endpoint")
 
 
 class ComponentStatus(BaseModel):
@@ -79,6 +80,7 @@ async def get_feature_flags() -> FeatureFlagsResponse:
         agentSandbox=settings.kagenti_feature_flag_agent_sandbox,
         skills=settings.kagenti_feature_flag_skills,
         authbridgeAPI=settings.kagenti_feature_flag_authbridge_api,
+        admin=settings.kagenti_feature_flag_admin,
     )
 
 
@@ -182,6 +184,9 @@ async def get_platform_status(
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> PlatformStatusResponse:
     """Return health status of platform components, build strategies, and registry info."""
+    if not settings.kagenti_feature_flag_admin:
+        raise HTTPException(status_code=404, detail="Admin feature disabled")
+
     components = [
         ComponentStatus(
             name="Istio", status=_check_deployment_ready(kube, "istio-system", "istiod")

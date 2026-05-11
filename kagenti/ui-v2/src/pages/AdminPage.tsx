@@ -64,7 +64,9 @@ const STATUS_COLOR: Record<ComponentStatus['status'], 'green' | 'gold' | 'grey'>
   Unknown: 'grey',
 };
 
-const FLAG_LABELS: Record<keyof FeatureFlags, string> = {
+type DisplayedFlag = Exclude<keyof FeatureFlags, 'admin'>;
+
+const FLAG_LABELS: Record<DisplayedFlag, string> = {
   sandbox: 'Sandbox',
   integrations: 'Integrations',
   triggers: 'Triggers',
@@ -122,7 +124,7 @@ const PlatformStatusCard: React.FC = () => {
                 <Text component="small" style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>
                   Feature Flags
                 </Text>
-                {(Object.keys(FLAG_LABELS) as (keyof FeatureFlags)[]).map((key) => (
+                {(Object.keys(FLAG_LABELS) as DisplayedFlag[]).map((key) => (
                   <Checkbox
                     key={key}
                     id={`flag-${key}`}
@@ -168,6 +170,7 @@ const PlatformStatusCard: React.FC = () => {
 
 export const AdminPage: React.FC = () => {
   const { user, isAuthenticated, isEnabled } = useAuth();
+  const featureFlags = useFeatureFlags();
 
   const { data: authStatus, isLoading } = useQuery({
     queryKey: ['auth-status'],
@@ -371,9 +374,11 @@ export const AdminPage: React.FC = () => {
           </GridItem>
 
           {/* Platform Status */}
-          <GridItem md={6}>
-            <PlatformStatusCard />
-          </GridItem>
+          {featureFlags.admin && (
+            <GridItem md={6}>
+              <PlatformStatusCard />
+            </GridItem>
+          )}
         </Grid>
       </PageSection>
     </>
