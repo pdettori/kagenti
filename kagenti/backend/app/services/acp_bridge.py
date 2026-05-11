@@ -221,7 +221,7 @@ class ACPBridge:
 
         if not pod_name or not _k8s_re.match(pod_name):
             yield _acp_error(
-                f"No valid running pod for sandbox agent", session_id=session.session_id
+                "No valid running pod for sandbox agent", session_id=session.session_id
             )
             return
 
