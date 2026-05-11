@@ -909,11 +909,36 @@ metadata:
   name: kagenti-backend
 rules:
 - apiGroups: ["", "apps", "batch"]
-  resources: ["pods", "deployments", "statefulsets", "jobs", "services", "secrets", "configmaps"]
+  resources: ["pods", "deployments", "statefulsets", "jobs", "services", "configmaps"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["agents.x-k8s.io", "extensions.agents.x-k8s.io"]
   resources: ["sandboxes", "sandboxclaims", "sandboxtemplates"]
   verbs: ["get", "list", "watch", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kagenti-backend-secrets
+  namespace: $BACKEND_NS
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["postgres-sessions-secret", "litemaas-credentials", "litellm-virtual-keys"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kagenti-backend-secrets
+  namespace: $BACKEND_NS
+subjects:
+- kind: ServiceAccount
+  name: kagenti-backend
+  namespace: $BACKEND_NS
+roleRef:
+  kind: Role
+  name: kagenti-backend-secrets
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

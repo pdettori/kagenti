@@ -28,12 +28,12 @@ JSON_RPC_METHOD_NOT_FOUND = -32601
 JSON_RPC_INTERNAL_ERROR = -32603
 JSON_RPC_PARSE_ERROR = -32700
 
-_SAFE_NAME = re.compile(r"^[a-zA-Z0-9._-]{1,63}$")
+_K8S_NAME = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
 def _safe(value: str) -> str:
     """Sanitize path params for logging to prevent log injection."""
-    if _SAFE_NAME.match(value):
+    if _K8S_NAME.match(value):
         return value
     return re.sub(r"[\n\r\t]", "_", value)[:63]
 
@@ -45,6 +45,10 @@ async def acp_websocket(
     agent_name: str,
     token: str = Query(default=""),
 ):
+    if not _K8S_NAME.match(namespace) or not _K8S_NAME.match(agent_name):
+        await websocket.close(code=4400, reason="Invalid namespace or agent_name")
+        return
+
     if settings.enable_auth:
         if not token:
             await websocket.close(code=4001, reason="Authentication required: pass ?token=<jwt>")

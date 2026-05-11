@@ -289,7 +289,7 @@ class ACPBridge:
             "jsonrpc": "2.0",
             "method": "session/update",
             "params": {
-                "sessionId": session_id,
+                "sessionId": session.session_id,
                 "sessionUpdate": "turn_complete",
                 "stopReason": "end_turn",
             },
