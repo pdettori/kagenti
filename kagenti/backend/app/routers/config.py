@@ -41,10 +41,10 @@ class ComponentStatus(BaseModel):
 
     name: str
     status: Literal[
-        "Ready",     # API group or service exists and is reachable
+        "Ready",  # API group or service exists and is reachable
         "Degraded",  # Resource exists but returned a non-404 error
-        "Missing",   # API group or service not found in the cluster
-        "Unknown",   # Probe could not determine status (e.g. timeout, RBAC)
+        "Missing",  # API group or service not found in the cluster
+        "Unknown",  # Probe could not determine status (e.g. timeout, RBAC)
     ]
 
 
@@ -183,8 +183,12 @@ async def get_platform_status(
 ) -> PlatformStatusResponse:
     """Return health status of platform components, build strategies, and registry info."""
     components = [
-        ComponentStatus(name="Istio", status=_check_deployment_ready(kube, "istio-system", "istiod")),
-        ComponentStatus(name="Keycloak", status=_check_statefulset_ready(kube, "keycloak", "keycloak")),
+        ComponentStatus(
+            name="Istio", status=_check_deployment_ready(kube, "istio-system", "istiod")
+        ),
+        ComponentStatus(
+            name="Keycloak", status=_check_statefulset_ready(kube, "keycloak", "keycloak")
+        ),
         # SPIRE uses spire-system on Kind but zero-trust-workload-identity-manager on
         # OpenShift, so we check the API group instead of a specific workload.
         ComponentStatus(name="SPIRE", status=_check_api_group(kube, "spire.spiffe.io")),
