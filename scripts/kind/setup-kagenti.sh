@@ -137,6 +137,8 @@ while [[ $# -gt 0 ]]; do
       echo "                      openaiApiKey, slackBotToken, etc.)"
       echo "  --cluster-name NAME Kind cluster name (default: kagenti)"
       echo "  --domain DOMAIN     Domain for services (default: localtest.me)"
+      echo "  --kagenti-values FILE Helm override file to apply to Kagenti chart"
+      echo "  --kagenti-deps-values FILE Helm override file to apply to Kagenti-deps chart"
       echo "  --dry-run           Show commands without executing"
       echo "  -h, --help          Show this help"
       exit 0 ;;
