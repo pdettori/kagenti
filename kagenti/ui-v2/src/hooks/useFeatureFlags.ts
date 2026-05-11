@@ -13,6 +13,8 @@ export interface FeatureFlags {
   skills: boolean;
   /** AuthBridge statistics */
   authbridgeAPI: boolean;
+  /** Platform Status card and /platform-status endpoint */
+  admin: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -22,6 +24,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   agentSandbox: false,
   skills: false,
   authbridgeAPI: false,
+  admin: false,
 };
 
 let cachedFlags: FeatureFlags | null = null;
@@ -42,6 +45,7 @@ export function useFeatureFlags(): FeatureFlags {
           agentSandbox: data.agentSandbox === true,
           skills: data.skills === true,
           authbridgeAPI: data.authbridgeAPI === true,
+          admin: data.admin === true,
           };
         cachedFlags = validated;
         setFlags(validated);
