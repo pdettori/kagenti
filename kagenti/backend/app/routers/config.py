@@ -42,7 +42,7 @@ class ComponentStatus(BaseModel):
     name: str
     status: Literal[
         "Ready",  # API group or service exists and is reachable
-        "Degraded",  # Resource exists but returned a non-404 error
+        "Degraded",  # Workload exists but not fully ready (e.g. ready < desired for deployments/statefulsets, or a non-404 API error)
         "Missing",  # API group or service not found in the cluster
         "Unknown",  # Probe could not determine status (e.g. timeout, RBAC)
     ]
@@ -204,7 +204,7 @@ async def get_platform_status(
             group=SHIPWRIGHT_CRD_GROUP,
             version=SHIPWRIGHT_CRD_VERSION,
             plural=SHIPWRIGHT_CLUSTER_BUILD_STRATEGIES_PLURAL,
-            suppress_api_error=True,
+            log_api_error=False,
         )
         strategy_names = [
             item.get("metadata", {}).get("name", "")

@@ -177,7 +177,7 @@ class KubernetesService:
         version: str,
         plural: str,
         label_selector: Optional[str] = None,
-        suppress_api_error: bool = False,
+        log_api_error: bool = True,
     ) -> dict:
         """List cluster-scoped custom resources (e.g., ClusterBuildStrategies)."""
         try:
@@ -188,7 +188,7 @@ class KubernetesService:
                 label_selector=label_selector,
             )
         except ApiException as e:
-            if not suppress_api_error:
+            if log_api_error:
                 logger.error(f"Error listing cluster-scoped {plural}: {e}")
             raise
 

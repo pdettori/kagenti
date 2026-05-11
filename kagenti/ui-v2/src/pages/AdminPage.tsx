@@ -40,6 +40,8 @@ import { configService } from '@/services/api';
 import type { ComponentStatus } from '@/services/api';
 import { useFeatureFlags, type FeatureFlags } from '@/hooks/useFeatureFlags';
 
+const POLL_INTERVAL_MS = 15_000;
+
 // Auth status API service
 async function getAuthStatus(): Promise<{
   enabled: boolean;
@@ -77,7 +79,7 @@ const PlatformStatusCard: React.FC = () => {
   const { data: platformStatus, isLoading } = useQuery({
     queryKey: ['platform-status'],
     queryFn: () => configService.getPlatformStatus(),
-    refetchInterval: 15000,
+    refetchInterval: POLL_INTERVAL_MS,
   });
 
   return (
