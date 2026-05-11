@@ -2,9 +2,9 @@
 
 ## Overview
 
-**Skills** are reusable capabilities managed by the Kagenti framework that expand what agents can accomplish. They encapsulate domain expertise for high-value activities such as decision support, operational analysis, compliance checks, and workflow automation. By combining structured knowledge with executable logic, skills enable agents to perform and execute operations in a consistent, context-aware manner—applying provided knowledge directly to real tasks without rebuilding logic each time.
+**Skills** in Kagenti are reusable capabilities stored as Kubernetes ConfigMaps and managed through the platform's REST API. They encapsulate domain expertise and workflows that agents can access on-demand. Skills are stored with the label `kagenti.io/type=skill` and can include multiple files (code, documentation, configuration) that define their behavior.
 
-Skills are a key component of the Kagenti workload runtime, working alongside Agents and Tools in the platform architecture. While agents provide the reasoning and orchestration layer, and tools offer specific integrations, skills deliver specialized domain knowledge and workflows that can be invoked on-demand.
+Skills are a key component of the Kagenti workload runtime, working alongside Agents and Tools in the platform architecture. While agents provide the reasoning and orchestration layer, and tools offer specific integrations, skills deliver specialized domain knowledge stored as ConfigMaps that can be retrieved and used by agents.
 
 ## Enabling Skills
 
@@ -50,7 +50,7 @@ When installing or upgrading Kagenti with Helm, enable skills by setting the fea
 helm upgrade --install kagenti ./charts/kagenti/ \
   -n kagenti-system --create-namespace \
   --set featureFlags.skills=true
-
+```
 
 ### Verifying Skills Are Enabled
 
@@ -65,25 +65,93 @@ After enabling the feature flag and restarting/upgrading your deployment:
 
 Once enabled, the Skills management interface will be accessible through the UI, allowing you to configure and deploy skills for your agents.
 
-## Key Features
+## Accessing Skills via REST API
 
-- **Reusable Capabilities**: Pre-built expertise for common development and operational tasks
-- **Framework Integration**: Seamlessly integrated into the Kagenti platform
-- **UI Configuration**: Easy setup and management through the Kagenti UI
-- **Agent Enhancement**: Extend agent capabilities without custom code
+Skills are managed through the Kagenti backend REST API. All endpoints require authentication.
 
-## Common Use Cases
+### List Skills
 
-Skills are designed to handle specialized tasks that combine domain knowledge with executable business logic:
+List all skills in a namespace:
 
-- **API Orchestration**: Coordinate multi-step API workflows based on business rules (e.g., validate customer data, call payment gateway, update inventory, send notifications)
-- **Decision Automation**: Execute conditional logic for approval workflows, routing decisions, or resource allocation based on predefined criteria
-- **Data Pipeline Execution**: Orchestrate data transformations, validations, and integrations across multiple systems with error handling and retry logic
-- **Compliance Enforcement**: Apply regulatory rules and policies through executable checks, automated remediation, and audit trail generation
-- **Event-Driven Actions**: React to system events with context-aware business logic (e.g., trigger escalations, initiate rollbacks, adjust configurations)
-- **Integration Workflows**: Execute multi-service operations with knowledge of when to call specific APIs, handle authentication, manage state, and coordinate responses
+```bash
+# List all skills
+curl -X GET "http://kagenti-backend/api/skills?namespace=kagenti-system" \
+  -H "Authorization: Bearer $TOKEN"
 
-## Configuring Skills
+# Search skills by keyword
+curl -X GET "http://kagenti-backend/api/skills?namespace=kagenti-system&q=code-review" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Get Skill Details
+
+Retrieve detailed information about a specific skill, including all files:
+
+```bash
+curl -X GET "http://kagenti-backend/api/skills/kagenti-system/code-review" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Create a Skill
+
+Create a new skill from files:
+
+```bash
+curl -X POST "http://kagenti-backend/api/skills" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "code-review",
+    "namespace": "kagenti-system",
+    "description": "Automated code review skill",
+    "category": "development",
+    "files": {
+      "SKILL.md": "# Code Review Skill\n\nThis skill performs automated code reviews...",
+      "scripts/review.py": "# Python code for review logic..."
+    }
+  }'
+```
+
+**Note**: `SKILL.md` is mandatory and must be included in the files dictionary.
+
+### Delete a Skill
+
+Remove a skill from the cluster:
+
+```bash
+curl -X DELETE "http://kagenti-backend/api/skills/kagenti-system/code-review" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Using Skills in Python
+
+Agents can interact with skills using standard HTTP libraries:
+
+```python
+import httpx
+
+# List available skills
+async with httpx.AsyncClient() as client:
+    response = await client.get(
+        "http://kagenti-backend/api/skills",
+        params={"namespace": "kagenti-system"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    skills = response.json()["items"]
+
+# Get skill details
+async with httpx.AsyncClient() as client:
+    response = await client.get(
+        "http://kagenti-backend/api/skills/kagenti-system/code-review",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    skill_detail = response.json()
+    # Access skill files
+    for file in skill_detail["files"]:
+        print(f"File: {file['path']}, Size: {file['size']}")
+```
+
+## Configuring Skills via UI
 
 ### Prerequisites
 
@@ -91,7 +159,7 @@ Before configuring skills, ensure you have:
 
 1. A running Kagenti installation (see [Installation Guide](./install.md))
 2. Access to the Kagenti UI
-3. Appropriate permissions to manage skills
+3. Appropriate permissions to manage skills (ROLE_OPERATOR for create/delete, ROLE_VIEWER for read)
 
 ### Accessing Skills in the UI
 
@@ -105,35 +173,7 @@ Before configuring skills, ensure you have:
 3. **Access the Skills Section**
    - From the main dashboard, navigate to the Skills management interface
    - Here you can view available skills, their status, and configuration options
-
-### Skill Invocation
-
-Agents can discover and invoke skills through the platform's skill registry:
-
-```python
-# Example: Agent invoking a code review skill
-skill_result = await agent.invoke_skill(
-    skill_name="code-review",
-    parameters={
-        "repository": "kagenti/kagenti",
-        "pull_request": 123,
-        "review_depth": "comprehensive"
-    }
-)
-```
-
-### Skill Discovery
-
-Agents can query available skills:
-
-```python
-# List available skills
-available_skills = await agent.list_skills()
-
-# Get skill details
-skill_info = await agent.get_skill_info("code-review")
-```
-
+   - Skills are displayed with their category, description, and usage count
 
 ### Troubleshooting and Additional Help
 
@@ -141,4 +181,4 @@ For additional support:
 
 - Check the [Troubleshooting Guide](./troubleshooting.md)
 - Review [Component Details](./components.md)
-
+- See the backend implementation: `kagenti/backend/app/routers/skills.py`
