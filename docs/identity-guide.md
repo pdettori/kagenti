@@ -480,7 +480,9 @@ Keycloak client registration is handled automatically by the kagenti-operator's 
 1. **Label the workload** with `kagenti.io/type: agent` or `kagenti.io/type: tool`
 2. **The operator watches** for these labeled workloads
 3. **The operator registers** the workload with Keycloak using:
-   - SPIFFE ID as the client identifier (e.g., `spiffe://localtest.me/ns/team/sa/slack-researcher`)
+   - Client ID pattern depends on whether SPIFFE is enabled:
+     - **SPIFFE disabled**: `namespace/workload-name` (e.g., `team1/slack-researcher`)
+     - **SPIFFE enabled**: `spiffe://trustdomain/ns/namespace/sa/serviceaccount` (e.g., `spiffe://localtest.me/ns/team1/sa/slack-researcher-sa`)
    - Keycloak admin credentials from the `keycloak-admin-secret` in the operator namespace
 4. **The operator creates** a secret in the agent namespace containing client credentials
 
