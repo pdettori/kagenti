@@ -196,6 +196,11 @@ class ACPBridge:
         """Send prompt to sandbox agent via kubectl exec."""
         import subprocess
 
+        _k8s_re = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
+        if not _k8s_re.match(session.namespace) or not _k8s_re.match(session.agent_name):
+            yield _acp_error("Invalid namespace or agent_name", session_id=session.session_id)
+            return
+
         cli = "claude" if "claude" in session.agent_name else "opencode"
         cmd_args = (
             ["--print", "--bare", "--model", "claude-sonnet-4-20250514", text]
@@ -214,14 +219,14 @@ class ACPBridge:
                 pod_name = pod.metadata.name
                 break
 
-        if not pod_name:
+        if not pod_name or not _k8s_re.match(pod_name):
             yield _acp_error(
-                f"No running pod for {session.agent_name}", session_id=session.session_id
+                f"No valid running pod for sandbox agent", session_id=session.session_id
             )
             return
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603 — list-form, validated inputs
                 ["kubectl", "exec", pod_name, "-n", session.namespace, "--", "timeout", "90", cli]
                 + cmd_args,
                 capture_output=True,

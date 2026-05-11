@@ -118,23 +118,6 @@ Tests the ACP WebSocket endpoint with JSON-RPC 2.0 lifecycle.
 
 All flaky tests have skip guards — they skip instead of fail when the LLM returns empty.
 deepseek-r1 model does NOT exhibit these flakes.
-| Error handling | — | — | — | — | — | — |
-
-S for Weather: no LLM.
-Claude Code/OpenCode: future — ACP native (session/prompt → sandbox exec).
-OpenClaw: future — ACP-NemoClaw bridge.
-Requires `KAGENTI_FEATURE_FLAG_ACP=true` on the backend.
-
-## Skip Reasons
-
-| Reason | Count | Agents | Resolution |
-|---|:---:|---|---|
-| CLI single-invocation | 6 | Claude Code, OpenCode | ExecSandbox gRPC adapter (Phase 2) |
-| No LLM | 9 | Weather, generic | By design |
-| No resource limits | 5 | ADK, Weather, sandbox | Add limits to deployment YAMLs |
-| Gateway protocol | 4 | OpenClaw | A2A adapter or NemoClaw plugin |
-| Waypoint not deployed | 3 | All | Add to deploy-shared.sh |
-| Session resume | 5 | All | Kagenti backend session store |
 
 ## Test File Organization
 
