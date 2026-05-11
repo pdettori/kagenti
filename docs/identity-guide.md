@@ -578,56 +578,61 @@ The [AuthBridge Component](https://github.com/kagenti/kagenti-extensions/tree/ma
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│  1. SPIFFE Helper obtains SVID from SPIRE Agent                                 │
-│  2. Client Registration extracts SPIFFE ID and registers with Keycloak          │
-│  3. Caller gets token from Keycloak (audience: "caller's SPIFFE ID")            │
-│  4. Caller sends request to auth-target with token                              │
-│  5. Envoy intercepts; Go Processor (ext-proc) validates token signature,        │
-│     expiration, and issuer via JWKS (returns 401 if invalid), then exchanges    │
-│     token for target audience (audience: "auth-target")                         │
-│  6. Auth Target validates token and returns "authorized"                        │
+│  1. Operator watches workloads with kagenti.io/type label                       │
+│  2. Operator registers client with Keycloak (using admin credentials from       │
+│     operator namespace) and creates credentials secret in agent namespace       │
+│  3. (If SPIFFE enabled) SPIFFE Helper obtains SVID from SPIRE Agent             │
+│  4. Agent gets token from Keycloak using credentials from secret                │
+│  5. Agent sends request to target with token                                    │
+│  6. Envoy+ext-proc intercepts: validates token signature, expiration, issuer    │
+│     via JWKS (returns 401 if invalid), then exchanges token for target audience │
+│  7. Target receives request with exchanged token and validates audience         │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
-  SPIRE Agent                    Keycloak                       Auth Target
-       │                            │                               │
-       │  1. SVID                   │                               │
-       ▼                            │                               │
-  ┌─────────┐                       │                               │
-  │ SPIFFE  │  2. Register client   │                               │
-  │ Helper  │──────────────────────►│                               │
-  └─────────┘                       │                               │
-       │                            │                               │
-       ▼                            │                               │
-  ┌─────────┐  3. Get token         │                               │
-  │ Caller  │──────────────────────►│                               │
-  │         │◄──────────────────────│                               │
-  │         │   (aud: authproxy)    │                               │
-  │         │                       │                               │
-  │         │  4. Request + token   │                               │
-  │         │───────────────────────┼──────────────────────────────►│
-  └─────────┘                       │                               │
-       │                            │                               │
-       │      ┌──────────────┐      │                               │
-       └─────►│ Envoy+GoPro  │      │                               │
-              │              │  5. Exchange token                   │
-              │              │─────►│                               │
-              │              │◄─────│                               │
-              │              │   (aud: auth-target)                 │
-              │              │─────────────────────────────────────►│
-              └──────────────┘                              6. Validate & Authorize
-                                                                    │
-                                                               "authorized"
+  Operator                   SPIRE Agent           Keycloak              Target
+       │                         │                     │                    │
+       │ 1. Watch workload       │                     │                    │
+       │ 2. Register client      │                     │                    │
+       ├─────────────────────────┼────────────────────►│                    │
+       │                         │                     │                    │
+       │ Create credentials      │                     │                    │
+       │ secret in agent ns      │                     │                    │
+       │                         │                     │                    │
+       │              ┌─────────┐│  3. Get SVID        │                    │
+       │              │ SPIFFE  ││◄────────────────────┤                    │
+       │              │ Helper  ││                     │                    │
+       │              └─────────┘│                     │                    │
+       │                    │    │                     │                    │
+       │              ┌─────────┐│                     │                    │
+       │              │  Agent  ││  4. Get token       │                    │
+       │              │         ││────────────────────►│                    │
+       │              │         ││◄────────────────────│                    │
+       │              │         ││  (aud: agent's ID)  │                    │
+       │              │         ││                     │                    │
+       │              │         ││  5. Request + token │                    │
+       │              │         ││─────────────────────┼───────────────────►│
+       │              └─────────┘│                     │                    │
+       │                    │    │                     │                    │
+       │         ┌──────────────┐│                     │                    │
+       │         │ Envoy+ext-pr ││  6. Validate &      │                    │
+       │         │              ││     Exchange token  │                    │
+       │         │              ││────────────────────►│                    │
+       │         │              ││◄────────────────────│                    │
+       │         │              ││  (aud: target)      │                    │
+       │         │              ││─────────────────────┼───────────────────►│
+       │         └──────────────┘│                     │  7. Validate aud   │
+       │                         │                     │       "authorized" │
 ```
 
 ### AuthBridge Components
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| **SPIFFE Helper** | Container | Obtains SVID from SPIRE Agent |
+| **Kagenti Operator** | Controller | Watches for workloads with `kagenti.io/type` label, registers them as OAuth clients in Keycloak, and creates credentials secrets in agent namespaces |
+| **SPIFFE Helper** | Container | (Optional, when SPIFFE enabled) Obtains SVID from SPIRE Agent for workload identity |
 | **Envoy + Go Processor (Ext Proc)** | Sidecar | Intercepts traffic in both directions: **inbound** — validates JWT (signature, expiration, issuer, optional audience) via JWKS, returns 401 for invalid tokens; **outbound** — exchanges tokens for target audience via Keycloak |
-| **Auth Target** | Deployment | Target service that validates exchanged tokens |
 
-> **Note**: Keycloak client registration is handled by the kagenti-operator's ClientRegistrationReconciler controller, not by an AuthBridge component. The operator automatically registers agents and tools with Keycloak using credentials from the operator namespace.
+> **Note**: Client registration is fully automatic. The operator reads Keycloak admin credentials from `keycloak-admin-secret` in the operator namespace (not from agent namespaces), providing better security isolation.
 
 ### Installation and Hands-On Demo
 
