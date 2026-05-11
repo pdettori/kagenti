@@ -273,8 +273,9 @@ else
 fi
 
 # ============================================================================
-# PHASE 3: Build Images
+# PHASE 3: Build Images (non-fatal — tests skip for missing components)
 # ============================================================================
+set +e
 if [ "$SKIP_IMAGES" = "false" ]; then
     log_phase "PHASE 3: Build Images"
 
@@ -326,6 +327,7 @@ for tenant in team1 team2; do
 done
 
 # ============================================================================
+set -euo pipefail
 # PHASE 6: Run E2E Tests
 # ============================================================================
 if [ "$SKIP_TEST" = "false" ]; then
@@ -369,9 +371,14 @@ if [ "$SKIP_TEST" = "false" ]; then
         else
             log_step "Running OpenShell E2E tests (sequential)..."
         fi
-        uv run pytest "$TEST_DIR" "${PYTEST_ARGS[@]}"
+        PYTEST_EXIT=0
+        uv run pytest "$TEST_DIR" "${PYTEST_ARGS[@]}" || PYTEST_EXIT=$?
+        if [ "$PYTEST_EXIT" -ne 0 ]; then
+            log_error "Tests failed (exit code: $PYTEST_EXIT)"
+        fi
     else
         log_warn "No tests at $TEST_DIR — skipping."
+        PYTEST_EXIT=0
     fi
 else
     log_phase "PHASE 6: Skipping E2E Tests"
@@ -406,3 +413,5 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}┃${NC} OpenShell full test completed! (platform: $PLATFORM)"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
+
+exit "${PYTEST_EXIT:-0}"
