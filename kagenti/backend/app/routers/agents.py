@@ -2024,6 +2024,8 @@ def _build_authbridge_runtime_yaml(
     # public `issuer`. Required for split-horizon deployments where
     # `issuer` isn't reachable from inside the pod. See
     # kagenti-extensions#383.
+    # Note: Remember to keep AuthBridgeConfig in kagenti/ui-v2/src/types/index.ts
+    # in sync with this YAML runtime configuration.
     config = {
         "mode": "envoy-sidecar",
         "pipeline": {
