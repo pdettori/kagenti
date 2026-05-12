@@ -123,8 +123,7 @@ data:
   # Keycloak connection (used by operator client registration controller)
   KEYCLOAK_URL: "http://keycloak-service.{{ $root.Values.keycloak.namespace }}.svc:8080"
   KEYCLOAK_REALM: {{ $root.Values.keycloak.realm | quote }}
-  # KEYCLOAK_NAMESPACE: Not used by sidecars. Included for reference by Helm-hook Jobs.
-  # Sidecars get credentials from local keycloak-admin-secret (replicated by agent-oauth-secret Job).
+  # KEYCLOAK_NAMESPACE: Not used by sidecars or operator. Included for reference by Helm-hook Jobs.
   KEYCLOAK_NAMESPACE: "{{ $root.Values.keycloak.namespace }}"
   # ISSUER: Used by envoy-proxy go-processor for inbound JWT validation.
   # Optional - auto-derived from KEYCLOAK_URL + KEYCLOAK_REALM if not set.
