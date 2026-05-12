@@ -700,6 +700,9 @@ if $STEP_PREPULL; then
   CR_TAG=$(grep -A3 'credentialsDriver:' "$CHART_DIR/values.yaml" | grep 'tag:' | awk '{print $2}')
 
   if is_openshift; then
+    # OCP: Ensure namespace exists before creating pull Jobs
+    kubectl get ns team1 &>/dev/null || kubectl create ns team1 2>/dev/null || true
+
     # OCP: Start pull Jobs for all images in parallel (non-blocking)
     PULL_IMAGES="$BASE_IMAGE ${GW_REPO}:${GW_TAG} ${CD_REPO}:${CD_TAG} ${CR_REPO}:${CR_TAG}"
     for img in $PULL_IMAGES; do
