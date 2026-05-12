@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isValidEnvVarName, isValidContainerImage, isValidImageTag } from '../utils/validation';
 import { newRouteRowId } from '../utils/routeRowId';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import {
   PageSection,
   Title,
@@ -87,9 +88,12 @@ interface ServicePort {
 
 export const ImportToolPage: React.FC = () => {
   const navigate = useNavigate();
+  const features = useFeatureFlags();
 
-  // Deployment method
-  const [deploymentMethod, setDeploymentMethod] = useState<DeploymentMethod>('source');
+  // Deployment method — default to 'image' when builds unavailable
+  const [deploymentMethod, setDeploymentMethod] = useState<DeploymentMethod>(
+    features.builds ? 'source' : 'image'
+  );
 
   // Form state
   const [namespace, setNamespace] = useState('team1');
@@ -580,14 +584,16 @@ export const ImportToolPage: React.FC = () => {
               </Title>
 
               <FormGroup role="radiogroup" fieldId="deploymentMethod">
-                <Radio
-                  name="deploymentMethod"
-                  label="Build from Source"
-                  description="Build container image from source code using Shipwright"
-                  isChecked={deploymentMethod === 'source'}
-                  onChange={() => setDeploymentMethod('source')}
-                  id="deploymentMethod-source"
-                />
+                {features.builds && (
+                  <Radio
+                    name="deploymentMethod"
+                    label="Build from Source"
+                    description="Build container image from source code using Shipwright"
+                    isChecked={deploymentMethod === 'source'}
+                    onChange={() => setDeploymentMethod('source')}
+                    id="deploymentMethod-source"
+                  />
+                )}
                 <Radio
                   name="deploymentMethod"
                   label="Deploy from Image"
@@ -595,7 +601,7 @@ export const ImportToolPage: React.FC = () => {
                   isChecked={deploymentMethod === 'image'}
                   onChange={() => setDeploymentMethod('image')}
                   id="deploymentMethod-image"
-                  style={{ marginTop: '8px' }}
+                  style={{ marginTop: features.builds ? '8px' : undefined }}
                 />
               </FormGroup>
 

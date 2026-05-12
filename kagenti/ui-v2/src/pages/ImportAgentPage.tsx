@@ -111,8 +111,10 @@ export const ImportAgentPage: React.FC = () => {
   const queryClient = useQueryClient();
   const features = useFeatureFlags();
 
-  // Deployment method
-  const [deploymentMethod, setDeploymentMethod] = useState<DeploymentMethod>('source');
+  // Deployment method — default to 'image' when builds unavailable
+  const [deploymentMethod, setDeploymentMethod] = useState<DeploymentMethod>(
+    features.builds ? 'source' : 'image'
+  );
 
   // Basic info
   const [namespace, setNamespace] = useState('team1');
@@ -613,14 +615,16 @@ export const ImportAgentPage: React.FC = () => {
               </Title>
 
               <FormGroup role="radiogroup" fieldId="deployment-method">
-                <Radio
-                  id="method-source"
-                  name="deployment-method"
-                  label="Build from Source"
-                  description="Build container image from a git repository"
-                  isChecked={deploymentMethod === 'source'}
-                  onChange={() => setDeploymentMethod('source')}
-                />
+                {features.builds && (
+                  <Radio
+                    id="method-source"
+                    name="deployment-method"
+                    label="Build from Source"
+                    description="Build container image from a git repository"
+                    isChecked={deploymentMethod === 'source'}
+                    onChange={() => setDeploymentMethod('source')}
+                  />
+                )}
                 <Radio
                   id="method-image"
                   name="deployment-method"
@@ -628,7 +632,7 @@ export const ImportAgentPage: React.FC = () => {
                   description="Deploy using an existing container image"
                   isChecked={deploymentMethod === 'image'}
                   onChange={() => setDeploymentMethod('image')}
-                  style={{ marginTop: '8px' }}
+                  style={{ marginTop: features.builds ? '8px' : undefined }}
                 />
               </FormGroup>
 

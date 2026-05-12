@@ -598,6 +598,9 @@ async def list_tool_shipwright_builds(
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> ShipwrightBuildListResponse:
     """List Shipwright Build resources for tools only (kagenti.io/type=tool)."""
+    if not kube.api_group_exists("shipwright.io"):
+        return ShipwrightBuildListResponse(items=[])
+
     namespaces_to_scan: List[str] = []
     if all_namespaces:
         namespaces_to_scan = kube.list_enabled_namespaces()
