@@ -8,7 +8,7 @@
 #   3. cert-manager CA chain (ClusterIssuer + CA Certificate)
 #   4. Keycloak realm (openshell realm, PKCE client, test users)
 #   5. LiteLLM model proxy (optional, when --litellm is passed)
-#   6. Base sandbox image pre-pull (optional, when --pre-pull is passed)
+#   6. Container image pre-pull (optional, when --pre-pull is passed)
 #   7. kagenti-backend + PostgreSQL sessions DB (default on, --skip-backend)
 #
 # Idempotent: safe to re-run. Checks existing state before each step.
@@ -73,7 +73,7 @@ Options:
   --skip-tls          Skip cert-manager CA chain
   --skip-keycloak     Skip Keycloak realm setup
   --litellm           Deploy LiteLLM model proxy (requires MAAS_* env vars)
-  --pre-pull          Pre-pull base sandbox image into the cluster
+  --pre-pull          Pre-pull container images into the cluster
   --backend           Deploy kagenti-backend (default: enabled, use --skip-backend to disable)
   --skip-backend      Skip kagenti-backend deployment
   --kind-cluster NAME Kind cluster name for pre-pull (default: kagenti)
@@ -115,7 +115,7 @@ echo "  Gateway API CRDs:   $STEP_GATEWAY_API"
 echo "  cert-manager CA:    $STEP_TLS"
 echo "  Keycloak realm:     $STEP_KEYCLOAK"
 echo "  LiteLLM proxy:      $STEP_LITELLM"
-echo "  Base image pre-pull: $STEP_PREPULL"
+echo "  Image pre-pull:      $STEP_PREPULL"
 echo "  Backend + sessions: $STEP_BACKEND"
 echo "  Keycloak namespace: $KEYCLOAK_NS"
 echo "  Dry run:            $DRY_RUN"
@@ -686,57 +686,13 @@ fi
 # Step 6: Base sandbox image pre-pull (optional)
 # ============================================================================
 if $STEP_PREPULL; then
-  log_info "Step 6: Pre-pull base sandbox image"
-
-  BASE_IMAGE="ghcr.io/nvidia/openshell-community/sandboxes/base:latest"
-
-  # Read gateway image tags from values.yaml
-  CHART_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/charts/openshell"
-  GW_REPO=$(grep -A2 'gateway:' "$CHART_DIR/values.yaml" | grep 'repository:' | awk '{print $2}')
-  GW_TAG=$(grep -A3 'gateway:' "$CHART_DIR/values.yaml" | grep 'tag:' | awk '{print $2}')
-  CD_REPO=$(grep -A2 'computeDriver:' "$CHART_DIR/values.yaml" | grep 'repository:' | awk '{print $2}')
-  CD_TAG=$(grep -A3 'computeDriver:' "$CHART_DIR/values.yaml" | grep 'tag:' | awk '{print $2}')
-  CR_REPO=$(grep -A2 'credentialsDriver:' "$CHART_DIR/values.yaml" | grep 'repository:' | awk '{print $2}')
-  CR_TAG=$(grep -A3 'credentialsDriver:' "$CHART_DIR/values.yaml" | grep 'tag:' | awk '{print $2}')
+  log_info "Step 6: Pre-pull container images"
 
   if is_openshift; then
-    # OCP: Ensure namespace exists before creating pull Jobs
-    kubectl get ns team1 &>/dev/null || kubectl create ns team1 2>/dev/null || true
-
-    # OCP: Start pull Jobs for all images in parallel (non-blocking)
-    PULL_IMAGES="$BASE_IMAGE ${GW_REPO}:${GW_TAG} ${CD_REPO}:${CD_TAG} ${CR_REPO}:${CR_TAG}"
-    for img in $PULL_IMAGES; do
-      job_name="pull-$(echo "$img" | sed 's|[/:.@]|-|g' | tail -c 58)"
-      if kubectl get job "$job_name" -n team1 &>/dev/null; then
-        continue
-      fi
-      log_info "Pre-pulling $img..."
-      run_cmd kubectl apply -f - <<EOJOB
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: $job_name
-  namespace: team1
-spec:
-  ttlSecondsAfterFinished: 300
-  template:
-    spec:
-      containers:
-      - name: pull
-        image: $img
-        imagePullPolicy: Always
-        command: ["echo", "pulled"]
-      restartPolicy: Never
-EOJOB
-    done
-    log_info "Waiting for pre-pull Jobs to complete (up to 20 min)..."
-    for jn in $PULL_IMAGES; do
-      jname="pull-$(echo "$jn" | sed 's|[/:.@]|-|g' | tail -c 58)"
-      kubectl wait --for=condition=Complete "job/$jname" \
-        -n team1 --timeout=1200s 2>/dev/null || log_warn "Pre-pull $jname not complete"
-    done
+    "$SCRIPT_DIR/prepull-images.sh" --namespace team1 --timeout 1200
   else
-    # Kind: docker pull + kind load
+    # Kind: docker pull + kind load for base sandbox image
+    BASE_IMAGE="ghcr.io/nvidia/openshell-community/sandboxes/base:latest"
     if docker exec "${KIND_CLUSTER}-control-plane" crictl images 2>/dev/null | grep -q "sandboxes/base"; then
       log_success "Base sandbox image already loaded in Kind — skipping"
     else
