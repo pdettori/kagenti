@@ -40,7 +40,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: openshell-kind-${{ github.event.issue.number || github.head_ref || github.ref }}
+  group: openshell-kind-${{ github.event_name }}-${{ github.event.issue.number || github.head_ref || github.ref }}
   cancel-in-progress: true
 
 permissions: {}

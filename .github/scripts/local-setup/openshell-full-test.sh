@@ -237,6 +237,48 @@ else
 fi
 
 # ============================================================================
+# PHASE 1.5: Early image pre-pull (OCP only, non-blocking)
+# ============================================================================
+# On fresh HyperShift clusters, image pulls take 20+ min due to cold caches.
+# Start pulling ALL critical images in parallel Jobs immediately after cluster
+# creation so they cache while the platform installs (Phase 2, ~5 min).
+if [ "$PLATFORM" = "ocp" ] && [ "$SKIP_IMAGES" = "false" ]; then
+    log_phase "PHASE 1.5: Early Image Pre-Pull (background)"
+    kubectl create ns team1 2>/dev/null || true
+
+    EARLY_PULL_IMAGES=(
+        "ghcr.io/nvidia/openshell/gateway:latest"
+        "ghcr.io/nvidia/openshell-community/sandboxes/base:latest"
+        "ghcr.io/berriai/litellm:main-v1.83.10-stable"
+        "postgres:16-alpine"
+    )
+    for img in "${EARLY_PULL_IMAGES[@]}"; do
+        job_name="early-$(echo "$img" | sed 's|[/:.@]|-|g' | tail -c 58)"
+        kubectl get job "$job_name" -n team1 &>/dev/null && continue
+        log_step "Pre-pulling $img (background)..."
+        kubectl apply -f - <<EOJOB 2>/dev/null || true
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: $job_name
+  namespace: team1
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      containers:
+      - name: pull
+        image: $img
+        imagePullPolicy: Always
+        command: ["echo", "pulled"]
+      restartPolicy: Never
+EOJOB
+    done
+    log_step "Image pulls started — will continue in background during Phase 2"
+fi
+
+# ============================================================================
 # PHASE 2: Install Kagenti Platform
 # ============================================================================
 if [ "$SKIP_INSTALL" = "false" ]; then

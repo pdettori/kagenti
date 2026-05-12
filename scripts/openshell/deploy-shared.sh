@@ -729,11 +729,11 @@ spec:
       restartPolicy: Never
 EOJOB
     done
-    log_info "Waiting for pre-pull Jobs to complete (up to 10 min)..."
+    log_info "Waiting for pre-pull Jobs to complete (up to 20 min)..."
     for jn in $PULL_IMAGES; do
       jname="pull-$(echo "$jn" | sed 's|[/:.@]|-|g' | tail -c 58)"
       kubectl wait --for=condition=Complete "job/$jname" \
-        -n team1 --timeout=600s 2>/dev/null || log_warn "Pre-pull $jname not complete"
+        -n team1 --timeout=1200s 2>/dev/null || log_warn "Pre-pull $jname not complete"
     done
   else
     # Kind: docker pull + kind load
