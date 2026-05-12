@@ -296,6 +296,9 @@ else
     log_phase "PHASE 3: Skipping Image Builds"
 fi
 
+# Re-enable strict mode for deploy phases that must succeed
+set -euo pipefail
+
 # ============================================================================
 # PHASE 4: Deploy Shared Infrastructure
 # ============================================================================
