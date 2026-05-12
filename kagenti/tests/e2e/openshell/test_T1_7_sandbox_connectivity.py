@@ -161,7 +161,7 @@ class TestSandboxExec:
                 "--",
                 "sh",
                 "-c",
-                "whoami && pwd && echo SESSION_OK",
+                "id -u && pwd && echo SESSION_OK",
             ],
             capture_output=True,
             text=True,
