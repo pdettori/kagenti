@@ -246,12 +246,15 @@ kagenti-operator-chart:
     spireTrustDomain: localtest.me
   # Pin sidecar image tags injected by the AuthBridge webhook.
   # NOTE: The client-registration sidecar has been sunset.
+  # v0.5.0-alpha.14 includes per-plugin config support (extensions#378) and
+  # keycloak_url/keycloak_realm fields in jwt-validation (extensions#383),
+  # required for compatibility with operator v0.2.0-rc.2's synthesizePipeline output.
   defaults:
     images:
-      envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-rc.1
-      authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-rc.1
-      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-rc.1
-      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-rc.1
+      envoyProxy: ghcr.io/kagenti/kagenti-extensions/authbridge-envoy:v0.5.0-alpha.14
+      authbridgeLight: ghcr.io/kagenti/kagenti-extensions/authbridge-light:v0.5.0-alpha.14
+      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.5.0-alpha.14
+      spiffeHelper: ghcr.io/kagenti/kagenti-extensions/spiffe-helper:v0.5.0-alpha.14
 
 # ------------------------------------------------------------------
 #  MCP Gateway Configuration

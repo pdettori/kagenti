@@ -113,6 +113,9 @@ data:
 #
 #  NOTE: KEYCLOAK_NAMESPACE is only used by Helm-hook Jobs (spiffe-idp-setup, agent-oauth-secret)
 #  that run at install time with cross-namespace RBAC to read from the Keycloak namespace.
+#  Legacy: Prior to kagenti-operator#321, client-registration sidecars received credentials from
+#  a per-namespace keycloak-admin-secret replicated by agent-oauth-secret Job. Now the operator
+#  controller reads keycloak-admin-secret from its own namespace (kagenti-system) for security.
 # ——————————————————————————————————————————————————————————————————————————————
 apiVersion: v1
 kind: ConfigMap
