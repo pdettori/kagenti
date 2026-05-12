@@ -214,20 +214,6 @@ spiffeIdp:
     pullPolicy: IfNotPresent
 
 # ------------------------------------------------------------------
-#  Kagenti Webhook Configuration
-# ------------------------------------------------------------------
-# Pin sidecar image tags to the webhook chart version to prevent
-# breakage when :latest is updated by newer kagenti-extensions builds.
-# These MUST be updated together with the chart version in Chart.yaml.
-# NOTE: The client-registration sidecar has been sunset. Client registration
-# is now handled by the kagenti-operator controller.
-kagenti-webhook-chart:
-  defaults:
-    images:
-      envoyProxy: ghcr.io/kagenti/kagenti-extensions/envoy-with-processor:v0.4.0-alpha.9
-      proxyInit: ghcr.io/kagenti/kagenti-extensions/proxy-init:v0.4.0-alpha.9
-
-# ------------------------------------------------------------------
 #  Kagenti Operator Configuration (includes AuthBridge webhook)
 # ------------------------------------------------------------------
 kagenti-operator-chart:
