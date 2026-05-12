@@ -63,9 +63,7 @@ class TestResolveAgentUrl:
         assert url == "http://my-agent.team1.svc.cluster.local:8080"
 
     @patch("app.utils.routes.settings")
-    def test_service_no_ports_reads_sandbox_containerport(
-        self, mock_settings, kubernetes_service
-    ):
+    def test_service_no_ports_reads_sandbox_containerport(self, mock_settings, kubernetes_service):
         """Service with empty ports → read containerPort from the owning Sandbox."""
         mock_settings.is_running_in_cluster = True
         svc = MagicMock()
@@ -74,9 +72,7 @@ class TestResolveAgentUrl:
         kubernetes_service.get_sandbox = MagicMock(
             return_value={
                 "spec": {
-                    "podTemplate": {
-                        "spec": {"containers": [{"ports": [{"containerPort": 8080}]}]}
-                    }
+                    "podTemplate": {"spec": {"containers": [{"ports": [{"containerPort": 8080}]}]}}
                 }
             }
         )
@@ -97,9 +93,7 @@ class TestResolveAgentUrl:
             return_value={
                 "spec": {
                     "podTemplate": {
-                        "spec": {
-                            "containers": [{"env": [{"name": "PORT", "value": "9000"}]}]
-                        }
+                        "spec": {"containers": [{"env": [{"name": "PORT", "value": "9000"}]}]}
                     }
                 }
             }
@@ -111,9 +105,7 @@ class TestResolveAgentUrl:
         assert url == "http://my-agent.team1.svc.cluster.local:9000"
 
     @patch("app.utils.routes.settings")
-    def test_service_missing_no_sandbox_falls_back(
-        self, mock_settings, kubernetes_service
-    ):
+    def test_service_missing_no_sandbox_falls_back(self, mock_settings, kubernetes_service):
         """No Service and no Sandbox → DEFAULT_OFF_CLUSTER_PORT (8080)."""
         mock_settings.is_running_in_cluster = True
         kubernetes_service._core_api.read_namespaced_service.side_effect = ApiException(
