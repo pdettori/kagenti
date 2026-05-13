@@ -1043,9 +1043,6 @@ def _build_tool_deployment_manifest(
     if spiffe_helper_inject is False:
         labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
         pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
-    if client_registration_inject is True:
-        labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
-        pod_labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
 
     # Build annotations
     annotations = {}
@@ -1212,9 +1209,6 @@ def _build_tool_statefulset_manifest(
     if spiffe_helper_inject is False:
         labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
         pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
-    if client_registration_inject is True:
-        labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
-        pod_labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
 
     # Build annotations
     annotations = {}
