@@ -220,7 +220,7 @@ class TestT5Concurrent:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
         successes = [r for r in results if isinstance(r, dict) and "content" in r]
-        skips = [r for r in results if isinstance(r, Exception) and "503" in str(r)]
+        skips = [r for r in results if isinstance(r, BaseException) and "503" in str(r)]
         if not successes and skips:
             pytest.skip(f"All {len(skips)} agents unreachable (503, netns)")
         assert len(successes) >= 1, f"Expected at least 1 success, got: {results}"
