@@ -2414,8 +2414,8 @@ def _build_common_labels(
         labels[KAGENTI_ENVOY_PROXY_INJECT_LABEL] = "false"
     if request.spiffeHelperInject is False:
         labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
-    if request.clientRegistrationInject is True:
-        labels[KAGENTI_CLIENT_REGISTRATION_INJECT_LABEL] = "true"
+    # Note: Client registration is now handled by kagenti-operator, not sidecars.
+    # The clientRegistrationInject field is deprecated and ignored.
     return labels
 
 
