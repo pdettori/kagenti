@@ -445,10 +445,10 @@ export const shipwrightService = {
       authBridgeEnabled?: boolean;
       envoyProxyInject?: boolean;
       spiffeHelperInject?: boolean;
-        outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
-    outboundPortsExclude?: string;
-    inboundPortsExclude?: string;
-    defaultOutboundPolicy?: string;
+      outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+      outboundPortsExclude?: string;
+      inboundPortsExclude?: string;
+      defaultOutboundPolicy?: string;
       imagePullSecret?: string;
     }
   ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {
@@ -673,10 +673,10 @@ export const toolShipwrightService = {
       authBridgeEnabled?: boolean;
       envoyProxyInject?: boolean;
       spiffeHelperInject?: boolean;
-        outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
-    outboundPortsExclude?: string;
-    inboundPortsExclude?: string;
-    defaultOutboundPolicy?: string;
+      outboundRoutes?: Array<{ host: string; target_audience: string; token_scopes: string }>;
+      outboundPortsExclude?: string;
+      inboundPortsExclude?: string;
+      defaultOutboundPolicy?: string;
       imagePullSecret?: string;
     }
   ): Promise<{ success: boolean; name: string; namespace: string; message: string }> {

@@ -989,7 +989,7 @@ export const ImportToolPage: React.FC = () => {
                       setSpiffeHelperInject(undefined);
                     }
                   }}
-                  description="When enabled, the webhook injects AuthBridge for inbound JWT validation and outbound token exchange. Client registration is automatically handled by the kagenti-operator. Default webhook settings use two sidecars (envoy-proxy, spiffe-helper) plus proxy-init; with featureGates.combinedSidecar enabled on kagenti-webhook, a single authbridge container is used instead (see docs linked below)."
+                  description="When enabled, the webhook injects AuthBridge for inbound JWT validation and outbound token exchange. Default webhook settings use two sidecars (envoy-proxy, spiffe-helper) plus proxy-init; with featureGates.combinedSidecar enabled on kagenti-webhook, a single authbridge container is used instead (see docs linked below)."
                 />
               </FormGroup>
 
