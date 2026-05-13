@@ -23,9 +23,12 @@ logger = logging.getLogger(__name__)
 
 ACP_PROTOCOL_VERSION = 1
 A2A_STREAM_TIMEOUT = 120.0
+SANDBOX_EXEC_TIMEOUT = 120
 
 SANDBOX_AGENTS = {"openshell-claude", "openshell-opencode"}
 NEMOCLAW_AGENTS = {"nemoclaw-openclaw", "nemoclaw-hermes"}
+
+_K8S_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
 @dataclass
@@ -36,11 +39,6 @@ class ACPSession:
     context_id: str = ""
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     closed: bool = False
-
-
-def _sanitize_log(value: str) -> str:
-    """Sanitize user-provided values for logging to prevent log injection."""
-    return re.sub(r"[\n\r\t]", "_", value)[:128]
 
 
 class ACPBridge:
@@ -71,8 +69,8 @@ class ACPBridge:
         logger.info(
             "ACP session %s created for %s/%s",
             session.session_id,
-            _sanitize_log(namespace),
-            _sanitize_log(agent_name),
+            namespace,
+            agent_name,
         )
         return session
 
@@ -196,8 +194,8 @@ class ACPBridge:
         """Send prompt to sandbox agent via kubectl exec."""
         import subprocess
 
-        _k8s_re = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
-        if not _k8s_re.match(session.namespace) or not _k8s_re.match(session.agent_name):
+        _K8S_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
+        if not _K8S_NAME_RE.match(session.namespace) or not _K8S_NAME_RE.match(session.agent_name):
             yield _acp_error("Invalid namespace or agent_name", session_id=session.session_id)
             return
 
@@ -219,7 +217,7 @@ class ACPBridge:
                 pod_name = pod.metadata.name
                 break
 
-        if not pod_name or not _k8s_re.match(pod_name):
+        if not pod_name or not _K8S_NAME_RE.match(pod_name):
             yield _acp_error(
                 "No valid running pod for sandbox agent", session_id=session.session_id
             )
@@ -231,7 +229,7 @@ class ACPBridge:
                 + cmd_args,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=SANDBOX_EXEC_TIMEOUT,
             )
             output = result.stdout.strip()
             if output:

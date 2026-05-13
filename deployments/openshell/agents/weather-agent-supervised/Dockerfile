@@ -7,7 +7,7 @@ FROM ghcr.io/nvidia/openshell/supervisor:latest AS supervisor
 FROM ghcr.io/kagenti/agent-examples/weather_service:latest
 
 # Copy supervisor binary from supervisor image
-COPY --from=supervisor /usr/local/bin/openshell-sandbox /usr/local/bin/openshell-sandbox
+COPY --from=supervisor /openshell-sandbox /usr/local/bin/openshell-sandbox
 
 # Create sandbox user and install agent deps into system python
 # Supervisor runs as root to set up namespaces, then drops to sandbox user

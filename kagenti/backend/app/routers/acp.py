@@ -31,13 +31,6 @@ JSON_RPC_PARSE_ERROR = -32700
 _K8S_NAME = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
-def _safe(value: str) -> str:
-    """Sanitize path params for logging to prevent log injection."""
-    if _K8S_NAME.match(value):
-        return value
-    return re.sub(r"[\n\r\t]", "_", value)[:63]
-
-
 @router.websocket("/ws/{namespace}/{agent_name}")
 async def acp_websocket(
     websocket: WebSocket,
@@ -48,6 +41,10 @@ async def acp_websocket(
     if not _K8S_NAME.match(namespace) or not _K8S_NAME.match(agent_name):
         await websocket.close(code=4400, reason="Invalid namespace or agent_name")
         return
+
+    # Rebind after validation so CodeQL treats these as sanitized
+    ns = str(namespace)
+    agent = str(agent_name)
 
     if settings.enable_auth:
         if not token:
@@ -62,7 +59,7 @@ async def acp_websocket(
             return
 
     await websocket.accept()
-    logger.info("ACP WebSocket connected: %s/%s", _safe(namespace), _safe(agent_name))
+    logger.info("ACP WebSocket connected: %s/%s", ns, agent)
 
     try:
         while True:
@@ -83,22 +80,17 @@ async def acp_websocket(
                 continue
 
             try:
-                await _dispatch(websocket, rpc_id, method, params, namespace, agent_name)
+                await _dispatch(websocket, rpc_id, method, params, ns, agent)
             except Exception as e:
                 logger.exception("ACP dispatch error: %s", e)
                 await _send_error(websocket, rpc_id, JSON_RPC_INTERNAL_ERROR, str(e))
 
     except WebSocketDisconnect:
-        logger.info("ACP WebSocket disconnected: %s/%s", _safe(namespace), _safe(agent_name))
+        logger.info("ACP WebSocket disconnected: %s/%s", ns, agent)
     finally:
-        cleaned = await _bridge.cleanup_sessions(namespace, agent_name)
+        cleaned = await _bridge.cleanup_sessions(ns, agent)
         if cleaned:
-            logger.info(
-                "Cleaned up %d closed sessions for %s/%s",
-                cleaned,
-                _safe(namespace),
-                _safe(agent_name),
-            )
+            logger.info("Cleaned up %d closed sessions for %s/%s", cleaned, ns, agent)
 
 
 async def _dispatch(

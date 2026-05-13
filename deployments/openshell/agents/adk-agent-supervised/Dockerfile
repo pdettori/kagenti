@@ -24,7 +24,7 @@ COPY agent.py .
 RUN chown -R sandbox:sandbox /app
 
 # Copy supervisor binary from OpenShell image
-COPY --from=supervisor /usr/local/bin/openshell-sandbox /usr/local/bin/openshell-sandbox
+COPY --from=supervisor /openshell-sandbox /usr/local/bin/openshell-sandbox
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/openshell-sandbox"]
