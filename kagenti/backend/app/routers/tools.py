@@ -1043,8 +1043,6 @@ def _build_tool_deployment_manifest(
     if spiffe_helper_inject is False:
         labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
         pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
-    # Note: Client registration is now handled by kagenti-operator, not sidecars.
-    # The client_registration_inject parameter is deprecated and ignored.
 
     # Build annotations
     annotations = {}
@@ -1211,8 +1209,6 @@ def _build_tool_statefulset_manifest(
     if spiffe_helper_inject is False:
         labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
         pod_labels[KAGENTI_SPIFFE_HELPER_INJECT_LABEL] = "false"
-    # Note: Client registration is now handled by kagenti-operator, not sidecars.
-    # The client_registration_inject parameter is deprecated and ignored.
 
     # Build annotations
     annotations = {}

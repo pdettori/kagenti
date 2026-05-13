@@ -1048,7 +1048,7 @@ export const ImportAgentPage: React.FC = () => {
                       setSpiffeHelperInject(undefined);
                     }
                   }}
-                  description="When enabled, the webhook injects AuthBridge for inbound JWT validation and outbound token exchange. Client registration is automatically handled by the kagenti-operator. With the default webhook settings this is two sidecars (envoy-proxy, spiffe-helper) plus proxy-init; if the cluster operator enables featureGates.combinedSidecar on kagenti-webhook, a single authbridge container is used instead (see docs linked below)."
+                  description="When enabled, the webhook injects AuthBridge for inbound JWT validation and outbound token exchange. With the default webhook settings this is two sidecars (envoy-proxy, spiffe-helper) plus proxy-init; if the cluster operator enables featureGates.combinedSidecar on kagenti-webhook, a single authbridge container is used instead (see docs linked below)."
               />
               </FormGroup>
 
