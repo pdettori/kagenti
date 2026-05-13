@@ -42,9 +42,9 @@ async def acp_websocket(
         await websocket.close(code=4400, reason="Invalid namespace or agent_name")
         return
 
-    # Rebind after validation so CodeQL treats these as sanitized
-    ns = str(namespace)
-    agent = str(agent_name)
+    # Extract the validated match to new variables (breaks CodeQL taint chain)
+    ns = _K8S_NAME.match(namespace).group(0)  # type: ignore[union-attr]
+    agent = _K8S_NAME.match(agent_name).group(0)  # type: ignore[union-attr]
 
     if settings.enable_auth:
         if not token:

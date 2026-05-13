@@ -66,12 +66,7 @@ class ACPBridge:
         )
         async with self._lock:
             self._sessions[session.session_id] = session
-        logger.info(
-            "ACP session %s created for %s/%s",
-            session.session_id,
-            namespace,
-            agent_name,
-        )
+        logger.info("ACP session %s created", session.session_id)
         return session
 
     async def get_session(self, session_id: str) -> ACPSession | None:
@@ -194,7 +189,6 @@ class ACPBridge:
         """Send prompt to sandbox agent via kubectl exec."""
         import subprocess
 
-        _K8S_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
         if not _K8S_NAME_RE.match(session.namespace) or not _K8S_NAME_RE.match(session.agent_name):
             yield _acp_error("Invalid namespace or agent_name", session_id=session.session_id)
             return
