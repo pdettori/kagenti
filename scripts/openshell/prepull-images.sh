@@ -7,8 +7,12 @@
 # Running this early (before platform install) lets images cache in the
 # background while other phases run.
 #
+# Defaults to the 'prepull-cache' namespace to avoid conflicts with Helm-managed
+# namespaces (team1, team2). deploy-shared.sh passes --namespace team1 explicitly
+# after the Kagenti Helm install has already created it with proper labels.
+#
 # Usage:
-#   scripts/openshell/prepull-images.sh                    # Pull all images
+#   scripts/openshell/prepull-images.sh                    # Pull all images (ns: prepull-cache)
 #   scripts/openshell/prepull-images.sh --namespace team1  # Custom namespace
 #   scripts/openshell/prepull-images.sh --timeout 1200     # Custom wait (seconds)
 #   scripts/openshell/prepull-images.sh --no-wait          # Start pulls, don't wait
@@ -21,7 +25,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-NS="${PREPULL_NS:-team1}"
+NS="${PREPULL_NS:-prepull-cache}"
 TIMEOUT=1200
 WAIT=true
 
