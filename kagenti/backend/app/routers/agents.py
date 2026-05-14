@@ -2887,7 +2887,6 @@ def _build_sandbox_manifest(
         },
         "spec": {
             "replicas": 1,
-            "service": False,
             "podTemplate": {
                 "metadata": {
                     "labels": {
