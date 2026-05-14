@@ -195,7 +195,7 @@ echo ""
 
 # ── Ensure boto3 for AWS modules (HyperShift cluster lifecycle) ──
 if [ "$PLATFORM" = "ocp" ]; then
-    pip install boto3 botocore 2>/dev/null || true
+    pip install 'boto3>=1.35,<2' 'botocore>=1.35,<2' 2>/dev/null || true
 fi
 
 # ============================================================================
