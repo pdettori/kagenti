@@ -105,15 +105,28 @@ class TestSandboxExec:
     """
 
     def _find_exec_pod(self) -> tuple[str, str] | None:
-        """Find a running pod suitable for exec testing."""
+        """Find a running pod with a ready container suitable for exec testing.
+
+        Selects the first pod where the target container is actually ready,
+        not just where the pod phase is Running (a pod with a crashlooping
+        container still reports Running if its sidecar is up).
+        """
         pods = kubectl_get_pods_json(SANDBOX_NS)
         running = [p for p in pods if p["status"].get("phase") == "Running"]
-        if not running:
-            return None
-        pod = running[0]
-        name = pod["metadata"]["name"]
-        container = pod["spec"]["containers"][0]["name"]
-        return name, container
+        for pod in running:
+            name = pod["metadata"]["name"]
+            containers = pod["spec"].get("containers", [])
+            if not containers:
+                continue
+            container_name = containers[0]["name"]
+            ready_containers = {
+                cs["name"]
+                for cs in pod["status"].get("containerStatuses", [])
+                if cs.get("ready")
+            }
+            if container_name in ready_containers:
+                return name, container_name
+        return None
 
     def test_sandbox_exec_basic(self):
         """Execute a command inside a running pod (validates exec mechanism)."""
