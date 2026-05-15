@@ -25,14 +25,14 @@ on:
       - '.github/workflows/e2e-openshell-kind.yaml'
       - '.github/workflows/e2e-openshell-hypershift.yaml'
 
-permissions: {}
+permissions:
+  contents: read
+  statuses: write
 
 jobs:
   pending-status:
     name: Set Pending Status
     runs-on: ubuntu-latest
-    permissions:
-      statuses: write
     steps:
       - name: Create pending OpenShell commit statuses
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0

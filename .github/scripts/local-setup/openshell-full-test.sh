@@ -194,8 +194,10 @@ echo "    7. cluster-destroy: $([ "$SKIP_DESTROY" = "true" ] && echo SKIP || ech
 echo ""
 
 # ── Ensure boto3 for AWS modules (HyperShift cluster lifecycle) ──
-if [ "$PLATFORM" = "ocp" ]; then
-    pip install 'boto3>=1.35,<2' 'botocore>=1.35,<2' 2>/dev/null || true
+# CI installs these via ci/20-install-tools.sh; local users install via pip.
+if [ "$PLATFORM" = "ocp" ] && ! python3 -c "import boto3" 2>/dev/null; then
+    log_warn "boto3 not installed — HyperShift cluster create/destroy will fail"
+    log_warn "Install with: pip install boto3 botocore"
 fi
 
 # ============================================================================
