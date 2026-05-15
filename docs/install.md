@@ -8,6 +8,7 @@ This guide covers installation on both local Kind clusters and OpenShift environ
   - [macOS Quick Start (New Machine)](#macos-quick-start-new-machine)
 - [Kind Installation (Local Development)](#kind-installation-local-development)
 - [OpenShift Installation](#openshift-installation)
+- [Using the OpenShift Internal Container Registry](#using-the-openshift-internal-container-registry)
 - [Accessing the UI](#accessing-the-ui)
 - [Verifying the Installation](#verifying-the-installation)
 
@@ -280,6 +281,67 @@ kubectl get daemonsets -n zero-trust-workload-identity-manager
 ```
 
 If `Current` or `Ready` is `0`, see [Troubleshooting](#spire-daemonset-issues).
+
+### Using the OpenShift Internal Container Registry
+
+The Kagenti UI allows building agent images and pushing them to the OpenShift
+internal registry (`image-registry.openshift-image-registry.svc:5000`). This
+requires a push secret and appropriate RBAC in each agent namespace.
+
+#### Prerequisites
+
+- OpenShift Builds enabled (`--with-builds` flag or installed separately)
+- The internal image registry must be in `Managed` state (default on ROSA / OCP 4.x)
+
+Verify the registry is running:
+
+```bash
+oc get configs.imageregistry.operator.openshift.io cluster -o jsonpath='{.spec.managementState}'
+# Expected: Managed
+
+oc get pods -n openshift-image-registry -l docker-registry=default
+# Expected: 1/1 Running
+```
+
+#### Create a Registry Push Secret
+
+Create a dedicated service account with image-builder permissions, then generate
+a docker-config secret that Shipwright uses to push built images:
+
+```bash
+NAMESPACE=team1   # repeat for each agent namespace
+
+# Create a dedicated SA for registry push
+oc create sa registry-pusher -n $NAMESPACE
+
+# Grant push access to the internal registry
+oc policy add-role-to-user system:image-builder \
+  system:serviceaccount:$NAMESPACE:registry-pusher -n $NAMESPACE
+
+# Grant pull access so deployed pods can pull images
+oc policy add-role-to-user system:image-puller \
+  system:serviceaccount:$NAMESPACE:default -n $NAMESPACE
+
+# Create the push secret (name must match the UI convention: openshift-registry-secret)
+TOKEN=$(oc create token registry-pusher -n $NAMESPACE --duration=8760h)
+oc create secret docker-registry openshift-registry-secret \
+  --docker-server=image-registry.openshift-image-registry.svc:5000 \
+  --docker-username=registry-pusher \
+  --docker-password="$TOKEN" \
+  -n $NAMESPACE
+```
+
+#### Using the Registry from the UI
+
+When importing an agent or tool from the Kagenti UI:
+
+1. Select **OpenShift Internal Registry** as the Container Registry
+2. The registry URL is pre-filled: `image-registry.openshift-image-registry.svc:5000`
+3. The registry secret is auto-populated as `openshift-registry-secret`
+4. The **Registry Namespace** is the Kubernetes namespace (e.g. `team1`)
+
+Built images are pushed to:
+`image-registry.openshift-image-registry.svc:5000/<namespace>/<agent-name>:<tag>`
 
 ---
 
