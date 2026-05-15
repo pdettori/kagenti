@@ -186,20 +186,19 @@ class ACPBridge:
             yield _acp_error(f"Cannot reach agent: {e}", session_id=session.session_id)
 
     async def _prompt_sandbox(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
-        """Send prompt to sandbox agent via kubectl exec."""
-        import shlex
-        import subprocess
+        """Send prompt to sandbox agent via K8s exec API."""
+        from kubernetes.stream import stream as k8s_stream
 
         if not _K8S_NAME_RE.match(session.namespace) or not _K8S_NAME_RE.match(session.agent_name):
             yield _acp_error("Invalid namespace or agent_name", session_id=session.session_id)
             return
 
         cli = "claude" if "claude" in session.agent_name else "opencode"
-        cmd_args = (
-            ["--print", "--bare", "--model", "claude-sonnet-4-20250514", text]
-            if cli == "claude"
-            else ["run", text]
-        )
+        cmd = ["timeout", "90", cli]
+        if cli == "claude":
+            cmd += ["--print", "--bare", "--model", "claude-sonnet-4-20250514", text]
+        else:
+            cmd += ["run", text]
 
         kube = get_kubernetes_service()
         pods = kube.core_v1.list_namespaced_pod(
@@ -218,17 +217,20 @@ class ACPBridge:
             )
             return
 
-        safe_pod = shlex.quote(pod_name)
-        safe_ns = shlex.quote(session.namespace)
-
         try:
-            result = subprocess.run(  # noqa: S603
-                ["kubectl", "exec", safe_pod, "-n", safe_ns, "--", "timeout", "90", cli] + cmd_args,
-                capture_output=True,
-                text=True,
-                timeout=SANDBOX_EXEC_TIMEOUT,
+            resp = await asyncio.to_thread(
+                k8s_stream,
+                kube.core_v1.connect_get_namespaced_pod_exec,
+                pod_name,
+                session.namespace,
+                command=cmd,
+                container="sandbox",
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
             )
-            output = result.stdout.strip()
+            output = resp.strip()
             if output:
                 yield {
                     "jsonrpc": "2.0",
@@ -239,12 +241,12 @@ class ACPBridge:
                         "content": [{"type": "text", "text": output}],
                     },
                 }
-            elif result.returncode != 0:
+            else:
                 yield _acp_error(
-                    f"Sandbox exec failed: {result.stderr[:200]}", session_id=session.session_id
+                    "Sandbox exec returned empty output", session_id=session.session_id
                 )
-        except subprocess.TimeoutExpired:
-            yield _acp_error("Sandbox exec timed out", session_id=session.session_id)
+        except Exception as e:
+            yield _acp_error(f"Sandbox exec failed: {e}", session_id=session.session_id)
 
     async def _prompt_nemoclaw(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
         """Send prompt to NemoClaw agent via LiteLLM OpenAI-compat format."""
