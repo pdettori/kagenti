@@ -12,6 +12,7 @@ the same Keycloak JWKS as the REST endpoints.
 import json
 import logging
 import re
+from uuid import uuid4
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
@@ -42,10 +43,6 @@ async def acp_websocket(
         await websocket.close(code=4400, reason="Invalid namespace or agent_name")
         return
 
-    # Extract the validated match to new variables (breaks CodeQL taint chain)
-    ns = _K8S_NAME.match(namespace).group(0)  # type: ignore[union-attr]
-    agent = _K8S_NAME.match(agent_name).group(0)  # type: ignore[union-attr]
-
     if settings.enable_auth:
         if not token:
             await websocket.close(code=4001, reason="Authentication required: pass ?token=<jwt>")
@@ -58,8 +55,9 @@ async def acp_websocket(
             await websocket.close(code=4003, reason="Invalid or expired token")
             return
 
+    conn_id = uuid4().hex[:8]
     await websocket.accept()
-    logger.info("ACP WebSocket connected: %s/%s", ns, agent)
+    logger.info("ACP WebSocket connected (conn=%s)", conn_id)
 
     try:
         while True:
@@ -80,17 +78,17 @@ async def acp_websocket(
                 continue
 
             try:
-                await _dispatch(websocket, rpc_id, method, params, ns, agent)
+                await _dispatch(websocket, rpc_id, method, params, namespace, agent_name)
             except Exception as e:
-                logger.exception("ACP dispatch error: %s", e)
+                logger.exception("ACP dispatch error (conn=%s)", conn_id)
                 await _send_error(websocket, rpc_id, JSON_RPC_INTERNAL_ERROR, str(e))
 
     except WebSocketDisconnect:
-        logger.info("ACP WebSocket disconnected: %s/%s", ns, agent)
+        logger.info("ACP WebSocket disconnected (conn=%s)", conn_id)
     finally:
-        cleaned = await _bridge.cleanup_sessions(ns, agent)
+        cleaned = await _bridge.cleanup_sessions(namespace, agent_name)
         if cleaned:
-            logger.info("Cleaned up %d closed sessions for %s/%s", cleaned, ns, agent)
+            logger.info("Cleaned up %d sessions (conn=%s)", cleaned, conn_id)
 
 
 async def _dispatch(

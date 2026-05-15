@@ -217,9 +217,16 @@ class ACPBridge:
             )
             return
 
+        safe_ns = _K8S_NAME_RE.match(session.namespace)
+        if not safe_ns:
+            yield _acp_error("Invalid namespace", session_id=session.session_id)
+            return
+        validated_ns = safe_ns.group(0)
+        validated_pod = _K8S_NAME_RE.match(pod_name).group(0)  # type: ignore[union-attr]
+
         try:
-            result = subprocess.run(  # noqa: S603 — list-form, validated inputs
-                ["kubectl", "exec", pod_name, "-n", session.namespace, "--", "timeout", "90", cli]
+            result = subprocess.run(  # noqa: S603
+                ["kubectl", "exec", validated_pod, "-n", validated_ns, "--", "timeout", "90", cli]
                 + cmd_args,
                 capture_output=True,
                 text=True,
