@@ -656,7 +656,7 @@ spec:
         _claude_sandbox_pod[cache_key] = None
         return None
 
-    deadline = time.time() + 90
+    deadline = time.time() + 180
     while time.time() < deadline:
         pods = kubectl_get_pods_json(namespace)
         matching = [
@@ -671,7 +671,7 @@ spec:
             return pod_name
         time.sleep(5)
 
-    logger.warning("Sandbox pod %s not Running after 90s in %s", name, namespace)
+    logger.warning("Sandbox pod %s not Running after 180s in %s", name, namespace)
     _claude_sandbox_pod[cache_key] = None
     return None
 
