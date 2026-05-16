@@ -18,6 +18,7 @@
 #   ./scripts/ocp/setup-kagenti.sh --with-kiali                  # Enable Kiali + Prometheus
 #   ./scripts/ocp/setup-kagenti.sh --with-builds                # Enable Tekton + OpenShift Builds
 #   ./scripts/ocp/setup-kagenti.sh --with-kuadrant              # Enable Kuadrant (auto-enables MCP Gateway)
+#   ./scripts/ocp/setup-kagenti.sh --with-agent-sandbox         # Install agent-sandbox controller
 #   ./scripts/ocp/setup-kagenti.sh --with-all                   # Enable all optional components
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
 #   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway install
@@ -59,6 +60,8 @@ DRY_RUN=false
 WITH_KIALI=false
 WITH_BUILDS=false
 WITH_KUADRANT=false
+WITH_AGENT_SANDBOX=false
+AGENT_SANDBOX_VERSION="v0.4.6"
 KUADRANT_VERSION="1.4.2"
 MLFLOW_NAMESPACE="redhat-ods-applications"
 MLFLOW_INSTANCE_NAME="mlflow"
@@ -93,7 +96,8 @@ while [[ $# -gt 0 ]]; do
     --with-kiali)         WITH_KIALI=true; shift ;;
     --with-builds)        WITH_BUILDS=true; shift ;;
     --with-kuadrant)      WITH_KUADRANT=true; shift ;;
-    --with-all)           WITH_KIALI=true; WITH_BUILDS=true; WITH_KUADRANT=true; shift ;;
+    --with-agent-sandbox) WITH_AGENT_SANDBOX=true; shift ;;
+    --with-all)           WITH_KIALI=true; WITH_BUILDS=true; WITH_KUADRANT=true; WITH_AGENT_SANDBOX=true; shift ;;
     --dry-run)            DRY_RUN=true; shift ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
@@ -110,7 +114,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --with-kiali              Enable Kiali + Prometheus (user workload monitoring)"
       echo "  --with-builds             Enable Tekton + OpenShift Builds (Shipwright)"
       echo "  --with-kuadrant           Enable Kuadrant operator (auto-enables MCP Gateway)"
-      echo "  --with-all                Enable all optional components (kiali, builds, kuadrant)"
+      echo "  --with-agent-sandbox      Install agent-sandbox controller (kubernetes-sigs)"
+      echo "  --with-all                Enable all optional components"
       echo "  --operator-repo PATH      Local path to kagenti-operator repo (overrides Chart.yaml dependency)"
       echo "  --operator-image IMG:TAG  Custom operator image (e.g. quay.io/user/kagenti-operator:dev)"
       echo "  --mcp-gateway-version VER MCP Gateway chart version (default: $MCP_GATEWAY_VERSION)"
@@ -616,10 +621,10 @@ _helm_kagenti_deps() {
   done
 
   # Build MLflow OTEL flags: enable the pipeline and point it at the DSC-managed endpoint.
-  local _mlflow_vals_file=""
+  KAGENTI_DEPS_MLFLOW_VALS_FILE=""
   if [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
-    _mlflow_vals_file=$(mktemp /tmp/kagenti-mlflow-vals-XXXXXX.yaml)
-    cat > "$_mlflow_vals_file" <<EOF
+    KAGENTI_DEPS_MLFLOW_VALS_FILE=$(mktemp /tmp/kagenti-mlflow-vals-XXXXXX.yaml)
+    cat > "$KAGENTI_DEPS_MLFLOW_VALS_FILE" <<EOF
 otel:
   mlflow:
     enabled: true
@@ -634,28 +639,32 @@ EOF
 
   # Keycloak public URL is needed by the realm-init audience mapper.
   # Construct from DOMAIN (known since Step 2) so it's correct on first install.
-  local _kc_public_url="https://keycloak-${KC_NAMESPACE}.${DOMAIN}"
+  KAGENTI_DEPS_KC_URL="https://keycloak-${KC_NAMESPACE}.${DOMAIN}"
+
+  # Common helm --set flags shared across install, upgrade, and reconciliation
+  KAGENTI_DEPS_HELM_ARGS=(
+    -n kagenti-system
+    --set spire.trustDomain="${DOMAIN}"
+    --set "keycloak.publicUrl=${KAGENTI_DEPS_KC_URL}"
+    --set "components.kiali.enabled=${WITH_KIALI}"
+    --set components.rhoai.enabled=true
+    --set components.mlflow.enabled=false
+    --set "components.tekton.enabled=${WITH_BUILDS}"
+    --set "components.shipwright.enabled=${WITH_BUILDS}"
+    --set mlflow.auth.enabled=false
+    ${KAGENTI_DEPS_MLFLOW_VALS_FILE:+-f "$KAGENTI_DEPS_MLFLOW_VALS_FILE"}
+    --no-hooks
+  )
 
   if helm status kagenti-deps -n kagenti-system &>/dev/null; then
     # Upgrade path: skip hooks (the kiali hook will fail on any cluster where
     # cluster-monitoring-config is managed by another operator)
     log_info "kagenti-deps already installed — upgrading (hooks skipped)"
     run_cmd helm upgrade kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
-      -n kagenti-system \
-      --set spire.trustDomain="${DOMAIN}" \
-      --set "keycloak.publicUrl=${_kc_public_url}" \
-      --set "components.kiali.enabled=${WITH_KIALI}" \
-      --set components.rhoai.enabled=true \
-      --set components.mlflow.enabled=false \
-      --set "components.tekton.enabled=${WITH_BUILDS}" \
-      --set "components.shipwright.enabled=${WITH_BUILDS}" \
-      --set mlflow.auth.enabled=false \
-      ${_mlflow_vals_file:+-f "$_mlflow_vals_file"} \
-      --no-hooks
+      "${KAGENTI_DEPS_HELM_ARGS[@]}"
     # Apply operand CRs on upgrade too — catches CRs missed by a previous
     # failed install (e.g. Keycloak CRD wasn't ready yet on first run)
     _apply_operand_crs
-    [ -n "$_mlflow_vals_file" ] && rm -f "$_mlflow_vals_file"
     _wait_kagenti_deps_ready
     return $?
   fi
@@ -665,20 +674,9 @@ EOF
   log_info "Installing kagenti-deps..."
   run_cmd helm dependency update "$KAGENTI_REPO/charts/kagenti-deps/"
   run_cmd helm install kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
-    -n kagenti-system --create-namespace \
-    --set spire.trustDomain="${DOMAIN}" \
-    --set "keycloak.publicUrl=${_kc_public_url}" \
-    --set "components.kiali.enabled=${WITH_KIALI}" \
-    --set components.rhoai.enabled=true \
-    --set components.mlflow.enabled=false \
-    --set "components.tekton.enabled=${WITH_BUILDS}" \
-    --set "components.shipwright.enabled=${WITH_BUILDS}" \
-    --set mlflow.auth.enabled=false \
-    ${_mlflow_vals_file:+-f "$_mlflow_vals_file"} \
-    --no-hooks
+    --create-namespace "${KAGENTI_DEPS_HELM_ARGS[@]}"
 
   _apply_operand_crs
-  [ -n "$_mlflow_vals_file" ] && rm -f "$_mlflow_vals_file"
   _wait_kagenti_deps_ready
 }
 _helm_kagenti_deps
@@ -792,6 +790,9 @@ spec:
     kind: ClusterIssuer
 EOF
 
+  _adopt_for_helm clusterissuer istio-mesh-root-selfsigned
+  _adopt_for_helm certificate istio-mesh-root-ca cert-manager
+
   log_info "Waiting for root CA secret..."
   if ! _wait_secret_ready istio-mesh-root-ca-secret cert-manager; then return 0; fi
   log_success "Root CA secret ready"
@@ -841,6 +842,10 @@ spec:
     name: istio-mesh-ca
     kind: ClusterIssuer
 EOF
+
+  _adopt_for_helm clusterissuer istio-mesh-ca
+  _adopt_for_helm certificate istio-cacerts-default istio-system
+  _adopt_for_helm certificate istio-cacerts-openshift-gateway openshift-ingress
 
   log_info "Waiting for intermediate CA secrets..."
   _wait_secret_ready istio-cacerts-default-cert istio-system
@@ -917,6 +922,15 @@ ${ROOT_CERT}"
   log_success "Shared trust reconciliation complete"
 }
 _ensure_rhoai_shared_trust
+
+# Reconcile: now that all CRDs are present (Istio, cert-manager) and Step 3b
+# resources are adopted for Helm, upgrade to render resources gated by
+# .Capabilities.APIVersions.Has (e.g. AuthorizationPolicy, shared-trust certs).
+log_info "Reconciling CRD-dependent resources..."
+run_cmd helm upgrade kagenti-deps "$KAGENTI_REPO/charts/kagenti-deps/" \
+  "${KAGENTI_DEPS_HELM_ARGS[@]}"
+[ -n "$KAGENTI_DEPS_MLFLOW_VALS_FILE" ] && rm -f "$KAGENTI_DEPS_MLFLOW_VALS_FILE"
+log_success "kagenti-deps reconciled"
 echo ""
 
 # ============================================================================
@@ -1199,7 +1213,8 @@ run_cmd helm upgrade --install kagenti "$KAGENTI_REPO/charts/kagenti/" \
   --set mlflow.auth.enabled=false \
   --set "keycloak.publicUrl=${KEYCLOAK_PUBLIC_URL}" \
   --set "keycloak.realm=${KC_REALM}" \
-  --set "kagenti-operator-chart.mlflow.enable=$([ "$SKIP_MLFLOW" = true ] && echo false || echo true)"
+  --set "kagenti-operator-chart.mlflow.enable=$([ "$SKIP_MLFLOW" = true ] && echo false || echo true)" \
+  --set "featureFlags.agentSandbox=${WITH_AGENT_SANDBOX}"
 
 log_success "Kagenti installed"
 
@@ -1345,5 +1360,8 @@ echo ""
 echo "  Note: Some pods (SPIRE agents, operator-managed workloads)"
 echo "  may still be starting. Allow a few minutes for all components"
 echo "  to become fully available."
+echo ""
+echo "  Run .github/scripts/local-setup/show-services.sh for"
+echo "  service endpoints and credentials."
 echo "============================================"
 echo ""
