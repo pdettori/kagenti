@@ -305,6 +305,7 @@ class TestWeatherAgentConversation:
                 # be initializing, or the LLM/tool may return transient errors.
                 _TRANSIENT_ERRORS = (
                     "Cannot connect",
+                    "Connection error",
                     "Expecting value",
                     "Error calling tool",
                     "timed out",
@@ -466,11 +467,14 @@ class TestWeatherAgentConversation:
                 if last_result["task_failed"]:
                     error_text = last_result["full_response"][:_DIAG_ERROR_LIMIT]
                     if (
-                        "Cannot connect" in error_text
+                        any(
+                            err in error_text
+                            for err in ("Cannot connect", "Connection error")
+                        )
                         and attempt < _LLM_QUERY_MAX_ATTEMPTS
                     ):
                         logger.warning(
-                            "Turn %d: MCP connectivity error on attempt %d/%d, retrying...",
+                            "Turn %d: LLM connectivity error on attempt %d/%d, retrying...",
                             turn,
                             attempt,
                             _LLM_QUERY_MAX_ATTEMPTS,
