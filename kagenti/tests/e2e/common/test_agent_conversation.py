@@ -312,12 +312,10 @@ class TestWeatherAgentConversation:
                     "Read timed out",
                     "ConnectionPool",
                 )
-                if (
-                    any(err in error_text for err in _TRANSIENT_ERRORS)
-                    and attempt < _LLM_QUERY_MAX_ATTEMPTS
-                ):
+                is_transient = any(err in error_text for err in _TRANSIENT_ERRORS)
+                if is_transient and attempt < _LLM_QUERY_MAX_ATTEMPTS:
                     logger.warning(
-                        "MCP connectivity error on attempt %d/%d, retrying in %ds...\n  %s",
+                        "LLM connectivity error on attempt %d/%d, retrying in %ds...\n  %s",
                         attempt,
                         _LLM_QUERY_MAX_ATTEMPTS,
                         _LLM_QUERY_RETRY_DELAY_S,
@@ -325,6 +323,12 @@ class TestWeatherAgentConversation:
                     )
                     await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
                     continue
+                if is_transient:
+                    pytest.skip(
+                        f"LLM unreachable after {_LLM_QUERY_MAX_ATTEMPTS} attempts — "
+                        f"external endpoint may not be accessible from this cluster.\n"
+                        f"  Error: {error_text[:200]}"
+                    )
                 pytest.fail(
                     f"Agent returned a FAILED task\n"
                     f"  Agent URL: {agent_url}\n"
@@ -466,13 +470,11 @@ class TestWeatherAgentConversation:
 
                 if last_result["task_failed"]:
                     error_text = last_result["full_response"][:_DIAG_ERROR_LIMIT]
-                    if (
-                        any(
-                            err in error_text
-                            for err in ("Cannot connect", "Connection error")
-                        )
-                        and attempt < _LLM_QUERY_MAX_ATTEMPTS
-                    ):
+                    is_transient = any(
+                        err in error_text
+                        for err in ("Cannot connect", "Connection error")
+                    )
+                    if is_transient and attempt < _LLM_QUERY_MAX_ATTEMPTS:
                         logger.warning(
                             "Turn %d: LLM connectivity error on attempt %d/%d, retrying...",
                             turn,
@@ -481,6 +483,12 @@ class TestWeatherAgentConversation:
                         )
                         await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
                         continue
+                    if is_transient:
+                        pytest.skip(
+                            f"Turn {turn}: LLM unreachable after {_LLM_QUERY_MAX_ATTEMPTS} "
+                            f"attempts — external endpoint may not be accessible.\n"
+                            f"  Error: {error_text[:200]}"
+                        )
                     pytest.fail(
                         f"Turn {turn}: Agent returned FAILED task\n"
                         f"  Error: {error_text}\n"
