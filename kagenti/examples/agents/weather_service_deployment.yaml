@@ -32,6 +32,7 @@ spec:
         app.kubernetes.io/name: weather-service
       annotations:
         traffic.sidecar.istio.io/excludeOutboundPorts: "443"
+        ambient.istio.io/redirection: disabled
     spec:
       serviceAccountName: weather-service
       containers:
