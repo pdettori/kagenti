@@ -30,6 +30,8 @@ spec:
         protocol.kagenti.io/a2a: ""
         kagenti.io/framework: LangGraph
         app.kubernetes.io/name: weather-service
+      annotations:
+        traffic.sidecar.istio.io/excludeOutboundPorts: "443"
     spec:
       serviceAccountName: weather-service
       containers:

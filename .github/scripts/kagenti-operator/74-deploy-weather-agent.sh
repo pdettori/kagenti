@@ -123,15 +123,6 @@ else
             log_warn "openai-secret not found in team1 — LLM calls will fail without API key"
         fi
 
-        # Exclude outbound HTTPS from Istio ambient ztunnel interception.
-        # Without this, ztunnel intercepts the LLM call to the external MaaS
-        # endpoint and drops the connection (unknown external host).
-        kubectl patch deployment weather-service -n team1 --type=merge -p '{
-            "spec":{"template":{"metadata":{"annotations":{
-                "traffic.sidecar.istio.io/excludeOutboundPorts":"443"
-            }}}}
-        }' || true
-        log_info "Excluded port 443 from Istio sidecar interception"
     fi
 fi
 
