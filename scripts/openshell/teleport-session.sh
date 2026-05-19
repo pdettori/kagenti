@@ -243,7 +243,21 @@ EOSANDBOX
   done
 
   if [ -z "$pod_name" ]; then
-    log_error "Sandbox pod not created after ${TIMEOUT}s"
+    local all_pods
+    all_pods=$(kubectl get pods -n "$NS" --no-headers 2>/dev/null | grep "$sb_name" || true)
+    if [ -n "$all_pods" ]; then
+      log_error "Sandbox pod exists but not Running after ${TIMEOUT}s:"
+      log_error "  $all_pods"
+      local events
+      events=$(kubectl get events -n "$NS" --field-selector "involvedObject.name=$sb_name" --sort-by='.lastTimestamp' 2>/dev/null | tail -5 || true)
+      if [ -n "$events" ]; then
+        log_error "  Events: $events"
+      fi
+    else
+      log_error "Sandbox pod not created after ${TIMEOUT}s"
+      log_error "  Check: kubectl get sandbox $sb_name -n $NS -o yaml"
+      log_error "  Controller: kubectl logs -n agent-sandbox-system deploy/agent-sandbox-controller --tail=20"
+    fi
     exit 1
   fi
 
