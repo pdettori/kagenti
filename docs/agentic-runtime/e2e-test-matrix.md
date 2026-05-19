@@ -94,6 +94,21 @@ Tests the ACP WebSocket endpoint with JSON-RPC 2.0 lifecycle.
 | Permission gate | P | — | — | — | — | — |
 | Error handling | P | P | — | — | — | — |
 
+**Tier 7: Teleport (Sandbox CRD + LLM)**
+
+Tests session teleporting — packaging local context into a sandbox and executing with it.
+
+| Capability | Claude Code |
+|---|:---:|
+| Package context → ConfigMap | P |
+| Deploy sandbox with context | P |
+| Context unpacked in pod | P |
+| Prompt reads teleported context | P |
+| Cleanup removes resources | P |
+| Script exists and executable | P |
+
+MVP targets Claude Code only. OpenCode teleport planned as extension.
+
 ## Skip Reasons
 
 | Code | Reason | Count | Resolution Path |
@@ -138,6 +153,7 @@ deepseek-r1 model does NOT exhibit these flakes.
 | `test_T4_1_hitl_network.py` | 4 | 3 | HITL network egress |
 | `test_T5_1_backend_api.py` | 5 | ~15 | Backend A2A proxy |
 | `test_T6_1_acp_protocol.py` | 6 | ~15 | ACP WebSocket protocol |
+| `test_T7_1_teleport.py` | 7 | 6 | Session teleport lifecycle |
 
 ## Running Tests
 
