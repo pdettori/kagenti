@@ -27,7 +27,7 @@ PROMPT_TIMEOUT=120
 SESSION_ID=""
 ACTION=""
 PROMPT_TEXT=""
-MAX_CONTEXT_KB=900
+MAX_CONTEXT_KB=800
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 log_info()    { echo -e "${BLUE}→${NC} $1"; }
@@ -102,19 +102,25 @@ do_package() {
     log_warn "  No CLAUDE.md found at $REPO_ROOT"
   fi
 
-  # Collect skills (SKILL.md files only, encode : → _ in names)
+  # Collect skills (SKILL.md files, encode : → _ in names)
+  # Only include skills explicitly listed in TELEPORT_SKILLS env var,
+  # or skip skills entirely if not set (keeps ConfigMap small).
   local skill_count=0
-  if [ -d "$REPO_ROOT/.claude/skills" ]; then
-    find "$REPO_ROOT/.claude/skills" -name "SKILL.md" -type f | while read -r f; do
-      local rel_path="${f#$REPO_ROOT/.claude/skills/}"
-      local dir_name
-      dir_name=$(dirname "$rel_path")
-      local encoded
-      encoded=$(echo "$dir_name" | tr ':/' '__')
-      cp "$f" "$tmpdir/skill--${encoded}.md"
+  if [ -n "${TELEPORT_SKILLS:-}" ] && [ -d "$REPO_ROOT/.claude/skills" ]; then
+    IFS=',' read -ra SKILL_LIST <<< "$TELEPORT_SKILLS"
+    for skill_name in "${SKILL_LIST[@]}"; do
+      skill_name=$(echo "$skill_name" | xargs)
+      local skill_file="$REPO_ROOT/.claude/skills/$skill_name/SKILL.md"
+      if [ -f "$skill_file" ]; then
+        local encoded
+        encoded=$(echo "$skill_name" | tr ':/' '__')
+        cp "$skill_file" "$tmpdir/skill--${encoded}.md"
+        skill_count=$((skill_count + 1))
+      fi
     done
-    skill_count=$(find "$tmpdir" -name "skill--*" | wc -l | tr -d ' ')
-    log_info "  Skills: $skill_count SKILL.md files"
+    log_info "  Skills: $skill_count selected"
+  else
+    log_info "  Skills: none (set TELEPORT_SKILLS=name1,name2 to include)"
   fi
 
   # Collect settings (strip sensitive fields)
