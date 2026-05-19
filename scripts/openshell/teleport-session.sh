@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 NS="${TELEPORT_NS:-team1}"
-TIMEOUT=180
+TIMEOUT=90
 PROMPT_TIMEOUT=120
 SESSION_ID=""
 ACTION=""

@@ -118,7 +118,7 @@ class TestTeleportDeploy:
         session_id = result.stdout.strip().split("\n")[-1]
 
         try:
-            deploy = _run_teleport("--deploy", "--session", session_id, timeout=240)
+            deploy = _run_teleport("--deploy", "--session", session_id, timeout=120)
             assert deploy.returncode == 0, (
                 f"Deploy failed — sandbox pod not created within 180s.\n"
                 f"stdout: {deploy.stdout[-500:]}\n"
@@ -139,7 +139,7 @@ class TestTeleportDeploy:
         session_id = result.stdout.strip().split("\n")[-1]
 
         try:
-            deploy = _run_teleport("--deploy", "--session", session_id, timeout=240)
+            deploy = _run_teleport("--deploy", "--session", session_id, timeout=120)
             assert deploy.returncode == 0, f"Deploy failed: {deploy.stderr[-300:]}"
 
             sb_name = f"teleport-{session_id}"
@@ -188,7 +188,7 @@ class TestTeleportDeploy:
         session_id = result.stdout.strip().split("\n")[-1]
 
         try:
-            deploy = _run_teleport("--deploy", "--session", session_id, timeout=240)
+            deploy = _run_teleport("--deploy", "--session", session_id, timeout=120)
             assert deploy.returncode == 0, f"Deploy failed: {deploy.stderr[-300:]}"
 
             prompt = _run_teleport(
