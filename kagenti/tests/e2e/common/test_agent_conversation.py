@@ -323,12 +323,6 @@ class TestWeatherAgentConversation:
                     )
                     await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
                     continue
-                if is_transient:
-                    pytest.skip(
-                        f"LLM unreachable after {_LLM_QUERY_MAX_ATTEMPTS} attempts — "
-                        f"external endpoint may not be accessible from this cluster.\n"
-                        f"  Error: {error_text[:200]}"
-                    )
                 pytest.fail(
                     f"Agent returned a FAILED task\n"
                     f"  Agent URL: {agent_url}\n"
@@ -483,12 +477,6 @@ class TestWeatherAgentConversation:
                         )
                         await asyncio.sleep(_LLM_QUERY_RETRY_DELAY_S)
                         continue
-                    if is_transient:
-                        pytest.skip(
-                            f"Turn {turn}: LLM unreachable after {_LLM_QUERY_MAX_ATTEMPTS} "
-                            f"attempts — external endpoint may not be accessible.\n"
-                            f"  Error: {error_text[:200]}"
-                        )
                     pytest.fail(
                         f"Turn {turn}: Agent returned FAILED task\n"
                         f"  Error: {error_text}\n"

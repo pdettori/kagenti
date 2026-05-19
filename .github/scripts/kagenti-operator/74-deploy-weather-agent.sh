@@ -105,13 +105,16 @@ else
     # Use ghcr.io image (Kind manifest)
     kubectl apply -f "$REPO_ROOT/kagenti/examples/agents/weather_service_deployment.yaml"
 
-    # On OpenShift without Shipwright, patch LLM config to use external endpoint
+    # On OpenShift without Shipwright, patch LLM config.
     # (Kind manifest points to dockerhost:11434 which doesn't exist on OCP)
+    # Use OpenAI API directly — the external MaaS LiteLLM proxy
+    # (litellm-prod.apps.maas.redhatworkshops.io) is unreachable from
+    # ephemeral HyperShift clusters due to egress/DNS issues.
     if [ "$IS_OPENSHIFT" = "true" ]; then
-        log_info "Patching LLM config for OpenShift (no local Ollama)..."
+        log_info "Patching LLM config for OpenShift (OpenAI API)..."
         kubectl set env deployment/weather-service -n team1 \
-            LLM_API_BASE="https://litellm-prod.apps.maas.redhatworkshops.io/v1" \
-            LLM_MODEL="llama-scout-17b" \
+            LLM_API_BASE="https://api.openai.com/v1" \
+            LLM_MODEL="gpt-4o-mini" \
             LLM_API_KEY- OPENAI_API_KEY- 2>/dev/null || true
         # Set API keys from secret if it exists
         if kubectl get secret openai-secret -n team1 &>/dev/null; then
