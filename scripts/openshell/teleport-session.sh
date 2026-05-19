@@ -230,8 +230,8 @@ EOSANDBOX
   local deadline=$((SECONDS + TIMEOUT))
   local pod_name=""
   while [ $SECONDS -lt $deadline ]; do
-    pod_name=$(kubectl get pods -n "$NS" -l "kagenti.io/teleport-session=$SESSION_ID" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+    pod_name=$(kubectl get pods -n "$NS" --no-headers 2>/dev/null \
+      | grep "$sb_name" | grep -v Terminating | awk '{print $1}' | head -1 || true)
     if [ -n "$pod_name" ]; then
       local phase
       phase=$(kubectl get pod "$pod_name" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || true)
