@@ -4,9 +4,7 @@ T7.1 Teleport Tests
 Validates session teleporting — packaging local context into a sandbox,
 executing prompts with context, and cleanup.
 
-These tests are assertive: if the infrastructure needed to teleport
-is deployed (Sandbox CRD, compute driver, LiteLLM), the tests MUST pass.
-No graceful skips for "pod didn't start" — that's a real failure.
+Tests are assertive: if infrastructure is deployed, they MUST pass.
 """
 
 import os
@@ -50,7 +48,6 @@ def _run_teleport(*args: str, timeout: int = 60) -> subprocess.CompletedProcess:
 
 
 def _gateway_running() -> bool:
-    """Check if the OpenShell gateway (compute driver) is running."""
     result = kubectl_run(
         "get",
         "pods",
@@ -64,7 +61,7 @@ def _gateway_running() -> bool:
 
 
 class TestTeleportPackage:
-    """Package context into ConfigMap — no cluster state needed."""
+    """Package and cleanup — no sandbox pod needed."""
 
     @skip_no_crd
     def test_teleport__package_creates_configmap(self):
@@ -83,7 +80,7 @@ class TestTeleportPackage:
 
     @skip_no_crd
     def test_teleport__cleanup_removes_resources(self):
-        """Cleanup deletes both Sandbox CR and ConfigMap."""
+        """Cleanup deletes ConfigMap."""
         result = _run_teleport("--package")
         assert result.returncode == 0
         session_id = result.stdout.strip().split("\n")[-1]
@@ -101,55 +98,31 @@ class TestTeleportPackage:
         assert os.access(script, os.X_OK), f"{script} is not executable"
 
 
-class TestTeleportDeploy:
-    """Deploy and exec into sandbox — requires compute driver running."""
+class TestTeleportLifecycle:
+    """Full lifecycle in a single sandbox: deploy, verify context, prompt, cleanup."""
 
     @skip_no_crd
-    def test_teleport__deploy_creates_sandbox(self):
-        """Deploy creates a running sandbox pod with mounted context."""
+    def test_teleport__full_lifecycle(self):
+        """Deploy sandbox, verify context is unpacked, cleanup."""
         if not _gateway_running():
-            pytest.fail(
-                "OpenShell gateway not running in {TELEPORT_NS}. "
-                "The compute driver must be deployed to process Sandbox CRs."
-            )
+            pytest.fail("OpenShell gateway not running — compute driver required")
 
+        # Step 1: Package
         result = _run_teleport("--package")
         assert result.returncode == 0, f"Package failed: {result.stderr}"
         session_id = result.stdout.strip().split("\n")[-1]
 
         try:
+            # Step 2: Deploy (creates pod + unpacks context)
             deploy = _run_teleport("--deploy", "--session", session_id, timeout=120)
             assert deploy.returncode == 0, (
-                f"Deploy failed — sandbox pod not created within 180s.\n"
-                f"stdout: {deploy.stdout[-500:]}\n"
-                f"stderr: {deploy.stderr[-500:]}\n"
-                f"Check: kubectl get sandbox teleport-{session_id} -n {TELEPORT_NS} -o yaml"
+                f"Deploy failed:\nstdout: {deploy.stdout[-500:]}\n"
+                f"stderr: {deploy.stderr[-500:]}"
             )
-        finally:
-            _run_teleport("--cleanup", "--session", session_id)
 
-    @skip_no_crd
-    def test_teleport__context_unpacked_in_pod(self):
-        """Context is unpacked into /workspace/ inside the sandbox pod."""
-        if not _gateway_running():
-            pytest.fail("OpenShell gateway not running — compute driver required")
-
-        result = _run_teleport("--package")
-        assert result.returncode == 0
-        session_id = result.stdout.strip().split("\n")[-1]
-
-        try:
-            deploy = _run_teleport("--deploy", "--session", session_id, timeout=120)
-            assert deploy.returncode == 0, f"Deploy failed: {deploy.stderr[-300:]}"
-
+            # Step 3: Verify context unpacked
             sb_name = f"teleport-{session_id}"
-            pods = kubectl_run(
-                "get",
-                "pods",
-                "-n",
-                TELEPORT_NS,
-                "--no-headers",
-            )
+            pods = kubectl_run("get", "pods", "-n", TELEPORT_NS, "--no-headers")
             pod_name = ""
             for line in pods.stdout.strip().split("\n"):
                 if sb_name in line and "Running" in line:
@@ -157,7 +130,7 @@ class TestTeleportDeploy:
                     break
             assert pod_name, f"No running pod matching {sb_name}"
 
-            check_claude_md = kubectl_run(
+            check = kubectl_run(
                 "exec",
                 pod_name,
                 "-n",
@@ -169,17 +142,23 @@ class TestTeleportDeploy:
                 "/workspace/CLAUDE.md",
                 timeout=15,
             )
-            assert check_claude_md.returncode == 0, "CLAUDE.md not found in sandbox"
-            assert "Kagenti" in check_claude_md.stdout, (
-                f"CLAUDE.md doesn't mention Kagenti: {check_claude_md.stdout[:200]}"
+            assert check.returncode == 0, (
+                f"CLAUDE.md not found in sandbox.\n"
+                f"Check mount: kubectl exec {pod_name} -n {TELEPORT_NS} "
+                f"-c sandbox -- ls -la /workspace/.claude-context/\n"
+                f"stderr: {check.stderr}"
             )
+            assert "Kagenti" in check.stdout, (
+                f"CLAUDE.md doesn't mention Kagenti: {check.stdout[:200]}"
+            )
+
         finally:
             _run_teleport("--cleanup", "--session", session_id)
 
     @skip_no_crd
     @skip_no_llm
     def test_teleport__prompt_with_context(self):
-        """Claude Code in sandbox reads teleported CLAUDE.md and responds about it."""
+        """Deploy sandbox, send prompt that reads CLAUDE.md, verify response."""
         if not _gateway_running():
             pytest.fail("OpenShell gateway not running — compute driver required")
 
@@ -206,5 +185,6 @@ class TestTeleportDeploy:
             assert any(
                 term in output.lower() for term in ["kagenti", "agent", "platform"]
             ), f"Response doesn't reference the project: {output[:200]}"
+
         finally:
             _run_teleport("--cleanup", "--session", session_id)
