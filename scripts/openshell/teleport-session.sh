@@ -266,22 +266,23 @@ EOSANDBOX
   # Unpack context inside the pod
   log_info "Unpacking context in sandbox..."
   kubectl exec "$pod_name" -n "$NS" -c sandbox -- sh -c '
-    mkdir -p /workspace/.claude/skills
+    DEST="$HOME"
+    mkdir -p "$DEST/.claude/skills"
     # Copy CLAUDE.md
     [ -f /workspace/.claude-context/CLAUDE.md ] && \
-      cp /workspace/.claude-context/CLAUDE.md /workspace/CLAUDE.md
+      cp /workspace/.claude-context/CLAUDE.md "$DEST/CLAUDE.md"
     # Copy settings
     [ -f /workspace/.claude-context/settings.json ] && \
-      cp /workspace/.claude-context/settings.json /workspace/.claude/settings.json
+      cp /workspace/.claude-context/settings.json "$DEST/.claude/settings.json"
     # Unpack skills (skill--name.md → .claude/skills/name/SKILL.md)
     for f in /workspace/.claude-context/skill--*.md; do
       [ -f "$f" ] || continue
       skill_encoded=$(basename "$f" | sed "s/^skill--//" | sed "s/\.md$//")
       skill_name=$(echo "$skill_encoded" | tr "_" "/" | sed "s|//|/|g")
-      mkdir -p "/workspace/.claude/skills/$skill_name"
-      cp "$f" "/workspace/.claude/skills/$skill_name/SKILL.md"
+      mkdir -p "$DEST/.claude/skills/$skill_name"
+      cp "$f" "$DEST/.claude/skills/$skill_name/SKILL.md"
     done
-    echo "Context unpacked: $(ls /workspace/CLAUDE.md 2>/dev/null && echo CLAUDE.md) $(find /workspace/.claude/skills -name SKILL.md 2>/dev/null | wc -l) skills"
+    echo "Context unpacked to $DEST: $(ls "$DEST/CLAUDE.md" 2>/dev/null && echo CLAUDE.md) $(find "$DEST/.claude/skills" -name SKILL.md 2>/dev/null | wc -l) skills"
   ' || log_warn "Context unpack had warnings (non-fatal)"
 
   log_success "Sandbox deployed and context loaded (session: $SESSION_ID)"

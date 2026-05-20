@@ -138,14 +138,15 @@ class TestTeleportLifecycle:
                 "-c",
                 "sandbox",
                 "--",
-                "cat",
-                "/workspace/CLAUDE.md",
+                "sh",
+                "-c",
+                "cat $HOME/CLAUDE.md",
                 timeout=15,
             )
             assert check.returncode == 0, (
-                f"CLAUDE.md not found in sandbox.\n"
-                f"Check mount: kubectl exec {pod_name} -n {TELEPORT_NS} "
-                f"-c sandbox -- ls -la /workspace/.claude-context/\n"
+                f"CLAUDE.md not found in sandbox $HOME.\n"
+                f"Check: kubectl exec {pod_name} -n {TELEPORT_NS} "
+                f"-c sandbox -- sh -c 'ls -la $HOME/ && id'\n"
                 f"stderr: {check.stderr}"
             )
             assert "Kagenti" in check.stdout, (
