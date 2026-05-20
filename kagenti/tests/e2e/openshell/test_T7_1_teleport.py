@@ -192,9 +192,9 @@ class TestTeleportDeploy:
             assert deploy.returncode == 0, f"Deploy failed: {deploy.stderr[-300:]}"
 
             prompt = _run_teleport(
-                "--prompt",
                 "--session",
                 session_id,
+                "--prompt",
                 "What is the name of the project described in CLAUDE.md? "
                 "Reply with just the project name, nothing else.",
                 timeout=180,

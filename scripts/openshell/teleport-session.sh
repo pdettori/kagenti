@@ -282,7 +282,7 @@ EOSANDBOX
       cp "$f" "/workspace/.claude/skills/$skill_name/SKILL.md"
     done
     echo "Context unpacked: $(ls /workspace/CLAUDE.md 2>/dev/null && echo CLAUDE.md) $(find /workspace/.claude/skills -name SKILL.md 2>/dev/null | wc -l) skills"
-  ' 2>/dev/null || log_warn "Context unpack had warnings (non-fatal)"
+  ' || log_warn "Context unpack had warnings (non-fatal)"
 
   log_success "Sandbox deployed and context loaded (session: $SESSION_ID)"
 }
