@@ -76,7 +76,7 @@ ingress:
 
 # -- Resource quota for sandbox pods
 quota:
-  pods: "10"
+  pods: "15"
   requestsCpu: "20"
   requestsMemory: "40Gi"
   pvcs: "10"
