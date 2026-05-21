@@ -30,9 +30,9 @@ PROMPT_TEXT=""
 MAX_CONTEXT_KB=800
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
-log_info()    { echo -e "${BLUE}→${NC} $1"; }
-log_success() { echo -e "${GREEN}✓${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}⚠${NC} $1"; }
+log_info()    { echo -e "${BLUE}→${NC} $1" >&2; }
+log_success() { echo -e "${GREEN}✓${NC} $1" >&2; }
+log_warn()    { echo -e "${YELLOW}⚠${NC} $1" >&2; }
 log_error()   { echo -e "${RED}✗${NC} $1" >&2; }
 
 usage() {
@@ -299,12 +299,20 @@ do_prompt() {
     exit 1
   fi
 
-  local pod_name
-  pod_name=$(kubectl get pods -n "$NS" -l "kagenti.io/teleport-session=$SESSION_ID" \
-    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+  local sb_name pod_name
+  sb_name=$(sandbox_name)
+
+  # Wait briefly for pod to be Running (may be restarting)
+  local deadline=$((SECONDS + 30))
+  while [ $SECONDS -lt $deadline ]; do
+    pod_name=$(kubectl get pods -n "$NS" --no-headers 2>/dev/null \
+      | grep "$sb_name" | grep -v Terminating | grep Running | awk '{print $1}' | head -1 || true)
+    [ -n "$pod_name" ] && break
+    sleep 3
+  done
 
   if [ -z "$pod_name" ]; then
-    log_error "No running pod for session $SESSION_ID"
+    log_error "No running pod for session $SESSION_ID (sandbox: $sb_name)"
     exit 1
   fi
 
@@ -333,7 +341,7 @@ do_cleanup() {
   # Wait for pod to terminate
   local deadline=$((SECONDS + 30))
   while [ $SECONDS -lt $deadline ]; do
-    if ! kubectl get pods -n "$NS" -l "kagenti.io/teleport-session=$SESSION_ID" --no-headers 2>/dev/null | grep -q .; then
+    if ! kubectl get pods -n "$NS" --no-headers 2>/dev/null | grep -q "$sb_name"; then
       break
     fi
     sleep 2
@@ -351,11 +359,11 @@ do_full() {
 
   SESSION_ID=$(do_package | tail -1)
   do_deploy
-  echo ""
-  echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
+  echo "" >&2
+  echo -e "${GREEN}═══════════════════════════════════════════════${NC}" >&2
   do_prompt
-  echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
-  echo ""
+  echo -e "${GREEN}═══════════════════════════════════════════════${NC}" >&2
+  echo "" >&2
   do_cleanup
 }
 

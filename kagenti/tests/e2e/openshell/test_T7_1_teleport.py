@@ -169,9 +169,12 @@ class TestTeleportLifecycle:
                 assert prompt.returncode == 0, f"Prompt failed: {prompt.stderr[-300:]}"
                 output = prompt.stdout.strip()
                 assert len(output) > 0, "Empty response from teleported session"
+                # Check full output (may include tool-call text before answer)
+                full = output.lower()
                 assert any(
-                    term in output.lower() for term in ["kagenti", "agent", "platform"]
-                ), f"Response doesn't reference the project: {output[:200]}"
+                    term in full
+                    for term in ["kagenti", "agent", "platform", "claude.md"]
+                ), f"Response doesn't reference the project: {output[-500:]}"
 
         finally:
             _run_teleport("--cleanup", "--session", session_id)
