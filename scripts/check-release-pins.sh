@@ -20,6 +20,9 @@ VALUES_FILE="$CHARTS_DIR/values.yaml"
 CHART_FILE="$CHARTS_DIR/Chart.yaml"
 TEMPLATES_DIR="$CHARTS_DIR/templates"
 
+DEPS_CHARTS_DIR="$REPO_ROOT/charts/kagenti-deps"
+DEPS_VALUES_FILE="$DEPS_CHARTS_DIR/values.yaml"
+
 # ---------------------------------------------------------------------------
 # Options
 # ---------------------------------------------------------------------------
@@ -363,7 +366,55 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Check 5 (optional): Verify pinned GHCR images exist in registry
+# Check 5: No "tag: latest" in kagenti-deps values.yaml
+# ---------------------------------------------------------------------------
+
+if [[ ! -f "$DEPS_VALUES_FILE" ]]; then
+    add_warning "charts/kagenti-deps/values.yaml" "file not found (skipping)"
+else
+    matches=$(grep -Fn 'tag: latest' "$DEPS_VALUES_FILE" || true)
+
+    if [[ -z "$matches" ]]; then
+        add_ok "charts/kagenti-deps/values.yaml" "no tag: latest found"
+    else
+        while IFS= read -r match; do
+            if [[ -z "$match" ]]; then
+                continue
+            fi
+
+            line_number="${match%%:*}"
+            add_error "charts/kagenti-deps/values.yaml" "$line_number" "tag: latest"
+        done <<< "$matches"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Check 6: kagenti-deps images built by this repo are pinned consistently
+#
+# The spiffe-idp-setup image lives in kagenti-deps but is built by this repo.
+# Its tag must not drift from the main chart's platform image tags.
+# ---------------------------------------------------------------------------
+
+if [[ -f "$DEPS_VALUES_FILE" ]] && command -v yq >/dev/null 2>&1; then
+    spiffe_tag=$(yq eval '.spiffeIdp.image.tag' "$DEPS_VALUES_FILE" 2>/dev/null || echo "")
+
+    if [[ -n "$spiffe_tag" ]] && [[ "$spiffe_tag" != "null" ]]; then
+        # Compare against the first platform image tag in the main chart
+        platform_tag=$(yq eval '.ui.frontend.tag' "$VALUES_FILE" 2>/dev/null || echo "")
+
+        if [[ -n "$platform_tag" ]] && [[ "$platform_tag" != "null" ]] \
+           && [[ "$spiffe_tag" != "$platform_tag" ]]; then
+            add_warning "charts/kagenti-deps/values.yaml" \
+                "spiffeIdp.image.tag ($spiffe_tag) differs from platform tag ($platform_tag) — run scripts/pin-release-tags.sh"
+        else
+            add_ok "charts/kagenti-deps/values.yaml" \
+                "spiffeIdp.image.tag ($spiffe_tag) consistent with platform"
+        fi
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Check 7 (optional): Verify pinned GHCR images exist in registry
 #
 # Extract image: <ref> lines from values.yaml. Only GHCR is checked.
 # docker is required in this mode; fail with a clear message if missing.
