@@ -48,8 +48,6 @@ jobs:
             const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
             // Cap deletions to stay well within the 5000 req/hour rate limit.
-            // Each package needs ~1 GET per 100 versions + 1 DELETE per stale version.
-            // Budget: ~4000 requests total (leave headroom for pagination GETs).
             const maxDeletesPerRun = 4000;
 
             // Pattern: any branch prefix followed by a 7-12 char hex SHA
@@ -81,6 +79,49 @@ jobs:
               }
             }
 
+            // Resolve child digests referenced by protected manifest lists.
+            // Multi-arch images are OCI Image Indexes whose platform-specific
+            // child manifests appear as untagged versions in the Packages API.
+            // We must not delete those or the tagged image breaks.
+            async function getProtectedDigests(pkg, protectedTags) {
+              const digests = new Set();
+              if (protectedTags.length === 0) return digests;
+
+              const tokenRes = await fetch(
+                `https://ghcr.io/token?service=ghcr.io&scope=repository:kagenti/kagenti/${pkg}:pull`,
+                { headers: { 'Authorization': `Basic ${Buffer.from(`x:${process.env.GITHUB_TOKEN}`).toString('base64')}` } }
+              );
+              if (!tokenRes.ok) {
+                console.log(`Warning: could not get registry token for ${pkg}, skipping untagged cleanup`);
+                return null;
+              }
+              const { token } = await tokenRes.json();
+
+              for (const tag of protectedTags) {
+                try {
+                  const res = await fetch(
+                    `https://ghcr.io/v2/kagenti/kagenti/${pkg}/manifests/${tag}`,
+                    {
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json'
+                      }
+                    }
+                  );
+                  if (!res.ok) continue;
+                  const manifest = await res.json();
+                  if (manifest.manifests) {
+                    for (const m of manifest.manifests) {
+                      digests.add(m.digest);
+                    }
+                  }
+                } catch (e) {
+                  console.log(`Warning: could not resolve manifest for ${tag}: ${e.message}`);
+                }
+              }
+              return digests;
+            }
+
             // Rotate package order by day-of-year so cap pressure is spread
             // fairly across all packages during backlog drain.
             const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
@@ -94,11 +135,12 @@ jobs:
               console.log(`\nPackage: ${package_name}`);
               console.log('---');
 
-              // Check rate limit before listing pages for this package
               await checkRateLimit();
 
-              // Phase 1: collect versions to delete
-              const toDelete = [];
+              // Phase 1: iterate versions, classify tagged vs untagged
+              const taggedToDelete = [];
+              const untaggedCandidates = [];
+              const protectedTags = [];
               let skipped = 0;
               let page = 1;
               const perPage = 100;
@@ -120,12 +162,13 @@ jobs:
 
                   if (tags.length === 0) {
                     if (createdAt < cutoffDate) {
-                      toDelete.push({ id: version.id, label: `untagged ${version.id}`, createdAt });
+                      untaggedCandidates.push({ id: version.id, name: version.name, label: `untagged ${version.id}`, createdAt });
                     }
                     continue;
                   }
 
                   if (tags.some(tag => protectedTagPattern.test(tag))) {
+                    protectedTags.push(...tags.filter(tag => protectedTagPattern.test(tag)));
                     skipped++;
                     continue;
                   }
@@ -140,17 +183,36 @@ jobs:
                     continue;
                   }
 
-                  toDelete.push({ id: version.id, label: tags.join(', '), createdAt });
+                  taggedToDelete.push({ id: version.id, label: tags.join(', '), createdAt });
                 }
 
                 if (versions.data.length < perPage) break;
                 page++;
               }
 
-              console.log(`Found ${toDelete.length} to delete, ${skipped} preserved`);
-              totalSkipped += skipped;
+              // Phase 2: resolve protected manifest child digests, filter untagged
+              const protectedDigests = await getProtectedDigests(pkg, [...new Set(protectedTags)]);
 
-              // Phase 2: delete with rate-limit awareness
+              const toDelete = [...taggedToDelete];
+              let untaggedProtected = 0;
+
+              if (protectedDigests === null) {
+                // Token fetch failed — skip all untagged to be safe
+                console.log(`Skipping ${untaggedCandidates.length} untagged versions (could not resolve protected digests)`);
+              } else {
+                for (const item of untaggedCandidates) {
+                  if (protectedDigests.has(item.name)) {
+                    untaggedProtected++;
+                  } else {
+                    toDelete.push(item);
+                  }
+                }
+              }
+
+              console.log(`Found ${toDelete.length} to delete (${taggedToDelete.length} tagged, ${toDelete.length - taggedToDelete.length} untagged orphans), ${skipped + untaggedProtected} preserved (${untaggedProtected} untagged referenced by protected tags)`);
+              totalSkipped += skipped + untaggedProtected;
+
+              // Phase 3: delete with rate-limit awareness
               for (const item of toDelete) {
                 if (totalDeleted >= maxDeletesPerRun) {
                   hitCap = true;
@@ -161,7 +223,6 @@ jobs:
                 if (dryRun) {
                   console.log(`[DRY RUN] Would delete ${item.label} (${item.createdAt.toISOString()})`);
                 } else {
-                  // Check rate limit every 50 deletions
                   if (totalDeleted > 0 && totalDeleted % 50 === 0) {
                     await checkRateLimit();
                   }
