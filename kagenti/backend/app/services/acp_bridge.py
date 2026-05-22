@@ -17,6 +17,7 @@ import httpx
 
 from app.utils.routes import resolve_agent_url
 from app.services.kubernetes import get_kubernetes_service
+from app.services.openshell.gateway import get_openshell_client
 
 logger = logging.getLogger(__name__)
 
@@ -186,9 +187,7 @@ class ACPBridge:
             yield _acp_error(f"Cannot reach agent: {e}", session_id=session.session_id)
 
     async def _prompt_sandbox(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
-        """Send prompt to sandbox agent via K8s exec API."""
-        from kubernetes.stream import stream as k8s_stream
-
+        """Send prompt to sandbox agent via OpenShell gateway ExecSandbox gRPC."""
         if not _K8S_NAME_RE.match(session.namespace) or not _K8S_NAME_RE.match(session.agent_name):
             yield _acp_error("Invalid namespace or agent_name", session_id=session.session_id)
             return
@@ -200,37 +199,31 @@ class ACPBridge:
         else:
             cmd += ["run", text]
 
-        kube = get_kubernetes_service()
-        pods = kube.core_v1.list_namespaced_pod(
-            session.namespace,
-            label_selector=f"app.kubernetes.io/name={session.agent_name}",
-        )
-        pod_name = ""
-        for pod in pods.items:
-            if pod.status.phase == "Running":
-                pod_name = pod.metadata.name
-                break
-
-        if not pod_name or not _K8S_NAME_RE.match(pod_name):
-            yield _acp_error(
-                "No valid running pod for sandbox agent", session_id=session.session_id
-            )
-            return
+        gateway = get_openshell_client()
+        stdout_parts: list[str] = []
 
         try:
-            resp = await asyncio.to_thread(
-                k8s_stream,
-                kube.core_v1.connect_get_namespaced_pod_exec,
-                pod_name,
-                session.namespace,
+            async for event_type, data in gateway.exec_sandbox(
+                sandbox_id=session.agent_name,
+                namespace=session.namespace,
                 command=cmd,
-                container="sandbox",
-                stderr=True,
-                stdin=False,
-                stdout=True,
-                tty=False,
-            )
-            output = resp.strip()
+                timeout_seconds=SANDBOX_EXEC_TIMEOUT,
+            ):
+                if event_type == "stdout":
+                    stdout_parts.append(data.decode("utf-8", errors="replace"))
+                elif event_type == "stderr":
+                    logger.warning(
+                        "Sandbox stderr (session %s): %s",
+                        session.session_id,
+                        data.decode("utf-8", errors="replace")[:200],
+                    )
+                elif event_type == "exit":
+                    if data != 0:
+                        logger.warning(
+                            "Sandbox exit code %d (session %s)", data, session.session_id
+                        )
+
+            output = "".join(stdout_parts).strip()
             if output:
                 yield {
                     "jsonrpc": "2.0",
@@ -246,7 +239,8 @@ class ACPBridge:
                     "Sandbox exec returned empty output", session_id=session.session_id
                 )
         except Exception as e:
-            yield _acp_error(f"Sandbox exec failed: {e}", session_id=session.session_id)
+            logger.error("ExecSandbox gRPC failed (session %s): %s", session.session_id, e)
+            yield _acp_error(f"Gateway ExecSandbox failed: {e}", session_id=session.session_id)
 
     async def _prompt_nemoclaw(self, session: ACPSession, text: str) -> AsyncIterator[dict]:
         """Send prompt to NemoClaw agent via LiteLLM OpenAI-compat format."""

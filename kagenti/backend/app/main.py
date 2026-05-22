@@ -147,6 +147,15 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
 
+    # Close OpenShell gateway gRPC channels
+    if _acp_modules_loaded:
+        try:
+            from app.services.openshell.gateway import get_openshell_client
+
+            await get_openshell_client().close()
+        except Exception:
+            pass
+
     # Shutdown sandbox services (only if enabled and loaded)
     if _sandbox_modules_loaded:
         from app.services.sidecar_manager import get_sidecar_manager  # pylint: disable=import-error,no-name-in-module
