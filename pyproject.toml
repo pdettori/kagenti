@@ -78,6 +78,7 @@ exclude = [
     "deployments",
     "kagenti/ui-v2",
     "kagenti/tui",
+    "kagenti/backend/app/services/openshell/v1/*_pb2*.py",
 ]
 
 [tool.ruff.lint]
