@@ -6,9 +6,7 @@ ocpVersion: ""
 # Set to true to skip ZTWIM operator installation even on OpenShift
 # Used when installing SPIRE via Helm charts (e.g., OCP < 4.19 where ZTWIM is not available)
 useSpireHelmChart: false
-
 domain: localtest.me
-
 # ------------------------------------------------------------------
 #   Enable or disable components here
 # ------------------------------------------------------------------
@@ -43,15 +41,12 @@ components:
     enabled: false
   ingressGateway:
     enabled: false
-
 common:
   kubectlImage: "quay.io/kubestellar/kubectl:1.30.14"
   postgresImage: "quay.io/fedora/postgresql-16"
-
 # ------------------------------------------------------------------
 #  Components Configurations
 # ------------------------------------------------------------------
-
 
 # ------------------------------------------------------------------
 #  Keycloak Configuration
@@ -89,17 +84,16 @@ keycloak:
   httpRoute:
     annotations: {}
     parentRefs:
-    - name: http
-      namespace: kagenti-system
+      - name: http
+        namespace: kagenti-system
     hostnames:
       - "keycloak.localtest.me"
       - "www.keycloak.localtest.me"
     rules:
-    - matches:
-      - path:
-          type: PathPrefix
-          value: /
-
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
 # ------------------------------------------------------------------
 #  SPIFFE Identity Provider Setup Job Configuration
 #  (Only runs when SPIRE is enabled)
@@ -111,10 +105,8 @@ spiffeIdp:
   # - Standalone Helm users must create job manually (see docs)
   image:
     repository: ghcr.io/kagenti/kagenti/spiffe-idp-setup
-    tag: v0.6.0-rc.1
+    tag: v0.6.0-rc.6
     pullPolicy: IfNotPresent
-
-
 # ------------------------------------------------------------------
 #  Istio Configuration
 # ------------------------------------------------------------------
@@ -134,7 +126,6 @@ istio:
     namespace: '{{ .Values.istio.namespace | quote }}'
   tracing:
     randomSamplingPercentage: 100
-
 # ------------------------------------------------------------------
 #  OpenTelemetry Configuration
 # ------------------------------------------------------------------
@@ -173,15 +164,14 @@ otel:
   # TODO: Replace with a single mlflow.mode enum (none|managed|external).
   mlflow:
     enabled: false
-    workspace: "team1"     # RHOAI workspace namespace for x-mlflow-workspace header
-    experimentId: "1"      # MLflow experiment ID for x-mlflow-experiment-id header
+    workspace: "team1" # RHOAI workspace namespace for x-mlflow-workspace header
+    experimentId: "1" # MLflow experiment ID for x-mlflow-experiment-id header
   collector:
     image:
       repository: otel/opentelemetry-collector-contrib
       tag: "0.122.1"
     service: otel-collector.kagenti-system.svc.cluster.local
     port: 4317
-
     # Base collector configuration rendered as the ConfigMap base.yaml.
     # Override any key via values files or --set flags.
     config:
@@ -238,32 +228,21 @@ otel:
             - context: span
               statements:
                 - >-
-                  set(attributes["llm.model_name"], attributes["gen_ai.request.model"])
-                  where attributes["gen_ai.request.model"] != nil
+                  set(attributes["llm.model_name"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil
                 - >-
-                  set(attributes["llm.model_name"], attributes["gen_ai.response.model"])
-                  where attributes["gen_ai.response.model"] != nil and attributes["llm.model_name"] == nil
+                  set(attributes["llm.model_name"], attributes["gen_ai.response.model"]) where attributes["gen_ai.response.model"] != nil and attributes["llm.model_name"] == nil
                 - >-
-                  set(attributes["llm.token_count.prompt"], attributes["gen_ai.usage.input_tokens"])
-                  where attributes["gen_ai.usage.input_tokens"] != nil
+                  set(attributes["llm.token_count.prompt"], attributes["gen_ai.usage.input_tokens"]) where attributes["gen_ai.usage.input_tokens"] != nil
                 - >-
-                  set(attributes["llm.token_count.completion"], attributes["gen_ai.usage.output_tokens"])
-                  where attributes["gen_ai.usage.output_tokens"] != nil
+                  set(attributes["llm.token_count.completion"], attributes["gen_ai.usage.output_tokens"]) where attributes["gen_ai.usage.output_tokens"] != nil
                 - >-
-                  set(attributes["llm.token_count.total"],
-                  attributes["gen_ai.usage.input_tokens"] + attributes["gen_ai.usage.output_tokens"])
-                  where attributes["gen_ai.usage.input_tokens"] != nil
-                  and attributes["gen_ai.usage.output_tokens"] != nil
+                  set(attributes["llm.token_count.total"], attributes["gen_ai.usage.input_tokens"] + attributes["gen_ai.usage.output_tokens"]) where attributes["gen_ai.usage.input_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] != nil
                 - >-
-                  set(attributes["llm.provider"], attributes["gen_ai.system"])
-                  where attributes["gen_ai.system"] != nil
+                  set(attributes["llm.provider"], attributes["gen_ai.system"]) where attributes["gen_ai.system"] != nil
                 - >-
-                  set(attributes["llm.system"], attributes["gen_ai.system"])
-                  where attributes["gen_ai.system"] != nil
+                  set(attributes["llm.system"], attributes["gen_ai.system"]) where attributes["gen_ai.system"] != nil
                 - >-
-                  set(attributes["llm.invocation_parameters"],
-                  Concat(["{\"temperature\":", Concat([attributes["gen_ai.request.temperature"], "}"], "")], ""))
-                  where attributes["gen_ai.request.temperature"] != nil
+                  set(attributes["llm.invocation_parameters"], Concat(["{\"temperature\":", Concat([attributes["gen_ai.request.temperature"], "}"], "")], "")) where attributes["gen_ai.request.temperature"] != nil
       service:
         pipelines:
           traces/phoenix:
@@ -335,7 +314,6 @@ otel:
           filename: /var/run/secrets/kubernetes.io/serviceaccount/token
       service:
         extensions: [health_check, bearertokenauth/mlflow]
-
 httpGateway:
   name: http
   namespace: "kagenti-system"
@@ -345,13 +323,11 @@ httpGateway:
 shipwright:
   namespace: openshift-builds
   channel: latest
-
 # ------------------------------------------------------------------
 #  Cert Manager Configuration
 # ------------------------------------------------------------------
 certManager:
   namespace: cert-manager-operator
-
 # ------------------------------------------------------------------
 #  RHOAI (Red Hat OpenShift AI) Configuration
 # ------------------------------------------------------------------
@@ -359,10 +335,8 @@ rhoai:
   namespace: redhat-ods-operator
   channel: stable-3.4
   installPlanApproval: Automatic
-
 # When true, skip servicemeshoperator3 Subscription creation (RHOAI provides it)
 rhoaiManagesServiceMesh: false
-
 # ------------------------------------------------------------------
 #  Spire Configuration
 # ------------------------------------------------------------------
@@ -371,7 +345,6 @@ spire:
   trustDomain: localtest.me
   # OLM channel for ZTWIM operator. Use "stable-v1" for OCP 4.20+, "tech-preview-v0.2" for OCP 4.19
   channel: stable-v1
-
 containerRegistry:
   namespace: cr-system
   name: registry
@@ -380,13 +353,11 @@ containerRegistry:
     repository: ghcr.io/distribution/distribution
     tag: "3.0.0"
     pullPolicy: IfNotPresent
-
   service:
     type: ClusterIP
     port: 5000
     targetPort: 5000
     # nodePort: 30500  # Set when type is NodePort
-
   env:
     otelTracesExporter: "none"
     logLevel: "info"
@@ -398,23 +369,18 @@ containerRegistry:
     requests:
       cpu: 50m
       memory: 128Mi
-
 # ------------------------------------------------------------------
 #  Metrics Server Configuration
 # ------------------------------------------------------------------
-
 metricsServer:
   insecure: true
   namespace: kube-system
-
 # ------------------------------------------------------------------
 #  MCP inspector
 # ------------------------------------------------------------------
-
 mcpInspector:
   image: ghcr.io/modelcontextprotocol/inspector
   tag: 0.17.2
-
 # ------------------------------------------------------------------
 #  Phoenix Configuration
 # ------------------------------------------------------------------
@@ -437,7 +403,6 @@ phoenix:
     # Set to true in ocp_values.yaml for production deployments
     enabled: false
     secretName: phoenix-oauth-secret
-
 # ------------------------------------------------------------------
 #  MLflow Configuration
 # ------------------------------------------------------------------
