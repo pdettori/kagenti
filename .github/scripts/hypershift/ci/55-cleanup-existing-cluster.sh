@@ -313,7 +313,7 @@ cleanup_orphaned_aws_resources() {
                 fi
 
                 echo "  - Attempting manual VPC delete:"
-                VPC_DELETE_OUTPUT=$(aws ec2 delete-vpc --region "$AWS_REGION" --vpc-id "$vpc" 2>&1)
+                VPC_DELETE_OUTPUT=$(aws ec2 delete-vpc --region "$AWS_REGION" --vpc-id "$vpc" 2>&1) || true
                 VPC_DELETE_EXIT=$?
 
                 if [ $VPC_DELETE_EXIT -eq 0 ]; then
