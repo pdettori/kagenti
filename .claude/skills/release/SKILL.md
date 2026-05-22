@@ -114,6 +114,27 @@ Ask: "What release would you like to cut? (alpha / rc / ga / patch)"
 
 ## Phase 2: Prepare the Release
 
+### 2.0 Pin image tags and validate (MANDATORY)
+
+Pin all image tags using the automated script, then validate:
+
+```bash
+# Pin all images to the target version (updates both charts/kagenti/ and charts/kagenti-deps/)
+bash scripts/pin-release-tags.sh <version>
+
+# Validate — must pass with zero errors before continuing
+bash scripts/check-release-pins.sh
+```
+
+The pin script updates tags across both `charts/kagenti/values.yaml` and
+`charts/kagenti-deps/values.yaml`. Use `--dry-run` to preview changes first.
+Use `--verify-images` to confirm images exist in ghcr.io before committing.
+
+If validation fails, fix all pinning issues before proceeding. The script
+checks for `tag: latest` in both values files, `:latest` in templates, unpinned
+dependency versions in `Chart.yaml`, and tag drift between `kagenti-deps` and
+the platform chart.
+
 Steps depend on the release type. Always follow the dependency order:
 
 ```
@@ -170,19 +191,21 @@ git push origin release-X.Y
 
 ### Pin image tags helper
 
-Run this to find and display all images that need pinning:
+Pin all images in both charts at once:
 
 ```bash
-echo "=== Images using 'latest' tag ==="
-grep -n 'tag: latest' charts/kagenti/values.yaml
+# Pin and validate
+bash scripts/pin-release-tags.sh <version>
+bash scripts/check-release-pins.sh
 
-echo ""
-echo "=== All image:tag pairs ==="
-grep -n 'tag:\|image:' charts/kagenti/values.yaml
+# Commit the pin
+git add charts/ && git commit -s -m "chore(release): pin image tags for <version>"
+```
 
-echo ""
-echo "=== Hardcoded :latest in templates ==="
-grep -rn ':latest' charts/kagenti/templates/
+For a detailed view of all image:tag pairs across both charts:
+
+```bash
+grep -n 'tag:\|image:' charts/kagenti/values.yaml charts/kagenti-deps/values.yaml
 ```
 
 ## Phase 3: Tag Repos
@@ -322,7 +345,28 @@ helm show chart oci://ghcr.io/kagenti/kagenti-operator/kagenti-operator-chart --
   && echo "operator chart OK" || echo "operator chart MISSING"
 ```
 
-### 4.4 Pre-release flag
+### 4.4 Trigger E2E release validation
+
+Dispatch the E2E validation workflow against the tagged release:
+
+```bash
+gh workflow run e2e-release-validation.yaml \
+  -f version=<version> \
+  --repo kagenti/kagenti
+```
+
+To also run HyperShift E2E:
+
+```bash
+gh workflow run e2e-release-validation.yaml \
+  -f version=<version> \
+  -f run_hypershift=true \
+  --repo kagenti/kagenti
+```
+
+Link the workflow run URL in release notes as evidence of validation.
+
+### 4.5 Pre-release flag
 
 For alpha and RC releases, confirm the GitHub Release is marked as pre-release.
 For GA releases, confirm it is marked as "Latest":

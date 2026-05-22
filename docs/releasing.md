@@ -132,50 +132,66 @@ merge, then tag `kagenti/kagenti`.
 
 ## Pinning Image Tags Before Release
 
-The `charts/kagenti/values.yaml` file references internal container images.
-Some of these currently use `tag: latest`, which must be pinned to the release
-version before cutting an RC or GA tag.
+Both Helm charts (`charts/kagenti/` and `charts/kagenti-deps/`) reference
+container images built by this repo. All image tags must be pinned to the
+release version before cutting any tag (alpha, RC, or GA).
 
-### Images that require pinning
+### Automated pinning (recommended)
 
-Check `charts/kagenti/values.yaml` for any `tag: latest` entries. As of v0.5.0,
-these include:
+Use the `pin-release-tags.sh` script to update all image tags in a single
+command:
 
-| Image | values.yaml key | Purpose |
-|-------|----------------|---------|
-| `ghcr.io/kagenti/kagenti/ui-oauth-secret` | `uiOAuthSecret.tag` | UI Keycloak client registration |
-| `ghcr.io/kagenti/kagenti/agent-oauth-secret` | `agentOAuthSecret.tag` | Agent Keycloak client registration |
-| `ghcr.io/kagenti/kagenti/api-oauth-secret` | `apiOAuthSecret.tag` | API Keycloak client registration |
-| `ghcr.io/kagenti/kagenti/phoenix-oauth-secret` | `phoenixOAuthSecret.tag` | Phoenix observability auth |
-| `quay.io/ladas/mlflow-oauth-secret` | `mlflowOAuthSecret.tag` | MLflow auth (move to `ghcr.io/kagenti/kagenti/mlflow-oauth-secret` once published) |
+```bash
+# Pin all images to v0.6.0-rc.6
+bash scripts/pin-release-tags.sh v0.6.0-rc.6
 
-Additionally, some Helm templates hardcode `:latest` for utility images
-(`bitnami/kubectl:latest`, `ose-cli:latest`). These should be pinned to
-specific versions over time.
+# Preview changes without modifying files
+bash scripts/pin-release-tags.sh v0.6.0-rc.6 --dry-run
 
-### What to do
+# Also verify images exist in ghcr.io before pinning
+bash scripts/pin-release-tags.sh v0.6.0-rc.6 --verify-images
 
-Before tagging an RC or GA release, update `charts/kagenti/values.yaml`:
-
-```yaml
-uiOAuthSecret:
-  image: ghcr.io/kagenti/kagenti/ui-oauth-secret
-  tag: vX.Y.0       # <-- pin to release tag, not "latest"
-
-agentOAuthSecret:
-  image: ghcr.io/kagenti/kagenti/agent-oauth-secret
-  tag: vX.Y.0       # <-- pin to release tag
-
-# ... repeat for all oauth-secret images
+# Also update Chart.yaml version
+bash scripts/pin-release-tags.sh v0.6.0-rc.6 --chart-version v0.6.0-rc.6
 ```
 
-The `ui.tag` and `backend.tag` fields are already pinned to specific versions
-(e.g., `v0.5.0-alpha.11`). Ensure these are also updated to the release tag.
+The script updates tags across **both** charts:
 
-**Why this matters:** Using `latest` means different installs at different times
-get different image versions, making it impossible to reproduce issues or
-guarantee a tested set of components. Every image referenced in `values.yaml`
-should resolve to a specific, immutable tag for any RC or GA release.
+| Chart | Image | values.yaml key |
+|-------|-------|----------------|
+| `kagenti` | ui-v2 | `ui.frontend.tag` |
+| `kagenti` | backend | `ui.backend.tag` |
+| `kagenti` | ui-oauth-secret | `uiOAuthSecret.tag` |
+| `kagenti` | agent-oauth-secret | `agentOAuthSecret.tag` |
+| `kagenti` | api-oauth-secret | `apiOAuthSecret.tag` |
+| `kagenti` | mlflow-oauth-secret | `mlflowOAuthSecret.tag` |
+| `kagenti-deps` | spiffe-idp-setup | `spiffeIdp.image.tag` |
+
+### CI also pins at chart-publish time
+
+The `build.yaml` workflow pins these same tags automatically when packaging
+charts for OCI push (triggered by tag push). This means the OCI-published chart
+is always correct — but since users typically install from a repo checkout (via
+`setup-kagenti.sh`), the committed values must also be pinned before tagging.
+
+### Why this matters
+
+The Kind and OpenShift installers (`scripts/kind/setup-kagenti.sh` and
+`scripts/ocp/setup-kagenti.sh`) use local charts from the repo checkout — they
+do **not** pull from the OCI registry. If image tags in the checked-out
+`values.yaml` files are stale, users get old images even on a new release tag.
+
+### Validation
+
+After pinning, validate with:
+
+```bash
+bash scripts/check-release-pins.sh
+```
+
+This checks both charts for `tag: latest` entries and warns if the
+`spiffe-idp-setup` tag in `kagenti-deps` has drifted from the platform tags in
+`kagenti`.
 
 ## Cutting a Release Candidate
 
