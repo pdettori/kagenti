@@ -178,3 +178,100 @@ class TestTeleportLifecycle:
 
         finally:
             _run_teleport("--cleanup", "--session", session_id)
+
+
+class TestTeleportFull:
+    """--full mode: package → deploy → prompt → cleanup in one command."""
+
+    @skip_no_crd
+    def test_teleport__full_mode(self):
+        """--full runs the entire lifecycle and returns prompt output."""
+        if not _gateway_running():
+            pytest.fail("OpenShell gateway not running — compute driver required")
+        if not LLM_AVAILABLE:
+            pytest.skip("LLM not available (OPENSHELL_LLM_AVAILABLE)")
+
+        result = _run_teleport(
+            "--full",
+            "Say the word kagenti three times",
+            timeout=240,
+        )
+        assert result.returncode == 0, f"Full mode failed: {result.stderr[-500:]}"
+        assert "kagenti" in result.stdout.lower(), (
+            f"Response doesn't contain kagenti: {result.stdout[-300:]}"
+        )
+
+
+class TestTeleportSkills:
+    """Verify skills are teleported when TELEPORT_SKILLS is set."""
+
+    @skip_no_crd
+    def test_teleport__skills_packaged(self):
+        """Skills listed in TELEPORT_SKILLS are included in the ConfigMap."""
+        import os
+
+        env = os.environ.copy()
+        env["TELEPORT_SKILLS"] = "sandbox:teleport"
+
+        result = subprocess.run(
+            [_teleport_script(), "--package", "--namespace", TELEPORT_NS],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+        assert result.returncode == 0, f"Package failed: {result.stderr}"
+        session_id = result.stdout.strip().split("\n")[-1]
+
+        try:
+            assert "1 selected" in result.stderr, (
+                f"Expected '1 selected' in output: {result.stderr}"
+            )
+
+            cm = kubectl_run(
+                "get",
+                "configmap",
+                f"teleport-ctx-{session_id}",
+                "-n",
+                TELEPORT_NS,
+                "-o",
+                "jsonpath={.data}",
+            )
+            assert cm.returncode == 0
+            assert "skill--sandbox_teleport.md" in cm.stdout, (
+                f"Skill not in ConfigMap keys: {cm.stdout[:300]}"
+            )
+        finally:
+            _run_teleport("--cleanup", "--session", session_id)
+
+
+class TestTeleportErrors:
+    """Error handling — invalid inputs, missing prerequisites."""
+
+    def test_teleport__no_action(self):
+        """Script fails with usage when no action given."""
+        result = subprocess.run(
+            [_teleport_script()],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode != 0
+
+    def test_teleport__deploy_without_session(self):
+        """--deploy without --session fails."""
+        result = _run_teleport("--deploy")
+        assert result.returncode != 0
+        assert "session" in result.stderr.lower()
+
+    def test_teleport__prompt_without_session(self):
+        """--prompt without --session fails."""
+        result = _run_teleport("--prompt", "hello")
+        assert result.returncode != 0
+        assert "session" in result.stderr.lower()
+
+    def test_teleport__cleanup_without_session(self):
+        """--cleanup without --session fails."""
+        result = _run_teleport("--cleanup")
+        assert result.returncode != 0
+        assert "session" in result.stderr.lower()
