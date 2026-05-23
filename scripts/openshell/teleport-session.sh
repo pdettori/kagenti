@@ -41,6 +41,7 @@ usage() {
   echo "Actions:"
   echo "  --package              Bundle local context into a ConfigMap"
   echo "  --deploy               Create sandbox with mounted context"
+  echo "  --spawn                Create bare sandbox (no local context)"
   echo "  --prompt \"text\"        Send instruction and get result"
   echo "  --cleanup              Delete sandbox and ConfigMap"
   echo "  --full \"text\"          All-in-one: package → deploy → prompt → cleanup"
@@ -55,6 +56,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --package)     ACTION="package"; shift ;;
     --deploy)      ACTION="deploy"; shift ;;
+    --spawn)       ACTION="spawn"; shift ;;
     --prompt)      ACTION="prompt"; PROMPT_TEXT="${2:-}"; shift 2 ;;
     --cleanup)     ACTION="cleanup"; shift ;;
     --full)        ACTION="full"; PROMPT_TEXT="${2:-}"; shift 2 ;;
@@ -288,6 +290,71 @@ EOSANDBOX
   log_success "Sandbox deployed and context loaded (session: $SESSION_ID)"
 }
 
+# ── Spawn (bare sandbox, no context) ────────────────────────────
+do_spawn() {
+  if [ -z "$SESSION_ID" ]; then
+    SESSION_ID=$(generate_session_id)
+  fi
+
+  local sb_name
+  sb_name=$(sandbox_name)
+
+  local litellm_url="http://litellm-model-proxy.${NS}.svc:4000"
+
+  log_info "Spawning bare sandbox $sb_name (no local context)"
+
+  kubectl apply -f - <<EOSANDBOX
+apiVersion: agents.x-k8s.io/v1alpha1
+kind: Sandbox
+metadata:
+  name: $sb_name
+  namespace: $NS
+  labels:
+    kagenti.io/teleport-session: "$SESSION_ID"
+spec:
+  podTemplate:
+    spec:
+      containers:
+      - name: sandbox
+        image: ghcr.io/nvidia/openshell-community/sandboxes/base:latest
+        command: ["sleep", "3600"]
+        env:
+        - name: ANTHROPIC_BASE_URL
+          value: "${litellm_url}"
+        - name: ANTHROPIC_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: litellm-virtual-keys
+              key: api-key
+EOSANDBOX
+
+  log_info "Waiting for sandbox pod (up to ${TIMEOUT}s)..."
+  local deadline=$((SECONDS + TIMEOUT))
+  local pod_name=""
+  while [ $SECONDS -lt $deadline ]; do
+    pod_name=$(kubectl get pods -n "$NS" --no-headers 2>/dev/null \
+      | grep "$sb_name" | grep -v Terminating | awk '{print $1}' | head -1 || true)
+    if [ -n "$pod_name" ]; then
+      local phase
+      phase=$(kubectl get pod "$pod_name" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+      if [ "$phase" = "Running" ]; then
+        break
+      fi
+    fi
+    sleep 5
+  done
+
+  if [ -z "$pod_name" ]; then
+    log_error "Sandbox pod not created after ${TIMEOUT}s"
+    exit 1
+  fi
+
+  log_success "Sandbox $sb_name running (session: $SESSION_ID)"
+  log_info "Send prompts:  $0 --session $SESSION_ID --prompt \"your task\""
+  log_info "Cleanup:       $0 --session $SESSION_ID --cleanup"
+  echo "$SESSION_ID"
+}
+
 # ── Prompt ───────────────────────────────────────────────────────
 do_prompt() {
   if [ -z "$SESSION_ID" ]; then
@@ -371,6 +438,7 @@ do_full() {
 case "$ACTION" in
   package) do_package ;;
   deploy)  do_deploy ;;
+  spawn)   do_spawn ;;
   prompt)  do_prompt ;;
   cleanup) do_cleanup ;;
   full)    do_full ;;

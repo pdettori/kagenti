@@ -245,6 +245,89 @@ class TestTeleportSkills:
             _run_teleport("--cleanup", "--session", session_id)
 
 
+class TestTeleportSpawn:
+    """--spawn mode: bare sandbox without local context."""
+
+    @skip_no_crd
+    def test_teleport__spawn_creates_sandbox(self):
+        """--spawn creates a running sandbox without ConfigMap."""
+        if not _gateway_running():
+            pytest.fail("OpenShell gateway not running — compute driver required")
+
+        result = _run_teleport("--spawn")
+        assert result.returncode == 0, f"Spawn failed: {result.stderr[-500:]}"
+        session_id = result.stdout.strip().split("\n")[-1]
+        assert len(session_id) == 8, f"Expected 8-char session ID, got: {session_id}"
+
+        try:
+            sb_name = f"teleport-{session_id}"
+            pods = kubectl_run("get", "pods", "-n", TELEPORT_NS, "--no-headers")
+            assert sb_name in pods.stdout, f"No pod for {sb_name}"
+            assert "Running" in pods.stdout.split(sb_name)[1].split("\n")[0]
+
+            if LLM_AVAILABLE:
+                prompt = _run_teleport(
+                    "--session",
+                    session_id,
+                    "--prompt",
+                    "What is 2+2? Reply with just the number.",
+                    timeout=120,
+                )
+                assert prompt.returncode == 0, f"Prompt failed: {prompt.stderr[-300:]}"
+                assert "4" in prompt.stdout
+        finally:
+            _run_teleport("--cleanup", "--session", session_id)
+
+    @skip_no_crd
+    def test_teleport__spawn_credential_isolation(self):
+        """Spawned sandbox only sees LiteLLM virtual key, not real API keys."""
+        if not _gateway_running():
+            pytest.fail("OpenShell gateway not running — compute driver required")
+
+        result = _run_teleport("--spawn")
+        assert result.returncode == 0
+        session_id = result.stdout.strip().split("\n")[-1]
+
+        try:
+            sb_name = f"teleport-{session_id}"
+            pods = kubectl_run("get", "pods", "-n", TELEPORT_NS, "--no-headers")
+            pod_name = ""
+            for line in pods.stdout.strip().split("\n"):
+                if sb_name in line and "Running" in line:
+                    pod_name = line.split()[0]
+                    break
+            assert pod_name, f"No running pod for {sb_name}"
+
+            env_check = kubectl_run(
+                "exec",
+                pod_name,
+                "-n",
+                TELEPORT_NS,
+                "-c",
+                "sandbox",
+                "--",
+                "sh",
+                "-c",
+                "env | grep -iE 'API_KEY|AUTH_TOKEN|ANTHROPIC|OPENAI|SECRET'",
+                timeout=10,
+            )
+            env_output = env_check.stdout
+
+            assert "ANTHROPIC_BASE_URL=http://litellm-model-proxy" in env_output, (
+                "Missing ANTHROPIC_BASE_URL pointing to LiteLLM"
+            )
+            assert "ANTHROPIC_AUTH_TOKEN=" in env_output, "Missing virtual key"
+            assert "litellm-model-proxy" in env_output, (
+                "Should point to LiteLLM, not directly to provider"
+            )
+            for bad in ["OPENAI_API_KEY", "MAAS_API_KEY", "VERTEX_", "GOOGLE_"]:
+                assert bad not in env_output, (
+                    f"Real provider credential {bad} exposed in sandbox"
+                )
+        finally:
+            _run_teleport("--cleanup", "--session", session_id)
+
+
 class TestTeleportErrors:
     """Error handling — invalid inputs, missing prerequisites."""
 

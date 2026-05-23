@@ -26,7 +26,28 @@ kubectl get pods -n team1 -l app=litellm-model-proxy --no-headers
 
 ## Quick Start
 
-One command — packages context, deploys sandbox, sends prompt, cleans up:
+### Spawn a remote session (no local context)
+
+Create a bare sandbox and delegate tasks to it:
+
+```bash
+# Spawn a sandbox
+scripts/openshell/teleport-session.sh --spawn
+# Output: session ID (e.g., 00ed517d)
+
+# Send prompts
+scripts/openshell/teleport-session.sh --session 00ed517d --prompt "What is 2+2?"
+
+# Send more prompts (same sandbox)
+scripts/openshell/teleport-session.sh --session 00ed517d --prompt "List files in /etc"
+
+# Cleanup when done
+scripts/openshell/teleport-session.sh --cleanup --session 00ed517d
+```
+
+### Teleport local context + prompt (all-in-one)
+
+Packages your CLAUDE.md and skills, deploys, prompts, cleans up:
 
 ```bash
 scripts/openshell/teleport-session.sh --full "What project is described in CLAUDE.md?"
@@ -116,6 +137,40 @@ or use fewer context files.
 **Not teleported**: memory files, conversation history, workspace files,
 git state. This is a one-shot context transfer, not a session migration.
 
+## Credential Isolation
+
+The sandbox never sees real API keys. LiteLLM virtual keys provide a
+security boundary between the sandbox and the actual LLM provider:
+
+```
+Your machine                    Kind/HyperShift cluster
+────────────                    ──────────────────────
+                                litellm-proxy-secret (kagenti-system)
+                                  └─ master-key: sk-real-master-key
+                                  └─ .env.maas: MAAS_API_KEY=real-key
+                                         │
+                                    LiteLLM Proxy
+                                         │
+                                litellm-virtual-keys (team1)
+                                  └─ api-key: sk-ZSFBf... (virtual)
+                                         │
+                                    Sandbox Pod
+                                  └─ ANTHROPIC_AUTH_TOKEN=sk-ZSFBf... (virtual)
+                                  └─ ANTHROPIC_BASE_URL=http://litellm-model-proxy:4000
+```
+
+What the sandbox sees:
+- `ANTHROPIC_BASE_URL` — points to LiteLLM proxy, not to any provider
+- `ANTHROPIC_AUTH_TOKEN` — a LiteLLM virtual key, not the real API key
+
+What the sandbox **cannot** see:
+- Real MaaS/Vertex AI API keys (in `litellm-proxy-secret`)
+- LiteLLM master key
+- Any `OPENAI_API_KEY`, `GOOGLE_*`, or `VERTEX_*` credentials
+
+This means you can use Claude models (via LiteLLM → MaaS/Vertex) in
+sandbox sessions without exposing your real credentials to the agent.
+
 ## How It Works
 
 ```
@@ -154,7 +209,7 @@ OPENSHELL_LLM_AVAILABLE=true \
   uv run pytest kagenti/tests/e2e/openshell/test_T7_1_teleport.py -v
 ```
 
-Test coverage:
+Test coverage (12 tests):
 
 | Test | What it validates |
 |------|-------------------|
@@ -164,6 +219,8 @@ Test coverage:
 | `test_teleport__full_lifecycle` | Package → deploy → verify CLAUDE.md → prompt → cleanup |
 | `test_teleport__full_mode` | `--full` flag runs entire lifecycle |
 | `test_teleport__skills_packaged` | `TELEPORT_SKILLS` includes skills in ConfigMap |
+| `test_teleport__spawn_creates_sandbox` | `--spawn` creates running sandbox, responds to prompts |
+| `test_teleport__spawn_credential_isolation` | Only LiteLLM virtual key visible, no real API keys |
 | `test_teleport__no_action` | Script fails without action flag |
 | `test_teleport__deploy_without_session` | Deploy requires `--session` |
 | `test_teleport__prompt_without_session` | Prompt requires `--session` |
