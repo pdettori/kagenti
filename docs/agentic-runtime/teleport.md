@@ -108,12 +108,23 @@ Deletes the Sandbox CR, pod, and ConfigMap:
 scripts/openshell/teleport-session.sh --cleanup --session a3da31dd
 ```
 
+## Actions
+
+| Flag | Description |
+|------|-------------|
+| `--package` | Bundle local context into a ConfigMap |
+| `--deploy` | Create sandbox with mounted context (requires `--session`) |
+| `--spawn` | Create bare sandbox without local context |
+| `--prompt "text"` | Send instruction to running sandbox (requires `--session`) |
+| `--cleanup` | Delete sandbox and ConfigMap (requires `--session`) |
+| `--full "text"` | All-in-one: package, deploy, prompt, cleanup |
+
 ## Options
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--namespace <ns>` | Target K8s namespace | `team1` |
-| `--session <id>` | Session ID (auto-generated for `--package`) | — |
+| `--session <id>` | Session ID (auto-generated for `--package`/`--spawn`) | — |
 | `--timeout <secs>` | Prompt timeout | `120` |
 
 Environment variables:
