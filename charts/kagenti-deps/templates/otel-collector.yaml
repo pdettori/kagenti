@@ -155,6 +155,7 @@ spec:
       port: 8335
       targetPort: 8335
   type: ClusterIP
+{{- if not .Values.otelBootstrap.operatorManaged }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -166,6 +167,7 @@ metadata:
 data:
   base.yaml: |
     {{- include "kagenti.otel.collectorConfig" . | nindent 4 }}
+{{- end }}
 {{- end }}
 {{- if and .Values.components.otel.enabled (.Capabilities.APIVersions.Has "security.istio.io/v1") }}
 ---
