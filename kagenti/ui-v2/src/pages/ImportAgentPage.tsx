@@ -35,13 +35,14 @@ import {
   Checkbox,
 } from '@patternfly/react-core';
 import { TrashIcon, PlusCircleIcon, UploadIcon } from '@patternfly/react-icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { agentService, ShipwrightBuildConfig } from '@/services/api';
+import { agentService, ShipwrightBuildConfig, skillService } from '@/services/api';
 import { NamespaceSelector } from '@/components/NamespaceSelector';
 import { EnvImportModal } from '@/components/EnvImportModal';
 import { BuildStrategySelector } from '@/components/BuildStrategySelector';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import type { Skill } from '@/types';
 
 // Example agent subfolders from the original UI
 const AGENT_EXAMPLES = [
@@ -166,6 +167,7 @@ export const ImportAgentPage: React.FC = () => {
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [showEnvVars, setShowEnvVars] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Workload type
   const [workloadType, setWorkloadType] = useState<'deployment' | 'statefulset' | 'job' | 'sandbox'>(
@@ -225,6 +227,11 @@ export const ImportAgentPage: React.FC = () => {
 
   // Validation state
   const [validated, setValidated] = useState<Record<string, 'success' | 'error' | 'default'>>({});
+
+  const { data: availableSkills = [] } = useQuery<Skill[]>({
+    queryKey: ['skills', namespace],
+    queryFn: () => skillService.list(namespace),
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: Parameters<typeof agentService.create>[0]) =>
@@ -387,6 +394,12 @@ export const ImportAgentPage: React.FC = () => {
     setServicePorts(updated);
   };
 
+  const handleSelectedSkillsChange = (value: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(value) ? prev.filter((skill) => skill !== value) : [...prev, value]
+    );
+  };
+
   // Build argument handlers
   const addBuildArg = () => {
     setBuildArgs([...buildArgs, '']);
@@ -499,6 +512,7 @@ export const ImportAgentPage: React.FC = () => {
         protocol,
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
+        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         // Workload type
         workloadType,
         // Additional fields for build from source
@@ -538,6 +552,7 @@ export const ImportAgentPage: React.FC = () => {
         protocol,
         framework,
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
+        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         // Workload type
         workloadType,
         // Additional fields for image deployment
@@ -1017,6 +1032,32 @@ export const ImportAgentPage: React.FC = () => {
                     <FormSelectOption key={fw.value} value={fw.value} label={fw.label} />
                   ))}
                 </FormSelect>
+              </FormGroup>
+
+              <FormGroup label="Linked Skills" fieldId="linkedSkills">
+                {availableSkills.length === 0 ? (
+                  <Text component="small">No imported skills found in this namespace.</Text>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {availableSkills.map((skill) => (
+                      <Checkbox
+                        key={skill.resourceName}
+                        id={`skill-${skill.resourceName}`}
+                        label={skill.name}
+                        description={skill.description || skill.resourceName}
+                        isChecked={selectedSkills.includes(skill.name)}
+                        onChange={() => handleSelectedSkillsChange(skill.name)}
+                      />
+                    ))}
+                  </div>
+                )}
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem>
+                      Select skills already imported into this namespace. The linked skills are stored with the agent and shown on the agent card.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
               </FormGroup>
 
               {/* Workload Type Selection */}

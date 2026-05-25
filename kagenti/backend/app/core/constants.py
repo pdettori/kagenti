@@ -166,6 +166,9 @@ SKILL_ORIGIN_ANNOTATION = "kagenti.io/origin"
 SKILL_USAGE_ANNOTATION = "kagenti.io/usage-count"
 SKILL_FILE_PATHS_ANNOTATION = "kagenti.io/file-paths"
 SKILL_STATUS_READY = "Ready"
+SKILL_DISPLAY_NAME_ANNOTATION = "kagenti.io/display-name"
+AGENT_SKILLS_ANNOTATION = "kagenti.io/skills"
+AGENT_SKILLS_MOUNT_ROOT = "/app/skills"
 # Environment variable name for the agent endpoint (the agent card URL for the agent)
 AGENT_ENDPOINT = "AGENT_ENDPOINT"
 

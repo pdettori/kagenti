@@ -26,6 +26,7 @@ from app.core.constants import (
     SKILL_USAGE_ANNOTATION,
     SKILL_FILE_PATHS_ANNOTATION,
     SKILL_STATUS_READY,
+    SKILL_DISPLAY_NAME_ANNOTATION,
     APP_KUBERNETES_IO_MANAGED_BY,
     APP_KUBERNETES_IO_NAME,
 )
@@ -162,7 +163,7 @@ def _configmap_to_skill(cm) -> Skill:
     except Exception:
         usage_count = 0
     return Skill(
-        name=annos.get("kagenti.io/display-name") or md.name,
+        name=annos.get(SKILL_DISPLAY_NAME_ANNOTATION) or md.name,
         namespace=md.namespace,
         resourceName=md.name,
         description=annos.get(SKILL_DESCRIPTION_ANNOTATION, ""),
@@ -213,7 +214,7 @@ def _configmap_to_skill_detail(cm) -> SkillDetail:
         )
 
     return SkillDetail(
-        name=annos.get("kagenti.io/display-name") or md.name,
+        name=annos.get(SKILL_DISPLAY_NAME_ANNOTATION) or md.name,
         namespace=md.namespace,
         resourceName=md.name,
         description=annos.get(SKILL_DESCRIPTION_ANNOTATION, ""),
@@ -360,7 +361,7 @@ async def create_skill(
         labels[SKILL_CATEGORY_LABEL] = _sanitize_k8s_name(request.category)
 
     annotations = {
-        "kagenti.io/display-name": display_name,
+        SKILL_DISPLAY_NAME_ANNOTATION: display_name,
         SKILL_USAGE_ANNOTATION: "0",
     }
     if request.description:

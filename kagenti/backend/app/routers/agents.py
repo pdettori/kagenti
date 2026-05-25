@@ -49,6 +49,12 @@ from app.core.constants import (
     DEFAULT_RESOURCE_REQUESTS,
     DEFAULT_ENV_VARS,
     AGENT_ENDPOINT,
+    AGENT_SKILLS_ANNOTATION,
+    AGENT_SKILLS_MOUNT_ROOT,
+    SKILL_TYPE_LABEL,
+    SKILL_TYPE_VALUE,
+    SKILL_DISPLAY_NAME_ANNOTATION,
+    SKILL_DESCRIPTION_ANNOTATION,
     # Shipwright constants
     SHIPWRIGHT_CRD_GROUP,
     SHIPWRIGHT_CRD_VERSION,
@@ -87,6 +93,7 @@ from app.models.responses import (
     DeleteResponse,
 )
 from app.services.kubernetes import KubernetesService, get_kubernetes_service
+from app.routers.skills import _sanitize_k8s_name
 from app.utils.routes import (
     create_route_for_agent_or_tool,
     detect_platform,
@@ -219,6 +226,7 @@ class CreateAgentRequest(BaseModel):
     protocol: str = "a2a"
     framework: str = "LangGraph"
     envVars: Optional[List[EnvVar]] = None
+    skills: Optional[List[str]] = None
 
     # Workload type: 'deployment', 'statefulset', or 'job'
     workloadType: str = WORKLOAD_TYPE_DEPLOYMENT
@@ -2275,11 +2283,67 @@ def _ensure_authbridge_scc_rolebinding(
     )
 
 
+def _load_agent_skill_summaries(
+    kube: KubernetesService,
+    namespace: str,
+    skill_names: List[str],
+) -> List[Dict[str, Any]]:
+    """Load skill metadata from ConfigMaps referenced by an agent.
+
+    The agent annotation stores user-facing skill names. For each skill, look up
+    the matching skill ConfigMap by either display-name annotation or resource name.
+    Missing skills are ignored so agent creation does not fail when a referenced
+    skill is deleted later.
+    """
+    if not skill_names:
+        return []
+
+    try:
+        cms = kube.core_api.list_namespaced_config_map(
+            namespace=namespace,
+            label_selector=f"{SKILL_TYPE_LABEL}={SKILL_TYPE_VALUE}",
+        )
+    except ApiException as exc:
+        # Sanitize namespace to prevent log injection
+        safe_namespace = namespace.replace("\n", "\\n").replace("\r", "\\r")
+        logger.warning(
+            "Failed to list skills for agent card generation: %s",
+            exc,
+            extra={"namespace": safe_namespace},
+        )
+        return []
+
+    requested = {skill_name.strip() for skill_name in skill_names if skill_name.strip()}
+    if not requested:
+        return []
+
+    summaries: List[Dict[str, Any]] = []
+    for cm in cms.items:
+        annotations = cm.metadata.annotations or {}
+        display_name = annotations.get(SKILL_DISPLAY_NAME_ANNOTATION) or cm.metadata.name
+        if display_name not in requested and cm.metadata.name not in requested:
+            continue
+
+        summaries.append(
+            {
+                "id": cm.metadata.name,
+                "name": display_name,
+                "description": annotations.get(SKILL_DESCRIPTION_ANNOTATION, ""),
+                "examples": [],
+            }
+        )
+
+    summaries.sort(key=lambda skill: skill["name"].lower())
+    return summaries
+
+
 def _ensure_card_unsigned_configmap(
     kube: KubernetesService,
     name: str,
     namespace: str,
     service_port: int = DEFAULT_IN_CLUSTER_PORT,
+    description: Optional[str] = None,
+    skill_names: Optional[List[str]] = None,
 ) -> None:
     """Create the <agent>-card-unsigned ConfigMap if it does not exist.
 
@@ -2290,15 +2354,17 @@ def _ensure_card_unsigned_configmap(
     created **before** the Deployment.
     """
     agent_url = f"http://{name}.{namespace}.svc.cluster.local:{service_port}"
+    skills = _load_agent_skill_summaries(kube, namespace, skill_names or [])
     agent_card = json.dumps(
         {
             "name": name,
+            "description": description,
             "url": agent_url,
             "version": "1.0.0",
             "capabilities": {},
             "defaultInputModes": ["application/json"],
             "defaultOutputModes": ["text/plain"],
-            "skills": [],
+            "skills": skills,
         },
         indent=2,
     )
@@ -2363,6 +2429,8 @@ def _build_agent_shipwright_build_manifest(
     # Add env vars if present
     if request.envVars:
         resource_config["envVars"] = [ev.model_dump(exclude_none=True) for ev in request.envVars]
+    if request.skills:
+        resource_config["skills"] = request.skills
     # Add service ports if present
     if request.servicePorts:
         resource_config["servicePorts"] = [sp.model_dump() for sp in request.servicePorts]
@@ -2401,6 +2469,46 @@ def _build_agent_shipwright_buildrun_manifest(
 # -----------------------------------------------------------------------------
 
 
+def _get_linked_skill_mounts(
+    request: "CreateAgentRequest",
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], Optional[str]]:
+    """Build volume and mount definitions for linked skill ConfigMaps."""
+    if not request.skills:
+        return [], [], None
+
+    volumes: List[Dict[str, Any]] = []
+    volume_mounts: List[Dict[str, Any]] = []
+    skill_paths: List[str] = []
+
+    for index, skill_name in enumerate(request.skills):
+        if not skill_name:
+            continue
+        cm_name = _sanitize_k8s_name(skill_name)
+        volume_name = f"skill-{index}"
+        mount_path = f"{AGENT_SKILLS_MOUNT_ROOT}/{cm_name}"
+        volumes.append(
+            {
+                "name": volume_name,
+                "configMap": {
+                    "name": cm_name,
+                },
+            }
+        )
+        volume_mounts.append(
+            {
+                "name": volume_name,
+                "mountPath": mount_path,
+                "readOnly": True,
+            }
+        )
+        skill_paths.append(mount_path)
+
+    if not skill_paths:
+        return [], [], None
+
+    return volumes, volume_mounts, ",".join(skill_paths)
+
+
 def _build_env_vars(request: "CreateAgentRequest") -> List[dict]:
     """
     Build environment variables list with support for valueFrom references.
@@ -2421,6 +2529,11 @@ def _build_env_vars(request: "CreateAgentRequest") -> List[dict]:
             "value": get_agent_url(request.name, request.namespace, service_port),
         }
     )
+
+    _, _, skill_folders = _get_linked_skill_mounts(request)
+    if skill_folders:
+        env_vars.append({"name": "SKILL_FOLDERS", "value": skill_folders})
+
     if request.envVars:
         for ev in request.envVars:
             if ev.value is not None:
@@ -2599,6 +2712,7 @@ def _build_deployment_manifest(
         Deployment manifest dictionary.
     """
     env_vars = _build_env_vars(request)
+    skill_volumes, skill_volume_mounts, _ = _get_linked_skill_mounts(request)
     labels = _build_common_labels(request, WORKLOAD_TYPE_DEPLOYMENT)
     selector_labels = _build_selector_labels(request)
 
@@ -2606,6 +2720,8 @@ def _build_deployment_manifest(
     annotations: Dict[str, str] = {
         KAGENTI_DESCRIPTION_ANNOTATION: f"Agent '{request.name}' deployed from UI.",
     }
+    if request.skills:
+        annotations[AGENT_SKILLS_ANNOTATION] = json.dumps(request.skills)
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
 
@@ -2658,6 +2774,7 @@ def _build_deployment_manifest(
                                 {"name": "cache", "mountPath": "/app/.cache"},
                                 {"name": "marvin", "mountPath": "/.marvin"},
                                 {"name": "shared-data", "mountPath": "/shared"},
+                                *skill_volume_mounts,
                             ],
                         }
                     ],
@@ -2665,6 +2782,7 @@ def _build_deployment_manifest(
                         {"name": "cache", "emptyDir": {}},
                         {"name": "marvin", "emptyDir": {}},
                         {"name": "shared-data", "emptyDir": {}},
+                        *skill_volumes,
                     ],
                 },
             },
@@ -2778,6 +2896,7 @@ def _build_statefulset_manifest(
         StatefulSet manifest dictionary.
     """
     env_vars = _build_env_vars(request)
+    skill_volumes, skill_volume_mounts, _ = _get_linked_skill_mounts(request)
     labels = _build_common_labels(request, WORKLOAD_TYPE_STATEFULSET)
     selector_labels = _build_selector_labels(request)
 
@@ -2785,6 +2904,8 @@ def _build_statefulset_manifest(
     annotations: Dict[str, str] = {
         KAGENTI_DESCRIPTION_ANNOTATION: f"Agent '{request.name}' deployed as StatefulSet from UI.",
     }
+    if request.skills:
+        annotations[AGENT_SKILLS_ANNOTATION] = json.dumps(request.skills)
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
 
@@ -2838,6 +2959,7 @@ def _build_statefulset_manifest(
                                 {"name": "cache", "mountPath": "/app/.cache"},
                                 {"name": "marvin", "mountPath": "/.marvin"},
                                 {"name": "shared-data", "mountPath": "/shared"},
+                                *skill_volume_mounts,
                             ],
                         }
                     ],
@@ -2845,6 +2967,7 @@ def _build_statefulset_manifest(
                         {"name": "cache", "emptyDir": {}},
                         {"name": "marvin", "emptyDir": {}},
                         {"name": "shared-data", "emptyDir": {}},
+                        *skill_volumes,
                     ],
                 },
             },
@@ -2882,12 +3005,15 @@ def _build_job_manifest(
         Job manifest dictionary.
     """
     env_vars = _build_env_vars(request)
+    skill_volumes, skill_volume_mounts, _ = _get_linked_skill_mounts(request)
     labels = _build_common_labels(request, WORKLOAD_TYPE_JOB)
 
     # Build annotations
     annotations: Dict[str, str] = {
         KAGENTI_DESCRIPTION_ANNOTATION: f"Agent '{request.name}' deployed as Job from UI.",
     }
+    if request.skills:
+        annotations[AGENT_SKILLS_ANNOTATION] = json.dumps(request.skills)
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
 
@@ -2938,6 +3064,7 @@ def _build_job_manifest(
                                 {"name": "cache", "mountPath": "/app/.cache"},
                                 {"name": "marvin", "mountPath": "/.marvin"},
                                 {"name": "shared-data", "mountPath": "/shared"},
+                                *skill_volume_mounts,
                             ],
                         }
                     ],
@@ -2945,6 +3072,7 @@ def _build_job_manifest(
                         {"name": "cache", "emptyDir": {}},
                         {"name": "marvin", "emptyDir": {}},
                         {"name": "shared-data", "emptyDir": {}},
+                        *skill_volumes,
                     ],
                 },
             },
@@ -2965,13 +3093,19 @@ def _build_sandbox_manifest(
     image: str,
     shipwright_build_name: Optional[str] = None,
 ) -> dict:
-    """Build a Sandbox manifest (agents.x-k8s.io/v1alpha1) for direct creation."""
+    """Build a Sandbox manifest (agents.x-k8s.io/v1alpha1) for direct creation.
+
+    Includes skill volume mounts and persistent storage support.
+    """
     env_vars = _build_env_vars(request)
+    skill_volumes, skill_volume_mounts, _ = _get_linked_skill_mounts(request)
     labels = _build_common_labels(request, WORKLOAD_TYPE_SANDBOX)
 
     annotations: Dict[str, str] = {
         KAGENTI_DESCRIPTION_ANNOTATION: f"Agent '{request.name}' deployed from UI.",
     }
+    if request.skills:
+        annotations[AGENT_SKILLS_ANNOTATION] = json.dumps(request.skills)
     if shipwright_build_name:
         annotations["kagenti.io/shipwright-build"] = shipwright_build_name
 
@@ -3021,12 +3155,14 @@ def _build_sandbox_manifest(
                                 {"name": "cache", "mountPath": "/app/.cache"},
                                 {"name": "marvin", "mountPath": "/.marvin"},
                                 {"name": "shared-data", "mountPath": "/shared"},
+                                *skill_volume_mounts,
                             ],
                         }
                     ],
                     "volumes": [
                         {"name": "cache", "emptyDir": {}},
                         {"name": "marvin", "emptyDir": {}},
+                        *skill_volumes,
                     ]
                     + (
                         []
@@ -3085,6 +3221,14 @@ async def create_agent(
         f"workloadType={request.workloadType}, "
         f"createHttpRoute={request.createHttpRoute}"
     )
+
+    # Feature flag: reject skill linking if feature is disabled
+    if request.skills and not settings.kagenti_feature_flag_skills:
+        raise HTTPException(
+            status_code=400,
+            detail="Skill linking is disabled. Enable KAGENTI_FEATURE_FLAG_SKILLS to use this feature.",
+        )
+
     try:
         if request.deploymentMethod == "image":
             # Deploy from existing container image
@@ -3138,6 +3282,8 @@ async def create_agent(
                     name=request.name,
                     namespace=request.namespace,
                     service_port=service_port,
+                    description=f"Agent '{request.name}' deployed from UI.",
+                    skill_names=request.skills,
                 )
 
             # Create workload based on workloadType
@@ -3323,6 +3469,7 @@ class FinalizeShipwrightBuildRequest(BaseModel):
     protocol: Optional[str] = None
     framework: Optional[str] = None
     envVars: Optional[List[EnvVar]] = None
+    skills: Optional[List[str]] = None
     servicePorts: Optional[List[ServicePort]] = None
     createHttpRoute: Optional[bool] = None
     authBridgeEnabled: Optional[bool] = None
@@ -3566,6 +3713,17 @@ async def finalize_shipwright_build(
             # Convert stored dict format back to EnvVar objects
             final_env_vars = [EnvVar(**ev) for ev in stored_config["envVars"]]
 
+        final_skills = request.skills
+        if final_skills is None:
+            final_skills = stored_config.get("skills")
+
+        # Feature flag: reject skill linking if feature is disabled
+        if final_skills and not settings.kagenti_feature_flag_skills:
+            raise HTTPException(
+                status_code=400,
+                detail="Skill linking is disabled. Enable KAGENTI_FEATURE_FLAG_SKILLS to use this feature.",
+            )
+
         final_service_ports = request.servicePorts
         if final_service_ports is None and "servicePorts" in stored_config:
             # Convert stored dict format back to ServicePort objects
@@ -3630,6 +3788,7 @@ async def finalize_shipwright_build(
             containerImage=container_image,
             imagePullSecret=final_registry_secret,
             envVars=final_env_vars,
+            skills=final_skills,
             servicePorts=final_service_ports,
             createHttpRoute=final_create_route,
             authBridgeEnabled=final_auth_bridge,
@@ -3676,6 +3835,8 @@ async def finalize_shipwright_build(
                 name=name,
                 namespace=namespace,
                 service_port=service_port,
+                description=f"Agent '{name}' deployed from UI.",
+                skill_names=final_skills or [],
             )
 
         # Create workload based on workloadType
