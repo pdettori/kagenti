@@ -3749,20 +3749,16 @@ async def finalize_shipwright_build(
             kube.create_sandbox(namespace=namespace, body=sandbox_manifest)
             logger.info(f"Created Sandbox '{name}' in namespace '{namespace}' from build")
 
-        # Create Service via the shared _create_or_replace_service helper —
-        # gates on workload_type and handles the Sandbox controller race the
-        # same way the image-based create flow does.
-        service_manifest = _build_service_manifest(agent_request)
-        # Carry forward build-time kagenti.io/* labels onto the Service so
-        # downstream label-based selectors / queries match. Use
-        # settings.kagenti_label_prefix (the project-wide constant) instead
-        # of the literal "kagenti.io/" so CodeQL's URL-substring rule
-        # doesn't pattern-match the literal — see line 3626 above for the
-        # same idiom.
-        service_manifest["metadata"]["labels"].update(
-            {k: v for k, v in build_labels.items() if k.startswith(settings.kagenti_label_prefix)}
-        )
-        _create_or_replace_service(kube, namespace, name, service_manifest, final_workload_type)
+        if final_workload_type not in (WORKLOAD_TYPE_JOB, WORKLOAD_TYPE_SANDBOX):
+            service_manifest = _build_service_manifest(agent_request)
+            service_manifest["metadata"]["labels"].update(
+                {
+                    k: v
+                    for k, v in build_labels.items()
+                    if k.startswith(settings.kagenti_label_prefix)
+                }
+            )
+            _create_or_replace_service(kube, namespace, name, service_manifest, final_workload_type)
 
         # Create AgentRuntime CR so the webhook injects sidecars on pod rollout
         # Only for agents — tools don't need sidecar injection

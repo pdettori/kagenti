@@ -5,7 +5,11 @@
 
 from unittest.mock import MagicMock
 
-from app.core.constants import DEFAULT_IN_CLUSTER_PORT, DEFAULT_OFF_CLUSTER_PORT
+from app.core.constants import (
+    DEFAULT_IN_CLUSTER_PORT,
+    DEFAULT_OFF_CLUSTER_PORT,
+    WORKLOAD_TYPE_DEPLOYMENT,
+)
 from app.routers.agents import CreateAgentRequest, PersistentStorageConfig, WORKLOAD_TYPE_SANDBOX
 
 
@@ -265,7 +269,7 @@ class TestCreateOrReplaceService:
 
         with pytest.raises(ApiException) as exc_info:
             _create_or_replace_service(
-                kube, "team1", "dep", self._service_manifest("dep"), "deployment"
+                kube, "team1", "dep", self._service_manifest("dep"), WORKLOAD_TYPE_DEPLOYMENT
             )
         assert exc_info.value.status == 409
         kube.delete_service.assert_not_called()
@@ -282,7 +286,7 @@ class TestCreateOrReplaceService:
 
         with pytest.raises(ApiException) as exc_info:
             _create_or_replace_service(
-                kube, "team1", "dep", self._service_manifest("dep"), "deployment"
+                kube, "team1", "dep", self._service_manifest("dep"), WORKLOAD_TYPE_DEPLOYMENT
             )
         assert exc_info.value.status == 500
         kube.delete_service.assert_not_called()
