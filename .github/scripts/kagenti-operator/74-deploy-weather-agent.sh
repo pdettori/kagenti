@@ -222,5 +222,36 @@ EOF
             kubectl describe pods -n team1 -l app.kubernetes.io/name=weather-service 2>&1 | tail -30 || true
             exit 1
         fi
+
+        # Diagnostic: verify LLM endpoint is reachable from inside the pod
+        WEATHER_POD=$(kubectl get pods -n team1 -l app.kubernetes.io/name=weather-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        if [ -n "$WEATHER_POD" ]; then
+            log_info "Testing LLM endpoint connectivity from agent pod..."
+            LLM_BASE=$(kubectl get deployment weather-service -n team1 -o jsonpath='{.spec.template.spec.containers[?(@.name=="agent")].env[?(@.name=="LLM_API_BASE")].value}' 2>/dev/null || echo "")
+            if [ -n "$LLM_BASE" ]; then
+                LLM_HOST=$(echo "$LLM_BASE" | sed 's|https\?://||' | cut -d/ -f1)
+                # Test DNS + TCP connectivity from inside the agent container
+                kubectl exec -n team1 "$WEATHER_POD" -c agent -- \
+                    python3 -c "
+import socket, ssl, sys
+host = '$LLM_HOST'
+port = 443
+try:
+    ip = socket.getaddrinfo(host, port)[0][4][0]
+    print(f'DNS OK: {host} -> {ip}')
+except Exception as e:
+    print(f'DNS FAIL: {host} -> {e}')
+    sys.exit(1)
+try:
+    ctx = ssl.create_default_context()
+    with socket.create_connection((host, port), timeout=10) as sock:
+        with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+            print(f'TLS OK: {ssock.version()}')
+except Exception as e:
+    print(f'TLS FAIL: {host}:{port} -> {e}')
+    sys.exit(1)
+" 2>&1 || log_warn "LLM endpoint not reachable from pod — agent conversation tests will fail"
+            fi
+        fi
     fi
 fi
