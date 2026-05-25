@@ -23,6 +23,7 @@
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
 #   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway install
 #   ./scripts/ocp/setup-kagenti.sh --skip-mlflow                # Disable Kagenti-Operator <-> MLflow integration
+#   ./scripts/ocp/setup-kagenti.sh --otel-operator-managed      # Let the operator handle OTel collector config
 #   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator  # Use local operator chart
 #   ./scripts/ocp/setup-kagenti.sh --operator-image quay.io/user/kagenti-operator:dev  # Custom operator image
 #   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator --operator-image quay.io/user/op:dev  # Both
@@ -66,6 +67,7 @@ KUADRANT_VERSION="1.4.2"
 MLFLOW_NAMESPACE="redhat-ods-applications"
 MLFLOW_INSTANCE_NAME="mlflow"
 MLFLOW_TRACES_ENDPOINT=""
+OTEL_OPERATOR_MANAGED=false
 
 # Colors
 RED='\033[0;31m'
@@ -89,6 +91,7 @@ while [[ $# -gt 0 ]]; do
     --skip-mcp-gateway)   SKIP_MCP_GATEWAY=true; shift ;;
     --skip-ui)            SKIP_UI=true; shift ;;
     --skip-mlflow)        SKIP_MLFLOW=true; shift ;;
+    --otel-operator-managed) OTEL_OPERATOR_MANAGED=true; shift ;;
     --show-secrets)       SHOW_SECRETS=true; shift ;;
     --operator-repo)      OPERATOR_REPO="$2"; shift 2 ;;
     --operator-image)     OPERATOR_IMAGE="$2"; shift 2 ;;
@@ -110,6 +113,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --skip-mcp-gateway        Skip MCP Gateway installation"
       echo "  --skip-ui                 Skip Kagenti UI and backend installation"
       echo "  --skip-mlflow             Skip MLflow integration (OTel traces + operator auto-config)"
+      echo "  --otel-operator-managed   Let the kagenti-operator handle OTel collector config (skip Helm OTel wiring)"
       echo "  --show-secrets            Print Keycloak admin credentials to stdout (omitted by default for CI safety)"
       echo "  --with-kiali              Enable Kiali + Prometheus (user workload monitoring)"
       echo "  --with-builds             Enable Tekton + OpenShift Builds (Shipwright)"
@@ -667,8 +671,12 @@ _helm_kagenti_deps() {
   done
 
   # Build MLflow OTEL flags: enable the pipeline and point it at the DSC-managed endpoint.
+  # When --otel-operator-managed is set, the operator handles ConfigMap assembly
+  # and MLflow endpoint discovery at startup, so we skip injecting OTel values.
   KAGENTI_DEPS_MLFLOW_VALS_FILE=""
-  if [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
+  if [ "$OTEL_OPERATOR_MANAGED" = true ]; then
+    log_info "OTel collector config managed by kagenti-operator — skipping Helm OTel MLflow values"
+  elif [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
     KAGENTI_DEPS_MLFLOW_VALS_FILE=$(mktemp /tmp/kagenti-mlflow-vals-XXXXXX.yaml)
     cat > "$KAGENTI_DEPS_MLFLOW_VALS_FILE" <<EOF
 otel:
@@ -701,6 +709,9 @@ EOF
     ${KAGENTI_DEPS_MLFLOW_VALS_FILE:+-f "$KAGENTI_DEPS_MLFLOW_VALS_FILE"}
     --no-hooks
   )
+  if [ "$OTEL_OPERATOR_MANAGED" = true ]; then
+    KAGENTI_DEPS_HELM_ARGS+=(--set otelBootstrap.operatorManaged=true)
+  fi
 
   if helm status kagenti-deps -n kagenti-system &>/dev/null; then
     # Upgrade path: skip hooks (the kiali hook will fail on any cluster where
@@ -1109,8 +1120,12 @@ DSCEOF
     return 0
   fi
 
-  # Upgrade kagenti-deps to wire OTEL collector to the MLflow endpoint
-  if [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
+  # Upgrade kagenti-deps to wire OTEL collector to the MLflow endpoint.
+  # When --otel-operator-managed, the operator discovers the endpoint from the
+  # MLflow CR at startup and assembles the ConfigMap — no Helm upgrade needed.
+  if [ "$OTEL_OPERATOR_MANAGED" = true ]; then
+    log_info "OTel collector config managed by kagenti-operator — skipping Helm OTEL endpoint upgrade"
+  elif [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
     log_info "Upgrading kagenti-deps with MLflow OTEL endpoint..."
 
     # Adopt cert-manager resources created by _ensure_rhoai_shared_trust (Step 3b)
