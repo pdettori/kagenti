@@ -109,9 +109,15 @@ else
     # (Kind manifest points to dockerhost:11434 which doesn't exist on OCP)
     if [ "$IS_OPENSHIFT" = "true" ]; then
         log_info "Patching LLM config for OpenShift (MaaS LiteLLM)..."
+        # The authbridge sidecar sets HTTPS_PROXY=http://127.0.0.1:8081 on all
+        # containers, routing all HTTPS traffic through the proxy for JWT
+        # validation and token exchange. External LLM endpoints must bypass
+        # this proxy — add the MaaS host to NO_PROXY.
         kubectl set env deployment/weather-service -n team1 \
             LLM_API_BASE="https://litellm-prod.apps.maas.redhatworkshops.io/v1" \
             LLM_MODEL="llama-scout-17b" \
+            NO_PROXY="127.0.0.1,localhost,litellm-prod.apps.maas.redhatworkshops.io,.svc,.svc.cluster.local" \
+            no_proxy="127.0.0.1,localhost,litellm-prod.apps.maas.redhatworkshops.io,.svc,.svc.cluster.local" \
             LLM_API_KEY- OPENAI_API_KEY- 2>/dev/null || true
         # Set API keys from secret if it exists
         if kubectl get secret openai-secret -n team1 &>/dev/null; then
@@ -123,22 +129,9 @@ else
             log_warn "openai-secret not found in team1 — LLM calls will fail without API key"
         fi
 
-        # Workaround: proxy-init hardcodes OUTBOUND_PORTS_EXCLUDE=8080 but the
-        # agent needs outbound HTTPS (port 443) to reach external LLM endpoints.
-        # Patch the init container env after webhook injection to include 443.
-        # Tracked: https://github.com/kagenti/kagenti-extensions/issues/428
-        INIT_IDX=$(kubectl get deployment weather-service -n team1 -o json | \
-            python3 -c "import json,sys; d=json.load(sys.stdin); idx=[i for i,c in enumerate(d['spec']['template']['spec'].get('initContainers',[])) if c['name']=='proxy-init']; print(idx[0] if idx else '')" 2>/dev/null)
-        if [ -n "$INIT_IDX" ]; then
-            ENV_IDX=$(kubectl get deployment weather-service -n team1 -o json | \
-                python3 -c "import json,sys; d=json.load(sys.stdin); envs=d['spec']['template']['spec']['initContainers'][$INIT_IDX].get('env',[]); idx=[i for i,e in enumerate(envs) if e['name']=='OUTBOUND_PORTS_EXCLUDE']; print(idx[0] if idx else '')" 2>/dev/null)
-            if [ -n "$ENV_IDX" ]; then
-                kubectl patch deployment weather-service -n team1 --type=json -p "[
-                    {\"op\":\"replace\",\"path\":\"/spec/template/spec/initContainers/$INIT_IDX/env/$ENV_IDX/value\",\"value\":\"8080,443\"}
-                ]" || true
-                log_info "Patched proxy-init OUTBOUND_PORTS_EXCLUDE to include port 443"
-            fi
-        fi
+        # Note: proxy-init is only injected in envoy-proxy mode. The default
+        # authbridge proxy-sidecar mode uses HTTPS_PROXY env vars instead.
+        # See NO_PROXY override above for external LLM endpoints.
     fi
 fi
 
