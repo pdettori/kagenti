@@ -230,26 +230,53 @@ EOF
             LLM_BASE=$(kubectl get deployment weather-service -n team1 -o jsonpath='{.spec.template.spec.containers[?(@.name=="agent")].env[?(@.name=="LLM_API_BASE")].value}' 2>/dev/null || echo "")
             if [ -n "$LLM_BASE" ]; then
                 LLM_HOST=$(echo "$LLM_BASE" | sed 's|https\?://||' | cut -d/ -f1)
-                # Test DNS + TCP connectivity from inside the agent container
+                # Test DNS + TLS + HTTP connectivity from inside the agent container
                 kubectl exec -n team1 "$WEATHER_POD" -c agent -- \
                     python3 -c "
-import socket, ssl, sys
+import socket, ssl, os, sys
 host = '$LLM_HOST'
 port = 443
+url = '$LLM_BASE'
+
+# Check proxy env vars
+for k in ('HTTP_PROXY','HTTPS_PROXY','http_proxy','https_proxy','NO_PROXY','no_proxy'):
+    v = os.environ.get(k)
+    if v: print(f'PROXY: {k}={v}')
+
+# DNS
 try:
     ip = socket.getaddrinfo(host, port)[0][4][0]
     print(f'DNS OK: {host} -> {ip}')
 except Exception as e:
-    print(f'DNS FAIL: {host} -> {e}')
-    sys.exit(1)
+    print(f'DNS FAIL: {host} -> {e}'); sys.exit(1)
+
+# TLS
 try:
     ctx = ssl.create_default_context()
     with socket.create_connection((host, port), timeout=10) as sock:
         with ctx.wrap_socket(sock, server_hostname=host) as ssock:
             print(f'TLS OK: {ssock.version()}')
 except Exception as e:
-    print(f'TLS FAIL: {host}:{port} -> {e}')
-    sys.exit(1)
+    print(f'TLS FAIL: {host}:{port} -> {e}'); sys.exit(1)
+
+# HTTP via httpx (same library as OpenAI client)
+try:
+    import httpx
+    r = httpx.get(url + '/models', timeout=15, headers={'Authorization': 'Bearer test'})
+    print(f'HTTPX OK: status={r.status_code}')
+except Exception as e:
+    print(f'HTTPX FAIL: {type(e).__name__}: {e}')
+
+# Check OpenAI client
+try:
+    import openai
+    c = openai.OpenAI(base_url=url, api_key=os.environ.get('OPENAI_API_KEY','test'))
+    c.models.list()
+    print('OPENAI OK')
+except openai.APIConnectionError as e:
+    print(f'OPENAI CONN FAIL: {e.__cause__}')
+except Exception as e:
+    print(f'OPENAI OTHER: {type(e).__name__}: {e}')
 " 2>&1 || log_warn "LLM endpoint not reachable from pod — agent conversation tests will fail"
             fi
         fi
