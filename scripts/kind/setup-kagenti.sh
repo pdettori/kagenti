@@ -19,6 +19,7 @@
 #   scripts/kind/setup-kagenti.sh                          # Core only
 #   scripts/kind/setup-kagenti.sh --with-all               # Everything
 #   scripts/kind/setup-kagenti.sh --with-istio --with-ui   # Core + Istio + UI
+#   scripts/kind/setup-kagenti.sh --with-all --skip-mlflow --skip-kuadrant  # Lightweight
 #   scripts/kind/setup-kagenti.sh --skip-cluster           # Reuse existing cluster
 #   scripts/kind/setup-kagenti.sh --cluster-name my-test   # Custom cluster name
 #
@@ -47,7 +48,10 @@ WITH_BUILDS=false
 WITH_KIALI=false
 WITH_KUADRANT=false
 WITH_AGENT_SANDBOX=false
+WITH_ALL=false
 SKIP_CLUSTER=false
+SKIP_MLFLOW=false
+SKIP_KUADRANT=false
 BUILD_IMAGES=false
 PRELOAD_IMAGES=false
 DRY_RUN=false
@@ -94,13 +98,10 @@ while [[ $# -gt 0 ]]; do
     --with-builds)      WITH_BUILDS=true; shift ;;
     --with-kiali)       WITH_KIALI=true; shift ;;
     --with-agent-sandbox) WITH_AGENT_SANDBOX=true; shift ;;
-    --with-all)
-      WITH_ISTIO=true; WITH_SPIRE=true; WITH_BACKEND=true; WITH_UI=true
-      WITH_MCP_GATEWAY=true; WITH_KUADRANT=true; WITH_OTEL=true
-      WITH_MLFLOW=true; WITH_BUILDS=true; WITH_KIALI=true
-      WITH_AGENT_SANDBOX=true
-      shift ;;
+    --with-all)         WITH_ALL=true; shift ;;
     --skip-cluster)     SKIP_CLUSTER=true; shift ;;
+    --skip-mlflow)      SKIP_MLFLOW=true; shift ;;
+    --skip-kuadrant)    SKIP_KUADRANT=true; shift ;;
     --build-images)     BUILD_IMAGES=true; shift ;;
     --preload-images)   PRELOAD_IMAGES=true; shift ;;
     --secrets-file)     SECRETS_FILE_ARG="$2"; shift 2 ;;
@@ -127,6 +128,10 @@ while [[ $# -gt 0 ]]; do
       echo "  --with-agent-sandbox Install agent-sandbox controller (kubernetes-sigs)"
       echo "  --with-all          Enable all optional components"
       echo ""
+      echo "Skip flags (override --with-all for resource-constrained environments):"
+      echo "  --skip-mlflow       Exclude MLflow even when --with-all is used (~2 GB saved)"
+      echo "  --skip-kuadrant     Exclude Kuadrant even when --with-all is used (~1 GB saved)"
+      echo ""
       echo "Other options:"
       echo "  --skip-cluster      Don't create Kind cluster (reuse existing)"
       echo "  --build-images      Build platform images from source and load into Kind"
@@ -147,6 +152,15 @@ while [[ $# -gt 0 ]]; do
     *) log_error "Unknown option: $1"; exit 1 ;;
   esac
 done
+
+# ── Expand --with-all (deferred so --skip-* flags are order-independent) ───
+if $WITH_ALL; then
+  WITH_ISTIO=true; WITH_SPIRE=true; WITH_BACKEND=true; WITH_UI=true
+  WITH_MCP_GATEWAY=true; WITH_OTEL=true; WITH_BUILDS=true; WITH_KIALI=true
+  WITH_AGENT_SANDBOX=true
+  $SKIP_MLFLOW    || WITH_MLFLOW=true
+  $SKIP_KUADRANT  || WITH_KUADRANT=true
+fi
 
 # ── Flag dependencies ──────────────────────────────────────────────────────
 # UI requires backend API
