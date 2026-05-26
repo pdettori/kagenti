@@ -675,6 +675,8 @@ _helm_kagenti_deps() {
   # and MLflow endpoint discovery at startup, so we skip injecting OTel values.
   KAGENTI_DEPS_MLFLOW_VALS_FILE=""
   if [ "$OTEL_OPERATOR_MANAGED" = true ]; then
+    [ -n "$MLFLOW_TRACES_ENDPOINT" ] && \
+      log_warn "--otel-operator-managed set; ignoring MLFLOW_TRACES_ENDPOINT=$MLFLOW_TRACES_ENDPOINT"
     log_info "OTel collector config managed by kagenti-operator — skipping Helm OTel MLflow values"
   elif [ -n "$MLFLOW_TRACES_ENDPOINT" ]; then
     KAGENTI_DEPS_MLFLOW_VALS_FILE=$(mktemp /tmp/kagenti-mlflow-vals-XXXXXX.yaml)
