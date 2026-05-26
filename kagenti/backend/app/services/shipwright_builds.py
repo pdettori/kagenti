@@ -58,13 +58,12 @@ def cleanup_existing_build(
                     )
                 except ApiException as e:
                     if e.status != 404:
-                        logger.warning("Failed to delete BuildRun '%s': %s", br_name, e.reason)
+                        logger.warning("Failed to delete BuildRun: status=%d", e.status)
     except ApiException as e:
         if e.status != 404:
-            logger.warning("Failed to list BuildRuns for '%s': %s", build_name, e.reason)
-        return
+            logger.warning("Failed to list BuildRuns for cleanup: status=%d", e.status)
 
-    # Delete the Build CR
+    # Delete the Build CR (independent of BuildRun list success)
     try:
         kube.delete_custom_resource(
             group=SHIPWRIGHT_CRD_GROUP,
@@ -75,7 +74,7 @@ def cleanup_existing_build(
         )
     except ApiException as e:
         if e.status != 404:
-            logger.warning("Failed to delete Shipwright Build '%s': %s", build_name, e.reason)
+            logger.warning("Failed to delete Shipwright Build: status=%d", e.status)
 
 
 def format_shipwright_build_timestamp(timestamp) -> Optional[str]:

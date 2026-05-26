@@ -74,16 +74,23 @@ class TestCleanupExistingBuild:
             buildrun_delete_calls + [build_delete_call], any_order=False
         )
 
-    def test_no_op_when_build_does_not_exist(self):
-        """When no Build exists (404), cleanup is a no-op."""
+    def test_still_deletes_build_when_list_buildruns_returns_404(self):
+        """When listing BuildRuns returns 404, Build delete is still attempted."""
         kube = MagicMock()
         kube.list_custom_resources.side_effect = ApiException(status=404)
+        kube.delete_custom_resource.side_effect = ApiException(status=404)
 
         # Should not raise
         cleanup_existing_build(kube, namespace="team1", build_name="new-agent")
 
-        # Should not attempt to delete anything
-        kube.delete_custom_resource.assert_not_called()
+        # Build delete still attempted even though list returned 404
+        kube.delete_custom_resource.assert_called_once_with(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace="team1",
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name="new-agent",
+        )
 
     def test_skips_buildrun_without_name(self):
         """BuildRuns missing metadata.name are skipped."""
@@ -126,7 +133,7 @@ class TestCleanupExistingBuild:
 
         cleanup_existing_build(kube, namespace="team1", build_name="my-agent")
 
-    def test_propagates_non_404_build_delete_error(self):
+    def test_swallows_non_404_build_delete_error(self):
         """Non-404 errors deleting the Build are logged but not raised."""
         kube = MagicMock()
         kube.list_custom_resources.return_value = []
@@ -199,9 +206,24 @@ class TestAgentCreateCleanupIntegration:
             label_selector="kagenti.io/build-name=test-agent",
         )
 
-        # Should have: delete old buildrun, delete old build, create new build, create new buildrun
+        # Exact sequence: delete old BuildRun, then delete old Build
         delete_calls = list(kube.delete_custom_resource.call_args_list)
-        assert len(delete_calls) >= 1  # at least old buildrun deleted
+        assert delete_calls == [
+            call(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace="team1",
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                name="test-agent-run-old",
+            ),
+            call(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace="team1",
+                plural=SHIPWRIGHT_BUILDS_PLURAL,
+                name="test-agent",
+            ),
+        ]
 
 
 class TestToolCreateCleanupIntegration:
@@ -264,3 +286,22 @@ class TestToolCreateCleanupIntegration:
             plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
             label_selector="kagenti.io/build-name=test-tool",
         )
+
+        # Exact sequence: delete old BuildRun, then delete old Build
+        delete_calls = list(kube.delete_custom_resource.call_args_list)
+        assert delete_calls == [
+            call(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace="team1",
+                plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                name="test-tool-run-old",
+            ),
+            call(
+                group=SHIPWRIGHT_CRD_GROUP,
+                version=SHIPWRIGHT_CRD_VERSION,
+                namespace="team1",
+                plural=SHIPWRIGHT_BUILDS_PLURAL,
+                name="test-tool",
+            ),
+        ]
