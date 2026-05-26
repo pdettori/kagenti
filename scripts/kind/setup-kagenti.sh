@@ -48,7 +48,10 @@ WITH_BUILDS=false
 WITH_KIALI=false
 WITH_KUADRANT=false
 WITH_AGENT_SANDBOX=false
+WITH_ALL=false
 SKIP_CLUSTER=false
+SKIP_MLFLOW=false
+SKIP_KUADRANT=false
 BUILD_IMAGES=false
 PRELOAD_IMAGES=false
 DRY_RUN=false
@@ -95,15 +98,10 @@ while [[ $# -gt 0 ]]; do
     --with-builds)      WITH_BUILDS=true; shift ;;
     --with-kiali)       WITH_KIALI=true; shift ;;
     --with-agent-sandbox) WITH_AGENT_SANDBOX=true; shift ;;
-    --with-all)
-      WITH_ISTIO=true; WITH_SPIRE=true; WITH_BACKEND=true; WITH_UI=true
-      WITH_MCP_GATEWAY=true; WITH_KUADRANT=true; WITH_OTEL=true
-      WITH_MLFLOW=true; WITH_BUILDS=true; WITH_KIALI=true
-      WITH_AGENT_SANDBOX=true
-      shift ;;
+    --with-all)         WITH_ALL=true; shift ;;
     --skip-cluster)     SKIP_CLUSTER=true; shift ;;
-    --skip-mlflow)      WITH_MLFLOW=false; shift ;;
-    --skip-kuadrant)    WITH_KUADRANT=false; shift ;;
+    --skip-mlflow)      SKIP_MLFLOW=true; shift ;;
+    --skip-kuadrant)    SKIP_KUADRANT=true; shift ;;
     --build-images)     BUILD_IMAGES=true; shift ;;
     --preload-images)   PRELOAD_IMAGES=true; shift ;;
     --secrets-file)     SECRETS_FILE_ARG="$2"; shift 2 ;;
@@ -154,6 +152,15 @@ while [[ $# -gt 0 ]]; do
     *) log_error "Unknown option: $1"; exit 1 ;;
   esac
 done
+
+# ── Expand --with-all (deferred so --skip-* flags are order-independent) ───
+if $WITH_ALL; then
+  WITH_ISTIO=true; WITH_SPIRE=true; WITH_BACKEND=true; WITH_UI=true
+  WITH_MCP_GATEWAY=true; WITH_OTEL=true; WITH_BUILDS=true; WITH_KIALI=true
+  WITH_AGENT_SANDBOX=true
+  $SKIP_MLFLOW    || WITH_MLFLOW=true
+  $SKIP_KUADRANT  || WITH_KUADRANT=true
+fi
 
 # ── Flag dependencies ──────────────────────────────────────────────────────
 # UI requires backend API
