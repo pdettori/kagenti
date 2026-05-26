@@ -63,12 +63,6 @@ const AGENT_EXAMPLES = [
   { value: 'a2a/weather_service', label: 'Weather Service Agent' },
 ];
 
-const FRAMEWORKS = [
-  { value: 'LangGraph', label: 'LangGraph' },
-  { value: 'CrewAI', label: 'CrewAI' },
-  { value: 'AG2', label: 'AG2' },
-  { value: 'Python', label: 'Python (Custom)' },
-];
 
 const REGISTRY_OPTIONS = [
   { value: 'local', label: 'Local Registry (In-Cluster)', url: 'registry.cr-system.svc.cluster.local:5000' },
@@ -121,7 +115,6 @@ export const ImportAgentPage: React.FC = () => {
   const [namespace, setNamespace] = useState('team1');
   const [name, setName] = useState('');
   const [protocol, setProtocol] = useState('a2a');
-  const [framework, setFramework] = useState('LangGraph');
 
   // Build from source state
   const [gitUrl, setGitUrl] = useState(DEFAULT_REPO_URL);
@@ -510,7 +503,7 @@ export const ImportAgentPage: React.FC = () => {
         gitBranch,
         imageTag: 'v0.0.1',
         protocol,
-        framework,
+        framework: 'LangGraph',
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         // Workload type
@@ -550,7 +543,7 @@ export const ImportAgentPage: React.FC = () => {
         gitBranch: '',
         imageTag,
         protocol,
-        framework,
+        framework: 'LangGraph',
         envVars: envVars.filter((ev) => ev.name && (ev.value || ev.valueFrom)),
         skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         // Workload type
@@ -1021,18 +1014,6 @@ export const ImportAgentPage: React.FC = () => {
                 </FormHelperText>
               </FormGroup>
 
-              {/* Framework Selection */}
-              <FormGroup label="Framework" fieldId="framework">
-                <FormSelect
-                  id="framework"
-                  value={framework}
-                  onChange={(_e, value) => setFramework(value)}
-                >
-                  {FRAMEWORKS.map((fw) => (
-                    <FormSelectOption key={fw.value} value={fw.value} label={fw.label} />
-                  ))}
-                </FormSelect>
-              </FormGroup>
 
               <FormGroup label="Linked Skills" fieldId="linkedSkills">
                 {availableSkills.length === 0 ? (
