@@ -160,14 +160,13 @@ Examples for common providers:
 | Anthropic (direct) | `https://api.anthropic.com` |
 | LiteLLM proxy | `https://your-litellm-instance.example.com` |
 | Azure OpenAI | `https://<resource>.openai.azure.com` |
-| vLLM / local | `http://localhost:8000` |
 
 For instance, if you run a LiteLLM proxy internally:
 
 ```bash
 openshell provider create --name claude --type anthropic \
   --credential ANTHROPIC_AUTH_TOKEN \
-  --config ANTHROPIC_BASE_URL=https://litellm.corp.example.com
+  --config ANTHROPIC_BASE_URL=https://ete-litellm.bx.cloud9.ibm.com
 ```
 
 Key points:
