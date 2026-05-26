@@ -141,7 +141,8 @@ preconfigured users:
 ## Step 6: Create a Provider
 
 Providers define how the sandbox connects to an LLM. You must be logged in as an
-admin user.
+admin user. The guide works with any OpenAI-compatible or Anthropic-compatible
+endpoint — you just supply your own base URL and API key.
 
 ```bash
 export ANTHROPIC_AUTH_TOKEN="your-api-key-here"
@@ -149,11 +150,24 @@ export ANTHROPIC_AUTH_TOKEN="your-api-key-here"
 openshell provider create --name claude --type anthropic \
   --credential ANTHROPIC_AUTH_TOKEN \
   --config ANTHROPIC_BASE_URL=<your llm provider URL>
+```
 
-# for example
+The `ANTHROPIC_BASE_URL` should point to whatever inference endpoint you use.
+Examples for common providers:
+
+| Provider | Base URL |
+|----------|----------|
+| Anthropic (direct) | `https://api.anthropic.com` |
+| LiteLLM proxy | `https://your-litellm-instance.example.com` |
+| Azure OpenAI | `https://<resource>.openai.azure.com` |
+| vLLM / local | `http://localhost:8000` |
+
+For instance, if you run a LiteLLM proxy internally:
+
+```bash
 openshell provider create --name claude --type anthropic \
   --credential ANTHROPIC_AUTH_TOKEN \
-  --config ANTHROPIC_BASE_URL=https://ete-litellm.bx.cloud9.ibm.com
+  --config ANTHROPIC_BASE_URL=https://litellm.corp.example.com
 ```
 
 Key points:
@@ -163,6 +177,8 @@ Key points:
 - API keys go in `--credential` (managed by SecretResolver, never exposed to the
   sandbox)
 - Base URLs go in `--config` (used for inference route resolution only)
+- Any OpenAI-compatible or Anthropic-compatible endpoint works — the sandbox
+  routes to whatever URL you configure
 
 ## Step 7: Configure Inference Routing
 
