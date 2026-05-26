@@ -17,9 +17,65 @@ from app.core.constants import (
     SHIPWRIGHT_CRD_GROUP,
     SHIPWRIGHT_CRD_VERSION,
     SHIPWRIGHT_BUILDS_PLURAL,
+    SHIPWRIGHT_BUILDRUNS_PLURAL,
 )
 from app.models.shipwright import ShipwrightBuildListItem
 from app.services.kubernetes import KubernetesService
+
+
+logger = logging.getLogger(__name__)
+
+
+def cleanup_existing_build(
+    kube: KubernetesService,
+    namespace: str,
+    build_name: str,
+) -> None:
+    """Delete an existing Shipwright Build and its BuildRuns (best-effort).
+
+    Called before creating a new Build to prevent 409 conflicts on re-import.
+    Silently handles 404s (resource already gone) and logs warnings for other errors.
+    """
+    # Delete BuildRuns first (they reference the Build)
+    try:
+        buildruns = kube.list_custom_resources(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+            label_selector=f"kagenti.io/build-name={build_name}",
+        )
+        for buildrun in buildruns:
+            br_name = buildrun.get("metadata", {}).get("name")
+            if br_name:
+                try:
+                    kube.delete_custom_resource(
+                        group=SHIPWRIGHT_CRD_GROUP,
+                        version=SHIPWRIGHT_CRD_VERSION,
+                        namespace=namespace,
+                        plural=SHIPWRIGHT_BUILDRUNS_PLURAL,
+                        name=br_name,
+                    )
+                except ApiException as e:
+                    if e.status != 404:
+                        logger.warning("Failed to delete BuildRun '%s': %s", br_name, e.reason)
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning("Failed to list BuildRuns for '%s': %s", build_name, e.reason)
+        return
+
+    # Delete the Build CR
+    try:
+        kube.delete_custom_resource(
+            group=SHIPWRIGHT_CRD_GROUP,
+            version=SHIPWRIGHT_CRD_VERSION,
+            namespace=namespace,
+            plural=SHIPWRIGHT_BUILDS_PLURAL,
+            name=build_name,
+        )
+    except ApiException as e:
+        if e.status != 404:
+            logger.warning("Failed to delete Shipwright Build '%s': %s", build_name, e.reason)
 
 
 def format_shipwright_build_timestamp(timestamp) -> Optional[str]:
