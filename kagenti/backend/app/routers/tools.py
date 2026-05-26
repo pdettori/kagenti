@@ -389,8 +389,8 @@ def _build_tool_env_vars(
 
                 env_vars.append(env_entry)
 
-    # Deduplicate environment variables, keeping the last occurrence
-    # This allows user-provided envVars to override DEFAULT_ENV_VARS
+    # Deduplicate environment variables, keeping the last occurrence.
+    # Precedence (last wins): DEFAULT_ENV_VARS (with service_ports override) < user envVars.
     seen = {}
     for env in env_vars:
         seen[env["name"]] = env
