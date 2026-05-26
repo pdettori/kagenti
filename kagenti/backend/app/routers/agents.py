@@ -122,7 +122,10 @@ from app.services.shipwright import (
     extract_buildrun_info,
     resolve_clone_secret,
 )
-from app.services.shipwright_builds import collect_kagenti_shipwright_builds
+from app.services.shipwright_builds import (
+    cleanup_existing_build,
+    collect_kagenti_shipwright_builds,
+)
 
 
 class OutboundRoute(BaseModel):
@@ -3390,6 +3393,9 @@ async def create_agent(
                     status_code=400,
                     detail="gitUrl is required for source deployment",
                 )
+
+            # Clean up any existing Build/BuildRuns to prevent 409 on re-import
+            cleanup_existing_build(kube, namespace=request.namespace, build_name=request.name)
 
             # Step 1: Create Shipwright Build CR
             clone_secret = resolve_clone_secret(kube.core_api, request.namespace)
