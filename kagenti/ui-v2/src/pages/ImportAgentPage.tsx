@@ -210,13 +210,15 @@ export const ImportAgentPage: React.FC = () => {
   // AuthBridge config overrides
   const [defaultOutboundPolicy, setDefaultOutboundPolicy] = useState('passthrough');
   // mTLS posture between AuthBridge sidecars. Always sends an explicit
-  // value (default 'disabled'). Force-reset to 'disabled' when either:
-  //   - useEnvoyMode is on (operator/backend reject envoy-sidecar + non-disabled)
-  //   - spireEnabled is off (mtls requires SPIRE-issued X.509 SVIDs)
+  // value (default 'disabled'). Force-reset to 'disabled' when SPIRE
+  // is off — mTLS requires SPIRE-issued X.509 SVIDs in either deployment
+  // mode. envoy-sidecar + non-disabled used to be rejected here; that
+  // gate has been lifted (kagenti-operator#381 + kagenti-extensions#441
+  // wire the combination end-to-end).
   const [mtlsMode, setMtlsMode] = useState<'disabled' | 'permissive' | 'strict'>('disabled');
   useEffect(() => {
-    if (useEnvoyMode || !spireEnabled) setMtlsMode('disabled');
-  }, [useEnvoyMode, spireEnabled]);
+    if (!spireEnabled) setMtlsMode('disabled');
+  }, [spireEnabled]);
   const [showOutboundRouting, setShowOutboundRouting] = useState(false);
 
   // Validation state
@@ -519,9 +521,10 @@ export const ImportAgentPage: React.FC = () => {
         authBridgeEnabled,
         spireEnabled,
         authBridgeMode: authBridgeEnabled && useEnvoyMode ? 'envoy-sidecar' : undefined,
-        // mTLS posture — only meaningful when AuthBridge is on AND we're
-        // not in envoy-sidecar mode (backend rejects that combo).
-        mtlsMode: authBridgeEnabled && !useEnvoyMode ? mtlsMode : undefined,
+        // mTLS posture — sent whenever AuthBridge is on. Both proxy-sidecar
+        // and envoy-sidecar support the full disabled/permissive/strict
+        // matrix end-to-end (kagenti-operator#381 + extensions#441).
+        mtlsMode: authBridgeEnabled ? mtlsMode : undefined,
         outboundRoutes: authBridgeEnabled && outboundRoutes.length > 0 ? outboundRoutes.map(({ id, ...r }) => r) : undefined,
         outboundPortsExclude: authBridgeEnabled && outboundPortsExclude ? outboundPortsExclude : undefined,
         inboundPortsExclude: authBridgeEnabled && inboundPortsExclude ? inboundPortsExclude : undefined,
@@ -558,9 +561,10 @@ export const ImportAgentPage: React.FC = () => {
         authBridgeEnabled,
         spireEnabled,
         authBridgeMode: authBridgeEnabled && useEnvoyMode ? 'envoy-sidecar' : undefined,
-        // mTLS posture — only meaningful when AuthBridge is on AND we're
-        // not in envoy-sidecar mode (backend rejects that combo).
-        mtlsMode: authBridgeEnabled && !useEnvoyMode ? mtlsMode : undefined,
+        // mTLS posture — sent whenever AuthBridge is on. Both proxy-sidecar
+        // and envoy-sidecar support the full disabled/permissive/strict
+        // matrix end-to-end (kagenti-operator#381 + extensions#441).
+        mtlsMode: authBridgeEnabled ? mtlsMode : undefined,
         outboundRoutes: authBridgeEnabled && outboundRoutes.length > 0 ? outboundRoutes.map(({ id, ...r }) => r) : undefined,
         outboundPortsExclude: authBridgeEnabled && outboundPortsExclude ? outboundPortsExclude : undefined,
         inboundPortsExclude: authBridgeEnabled && inboundPortsExclude ? inboundPortsExclude : undefined,
@@ -1252,19 +1256,17 @@ export const ImportAgentPage: React.FC = () => {
                     value={mtlsMode}
                     onChange={(_e, v) => setMtlsMode(v as 'disabled' | 'permissive' | 'strict')}
                     aria-label="mTLS mode"
-                    isDisabled={useEnvoyMode || !spireEnabled}
+                    isDisabled={!spireEnabled}
                   >
                     <FormSelectOption key="disabled" value="disabled" label="disabled — no mTLS between sidecars (default)" />
-                    <FormSelectOption key="permissive" value="permissive" label="permissive — try mTLS, fall back to plaintext on failure" />
+                    <FormSelectOption key="permissive" value="permissive" label="permissive — allow non-mTLS peers (rollout-friendly)" />
                     <FormSelectOption key="strict" value="strict" label="strict — require mTLS, fail closed" />
                   </FormSelect>
-                  {(useEnvoyMode || !spireEnabled) && (
+                  {!spireEnabled && (
                     <FormHelperText>
                       <HelperText>
                         <HelperTextItem variant="warning">
-                          {useEnvoyMode
-                            ? 'Not supported with envoy mode.'
-                            : 'Requires SPIRE — enable SPIRE to use mTLS.'}
+                          Requires SPIRE — enable SPIRE to use mTLS.
                         </HelperTextItem>
                       </HelperText>
                     </FormHelperText>
