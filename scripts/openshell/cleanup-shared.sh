@@ -212,16 +212,14 @@ if $STEP_KEYCLOAK; then
 
   if kubectl get pod "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" &>/dev/null; then
     # Read-only probe (not wrapped in run_cmd) — needs live Keycloak even in dry-run
-    REALM_EXISTS=$(kubectl exec "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" -- \
-      "$KCADM" get realms/openshell --config "$KC_CONFIG" 2>/dev/null && echo "yes" || echo "no")
-
-    if [[ "$REALM_EXISTS" == "yes" ]]; then
+    if kubectl exec "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" -- \
+         "$KCADM" get realms/openshell --config "$KC_CONFIG" >/dev/null 2>&1; then
       log_info "  Deleting realm 'openshell'..."
       run_cmd kubectl exec "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" -- \
         "$KCADM" delete realms/openshell --config "$KC_CONFIG"
       log_success "Keycloak realm 'openshell' deleted"
     else
-      log_warn "Keycloak realm 'openshell' does not exist, skipping"
+      log_warn "Keycloak realm 'openshell' does not exist or kcadm not configured, skipping"
     fi
   else
     log_warn "Keycloak pod not found in namespace $KEYCLOAK_NS, skipping realm deletion"

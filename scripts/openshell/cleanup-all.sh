@@ -115,10 +115,12 @@ done
 # Method 2: Find namespaces with openshell.ai/tenant label
 LABELED_TENANTS=$(kubectl get namespaces -l "openshell.ai/tenant" -o jsonpath='{.items[*].metadata.labels.openshell\.ai/tenant}' 2>/dev/null || true)
 for t in $LABELED_TENANTS; do
-  # Avoid duplicates
-  if [[ ! " ${TENANTS[*]:-} " =~ " $t " ]]; then
-    TENANTS+=("$t")
-  fi
+  # Avoid duplicates (exact match to prevent team1 matching team10)
+  found=false
+  for existing in "${TENANTS[@]:-}"; do
+    if [[ "$existing" == "$t" ]]; then found=true; break; fi
+  done
+  $found || TENANTS+=("$t")
 done
 
 if [[ ${#TENANTS[@]} -eq 0 ]]; then
@@ -136,11 +138,19 @@ TENANT_ARGS=()
 if $DRY_RUN; then TENANT_ARGS+=(--dry-run); fi
 if $DELETE_NAMESPACES; then TENANT_ARGS+=(--delete-namespace); fi
 
+TENANT_FAILURES=0
 for tenant in "${TENANTS[@]}"; do
   log_info "── Cleaning tenant: $tenant ──"
-  "$SCRIPT_DIR/cleanup-tenant.sh" "$tenant" "${TENANT_ARGS[@]}"
+  if ! "$SCRIPT_DIR/cleanup-tenant.sh" "$tenant" "${TENANT_ARGS[@]}"; then
+    log_warn "cleanup-tenant.sh failed for $tenant, continuing with remaining tenants"
+    TENANT_FAILURES=$((TENANT_FAILURES + 1))
+  fi
   echo ""
 done
+
+if [[ $TENANT_FAILURES -gt 0 ]]; then
+  log_warn "$TENANT_FAILURES tenant cleanup(s) failed — review output above"
+fi
 
 # ============================================================================
 # Step 3: Clean up shared infrastructure

@@ -101,8 +101,8 @@ echo ""
 log_info "Step 1: Removing agent resources in namespace $TENANT..."
 
 if kubectl get namespace "$TENANT" &>/dev/null; then
-  # Delete agent deployments
-  AGENT_DEPLOYMENTS=$(kubectl get deployments -n "$TENANT" -l "app.kubernetes.io/part-of=openshell-agents" -o name 2>/dev/null || true)
+  # Delete agent deployments (label matches deploy-tenant.sh)
+  AGENT_DEPLOYMENTS=$(kubectl get deployments -n "$TENANT" -l "kagenti.io/type=agent" -o name 2>/dev/null || true)
   if [[ -n "$AGENT_DEPLOYMENTS" ]]; then
     for dep in $AGENT_DEPLOYMENTS; do
       log_info "  Deleting $dep"
@@ -110,26 +110,20 @@ if kubectl get namespace "$TENANT" &>/dev/null; then
     done
   fi
 
-  # Delete agent configmaps (policy-data)
-  AGENT_CMS=$(kubectl get configmaps -n "$TENANT" -l "app.kubernetes.io/part-of=openshell-agents" -o name 2>/dev/null || true)
-  if [[ -n "$AGENT_CMS" ]]; then
-    for cm in $AGENT_CMS; do
-      log_info "  Deleting $cm"
-      run_cmd kubectl delete "$cm" -n "$TENANT" --ignore-not-found
+  # Delete agent policy configmaps (named ${agent_name}-policy by deploy-tenant.sh)
+  AGENT_DIR="$REPO_ROOT/deployments/openshell/agents"
+  if [[ -d "$AGENT_DIR" ]]; then
+    for agent_dir in "$AGENT_DIR"/*/; do
+      agent_name=$(basename "$agent_dir")
+      run_cmd kubectl delete configmap "${agent_name}-policy" -n "$TENANT" --ignore-not-found
     done
   fi
 
   # Delete skills configmap
-  if kubectl get configmap kagenti-skills -n "$TENANT" &>/dev/null; then
-    log_info "  Deleting configmap/kagenti-skills"
-    run_cmd kubectl delete configmap kagenti-skills -n "$TENANT" --ignore-not-found
-  fi
+  run_cmd kubectl delete configmap kagenti-skills -n "$TENANT" --ignore-not-found
 
   # Delete openshell-supervisor ServiceAccount
-  if kubectl get serviceaccount openshell-supervisor -n "$TENANT" &>/dev/null; then
-    log_info "  Deleting serviceaccount/openshell-supervisor"
-    run_cmd kubectl delete serviceaccount openshell-supervisor -n "$TENANT" --ignore-not-found
-  fi
+  run_cmd kubectl delete serviceaccount openshell-supervisor -n "$TENANT" --ignore-not-found
 
   log_success "Agent resources cleaned up"
 else
@@ -150,12 +144,12 @@ if is_openshift; then
   fi
 
   # Remove SCC policies granted during agent deployment
-  for SA in openshell-gateway openshell-supervisor; do
-    for SCC in anyuid privileged; do
-      run_cmd oc adm policy remove-scc-from-user "$SCC" \
-        -z "$SA" -n "$TENANT" 2>/dev/null || true
-    done
-  done
+  # deploy-tenant.sh grants anyuid to openshell-gateway in openshell-system,
+  # and privileged to openshell-supervisor in the tenant namespace
+  run_cmd oc adm policy remove-scc-from-user anyuid \
+    -z openshell-gateway -n openshell-system 2>/dev/null || true
+  run_cmd oc adm policy remove-scc-from-user privileged \
+    -z openshell-supervisor -n "$TENANT" 2>/dev/null || true
 
   log_success "OpenShift SCCs cleaned up"
 else
@@ -163,10 +157,21 @@ else
 fi
 
 # ============================================================================
-# Step 3: Helm uninstall
+# Step 3: Remove non-Helm resources that deploy-tenant.sh applies directly
+# ============================================================================
+if kubectl get namespace "$TENANT" &>/dev/null; then
+  # OpenShift trusted CA bundle ConfigMap (created via kubectl apply, not Helm)
+  if is_openshift; then
+    log_info "Step 3a: Removing openshell-trusted-ca ConfigMap..."
+    run_cmd kubectl delete configmap openshell-trusted-ca -n "$TENANT" --ignore-not-found
+  fi
+fi
+
+# ============================================================================
+# Step 4: Helm uninstall
 # ============================================================================
 RELEASE_NAME="${HELM_RELEASE_PREFIX}-${TENANT}"
-log_info "Step 3: Uninstalling Helm release $RELEASE_NAME..."
+log_info "Step 4: Uninstalling Helm release $RELEASE_NAME..."
 
 if helm status "$RELEASE_NAME" -n "$TENANT" &>/dev/null; then
   run_cmd helm uninstall "$RELEASE_NAME" -n "$TENANT" --wait
@@ -176,30 +181,30 @@ else
 fi
 
 # ============================================================================
-# Step 4: Remove namespace labels
+# Step 5: Remove namespace labels
 # ============================================================================
 if kubectl get namespace "$TENANT" &>/dev/null; then
-  log_info "Step 4: Removing namespace labels..."
+  log_info "Step 5: Removing namespace labels..."
   run_cmd kubectl label namespace "$TENANT" shared-gateway-access- --overwrite 2>/dev/null || true
   run_cmd kubectl label namespace "$TENANT" openshell.ai/tenant- --overwrite 2>/dev/null || true
   log_success "Namespace labels removed"
 else
-  log_warn "Step 4: Namespace $TENANT does not exist, skipping label removal"
+  log_warn "Step 5: Namespace $TENANT does not exist, skipping label removal"
 fi
 
 # ============================================================================
-# Step 5: Delete namespace (optional)
+# Step 6: Delete namespace (optional)
 # ============================================================================
 if $DELETE_NAMESPACE; then
   if kubectl get namespace "$TENANT" &>/dev/null; then
-    log_warn "Step 5: Deleting namespace $TENANT (this will remove ALL resources in it)..."
+    log_warn "Step 6: Deleting namespace $TENANT (this will remove ALL resources in it)..."
     run_cmd kubectl delete namespace "$TENANT" --wait=true --timeout=120s
     log_success "Namespace $TENANT deleted"
   else
-    log_warn "Step 5: Namespace $TENANT already gone"
+    log_warn "Step 6: Namespace $TENANT already gone"
   fi
 else
-  log_info "Step 5: Skipping namespace deletion (use --delete-namespace to remove)"
+  log_info "Step 6: Skipping namespace deletion (use --delete-namespace to remove)"
 fi
 
 echo ""
