@@ -218,8 +218,8 @@ echo "    OTel:          $WITH_OTEL"
 echo "    MLflow:        $WITH_MLFLOW"
 echo "    Builds:        $WITH_BUILDS"
 echo "    Kiali:         $WITH_KIALI"
-echo "    Agent Sandbox: $WITH_AGENT_SANDBOX
-    Skills:        $WITH_SKILLS"
+echo "    Agent Sandbox: $WITH_AGENT_SANDBOX"
+echo "    Skills:        $WITH_SKILLS"
 echo "    Skip cluster:  $SKIP_CLUSTER"
 echo "    Build images:  $BUILD_IMAGES"
 echo "    Preload imgs:  $PRELOAD_IMAGES"
@@ -610,7 +610,7 @@ if $WITH_BUILDS; then
       # Upsert registry DNS in Kind node's /etc/hosts (replace stale entry if present).
       # /etc/hosts is a bind mount so sed -i (rename) fails; use grep -v + cat > instead.
       $CONTAINER_ENGINE exec "${CLUSTER_NAME}-control-plane" \
-        sh -c "grep -v '${REGISTRY_HOST}' /etc/hosts > /tmp/hosts.tmp && cat /tmp/hosts.tmp > /etc/hosts && echo '${CLUSTER_IP} ${REGISTRY_HOST}' >> /etc/hosts"
+        sh -c "{ grep -v '${REGISTRY_HOST}' /etc/hosts || true; } > /tmp/hosts.tmp && cat /tmp/hosts.tmp > /etc/hosts && echo '${CLUSTER_IP} ${REGISTRY_HOST}' >> /etc/hosts"
 
       # Configure containerd registry mirror for insecure in-cluster registry
       $CONTAINER_ENGINE exec "${CLUSTER_NAME}-control-plane" sh -c "
