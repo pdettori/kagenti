@@ -23,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ── Defaults ────────────────────────────────────────────────────────────────
 DRY_RUN=false
 DELETE_NAMESPACES=false
+CONFIRM=false
 KEYCLOAK_NS="${KEYCLOAK_NS:-keycloak}"
 BACKEND_NS="${BACKEND_NS:-team1}"
 EXTRA_SHARED_ARGS=()
@@ -43,6 +44,7 @@ Remove ALL OpenShell resources (tenants + shared infrastructure).
 Options:
   --help               Show this help message
   --dry-run            Print commands without executing
+  --yes                Skip confirmation prompt
   --delete-namespaces  Also delete tenant namespaces (DESTRUCTIVE)
   --keycloak-ns NS     Keycloak namespace (default: keycloak)
   --backend-ns NS      Backend namespace (default: team1)
@@ -62,6 +64,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --help)              usage ;;
     --dry-run)           DRY_RUN=true; shift ;;
+    --yes)               CONFIRM=true; shift ;;
     --delete-namespaces) DELETE_NAMESPACES=true; shift ;;
     --keycloak-ns)       KEYCLOAK_NS="$2"; shift 2 ;;
     --backend-ns)        BACKEND_NS="$2"; shift 2 ;;
@@ -82,6 +85,19 @@ echo ""
 echo "  Delete namespaces: $DELETE_NAMESPACES"
 echo "  Dry run:           $DRY_RUN"
 echo ""
+
+# ── Cluster context confirmation guard ──────────────────────────────────────
+if ! $DRY_RUN && ! $CONFIRM; then
+  CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "<unknown>")
+  log_warn "Target cluster context: $CURRENT_CONTEXT"
+  echo ""
+  read -r -p "This will delete OpenShell resources from the above cluster. Continue? [y/N] " response
+  case "$response" in
+    [yY][eE][sS]|[yY]) ;;
+    *) log_error "Aborted."; exit 1 ;;
+  esac
+  echo ""
+fi
 
 # ============================================================================
 # Step 1: Discover tenants
@@ -131,7 +147,7 @@ done
 # ============================================================================
 log_info "Step 3: Cleaning up shared infrastructure..."
 
-SHARED_ARGS=(--keycloak-ns "$KEYCLOAK_NS" --backend-ns "$BACKEND_NS")
+SHARED_ARGS=(--yes --keycloak-ns "$KEYCLOAK_NS" --backend-ns "$BACKEND_NS")
 if $DRY_RUN; then SHARED_ARGS+=(--dry-run); fi
 SHARED_ARGS+=("${EXTRA_SHARED_ARGS[@]}")
 

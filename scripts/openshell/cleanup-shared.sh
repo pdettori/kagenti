@@ -46,7 +46,9 @@ STEP_KEYCLOAK=true
 STEP_LITELLM=true
 STEP_BACKEND=true
 STEP_ISTIO=true
+DELETE_DATA=false
 DRY_RUN=false
+CONFIRM=false
 
 # ── Colors & logging ────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -74,8 +76,10 @@ Options:
   --skip-litellm      Skip LiteLLM proxy removal
   --skip-backend      Skip kagenti-backend + PostgreSQL removal
   --skip-istio        Skip Istio env var revert
+  --delete-data       Also delete PostgreSQL PVC (data loss, default: keep)
   --keycloak-ns NS    Keycloak namespace (default: keycloak)
   --backend-ns NS     Backend namespace (default: team1)
+  --yes               Skip confirmation prompt
   --dry-run           Print commands without executing
 EOF
   exit 0
@@ -85,6 +89,8 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help)             usage ;;
+    --yes)              CONFIRM=true; shift ;;
+    --delete-data)      DELETE_DATA=true; shift ;;
     --skip-sandbox)     STEP_SANDBOX=false; shift ;;
     --skip-gateway-api) STEP_GATEWAY_API=false; shift ;;
     --skip-tls)         STEP_TLS=false; shift ;;
@@ -119,8 +125,22 @@ echo "  cert-manager CA:    $STEP_TLS"
 echo "  Istio env var:      $STEP_ISTIO"
 echo "  Gateway API CRDs:   $STEP_GATEWAY_API"
 echo "  Sandbox controller: $STEP_SANDBOX"
+echo "  Delete PVC data:    $DELETE_DATA"
 echo "  Dry run:            $DRY_RUN"
 echo ""
+
+# ── Cluster context confirmation guard ──────────────────────────────────────
+if ! $DRY_RUN && ! $CONFIRM; then
+  CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "<unknown>")
+  log_warn "Target cluster context: $CURRENT_CONTEXT"
+  echo ""
+  read -r -p "This will delete OpenShell shared infrastructure from the above cluster. Continue? [y/N] " response
+  case "$response" in
+    [yY][eE][sS]|[yY]) ;;
+    *) log_error "Aborted."; exit 1 ;;
+  esac
+  echo ""
+fi
 
 # ============================================================================
 # Step 1: Remove kagenti-backend + PostgreSQL
@@ -145,11 +165,15 @@ if $STEP_BACKEND; then
     run_cmd kubectl delete service postgres-sessions -n "$BACKEND_NS" --ignore-not-found
     run_cmd kubectl delete secret postgres-sessions-secret -n "$BACKEND_NS" --ignore-not-found
 
-    # PVC (warn: data loss)
+    # PVC (only deleted with --delete-data)
     PVC_NAME="postgres-data-postgres-sessions-0"
     if kubectl get pvc "$PVC_NAME" -n "$BACKEND_NS" &>/dev/null; then
-      log_warn "  Deleting PVC $PVC_NAME (PostgreSQL data will be lost)"
-      run_cmd kubectl delete pvc "$PVC_NAME" -n "$BACKEND_NS" --ignore-not-found
+      if $DELETE_DATA; then
+        log_warn "  Deleting PVC $PVC_NAME (PostgreSQL data will be lost)"
+        run_cmd kubectl delete pvc "$PVC_NAME" -n "$BACKEND_NS" --ignore-not-found
+      else
+        log_warn "  Keeping PVC $PVC_NAME (use --delete-data to remove)"
+      fi
     fi
 
     log_success "Backend + PostgreSQL removed"
@@ -187,7 +211,7 @@ if $STEP_KEYCLOAK; then
   log_info "Step 3: Removing Keycloak realm 'openshell'..."
 
   if kubectl get pod "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" &>/dev/null; then
-    # Check if realm exists
+    # Read-only probe (not wrapped in run_cmd) — needs live Keycloak even in dry-run
     REALM_EXISTS=$(kubectl exec "$KEYCLOAK_POD" -n "$KEYCLOAK_NS" -- \
       "$KCADM" get realms/openshell --config "$KC_CONFIG" 2>/dev/null && echo "yes" || echo "no")
 
@@ -305,12 +329,12 @@ if $STEP_SANDBOX; then
   SANDBOX_BASE_URL="https://raw.githubusercontent.com/kubernetes-sigs/agent-sandbox/refs/tags/${AGENT_SANDBOX_VERSION}"
 
   if kubectl get namespace agent-sandbox-system &>/dev/null; then
-    # Delete extensions first, then main manifest
+    # URL-based deletes use || true to tolerate network failures
     log_info "  Deleting extensions..."
-    run_cmd kubectl delete -f "${SANDBOX_BASE_URL}/config/extensions.yaml" --ignore-not-found 2>/dev/null || true
+    run_cmd kubectl delete -f "${SANDBOX_BASE_URL}/config/extensions.yaml" --ignore-not-found || true
 
     log_info "  Deleting controller..."
-    run_cmd kubectl delete -f "${SANDBOX_BASE_URL}/config/install.yaml" --ignore-not-found 2>/dev/null || true
+    run_cmd kubectl delete -f "${SANDBOX_BASE_URL}/config/install.yaml" --ignore-not-found || true
 
     log_success "agent-sandbox-controller removed"
   else
@@ -318,8 +342,8 @@ if $STEP_SANDBOX; then
     if kubectl get crd sandboxes.agents.x-k8s.io &>/dev/null; then
       log_info "  Namespace gone but CRD remains, cleaning up..."
       run_cmd kubectl delete crd sandboxes.agents.x-k8s.io --ignore-not-found
-      run_cmd kubectl delete crd sandboxclaims.agents.x-k8s.io --ignore-not-found 2>/dev/null || true
-      run_cmd kubectl delete crd sandboxtemplates.agents.x-k8s.io --ignore-not-found 2>/dev/null || true
+      run_cmd kubectl delete crd sandboxclaims.agents.x-k8s.io --ignore-not-found
+      run_cmd kubectl delete crd sandboxtemplates.agents.x-k8s.io --ignore-not-found
       log_success "Sandbox CRDs removed"
     else
       log_warn "agent-sandbox-controller not found, skipping"
