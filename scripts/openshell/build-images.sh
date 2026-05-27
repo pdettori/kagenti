@@ -235,7 +235,10 @@ if [[ "$BUILD_AGENTS" == "true" ]]; then
                     continue
                 fi
                 echo "Building agent: $agent_name (docker)"
-                docker build -t "$agent_name:latest" "$agent_dir" -q
+                if ! docker build -t "$agent_name:latest" "$agent_dir" -q 2>/dev/null; then
+                    echo "WARN: $agent_name build failed (supervisor image may not be available)"
+                    continue
+                fi
                 if [[ -n "$KIND_CLUSTER" ]]; then
                     kind load docker-image "$agent_name:latest" --name "$KIND_CLUSTER" 2>/dev/null
                 fi
