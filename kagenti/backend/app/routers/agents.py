@@ -309,25 +309,35 @@ class CreateAgentRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_mtls_compatible_with_mode(self) -> "CreateAgentRequest":
-        """Mirror the operator's AgentRuntime validating webhook check.
+        """Hook for cross-field rejections of authBridgeMode +
+        mtlsMode combinations the operator's AgentRuntime validating
+        webhook would also reject.
 
-        envoy-sidecar mode does not currently support mTLS — the kagenti
-        envoy-config doesn't configure SDS, so a strict/permissive value
-        here would silently produce a workload running plaintext while
-        the user believed mTLS was on. The operator webhook will reject
-        this combo at admission; we reject it earlier so the form gets
-        a clean 422 instead of a webhook denial after the manifest has
-        been constructed.
+        envoy-sidecar + non-disabled mtlsMode used to be rejected here
+        as defense-in-depth in front of the operator's webhook gate.
+        Both have been lifted now that the operator + extensions
+        support the full matrix (kagenti-operator#381,
+        kagenti-extensions#441), so today there are no rejected
+        combinations.
+
+        TODO(future-incompatibility): re-enable cross-field rejections
+        here when a new authBridgeMode (e.g. waypoint, sidecarless)
+        lands that needs different mTLS semantics. The function
+        intentionally stays as a single grep-target so the rejection
+        can land here instead of getting scattered across the request
+        model. Mirrors the operator's checkMTLSCompatibleWithMode
+        pattern in agentruntime_webhook.go.
+
+        SPIRE-vs-mTLS coupling is intentionally NOT enforced here:
+        kagenti-operator's pod_mutator auto-enables SPIRE when
+        mtlsMode != disabled (pod_mutator.go:288-302), so a request
+        with mtlsMode=strict + spireEnabled=false is handled at the
+        operator data-plane layer rather than rejected at the API
+        boundary. The UI form still locks the mTLS dropdown when
+        SPIRE is off as a UX hint, but a non-UI client (CLI, direct
+        API call) submitting that combination is valid and the
+        operator turns SPIRE on for them.
         """
-        if self.authBridgeMode == "envoy-sidecar" and self.mtlsMode not in (
-            None,
-            "disabled",
-        ):
-            raise ValueError(
-                "mtlsMode must be 'disabled' when authBridgeMode is "
-                "'envoy-sidecar' (envoy-sidecar mTLS is tracked as a "
-                "follow-up; use proxy-sidecar or lite for mTLS today)"
-            )
         return self
 
 
@@ -3502,20 +3512,16 @@ class FinalizeShipwrightBuildRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_mtls_compatible_with_mode(self) -> "FinalizeShipwrightBuildRequest":
-        """Same cross-field check as CreateAgentRequest, applied at the
-        Shipwright finalize boundary. Either field may be None here
-        (caller falls back to the stored config); only reject when both
-        are explicitly supplied AND incompatible.
+        """Mirror of CreateAgentRequest._check_mtls_compatible_with_mode
+        at the Shipwright finalize boundary. Today there are no
+        rejected combinations.
+
+        TODO(future-incompatibility): re-enable cross-field rejections
+        here when a new authBridgeMode lands that needs different mTLS
+        semantics. See CreateAgentRequest._check_mtls_compatible_with_mode
+        for the full rationale (including why SPIRE-vs-mTLS coupling
+        is handled at the operator data-plane layer rather than here).
         """
-        if self.authBridgeMode == "envoy-sidecar" and self.mtlsMode not in (
-            None,
-            "disabled",
-        ):
-            raise ValueError(
-                "mtlsMode must be 'disabled' when authBridgeMode is "
-                "'envoy-sidecar' (envoy-sidecar mTLS is tracked as a "
-                "follow-up; use proxy-sidecar or lite for mTLS today)"
-            )
         return self
 
 
