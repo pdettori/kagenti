@@ -953,7 +953,12 @@ export const ToolDetailPage: React.FC = () => {
               </p>
             )}
 
-            <Form>
+            <Form onSubmit={(e) => {
+              e.preventDefault();
+              if (!invokeMutation.isPending) {
+                handleInvoke();
+              }
+            }}>
               {selectedTool.input_schema?.properties &&
               Object.keys(selectedTool.input_schema.properties).length > 0 ? (
                 Object.entries(selectedTool.input_schema.properties).map(([key, prop]) => {
