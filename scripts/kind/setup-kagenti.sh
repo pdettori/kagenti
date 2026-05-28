@@ -1301,7 +1301,8 @@ echo ""
 if $WITH_MCP_GATEWAY && $WITH_OTEL; then
   # The mcp-gateway chart deploys the broker-router via its controller and does not
   # expose OTel config via Helm values. kubectl set env is the only injection point.
-  # Patching here (after verification) ensures the controller has finished reconciling.
+  # Patching here (after verification) reduces the likelihood of the controller
+  # overwriting the patch during its initial reconcile.
   log_info "Patching MCP Gateway router with OTel exporter..."
   # Wait for the controller to create the deployment (up to 90s)
   waited=0
@@ -1314,11 +1315,14 @@ if $WITH_MCP_GATEWAY && $WITH_OTEL; then
     waited=$((waited + 5))
   done
   if kubectl get deployment mcp-gateway -n mcp-system &>/dev/null; then
-    kubectl rollout status deployment/mcp-gateway -n mcp-system --timeout=60s &>/dev/null || true
+    kubectl rollout status deployment/mcp-gateway -n mcp-system --timeout=60s &>/dev/null || \
+      log_warn "rollout not ready — patching anyway"
     run_cmd kubectl set env deployment/mcp-gateway -n mcp-system \
       OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.kagenti-system.svc.cluster.local:8335 \
       OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
     log_success "MCP Gateway OTel exporter configured"
+  else
+    log_warn "Skipping OTel patch (deployment not found after wait)"
   fi
 fi
 
