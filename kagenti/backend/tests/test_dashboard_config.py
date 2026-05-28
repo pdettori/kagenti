@@ -71,8 +71,8 @@ class TestDashboardConfigPhoenixToggle:
                 data = response.json()
                 assert data["traces"] == phoenix_url
 
-    def test_network_dashboard_url_empty_no_fallback(self, client):
-        """When NETWORK_DASHBOARD_URL is not set, network should be empty (no fallback)."""
+    def test_network_dashboard_url_fallback(self, client):
+        """When NETWORK_DASHBOARD_URL is not set, network falls back to kiali.<domain>."""
         with patch("app.core.auth.settings") as mock_auth_settings:
             mock_auth_settings.enable_auth = False
             with patch("app.routers.config.settings") as mock_settings:
@@ -89,7 +89,7 @@ class TestDashboardConfigPhoenixToggle:
                 response = client.get("/api/v1/config/dashboards")
                 assert response.status_code == 200
                 data = response.json()
-                assert data["network"] == ""
+                assert data["network"] == "http://kiali.localtest.me:8080"
 
     def test_mlflow_dashboard_url_non_empty(self, client):
         """When MLFLOW_DASHBOARD_URL is set, it should be returned."""
