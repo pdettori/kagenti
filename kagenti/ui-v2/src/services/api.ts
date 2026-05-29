@@ -737,6 +737,10 @@ export interface PlatformStatusResponse {
 /**
  * Config service
  */
+export interface MCPGatewayStatusResponse {
+  status: 'Ready' | 'Degraded' | 'Missing';
+}
+
 export const configService = {
   async getDashboards(): Promise<DashboardConfig> {
     return apiFetch('/config/dashboards');
@@ -744,6 +748,10 @@ export const configService = {
 
   async getPlatformStatus(): Promise<PlatformStatusResponse> {
     return apiFetch('/config/platform-status');
+  },
+
+  async getMCPGatewayStatus(): Promise<MCPGatewayStatusResponse> {
+    return apiFetch('/config/mcp-gateway-status');
   },
 };
 
