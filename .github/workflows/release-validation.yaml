@@ -29,13 +29,13 @@ on:
         type: boolean
         default: false
       dep_builds:
-        description: 'JSON array of dependency builds, e.g. [{"repo":"kagenti/kagenti-extensions","ref":"v0.6.0-rc.1"}]'
+        description: 'JSON array of dependency builds (used by both Kind and HyperShift), e.g. [{"repo":"kagenti/kagenti-extensions","ref":"v0.6.0-rc.1"}]. Kind uses the kagenti-extensions ref for weather-agent deploy; HyperShift passes the full array to the deploy script.'
         required: false
         default: '[]'
 
 concurrency:
   group: release-validation-${{ github.event.inputs.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -149,10 +149,24 @@ jobs:
       - name: Deploy weather-tool image and service
         run: bash .github/scripts/common/55-deploy-weather-tool.sh
 
+      - name: Resolve extensions git ref from dep_builds
+        id: resolve-deps
+        run: |
+          EXTENSIONS_REF="${{ inputs.ref }}"
+          DEP_BUILDS='${{ inputs.dep_builds }}'
+          if [ "$DEP_BUILDS" != "[]" ] && [ -n "$DEP_BUILDS" ]; then
+            REF=$(echo "$DEP_BUILDS" | jq -r '.[] | select(.repo == "kagenti/kagenti-extensions") | .ref // empty')
+            if [ -n "$REF" ]; then
+              EXTENSIONS_REF="$REF"
+            fi
+          fi
+          echo "extensions_ref=${EXTENSIONS_REF}" >> "$GITHUB_OUTPUT"
+          echo "Using kagenti-extensions ref: ${EXTENSIONS_REF}"
+
       - name: Deploy weather-service agent
         run: bash .github/scripts/common/60-deploy-weather-agent.sh
         env:
-          KAGENTI_EXTENSIONS_GIT_REF: 'main'
+          KAGENTI_EXTENSIONS_GIT_REF: ${{ steps.resolve-deps.outputs.extensions_ref }}
 
       - name: Deploy verification and test setup
         run: bash .github/scripts/common/70-verify-deploy.sh
@@ -414,15 +428,19 @@ jobs:
       - name: Run Trivy Kubernetes cluster scan
         if: success()
         continue-on-error: true
+        env:
+          KUBECONFIG: ${{ steps.create-cluster.outputs.cluster_kubeconfig }}
+          TRIVY_VERSION: '0.70.0'
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          curl -sfL -o trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tar xzf trivy.tar.gz trivy
+          sudo mv trivy /usr/local/bin/
+          rm trivy.tar.gz
           trivy k8s --kubeconfig "$KUBECONFIG" \
             --include-namespaces kagenti-system \
             --severity HIGH,CRITICAL \
             --report summary \
             --timeout 10m || true
-        env:
-          KUBECONFIG: ${{ steps.create-cluster.outputs.cluster_kubeconfig }}
 
       - name: Upload test results
         if: always()
@@ -453,6 +471,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Setup credentials
         run: bash .github/scripts/hypershift/ci/10-setup-credentials.sh
