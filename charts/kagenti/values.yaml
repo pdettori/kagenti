@@ -56,7 +56,7 @@ secrets:
 
 common:
   kubectlImage: "quay.io/kubestellar/kubectl:1.30.14"
-  oseCLIImage: "registry.redhat.io/openshift4/ose-cli:v4.17"
+  oseCLIImage: "registry.redhat.io/openshift4/ose-cli:v4.15"
 
 # ------------------------------------------------------------------
 #  Components Configurations
