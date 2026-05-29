@@ -17,11 +17,12 @@
 #   ./scripts/ocp/setup-kagenti.sh --realm nerc                 # Custom Keycloak realm (default: kagenti)
 #   ./scripts/ocp/setup-kagenti.sh --with-kiali                  # Enable Kiali + Prometheus
 #   ./scripts/ocp/setup-kagenti.sh --with-builds                # Enable Tekton + OpenShift Builds
+#   ./scripts/ocp/setup-kagenti.sh --with-mcp-gateway           # Install MCP Gateway (broker-router + controller)
 #   ./scripts/ocp/setup-kagenti.sh --with-kuadrant              # Enable Kuadrant (auto-enables MCP Gateway)
 #   ./scripts/ocp/setup-kagenti.sh --with-agent-sandbox         # Install agent-sandbox controller
 #   ./scripts/ocp/setup-kagenti.sh --with-all                   # Enable all optional components
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
-#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway install
+#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway (override --with-kuadrant)
 #   ./scripts/ocp/setup-kagenti.sh --skip-mlflow                # Disable Kagenti-Operator <-> MLflow integration
 #   ./scripts/ocp/setup-kagenti.sh --otel-operator-managed      # Let the operator handle OTel collector config
 #   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator  # Use local operator chart
@@ -50,7 +51,7 @@ KAGENTI_GITHUB_URL="https://github.com/kagenti/kagenti.git"
 KC_REALM="${KEYCLOAK_REALM:-kagenti}"
 KC_NAMESPACE="${KEYCLOAK_NAMESPACE:-keycloak}"
 SKIP_OVN_PATCH=false
-SKIP_MCP_GATEWAY=false
+SKIP_MCP_GATEWAY=true
 SKIP_UI=false
 SKIP_MLFLOW=false
 SHOW_SECRETS=false
@@ -99,8 +100,9 @@ while [[ $# -gt 0 ]]; do
     --with-kiali)         WITH_KIALI=true; shift ;;
     --with-builds)        WITH_BUILDS=true; shift ;;
     --with-kuadrant)      WITH_KUADRANT=true; shift ;;
+    --with-mcp-gateway)   SKIP_MCP_GATEWAY=false; shift ;;
     --with-agent-sandbox) WITH_AGENT_SANDBOX=true; shift ;;
-    --with-all)           WITH_KIALI=true; WITH_BUILDS=true; WITH_KUADRANT=true; WITH_AGENT_SANDBOX=true; shift ;;
+    --with-all)           WITH_KIALI=true; WITH_BUILDS=true; WITH_KUADRANT=true; WITH_AGENT_SANDBOX=true; SKIP_MCP_GATEWAY=false; shift ;;
     --dry-run)            DRY_RUN=true; shift ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
@@ -117,6 +119,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --show-secrets            Print Keycloak admin credentials to stdout (omitted by default for CI safety)"
       echo "  --with-kiali              Enable Kiali + Prometheus (user workload monitoring)"
       echo "  --with-builds             Enable Tekton + OpenShift Builds (Shipwright)"
+      echo "  --with-mcp-gateway        Install MCP Gateway (broker-router + controller)"
       echo "  --with-kuadrant           Enable Kuadrant operator (auto-enables MCP Gateway)"
       echo "  --with-agent-sandbox      Install agent-sandbox controller (kubernetes-sigs)"
       echo "  --with-all                Enable all optional components"
@@ -132,7 +135,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Flag dependencies ──────────────────────────────────────────────────────
-# Kuadrant provides AuthPolicy for MCP Gateway — don't skip it
+# Kuadrant provides AuthPolicy for MCP Gateway — enable it automatically
 if $WITH_KUADRANT && $SKIP_MCP_GATEWAY; then
   SKIP_MCP_GATEWAY=false
 fi
