@@ -22,7 +22,7 @@
 #   ./scripts/ocp/setup-kagenti.sh --with-agent-sandbox         # Install agent-sandbox controller
 #   ./scripts/ocp/setup-kagenti.sh --with-all                   # Enable all optional components
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
-#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway (ignored when --with-kuadrant is set)
+#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway (ignored when --with-kuadrant is set, since Kuadrant requires it)
 #   ./scripts/ocp/setup-kagenti.sh --skip-mlflow                # Disable Kagenti-Operator <-> MLflow integration
 #   ./scripts/ocp/setup-kagenti.sh --otel-operator-managed      # Let the operator handle OTel collector config
 #   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator  # Use local operator chart
@@ -112,7 +112,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --realm REALM             Keycloak realm (default: kagenti, or \$KEYCLOAK_REALM)"
       echo "  --keycloak-namespace NS   Keycloak namespace (default: keycloak, or \$KEYCLOAK_NAMESPACE)"
       echo "  --skip-ovn-patch          Skip OVN gateway routing patch"
-      echo "  --skip-mcp-gateway        Skip MCP Gateway installation"
+      echo "  --skip-mcp-gateway        Skip MCP Gateway (ignored when --with-kuadrant is set)"
       echo "  --skip-ui                 Skip Kagenti UI and backend installation"
       echo "  --skip-mlflow             Skip MLflow integration (OTel traces + operator auto-config)"
       echo "  --otel-operator-managed   Let the kagenti-operator handle OTel collector config (skip Helm OTel wiring)"
