@@ -55,6 +55,7 @@ SKIP_MLFLOW=false
 SKIP_KUADRANT=false
 BUILD_IMAGES=false
 PRELOAD_IMAGES=false
+INSTALL_EXAMPLES=false
 DRY_RUN=false
 SECRETS_FILE_ARG=""
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-docker}"
@@ -121,6 +122,7 @@ while [[ $# -gt 0 ]]; do
     --domain)           DOMAIN="$2"; shift 2 ;;
     --kagenti-values)   KAGENTI_VALUES_FILES+=("--values" "$2"); shift 2 ;;
     --kagenti-deps-values) KAGENTI_DEPS_VALUES_FILES+=("--values" "$2"); shift 2 ;;
+    --with-examples)    INSTALL_EXAMPLES=true; shift ;;
     --dry-run)          DRY_RUN=true; shift ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
@@ -158,6 +160,7 @@ while [[ $# -gt 0 ]]; do
       echo "                      Helm override file to apply to Kagenti chart"
       echo "  --kagenti-deps-values FILE"
       echo "                      Helm override file to apply to Kagenti-deps chart"
+      echo "  --with-examples     Install weather agent and weather tool examples"
       echo "  --dry-run           Show commands without executing"
       echo "  -h, --help          Show this help"
       exit 0 ;;
@@ -172,6 +175,8 @@ if $WITH_ALL; then
   WITH_AGENT_SANDBOX=true
   $SKIP_MLFLOW    || WITH_MLFLOW=true
   $SKIP_KUADRANT  || WITH_KUADRANT=true
+  # Note that INSTALL_EXAMPLES isn't part of --with-all; it is not part of Kagenti
+  # but exists for demos and tests.
 fi
 
 # ── Flag dependencies ──────────────────────────────────────────────────────
@@ -223,6 +228,7 @@ echo "    Skills:        $WITH_SKILLS"
 echo "    Skip cluster:  $SKIP_CLUSTER"
 echo "    Build images:  $BUILD_IMAGES"
 echo "    Preload imgs:  $PRELOAD_IMAGES"
+echo "    Examples:      $INSTALL_EXAMPLES"
 echo "    Kagenti helm --values overrides: ${KAGENTI_VALUES_FILES[*]:-}"
 echo "    Kagenti-deps helm --values overrides: ${KAGENTI_DEPS_VALUES_FILES[*]:-}"
 echo ""
@@ -1223,6 +1229,26 @@ if $WITH_MCP_GATEWAY; then
 
 else
   log_info "Skipped (use --with-mcp-gateway)"
+fi
+echo ""
+
+# ============================================================================
+# Step 9b: Install Examples
+# ============================================================================
+log_info "Step 9b: Agent and tool examples (weather)"
+
+if $INSTALL_EXAMPLES; then
+  run_cmd ${REPO_ROOT}/.github/scripts/kagenti-operator/72-deploy-weather-tool.sh
+  run_cmd ${REPO_ROOT}/.github/scripts/kagenti-operator/74-deploy-weather-agent.sh
+  log_success "Agent and tool examples (weather) installed"
+
+  if ! $DRY_RUN; then
+    LLM_API_BASE=$(kubectl get deployment weather-service -n team1 -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="LLM_API_BASE")].value}')
+    log_info "  Weather Service using LLM at ${LLM_API_BASE}"
+    log_info "  (override with kubectl -n team1 set env deployment/weather-service LLM_API_BASE=<your llm>)"
+  fi
+else
+  log_info "Skipped (use --with-examples)"
 fi
 echo ""
 
