@@ -34,7 +34,7 @@ import { useQuery } from '@tanstack/react-query';
 import { configService } from '@/services/api';
 
 export const MCPGatewayPage: React.FC = () => {
-  const { data: gatewayStatus, isLoading } = useQuery({
+  const { data: gatewayStatus, isLoading, isError } = useQuery({
     queryKey: ['mcp-gateway-status'],
     queryFn: () => configService.getMCPGatewayStatus(),
   });
@@ -98,13 +98,14 @@ export const MCPGatewayPage: React.FC = () => {
                     <DescriptionListGroup>
                       <DescriptionListTerm>Status</DescriptionListTerm>
                       <DescriptionListDescription>
+                        {isError && <Label color="red">Status unknown</Label>}
                         {gatewayStatus?.status === 'Ready' && (
                           <Label color="green">Running</Label>
                         )}
                         {gatewayStatus?.status === 'Degraded' && (
                           <Label color="orange">Degraded</Label>
                         )}
-                        {(gatewayStatus?.status === 'Missing' || !gatewayStatus) && (
+                        {gatewayStatus?.status === 'Missing' && (
                           <Label color="grey">Not Installed</Label>
                         )}
                       </DescriptionListDescription>

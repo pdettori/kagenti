@@ -247,5 +247,6 @@ async def get_mcp_gateway_status(
     kube: KubernetesService = Depends(get_kubernetes_service),
 ) -> MCPGatewayStatusResponse:
     """Return the health status of the MCP Gateway deployment."""
+    # TODO: parameterize namespace/deployment if install location ever varies
     status = _check_deployment_ready(kube, "gateway-system", "mcp-gateway-istio")
     return MCPGatewayStatusResponse(status=status)
