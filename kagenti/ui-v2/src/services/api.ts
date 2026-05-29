@@ -710,7 +710,7 @@ export interface DashboardConfig {
   network: string;
   mlflow: string;
   mcpInspector: string | null;
-  mcpProxy: string;
+  mcpProxy: string | null;
   keycloakConsole: string;
   domainName: string;
 }
