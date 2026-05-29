@@ -22,7 +22,7 @@
 #   ./scripts/ocp/setup-kagenti.sh --with-agent-sandbox         # Install agent-sandbox controller
 #   ./scripts/ocp/setup-kagenti.sh --with-all                   # Enable all optional components
 #   ./scripts/ocp/setup-kagenti.sh --skip-ovn-patch             # Skip OVN gateway patch
-#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway (override --with-kuadrant)
+#   ./scripts/ocp/setup-kagenti.sh --skip-mcp-gateway           # Skip MCP Gateway (ignored when --with-kuadrant is set)
 #   ./scripts/ocp/setup-kagenti.sh --skip-mlflow                # Disable Kagenti-Operator <-> MLflow integration
 #   ./scripts/ocp/setup-kagenti.sh --otel-operator-managed      # Let the operator handle OTel collector config
 #   ./scripts/ocp/setup-kagenti.sh --operator-repo ~/kagenti-operator  # Use local operator chart
@@ -137,6 +137,7 @@ done
 # ── Flag dependencies ──────────────────────────────────────────────────────
 # Kuadrant provides AuthPolicy for MCP Gateway — enable it automatically
 if $WITH_KUADRANT && $SKIP_MCP_GATEWAY; then
+  log_warn "--skip-mcp-gateway ignored: Kuadrant requires MCP Gateway"
   SKIP_MCP_GATEWAY=false
 fi
 
