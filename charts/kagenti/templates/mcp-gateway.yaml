@@ -19,7 +19,11 @@ spec:
   gatewayClassName: istio
   listeners:
     - name: mcp
+      {{- if .Values.openshift }}
+      hostname: "mcp-gateway-{{ .Values.mcpGateway.namespaces.gatewaySystem }}.{{ .Values.mcpGateway.openshiftDomain }}"
+      {{- else }}
       hostname: "{{ .Values.mcpGateway.hostname }}"
+      {{- end }}
       port: 8080
       protocol: HTTP
       allowedRoutes:
