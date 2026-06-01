@@ -1,7 +1,7 @@
 // Copyright 2025 IBM Corp.
 // Licensed under the Apache License, Version 2.0
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   PageSection,
@@ -85,6 +85,15 @@ export const BuildProgressPage: React.FC = () => {
       finalizeMutation.mutate();
     }
   }, [buildInfo?.buildRunPhase, isAutoFinalizing, finalizeMutation]);
+
+  const finalizeError = useMemo(
+    () => finalizeMutation.isError
+      ? (finalizeMutation.error instanceof Error
+          ? finalizeMutation.error
+          : new Error('An unexpected error occurred'))
+      : null,
+    [finalizeMutation.isError, finalizeMutation.error]
+  );
 
   if (!namespace || !name) {
     return (
@@ -178,7 +187,7 @@ export const BuildProgressPage: React.FC = () => {
           buildInfo={buildInfo}
           resourceType="agent"
           isAutoFinalizing={isAutoFinalizing}
-          finalizeError={finalizeMutation.isError ? (finalizeMutation.error instanceof Error ? finalizeMutation.error : new Error('An unexpected error occurred')) : null}
+          finalizeError={finalizeError}
           isRetryPending={retryMutation.isPending}
           onRetryBuild={() => retryMutation.mutate()}
           onRetryFinalize={() => finalizeMutation.mutate()}
