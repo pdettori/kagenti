@@ -1074,7 +1074,7 @@ spec:
       serviceAccountName: kagenti-spiffe-idp-setup
       restartPolicy: OnFailure
       initContainers:
-        - name: wait-for-spire
+        - name: wait-for-dependencies
           image: "${KUBECTL_IMAGE}"
           command: ["sh", "-c"]
           args:
@@ -1087,6 +1087,9 @@ spec:
               kubectl wait --for=condition=ready pod \
                 -l app.kubernetes.io/name=spiffe-oidc-discovery-provider \
                 -n ${SPIRE_SERVER_NS} --timeout=300s
+              echo "Waiting for Keycloak to be ready..."
+              kubectl wait --for=condition=ready pod \
+                -l app=keycloak -n ${KC_NS} --timeout=300s
       containers:
         - name: setup-spiffe-idp
           image: "${SPIFFE_IDP_IMAGE}"
